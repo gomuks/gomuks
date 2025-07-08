@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2025 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,6 +17,7 @@
 package gomuks
 
 import (
+	"compress/flate"
 	"context"
 	"encoding/json"
 	"errors"
@@ -35,37 +36,12 @@ import (
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
 
-func writeRaw(ctx context.Context, conn *websocket.Conn, data []byte) error {
-	writer, err := conn.Writer(ctx, websocket.MessageText)
-	if err != nil {
-		return err
-	}
-	_, err = writer.Write(data)
-	if err != nil {
-		return err
-	}
-	return writer.Close()
-}
-
-func writeCmd[T any](ctx context.Context, conn *websocket.Conn, cmd *jsoncmd.Container[T]) error {
-	writer, err := conn.Writer(ctx, websocket.MessageText)
-	if err != nil {
-		return err
-	}
-	err = json.NewEncoder(writer).Encode(&cmd)
-	if err != nil {
-		return err
-	}
-	return writer.Close()
-}
-
 const (
 	StatusEventsStuck = 4001
 	StatusPingTimeout = 4002
 )
 
 var emptyObject = json.RawMessage("{}")
-
 var runID = time.Now().UnixNano()
 
 func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
@@ -98,11 +74,30 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
 	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
+	compress, _ := strconv.ParseInt(r.URL.Query().Get("compress"), 10, 64)
 	log.Info().
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).
 		Int64("current_run_id", runID).
+		Int64("compress", compress).
 		Msg("Accepted new websocket connection")
+	var fp *flateProxy
+	if compress == 1 {
+		fp = &flateProxy{}
+		var err error
+		fp.fw, err = flate.NewWriter(fp, flate.DefaultCompression)
+		if err != nil {
+			log.Err(err).Msg("Failed to create flate writer for websocket messages")
+			_ = conn.Close(websocket.StatusInternalError, "Failed to create flate writer")
+			return
+		}
+		defer func() {
+			fp.lock.Lock()
+			fp.fw.Close()
+			fp.lock.Unlock()
+		}()
+		log.Debug().Msg("Enabled flate compression for websocket messages")
+	}
 	conn.SetReadLimit(128 * 1024)
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = log.WithContext(ctx)
@@ -150,7 +145,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	const RecvTimeout = 60 * time.Second
 	lastImageAuthTokenSent := time.Now()
 	sendImageAuthToken := func() {
-		err := writeCmd(ctx, conn, &BufferedEvent{
+		err := writeCmd(ctx, conn, fp, &BufferedEvent{
 			Command: jsoncmd.EventImageAuthToken,
 			Data:    gmx.generateImageToken(1 * time.Hour),
 		})
@@ -162,17 +157,24 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		defer recoverPanic("event loop")
 		defer closeOnce.Do(forceClose)
-		for _, cmd := range resumeData {
-			err := writeCmd(ctx, conn, cmd)
+		resumeDataChan := sliceToChan(resumeData)
+		var totalResumeSize int
+		for cmd := range resumeDataChan {
+			n, err := writeCmdWithExtra(ctx, conn, fp, cmd, chanToSeq(resumeDataChan))
 			if err != nil {
 				log.Err(err).Int64("req_id", cmd.RequestID).Msg("Failed to write outgoing event from resume data")
 				return
-			} else {
-				log.Trace().Int64("req_id", cmd.RequestID).Msg("Sent outgoing event from resume data")
 			}
+			log.Trace().Int64("req_id", cmd.RequestID).Msg("Sent outgoing event from resume data")
+			totalResumeSize += n
+		}
+		if totalResumeSize > 0 {
+			log.Debug().
+				Int("total_payload_size", totalResumeSize).
+				Msg("Sent resume data to client")
 		}
 		if resumeData != nil {
-			err := writeCmd(ctx, conn, &hicli.JSONCommand{
+			err := writeCmd(ctx, conn, fp, &hicli.JSONCommand{
 				Command:   jsoncmd.EventInitComplete,
 				RequestID: 0,
 			})
@@ -188,7 +190,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		for {
 			select {
 			case cmd := <-evts:
-				err := writeCmd(ctx, conn, cmd)
+				_, err := writeCmdWithExtra(ctx, conn, fp, cmd, chanToSeq(evts))
 				if err != nil {
 					log.Err(err).Int64("req_id", cmd.RequestID).Msg("Failed to write outgoing event")
 					return
@@ -244,7 +246,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		if ctx.Err() != nil {
 			return
 		}
-		err := writeCmd(ctx, conn, resp)
+		err := writeCmd(ctx, conn, fp, resp)
 		if err != nil && ctx.Err() == nil {
 			log.Err(err).Int64("req_id", cmd.RequestID).Msg("Failed to write response")
 			closeOnce.Do(forceClose)
@@ -252,7 +254,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 			log.Trace().Int64("req_id", cmd.RequestID).Msg("Sent response to command")
 		}
 	}
-	initErr := writeCmd(ctx, conn, &jsoncmd.Container[*jsoncmd.RunData]{
+	initErr := writeCmd(ctx, conn, fp, &jsoncmd.Container[*jsoncmd.RunData]{
 		Command: jsoncmd.EventRunID,
 		Data: &jsoncmd.RunData{
 			RunID: strconv.FormatInt(runID, 10),
@@ -263,7 +265,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		log.Err(initErr).Msg("Failed to write init client state message")
 		return
 	}
-	initErr = writeCmd(ctx, conn, &jsoncmd.Container[*jsoncmd.ClientState]{
+	initErr = writeCmd(ctx, conn, fp, &jsoncmd.Container[*jsoncmd.ClientState]{
 		Command: jsoncmd.EventClientState,
 		Data:    gmx.Client.State(),
 	})
@@ -271,7 +273,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		log.Err(initErr).Msg("Failed to write init client state message")
 		return
 	}
-	initErr = writeCmd(ctx, conn, &jsoncmd.Container[*jsoncmd.SyncStatus]{
+	initErr = writeCmd(ctx, conn, fp, &jsoncmd.Container[*jsoncmd.SyncStatus]{
 		Command: jsoncmd.EventSyncStatus,
 		Data:    gmx.Client.SyncStatus.Load(),
 	})
@@ -281,7 +283,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	go sendImageAuthToken()
 	if gmx.Client.IsLoggedIn() && !didResume {
-		go gmx.sendInitialData(ctx, conn)
+		go gmx.sendInitialData(ctx, fp, conn)
 	}
 	log.Debug().Bool("did_resume", didResume).Msg("Connection initialization complete")
 	var closeErr websocket.CloseError
@@ -323,32 +325,27 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (gmx *Gomuks) sendInitialData(ctx context.Context, conn *websocket.Conn) {
+func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *websocket.Conn) {
 	log := zerolog.Ctx(ctx)
 	var roomCount int
 	var totalSize int
 	for payload := range gmx.Client.GetInitialSync(ctx, 100) {
 		roomCount += len(payload.Rooms)
-		marshaledPayload, err := json.Marshal(&jsoncmd.Container[*jsoncmd.SyncComplete]{
+		n, err := writeCmdWithExtra(ctx, conn, fp, &jsoncmd.Container[*jsoncmd.SyncComplete]{
 			Command:   jsoncmd.EventSyncComplete,
 			RequestID: 0,
 			Data:      payload,
-		})
-		if err != nil {
-			log.Err(err).Msg("Failed to marshal initial rooms to send to client")
-			return
-		}
-		totalSize += len(marshaledPayload)
-		err = writeRaw(ctx, conn, marshaledPayload)
+		}, nil)
 		if err != nil {
 			log.Err(err).Msg("Failed to send initial rooms to client")
 			return
 		}
+		totalSize += n
 	}
 	if ctx.Err() != nil {
 		return
 	}
-	err := writeCmd(ctx, conn, &hicli.JSONCommand{
+	err := writeCmd(ctx, conn, fp, &hicli.JSONCommand{
 		Command:   jsoncmd.EventInitComplete,
 		RequestID: 0,
 	})

@@ -20,10 +20,10 @@ import {
 	RoomStateStore,
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
-	usePreference,
 	useRoomMember,
 } from "@/api/statestore"
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
+import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -92,18 +92,12 @@ const EventURLPreviews = ({ event, room }: {
 	room: RoomStateStore
 	event: MemDBEvent
 }) => {
-	const client = use(ClientContext)!
-	const renderPreviews = usePreference(client.store, room, "render_url_previews")
-	if (event.redacted_by || !renderPreviews) {
-		return null
-	}
-
 	const previews = (event.content["com.beeper.linkpreviews"] ?? event.content["m.url_previews"]) as URLPreviewType[]
 	if (!previews) {
 		return null
 	}
 	return <div className="url-previews">
-		{previews.map((p, i) => <URLPreview key={i} url={p.matched_url} preview={p}/>)}
+		{previews.map((p, i) => <URLPreview key={i} room={room} preview={p}/>)}
 	</div>
 }
 
@@ -171,16 +165,22 @@ const TimelineEvent = ({
 			innerBoxClass: "event-edit-history-modal",
 		})
 	}
-	const BodyType = getBodyType(evt)
+	const perMessageSender = getPerMessageProfile(evt)
+	const prevPerMessageSender = getPerMessageProfile(prevEvt)
+	const memberEvt = useRoomMember(client, roomCtx.store, evt.sender)
+	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
+	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
+
 	const eventTS = new Date(evt.timestamp)
 	const editEventTS = evt.last_edit ? new Date(evt.last_edit.timestamp) : null
 	const wrapperClassNames = ["timeline-event"]
-	if (evt.unread_type & UnreadType.Highlight) {
-		wrapperClassNames.push("highlight")
-	}
-	const isRedacted = evt.redacted_by && !evt.viewing_redacted
+	const isRedacted = displayAsRedacted(evt, memberEvt, roomCtx.store)
 	if (isRedacted) {
 		wrapperClassNames.push("redacted-event")
+	}
+	const BodyType = getBodyType(evt, isRedacted)
+	if (evt.unread_type & UnreadType.Highlight) {
+		wrapperClassNames.push("highlight")
 	}
 	if (evt.type === "m.room.member") {
 		wrapperClassNames.push("membership-event")
@@ -196,6 +196,9 @@ const TimelineEvent = ({
 	}
 	if (isFocused) {
 		wrapperClassNames.push("focused-event")
+	}
+	if (evt.unsigned["fi.mau.soft_failed"]) {
+		wrapperClassNames.push("soft-failed")
 	}
 	let dateSeparator = null
 	const prevEvtDate = prevEvt ? new Date(prevEvt.timestamp) : null
@@ -228,11 +231,6 @@ const TimelineEvent = ({
 			replyInMessage = replyElem
 		}
 	}
-	const perMessageSender = getPerMessageProfile(evt)
-	const prevPerMessageSender = getPerMessageProfile(prevEvt)
-	const memberEvt = useRoomMember(client, roomCtx.store, evt.sender)
-	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
-	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
 
 	let smallAvatar = false
 	let renderAvatar = true
@@ -246,7 +244,7 @@ const TimelineEvent = ({
 		&& prevEvt.timestamp + 15 * 60 * 1000 > evt.timestamp
 		&& dateSeparator === null
 		&& !replyAboveMessage
-		&& !isSmallEvent(getBodyType(prevEvt))
+		&& !isSmallEvent(getBodyType(prevEvt, displayAsRedacted(prevEvt, memberEvt, roomCtx.store)))
 		&& prevPerMessageSender?.id === perMessageSender?.id
 	) {
 		wrapperClassNames.push("same-sender")
@@ -316,7 +314,7 @@ const TimelineEvent = ({
 			{replyInMessage}
 			<ContentErrorBoundary>
 				<BodyType room={roomCtx.store} sender={memberEvt} event={evt}/>
-				{!isSmallBodyType && <EventURLPreviews room={roomCtx.store} event={evt}/>}
+				{!isSmallBodyType && !isRedacted && <EventURLPreviews room={roomCtx.store} event={evt}/>}
 			</ContentErrorBoundary>
 			{(!editHistoryView && editEventTS) ? <div
 				className="event-edited"

@@ -3,6 +3,7 @@
 	--font-stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 	--monospace-font-stack: "Fira Code", monospace;
 
+	--window-top-margin: env(safe-area-inset-top, 0px);
 	--background-color: #fff;
 	--login-background-color: #eee;
 	--text-color: #000;
@@ -36,6 +37,7 @@
 	--timeline-highlight-hover-bg-color: #eec;
 	--timeline-jump-bg-color: rgba(0, 255, 0, .2);
 	--timeline-jump-hover-bg-color: #cec;
+	--timeline-soft-failed-bg-color: rgba(255, 0, 0, .2);
 
 	--room-list-background: linear-gradient(in hsl longer hue, red 0 0, magenta);
 	--room-list-background-overlay: hsla(0, 0%, 96%, .9);
@@ -239,7 +241,7 @@ button, a.button, span.button {
 
 div.connection-error-wrapper {
 	position: fixed;
-	inset: 0;
+	inset: var(--window-top-margin) 0 0;
 	z-index: 100;
 	display: flex;
 	align-items: center;
@@ -265,7 +267,7 @@ div.connection-error-wrapper {
 
 div.pre-main {
 	position: fixed;
-	inset: 0;
+	inset: var(--window-top-margin) 0 0;
 	background-color: var(--login-background-color);
 
 	&.waiting-to-connect {

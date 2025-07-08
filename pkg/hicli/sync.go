@@ -386,9 +386,12 @@ func removeReplyFallback(evt *event.Event) []byte {
 	}
 	_ = evt.Content.ParseRaw(evt.Type)
 	content, ok := evt.Content.Parsed.(*event.MessageEventContent)
-	if ok && content.RelatesTo.GetReplyTo() != "" {
+	if ok {
 		prevFormattedBody := content.FormattedBody
-		content.RemoveReplyFallback()
+		content.RemovePerMessageProfileFallback()
+		if content.RelatesTo.GetReplyTo() != "" {
+			content.RemoveReplyFallback()
+		}
 		if content.FormattedBody != prevFormattedBody {
 			bytes, err := sjson.SetBytes(evt.Content.VeryRaw, "formatted_body", content.FormattedBody)
 			bytes, err2 := sjson.SetBytes(bytes, "body", content.Body)
@@ -624,7 +627,7 @@ func (h *HiClient) postDecryptProcess(ctx context.Context, llSummary *mautrix.La
 	if dbEvt.RowID != 0 {
 		h.cacheMedia(ctx, evt, dbEvt.RowID)
 	}
-	if evt.Sender != h.Account.UserID {
+	if evt.Sender != h.Account.UserID && !evt.Unsigned.MauSoftFailed {
 		dbEvt.UnreadType = h.evaluatePushRules(ctx, llSummary, dbEvt.GetNonPushUnreadType(), evt)
 	}
 	dbEvt.LocalContent, inlineImages = h.calculateLocalContent(ctx, dbEvt, evt)
@@ -831,7 +834,7 @@ func (h *HiClient) processStateAndTimeline(
 			}
 			updatedRoom.BumpSortingTimestamp(dbEvt)
 		}
-		if evt.StateKey != nil {
+		if evt.StateKey != nil && !evt.Unsigned.MauSoftFailed {
 			var membership event.Membership
 			if evt.Type == event.StateMember {
 				membership = event.Membership(gjson.GetBytes(evt.Content.VeryRaw, "membership").Str)

@@ -56,17 +56,43 @@ func (h *HiClient) GetUnredactedEvent(ctx context.Context, roomID id.RoomID, eve
 	}
 }
 
+func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err error) {
+	if !errors.Is(err, mautrix.MForbidden) {
+		return
+	}
+	log := zerolog.Ctx(ctx)
+	joinedRooms, err := h.Client.JoinedRooms(ctx)
+	if err != nil {
+		log.Err(err).Msg("Failed to fetch joined rooms to check if join event was reset")
+		return
+	}
+	if slices.Contains(joinedRooms.JoinedRooms, roomID) {
+		log.Debug().Msg("Fetching state failed, but room is still in joined rooms")
+		return
+	}
+	log.Info().Msg("Fetching room state failed and room is not in joined rooms, deleting from database")
+	err = h.DB.Room.Delete(ctx, roomID)
+	if err != nil {
+		log.Err(err).Msg("Failed to delete room from database after state reset")
+	}
+	h.EventHandler(&jsoncmd.SyncComplete{
+		LeftRooms: []id.RoomID{roomID},
+	})
+}
+
 func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fetchMembers, refetch, dispatchEvt bool) error {
 	var evts []*event.Event
 	if refetch {
 		resp, err := h.Client.StateAsArray(ctx, roomID)
 		if err != nil {
+			go h.processStateReset(context.WithoutCancel(ctx), roomID, err)
 			return fmt.Errorf("failed to refetch state: %w", err)
 		}
 		evts = resp
 	} else if fetchMembers {
 		resp, err := h.Client.Members(ctx, roomID)
 		if err != nil {
+			go h.processStateReset(context.WithoutCancel(ctx), roomID, err)
 			return fmt.Errorf("failed to fetch members: %w", err)
 		}
 		evts = resp.Chunk
@@ -188,10 +214,19 @@ func (h *HiClient) GetRoomState(ctx context.Context, roomID id.RoomID, includeMe
 	return h.DB.CurrentState.GetAll(ctx, roomID)
 }
 
-func (h *HiClient) Paginate(ctx context.Context, roomID id.RoomID, maxTimelineID database.TimelineRowID, limit int) (*jsoncmd.PaginationResponse, error) {
-	evts, err := h.DB.Timeline.Get(ctx, roomID, limit, maxTimelineID)
-	if err != nil {
-		return nil, err
+func (h *HiClient) Paginate(ctx context.Context, roomID id.RoomID, maxTimelineID database.TimelineRowID, limit int, reset bool) (*jsoncmd.PaginationResponse, error) {
+	var evts []*database.Event
+	var err error
+	if reset {
+		err = h.DB.Timeline.Clear(ctx, roomID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to clear timeline: %w", err)
+		}
+	} else {
+		evts, err = h.DB.Timeline.Get(ctx, roomID, limit, maxTimelineID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var resp *jsoncmd.PaginationResponse
 	if len(evts) > 0 {
@@ -200,7 +235,7 @@ func (h *HiClient) Paginate(ctx context.Context, roomID id.RoomID, maxTimelineID
 		}
 		resp = &jsoncmd.PaginationResponse{Events: evts, HasMore: true}
 	} else {
-		resp, err = h.PaginateServer(ctx, roomID, limit)
+		resp, err = h.PaginateServer(ctx, roomID, limit, reset)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +300,7 @@ func (h *HiClient) GetReceipts(ctx context.Context, roomID id.RoomID, eventIDs [
 	return receipts, nil
 }
 
-func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit int) (*jsoncmd.PaginationResponse, error) {
+func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit int, reset bool) (*jsoncmd.PaginationResponse, error) {
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(context.Canceled)
 	h.paginationInterrupterLock.Lock()
@@ -284,7 +319,13 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 	room, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get room from database: %w", err)
-	} else if room.PrevBatch == database.PrevBatchPaginationComplete {
+	} else if room == nil {
+		return nil, fmt.Errorf("not in room %s", roomID)
+	}
+	if reset {
+		room.PrevBatch = ""
+	}
+	if room.PrevBatch == database.PrevBatchPaginationComplete {
 		return &jsoncmd.PaginationResponse{Events: []*database.Event{}, HasMore: false}, nil
 	}
 	resp, err := h.Client.Messages(ctx, roomID, room.PrevBatch, "", mautrix.DirectionBackward, nil, limit)
@@ -300,7 +341,11 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		if err != nil {
 			return nil, fmt.Errorf("failed to set prev_batch: %w", err)
 		}
-		return &jsoncmd.PaginationResponse{Events: events, HasMore: resp.End != database.PrevBatchPaginationComplete}, nil
+		return &jsoncmd.PaginationResponse{
+			Events:     events,
+			FromServer: true,
+			HasMore:    resp.End != database.PrevBatchPaginationComplete,
+		}, nil
 	}
 	wakeupSessionRequests := false
 	err = h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
