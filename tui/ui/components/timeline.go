@@ -25,7 +25,7 @@ type TimelineComponent struct {
 
 func NewTimeline(ctx context.Context, app abstract.App) *TimelineComponent {
 	timeline := &TimelineComponent{
-		Flex:     mauview.NewFlex(),
+		Flex:     mauview.NewFlex().SetDirection(mauview.FlexRow),
 		app:      app,
 		ctx:      ctx,
 		elements: make(map[id.EventID]mauview.Component),

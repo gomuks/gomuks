@@ -17,7 +17,7 @@ import (
 )
 
 type MainView struct {
-	*mauview.Flex
+	*mauview.Grid
 	app abstract.App
 	ctx context.Context
 
@@ -106,19 +106,20 @@ func (m *MainView) OnRoomSelected(old, new id.RoomID) {
 		m.app.Gmx().Log.Debug().Msgf("creating new timeline for room %s", new)
 		timeline = components.NewTimeline(m.ctx, m.app)
 		m.Timelines[new] = timeline
-		m.AddProportionalComponent(timeline, 4)
+		//m.AddComponent(timeline, 1, 0, 1, 1)
 	}
 	m.app.Gmx().Log.Debug().Msgf("Removing timeline for room %s", old)
 	m.RemoveComponent(m.timelineElement)
 	m.timelineElement = timeline
 	m.app.Gmx().Log.Debug().Msgf("Timeline for %s from %s", old, new)
-	m.AddProportionalComponent(m.timelineElement, 4)
+	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
 	m.app.App().Redraw()
 }
 
 func NewMainView(ctx context.Context, app abstract.App) *MainView {
+	screenW, screenH := app.App().Screen().Size()
 	m := &MainView{
-		Flex:              mauview.NewFlex(),
+		Grid:              mauview.NewGrid().SetColumns([]int{15, screenW - 30, 15}).SetRows([]int{screenH}),
 		app:               app,
 		ctx:               ctx,
 		MemberLists:       make(map[id.RoomID]*components.MemberList),
@@ -130,9 +131,10 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 	m.MemberLists[""] = m.memberListElement
 
 	m.RoomList = components.NewRoomList(ctx, app, m.OnRoomSelected)
-	m.AddProportionalComponent(m.RoomList, 1)
-	m.AddProportionalComponent(m.timelineElement, 4)
-	m.AddProportionalComponent(m.memberListElement, 1)
+
+	m.AddComponent(m.RoomList, 0, 0, 1, 1)
+	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
+	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
 	// rooms: x1
 	// timeline: x4
 	// members: x1
