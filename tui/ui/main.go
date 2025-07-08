@@ -117,9 +117,12 @@ func (m *MainView) OnRoomSelected(old, new id.RoomID) {
 }
 
 func NewMainView(ctx context.Context, app abstract.App) *MainView {
-	screenW, screenH := app.App().Screen().Size()
+	//screenW, screenH := app.App().Screen().Size()
+	var (
+		screenW, screenH = 253, 65
+	)
 	m := &MainView{
-		Grid:              mauview.NewGrid().SetColumns([]int{15, screenW - 30, 15}).SetRows([]int{screenH}),
+		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH}),
 		app:               app,
 		ctx:               ctx,
 		MemberLists:       make(map[id.RoomID]*components.MemberList),
