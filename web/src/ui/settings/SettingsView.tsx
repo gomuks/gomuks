@@ -534,6 +534,12 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				<div className="room-buttons">
 					<button className="leave-room" onClick={onClickLeave}>Leave room</button>
 					<button className="devtools" onClick={openDevtools}>Explore room state</button>
+					<button
+						className="timeline"
+						onClick={() => window.activeRoomContext?.setForceDefaultTimeline(true)}
+					>
+						Force timeline view
+					</button>
 					{previousRoomID &&
 						<button className="previous-room" onClick={openPredecessorRoom}>
 							Open Predecessor Room
