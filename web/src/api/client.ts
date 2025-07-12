@@ -403,6 +403,19 @@ export default class Client {
 		}
 	}
 
+	loadRoomStateIfNecessary(room: RoomStateStore): Promise<void> {
+		if (room.stateLoaded) {
+			return Promise.resolve()
+		} else if (!room.waitStateLoaded) {
+			room.waitStateLoaded = this.loadRoomState(room.roomID)
+			room.waitStateLoaded.catch(err => {
+				console.error("Failed to load room state", err)
+				room.waitStateLoaded = undefined
+			})
+		}
+		return room.waitStateLoaded
+	}
+
 	async loadRoomState(
 		roomID: RoomID, { omitMembers, refetch } = { omitMembers: true, refetch: false },
 	): Promise<void> {

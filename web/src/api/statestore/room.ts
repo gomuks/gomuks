@@ -97,6 +97,7 @@ export class RoomStateStore {
 	editTargets: EventRowID[] = []
 	state: Map<EventType, Map<string, EventRowID>> = new Map()
 	stateLoaded = false
+	waitStateLoaded?: Promise<void>
 	typing: UserID[] = []
 	fullMembersLoaded = false
 	readonly eventsByRowID: Map<EventRowID, MemDBEvent> = new Map()

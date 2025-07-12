@@ -166,8 +166,7 @@ class ContextFields implements MainScreenContextFields {
 		this.keybindings.activeRoom = room
 		room.lastOpened = Date.now()
 		if (!room.stateLoaded) {
-			this.client.loadRoomState(room.roomID)
-				.catch(err => console.error("Failed to load room state", err))
+			this.client.loadRoomStateIfNecessary(room)
 		}
 		document
 			.querySelector(`div.room-entry[data-room-id="${CSS.escape(room.roomID)}"]`)
