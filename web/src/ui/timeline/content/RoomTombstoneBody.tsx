@@ -13,26 +13,31 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { JSX } from "react"
+import React, { JSX, use } from "react"
 import { TombstoneEventContent } from "@/api/types"
-import { ensureString, getDisplayname, isRoomID } from "@/util/validation.ts"
+import { ensureString, getDisplayname, getServerName, isRoomID } from "@/util/validation.ts"
+import MainScreenContext from "../../MainScreenContext.ts"
 import EventContentProps from "./props.ts"
 
 const RoomTombstoneBody = ({ event, sender }: EventContentProps) => {
+	const mainScreen = use(MainScreenContext)!
 	const content = event.content as TombstoneEventContent
 	const body = ensureString(content.body)
 	const replacementRoom = ensureString(content.replacement_room)
 	const end = body ? ` with the message: ${body}` : "."
+	const via = getServerName(event.sender)
 	const onClick = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
 		e.preventDefault()
-		window.mainScreenContext.setActiveRoom(replacementRoom)
+		mainScreen.setActiveRoom(replacementRoom, {
+			via: [via],
+		})
 	}
 	let description: JSX.Element
 	if (isRoomID(replacementRoom)) {
 		description = <span>
 			replaced this room with <a
 				onClick={onClick}
-				href={"matrix:roomid/" + replacementRoom.slice(1)}
+				href={`matrix:roomid/${replacementRoom.slice(1)}?via=${via}`}
 				className="hicli-matrix-uri"
 			>
 				{replacementRoom}

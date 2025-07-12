@@ -41,6 +41,7 @@ import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
+import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
 import GIFPicker from "../emojipicker/GIFPicker.tsx"
 import StickerPicker from "../emojipicker/StickerPicker.tsx"
@@ -123,6 +124,7 @@ const MessageComposer = () => {
 	const roomCtx = useRoomContext()
 	const room = roomCtx.store
 	const client = use(ClientContext)!
+	const mainScreen = use(MainScreenContext)!
 	const openModal = use(ModalContext)
 	const [autocomplete, setAutocomplete] = useState<AutocompleteQuery | null>(null)
 	const [state, setState] = useReducer(composerReducer, uninitedComposer)
@@ -707,7 +709,7 @@ const MessageComposer = () => {
 			const via = getServerName(tombstoneEvent.sender)
 			const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
 				e.preventDefault()
-				window.mainScreenContext.setActiveRoom(content.replacement_room, {
+				mainScreen.setActiveRoom(content.replacement_room, {
 					via: [via],
 				})
 			}
