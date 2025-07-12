@@ -16,6 +16,7 @@
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
 import { CustomEmojiPack, parseCustomEmojiPack } from "@/util/emoji"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
+import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
 import { getDisplayname, getServerName } from "@/util/validation.ts"
@@ -212,7 +213,8 @@ export class RoomStateStore {
 		if (!memberEvtIDs) {
 			return
 		}
-		const powerLevels: PowerLevelEventContent = this.getStateEvent("m.room.power_levels", "")?.content ?? {}
+		const powerLevels: PowerLevelEventContent | undefined = this.getStateEvent("m.room.power_levels", "")?.content
+		const createEvt = this.getStateEvent("m.room.create", "")
 		const membersCache = memberEvtIDs.values()
 			.map(rowID => this.eventsByRowID.get(rowID))
 			.filter((evt): evt is MemDBEvent => !!evt && evt.content.membership === "join")
@@ -225,8 +227,8 @@ export class RoomStateStore {
 			}))
 			.toArray()
 		membersCache.sort((a, b) => {
-			const aPower = powerLevels.users?.[a.userID] ?? powerLevels.users_default ?? 0
-			const bPower = powerLevels.users?.[b.userID] ?? powerLevels.users_default ?? 0
+			const aPower = getUserLevel(powerLevels, createEvt, a.userID)
+			const bPower = getUserLevel(powerLevels, createEvt, b.userID)
 			if (aPower !== bPower) {
 				return bPower - aPower
 			} else if (a.displayName === b.displayName) {
@@ -251,13 +253,14 @@ export class RoomStateStore {
 		const vias = [ownServerName]
 		const members = this.getMembers()
 		const memberCount = new Map<string, number>()
-		const powerLevels: PowerLevelEventContent = this.getStateEvent("m.room.power_levels", "")?.content ?? {}
-		const usersDefault = powerLevels.users_default ?? 0
+		const powerLevels: PowerLevelEventContent | undefined = this.getStateEvent("m.room.power_levels", "")?.content
+		const createEvt = this.getStateEvent("m.room.create", "")
+		const usersDefault = powerLevels?.users_default ?? 0
 		let powerServer: string | undefined = undefined
 		for (const member of members) {
 			const serverName = getServerName(member.userID)
 			if (serverName !== ownServerName) {
-				if (!powerServer && (powerLevels?.users?.[member.userID] ?? usersDefault) > usersDefault) {
+				if (!powerServer && getUserLevel(powerLevels, createEvt, member.userID) > usersDefault) {
 					powerServer = serverName
 					vias.push(powerServer)
 				}
