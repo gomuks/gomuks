@@ -39,10 +39,11 @@ export interface RoomPredecessor {
 }
 
 export interface CreateEventContent {
-	type: RoomType
-	"m.federate": boolean
-	room_version: RoomVersion
-	predecessor: RoomPredecessor
+	type?: RoomType
+	"m.federate"?: boolean
+	room_version?: RoomVersion
+	predecessor?: RoomPredecessor
+	additional_creators?: UserID[]
 }
 
 export interface TombstoneEventContent {

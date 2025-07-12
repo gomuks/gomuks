@@ -13,13 +13,24 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { MemDBEvent, PowerLevelEventContent, UserID } from "@/api/types"
+import { CreateEventContent, MemDBEvent, PowerLevelEventContent, UserID } from "@/api/types"
+
+const unsupportedRoomVersions = new Set([undefined, "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"])
 
 export function getUserLevel(
 	pls: PowerLevelEventContent | undefined,
-	_createEvt: MemDBEvent | undefined | null,
+	createEvt: MemDBEvent | undefined | null,
 	userID: UserID,
 ): number {
+	const create = createEvt?.content as CreateEventContent | undefined
+	if (
+		createEvt
+		&& create
+		&& !unsupportedRoomVersions.has(create.room_version)
+		&& (createEvt.sender === userID || create.additional_creators?.includes(userID))
+	) {
+		return Infinity
+	}
 	return pls?.users?.[userID] ?? pls?.users_default ?? 0
 }
 
