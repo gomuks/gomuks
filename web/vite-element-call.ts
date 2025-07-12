@@ -45,6 +45,9 @@ const elementCallPlugin: Plugin = {
 		const copyDir = (src: string, dest: string) => {
 			fs.mkdirSync(dest, { recursive: true })
 			for (const file of fs.readdirSync(src)) {
+				if (file.endsWith(".map") || file.startsWith("matrix_sdk_crypto")) {
+					continue
+				}
 				const srcPath = path.join(src, file)
 				const destPath = path.join(dest, file)
 				if (fs.statSync(srcPath).isDirectory()) {
