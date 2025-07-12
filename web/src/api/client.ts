@@ -40,7 +40,7 @@ export default class Client {
 	readonly store = new StateStore()
 	#stateRequests: RoomStateGUID[] = []
 	#stateRequestPromise: Promise<void> | null = null
-	#gcInterval: number | undefined
+	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 
 	constructor(readonly rpc: RPCClient) {

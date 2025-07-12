@@ -11,6 +11,7 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@element-hq/element-call-embedded": "^0.13.1",
 		"@streamparser/json-whatwg": "^0.0.22",
 		"@wailsio/runtime": "^3.0.0-alpha.29",
 		"blurhash": "^2.0.5",
@@ -29,6 +30,7 @@
 		"@eslint/js": "^9.11.1",
 		"@types/katex": "^0.16.7",
 		"@types/leaflet": "^1.9.14",
+		"@types/node": "^24.0.13",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
 		"@types/sanitize-html": "^2.13.0",

@@ -167,7 +167,7 @@ export const preferences = {
 		displayName: "Element call base URL",
 		description: "The widget base URL for Element calls.",
 		allowedContexts: anyContext,
-		defaultValue: "https://call.element.io",
+		defaultValue: "",
 	}),
 	gif_provider: new Preference<GIFProvider>({
 		displayName: "GIF provider",

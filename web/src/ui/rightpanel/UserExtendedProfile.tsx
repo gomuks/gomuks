@@ -40,7 +40,7 @@ const ClockElement = ({ tz }: { tz: string }) => {
 		if (!isValidTZ) {
 			return
 		}
-		let interval: number | undefined
+		let interval: ReturnType<typeof setInterval> | undefined
 		const updateTime = () => setTime(currentTimeAdjusted(tz))
 		const timeout = setTimeout(() => {
 			interval = setInterval(updateTime, 1000)
