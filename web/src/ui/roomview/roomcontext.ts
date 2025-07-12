@@ -32,8 +32,16 @@ export class RoomContextData {
 	public focusedEventRowID: EventRowID | null = null
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
 	public scrolledToBottom = true
+	public setForceDefaultTimeline: (force: boolean) => void = noop("setForceDefaultTimeline")
 
-	constructor(public store: RoomStateStore) {}
+	constructor(
+		public store: RoomStateStore,
+		setForceDefaultTimeline?: (force: boolean) => void,
+	) {
+		if (setForceDefaultTimeline) {
+			this.setForceDefaultTimeline = setForceDefaultTimeline
+		}
+	}
 
 	scrollToBottom = () => {
 		if (this.scrolledToBottom) {
