@@ -28,10 +28,11 @@ const widgetLoader = <div className="widget-container widget-loading">
 
 export interface LazyWidgetProps {
 	info: IWidget
+	noPermissionPrompt?: boolean
 	onClose?: () => void
 }
 
-const LazyWidget = ({ info, onClose }: LazyWidgetProps) => {
+const LazyWidget = ({ info, onClose, noPermissionPrompt }: LazyWidgetProps) => {
 	const room = use(RoomContext)?.store
 	const client = use(ClientContext)
 	if (!room || !client) {
@@ -39,7 +40,7 @@ const LazyWidget = ({ info, onClose }: LazyWidgetProps) => {
 	}
 	return (
 		<Suspense fallback={widgetLoader}>
-			<Widget info={info} room={room} client={client} onClose={onClose} />
+			<Widget info={info} room={room} client={client} onClose={onClose} noPermissionPrompt={noPermissionPrompt} />
 		</Suspense>
 	)
 }

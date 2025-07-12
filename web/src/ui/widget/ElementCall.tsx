@@ -68,7 +68,7 @@ const ElementCall = ({ onClose }: { onClose?: () => void }) => {
 	if (!room || !client) {
 		return null
 	}
-	return <LazyWidget info={widgetInfo} onClose={onClose} />
+	return <LazyWidget info={widgetInfo} onClose={onClose} noPermissionPrompt={true} />
 }
 
 export default ElementCall
