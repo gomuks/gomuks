@@ -55,6 +55,8 @@ export const EventFullMenu = ({ evt, roomCtx, style }: EventContextMenuProps) =>
 	</div>
 }
 
+EventFullMenu.height = 9 * 40
+
 export const EventFixedMenu = ({ evt, roomCtx }: BaseEventMenuProps) => {
 	const client = use(ClientContext)!
 	const primary = usePrimaryItems(client, roomCtx, evt, false, true, undefined, undefined)

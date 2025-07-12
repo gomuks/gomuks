@@ -58,7 +58,7 @@ div.context-menu {
 		opacity: .2;
 	}
 
-	> button {
+	> .context-menu-item, > button {
 		border-radius: 0;
 		padding: .5rem .75rem;
 		justify-content: left;
@@ -70,10 +70,10 @@ div.context-menu {
 			height: 1.5rem;
 		}
 
-		&:first-of-type {
+		&:first-child {
 			border-radius: .5rem .5rem 0 0;
 		}
-		&:last-of-type {
+		&:last-child {
 			border-radius: 0 0 .5rem .5rem;
 		}
 

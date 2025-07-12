@@ -1,3 +1,23 @@
 div.room-list-menu {
 
 }
+
+div.space-list-menu {
+	> div.space-list-child {
+		display: flex;
+		align-items: center;
+		padding: 0 .5rem;
+		height: 2.5rem;
+
+		&:hover, &:focus {
+			background-color: var(--room-list-entry-hover-color);
+		}
+
+		> img {
+			width: 2rem;
+			height: 2rem;
+			border-radius: 0;
+			clip-path: url(#squircle);
+		}
+	}
+}

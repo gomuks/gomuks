@@ -94,7 +94,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 			content: <RoomMenu
 				room={realRoom}
 				entry={room}
-				style={getModalStyleFromMouse(evt, 6 * 40)}
+				style={getModalStyleFromMouse(evt, RoomMenu.height)}
 			/>,
 		})
 		evt.preventDefault()

@@ -123,6 +123,10 @@ export class SpaceEdgeStore extends Space {
 		return this.#children
 	}
 
+	get childSpaces(): Set<SpaceEdgeStore> {
+		return this.#childSpaces
+	}
+
 	#updateFlattened(recalculate: boolean, added: Set<RoomID>) {
 		if (recalculate) {
 			let flattened = new Set(this.#childRooms)
