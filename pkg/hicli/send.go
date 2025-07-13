@@ -115,6 +115,10 @@ func (h *HiClient) SendMessage(
 		if len(parts) < 4 || len(parts[1]) == 0 {
 			return nil, fmt.Errorf("invalid /rawstate command")
 		}
+		if parts[2] == "{" || strings.HasPrefix(parts[2], `{"`) {
+			parts[3] = parts[2] + parts[3]
+			parts[2] = ""
+		}
 		content := json.RawMessage(parts[3])
 		if !json.Valid(content) {
 			return nil, fmt.Errorf("invalid JSON in /rawstate command")
