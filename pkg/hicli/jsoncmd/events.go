@@ -88,7 +88,7 @@ func (c *SyncComplete) Notifications(yield func(SyncNotification) bool) {
 }
 
 func (c *SyncComplete) IsEmpty() bool {
-	return len(c.Rooms) == 0 && len(c.LeftRooms) == 0 && len(c.InvitedRooms) == 0 && len(c.AccountData) == 0
+	return len(c.Rooms) == 0 && len(c.LeftRooms) == 0 && len(c.InvitedRooms) == 0 && len(c.AccountData) == 0 && len(c.ToDevice) == 0
 }
 
 type SyncStatusType string
