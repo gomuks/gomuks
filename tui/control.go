@@ -11,6 +11,7 @@ import (
 
 func (gt *GomuksTUI) SwitchRoot(new mauview.Component) {
 	gt.app.SetRoot(new)
+	gt.currentView = new
 }
 
 func (gt *GomuksTUI) OnEvent(ctx context.Context, evt any) {
@@ -30,16 +31,16 @@ func (gt *GomuksTUI) OnEvent(ctx context.Context, evt any) {
 		gt.Log.Debug().Msg("New sync received")
 		gt.mainView.OnSync(e)
 	}
-	if !gt.clientState.IsLoggedIn {
+	if !gt.clientState.IsLoggedIn && gt.currentView != gt.loginView.Container {
 		gt.Log.Debug().Msg("Switching to login view")
 		gt.SwitchRoot(gt.loginView.Container)
-	} else if !gt.clientState.IsVerified {
+	} else if !gt.clientState.IsVerified && gt.currentView != gt.verifyView.Container {
 		gt.Log.Debug().Msg("Switching to verification view")
 		gt.SwitchRoot(gt.verifyView.Container)
-	} else if !gt.initSyncDone {
+	} else if !gt.initSyncDone && gt.clientState.IsLoggedIn && gt.currentView != gt.syncView.Container {
 		gt.Log.Debug().Msg("Switching to sync waiter view")
 		gt.SwitchRoot(gt.syncView.Container)
-	} else {
+	} else if gt.currentView != gt.mainView {
 		gt.Log.Debug().Msg("Switching to main view")
 		gt.SwitchRoot(gt.mainView)
 	}

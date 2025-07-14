@@ -44,11 +44,12 @@ type GomuksTUI struct {
 	clientState    *jsoncmd.ClientState
 	imageAuthToken string
 
-	authView   *ui.AuthenticateView
-	syncView   *ui.SyncingView
-	loginView  *ui.LoginView
-	verifyView *ui.VerifySessionView
-	mainView   *ui.MainView
+	authView    *ui.AuthenticateView
+	syncView    *ui.SyncingView
+	loginView   *ui.LoginView
+	verifyView  *ui.VerifySessionView
+	mainView    *ui.MainView
+	currentView mauview.Component
 
 	rooms map[id.RoomID]*jsoncmd.SyncRoom
 }
@@ -86,16 +87,26 @@ func (gt *GomuksTUI) App() *mauview.Application {
 }
 
 func (gt *GomuksTUI) PingTicker(ctx context.Context) {
+	log := gt.Gomuks.Log.With().Str("component", "tui.ping_ticker").Logger()
+	log.Debug().Msg("starting ping ticker")
 	for {
 		select {
 		case <-ctx.Done():
+			log.Warn().Msg("ping ticker context done, stopping ping ticker")
 			return
 		case <-gt.pingTicker.C:
+			log.Debug().Msg("pinging gomuks over RPC")
 			if gt.rpc != nil {
+				log.Debug().Int64("last_received_id", gt.rpc.LastReqID).Msg("sending ping request to gomuks over RPC")
 				_, err := gt.rpc.Ping(ctx, &jsoncmd.PingParams{LastReceivedID: gt.rpc.LastReqID})
+				log.Debug().Int64("last_received_id", gt.rpc.LastReqID).Msg("pong received from gomuks over RPC")
 				if err != nil && !errors.Is(err, rpc.ErrNotConnectedToWebsocket) {
-					gt.Gomuks.Log.Err(err).Msg("failed to ping gomuks over RPC")
+					log.Err(err).Msg("failed to ping gomuks over RPC")
+				} else {
+					log.Debug().Msg("ping successful")
 				}
+			} else {
+				log.Warn().Msg("RPC client is not initialized, cannot ping")
 			}
 		}
 	}
@@ -122,7 +133,7 @@ func (gt *GomuksTUI) Run() {
 	}
 	gt.rpc = rpcClient
 	gt.rpc.EventHandler = gt.OnEvent
-	gt.pingTicker = time.NewTicker(30 * time.Second)
+	gt.pingTicker = time.NewTicker(10 * time.Second)
 	defer gt.pingTicker.Stop()
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()

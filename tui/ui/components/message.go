@@ -3,7 +3,6 @@ package components
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"go.mau.fi/mauview"
 	"maunium.net/go/mautrix/event"
@@ -27,15 +26,18 @@ func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Mes
 		ctx:  ctx,
 	}
 	var content *event.MessageEventContent
-	err := json.Unmarshal(evt.Content, &content)
-	if err != nil {
-		content = &event.MessageEventContent{Body: "failed to parse content: " + err.Error(), MsgType: event.MsgNotice}
+	if evt.Type != "m.room.message" {
+		content = &event.MessageEventContent{Body: "unsupported event type: " + evt.Type, MsgType: event.MsgNotice}
+	} else {
+		err := json.Unmarshal(evt.Content, &content)
+		if err != nil {
+			content = &event.MessageEventContent{Body: "failed to parse content: " + err.Error(), MsgType: event.MsgNotice}
+		}
 	}
-	lines := strings.Count(content.Body, "\n")
-	lines += (len(content.Body) / 230) - lines
-	msg.SetColumns([]int{15, len(content.Body), 5}).SetRows([]int{lines})
+
+	msg.SetColumns([]int{15, 200, 5}).SetRows([]int{1})
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Sender.Localpart()), 0, 0, 1, 1)
-	msg.AddComponent(mauview.NewTextField().SetText(content.Body), 1, 0, 1, 1)
+	msg.AddComponent(mauview.NewTextView().SetText(content.Body), 1, 0, 1, 1)
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Timestamp.Format("15:04")), 2, 0, 1, 1)
 	return msg
 }

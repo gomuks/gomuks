@@ -31,39 +31,48 @@ type MainView struct {
 }
 
 func (m *MainView) OnSync(resp *jsoncmd.SyncComplete) {
+	logger := m.app.Gmx().Log.With().Str("component", "ui.sync").Logger()
 	m.syncLock.Lock()
 	defer m.syncLock.Unlock()
 	for _, leftRoomID := range resp.LeftRooms {
 		// Remove data for rooms we left
+		logger.Debug().Stringer("room_id", leftRoomID).Msg("Removing left room from room list")
 		delete(m.MemberLists, leftRoomID)
+		delete(m.RoomList.Elements, leftRoomID)
 	}
 	// Add invited rooms to the top of the room list
 	for _, room := range resp.InvitedRooms {
 		//m.RoomList.AddRoom(room.ID)
 		// bad!
 		m.RoomList.AddRoom(room.ID, &jsoncmd.SyncRoom{})
+		logger.Debug().Interface("room", room).Msg("Adding invited room to room list")
 	}
 
 	// Process joined rooms
 	for roomID, room := range resp.Rooms {
 		existingRoom := m.RoomList.Elements[roomID]
 		if existingRoom != nil {
+			logger.Debug().Interface("room", room).Msg("Updating existing room in room list")
 			if room.Meta != nil && room.Meta.Name != nil && *room.Meta.Name != "" {
 				// Update existing room name
 				existingRoom.SetText(*room.Meta.Name)
 			}
 		} else {
 			// Add new room
+			logger.Debug().Interface("room", room).Msg("Adding new room to room list")
 			m.RoomList.AddRoom(roomID, room)
 		}
 
 		timeline, exists := m.Timelines[roomID]
 		if !exists {
+			logger.Debug().Stringer("room_id", roomID).Msg("Creating new timeline for room")
 			timeline = components.NewTimeline(m.ctx, m.app)
 			m.Timelines[roomID] = timeline
 		}
 		if room.Events != nil {
+			logger.Debug().Stringer("room_id", roomID).Msgf("Adding %d events to timeline", len(room.Events))
 			for _, evt := range room.Events {
+				logger.Debug().Interface("event", evt).Stringer("room_id", roomID).Msg("Adding event to timeline")
 				timeline.AddEvent(evt)
 			}
 		}
