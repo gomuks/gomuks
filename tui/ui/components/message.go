@@ -20,6 +20,7 @@ type Message struct {
 }
 
 func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Message {
+	width, _ := app.App().Screen().Size()
 	msg := &Message{
 		Grid: mauview.NewGrid(),
 		app:  app,
@@ -35,7 +36,7 @@ func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Mes
 		}
 	}
 
-	msg.SetColumns([]int{15, 200, 5}).SetRows([]int{1})
+	msg.SetColumns([]int{15, width - 20, 5}).SetRows([]int{1})
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Sender.Localpart()), 0, 0, 1, 1)
 	msg.AddComponent(mauview.NewTextView().SetText(content.Body), 1, 0, 1, 1)
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Timestamp.Format("15:04")), 2, 0, 1, 1)
