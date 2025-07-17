@@ -619,6 +619,7 @@ export class RoomStateStore {
 		}
 		this.state = newState
 		this.stateLoaded = false
+		this.waitStateLoaded = undefined
 		this.fullMembersLoaded = false
 		this.membersRequested = false
 		this.#membersCache = null
