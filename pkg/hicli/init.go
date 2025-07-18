@@ -122,7 +122,7 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				Rooms: make(map[id.RoomID]*jsoncmd.SyncRoom, len(rooms)),
 			}
 			for roomIdx, room := range rooms {
-				if room.SortingTimestamp == rooms[len(rooms)-1].SortingTimestamp {
+				if len(rooms) >= batchSize && room.SortingTimestamp == rooms[len(rooms)-1].SortingTimestamp {
 					if roomIdx == 0 {
 						batchSize *= 2
 					}
