@@ -13,8 +13,9 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { Fragment, use, useState } from "react"
+import { Fragment, use, useEffect, useState } from "react"
 import { CreateRoomInitialState, RoomPreset, RoomVersion, UserID } from "@/api/types"
+import { preV12 } from "@/util/powerlevel.ts"
 import { getServerName } from "@/util/validation"
 import ClientContext from "../ClientContext"
 import MainScreenContext from "../MainScreenContext"
@@ -46,6 +47,7 @@ const CreateRoomView = () => {
 	const [initialState, setInitialState] = useState<initialStateEntry[]>([])
 	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">("")
 	const [roomID, setRoomID] = useState("")
+	const [roomCreateTS, setRoomCreateTS] = useState<number>(0)
 	const [creationContent, setCreationContent] = useState<string>("{\n\n}")
 	const [powerLevelContentOverride, setPowerLevelContentOverride] = useState<string>(() => `{
   "users": {
@@ -101,6 +103,7 @@ const CreateRoomView = () => {
 			creation_content,
 			power_level_content_override,
 			"fi.mau.room_id": roomID || undefined,
+			"fi.mau.origin_server_ts": roomCreateTS || undefined,
 		}).then(resp => {
 			closeModal()
 			console.log("Created room:", resp.room_id)
@@ -116,6 +119,24 @@ const CreateRoomView = () => {
 	}
 
 	const serverName = getServerName(client.store.userID)
+	const isRoomV12 = !preV12.has(roomVersion)
+	useEffect(() => {
+		if (!isRoomV12 || !roomCreateTS) {
+			return
+		}
+		const creationJSON = JSON.parse(creationContent)
+		creationJSON.room_version = roomVersion
+		const timeout = setTimeout(() => {
+			client.rpc.calculateRoomID(roomCreateTS, creationJSON).then(
+				roomID => setRoomID(roomID),
+				err => {
+					console.error("Failed to calculate room ID:", err)
+					setError(`Failed to calculate room ID: ${err}`)
+				},
+			)
+		}, 500)
+		return () => clearTimeout(timeout)
+	}, [client, roomVersion, isRoomV12, roomCreateTS, creationContent])
 
 	return <form className="create-room-view" onSubmit={onSubmit}>
 		<h2>Create a new room</h2>
@@ -220,16 +241,34 @@ const CreateRoomView = () => {
 					value={roomVersion}
 					onChange={e => setRoomVersion(e.target.value as RoomVersion)}
 				/>
-				<label htmlFor="room-create-id" title="Custom room ID. Only works if supported by the server.">
-					Room ID
-				</label>
-				<input
-					id="room-create-id"
-					type="text"
-					placeholder={`!meow:${serverName}`}
-					value={roomID}
-					onChange={e => setRoomID(e.target.value)}
-				/>
+				{isRoomV12 ? <>
+					<label
+						htmlFor="room-create-ts"
+						title="Custom room creation timestamp. Only works if supported by the server."
+					>
+						Create timestamp
+					</label>
+					<input
+						id="room-create-ts"
+						type="number"
+						placeholder={Date.now().toString()}
+						value={roomCreateTS ? roomCreateTS.toString() : ""}
+						onChange={e => setRoomCreateTS(+e.target.value)}
+					/>
+				</> : null}
+				{!isRoomV12 || roomCreateTS ? <>
+					<label htmlFor="room-create-id" title="Custom room ID. Only works if supported by the server.">
+						Room ID
+					</label>
+					<input
+						id="room-create-id"
+						type="text"
+						placeholder={`!meow:${serverName}`}
+						value={roomID}
+						onChange={e => setRoomID(e.target.value)}
+						disabled={isRoomV12}
+					/>
+				</> : null}
 				<label htmlFor="room-create-power-level-override" title="Override power levels in the room">
 					Power level override
 				</label>

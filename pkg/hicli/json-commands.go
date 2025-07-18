@@ -278,6 +278,10 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return h.Client.TurnServer(ctx)
 	case jsoncmd.ReqGetMediaConfig:
 		return h.Client.GetMediaConfig(ctx)
+	case jsoncmd.ReqCalculateRoomID:
+		return unmarshalAndCall(req.Data, func(params *jsoncmd.CalculateRoomIDParams) (id.RoomID, error) {
+			return h.CalculateRoomID(params.Timestamp, params.CreationContent)
+		})
 	default:
 		return nil, fmt.Errorf("unknown command %q", req.Command)
 	}

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { CreateEventContent, MemDBEvent, PowerLevelEventContent, UserID } from "@/api/types"
 
-const unsupportedRoomVersions = new Set([undefined, "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"])
+export const preV12 = new Set([undefined, "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"])
 
 export function getUserLevel(
 	pls: PowerLevelEventContent | undefined,
@@ -26,7 +26,7 @@ export function getUserLevel(
 	if (
 		createEvt
 		&& create
-		&& !unsupportedRoomVersions.has(create.room_version)
+		&& !preV12.has(create.room_version)
 		&& (createEvt.sender === userID || create.additional_creators?.includes(userID))
 	) {
 		return Infinity
