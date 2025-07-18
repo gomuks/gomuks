@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
 	"maunium.net/go/mautrix/crypto/canonicaljson"
 	"maunium.net/go/mautrix/event"
@@ -49,7 +48,6 @@ func (h *HiClient) CalculateRoomID(timestamp int64, content json.RawMessage) (id
 		return "", err
 	}
 	pduJSON = canonicaljson.CanonicalJSONAssumeValid(pduJSON)
-	fmt.Println(string(pduJSON))
 	pduHash := sha256.Sum256(pduJSON)
 	pdu.Hashes = &Hashes{
 		SHA256: base64.RawStdEncoding.EncodeToString(pduHash[:]),
@@ -60,6 +58,5 @@ func (h *HiClient) CalculateRoomID(timestamp int64, content json.RawMessage) (id
 	}
 	pduJSON = canonicaljson.CanonicalJSONAssumeValid(pduJSON)
 	pduHash = sha256.Sum256(pduJSON)
-	fmt.Println(string(pduJSON))
 	return id.RoomID("!" + base64.RawURLEncoding.EncodeToString(pduHash[:])), nil
 }
