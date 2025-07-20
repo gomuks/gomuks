@@ -68,7 +68,6 @@ func (l *LoginView) refreshBtns(ctx context.Context) {
 		l.app.Gmx().Log.Debug().Msg("Login cancelled")
 		l.app.Gmx().Stop()
 	})
-	l.AddComponent(l.loginButtons, 0, 3, 3, 1)
 	if l.loginButtons.LoginWithPassword != nil {
 		l.passwordInputField = mauview.NewInputField().
 			SetPlaceholder("********").
@@ -82,6 +81,7 @@ func (l *LoginView) refreshBtns(ctx context.Context) {
 	} else {
 		l.passwordInputField = nil
 	}
+	l.AddFormItem(l.loginButtons, 0, 3, 3, 1)
 	l.app.App().Redraw()
 }
 
