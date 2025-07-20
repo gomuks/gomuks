@@ -33,25 +33,42 @@ const elementCallParams = new URLSearchParams({
 	appPrompt: "false",
 }).toString().replaceAll("%24", "$")
 
+const embeddedElementCallURL = new URL("./element-call-embedded/index.html#", window.location.href)
+embeddedElementCallURL.search = elementCallParams
+
+function makeElementCallURL(customBaseURL: string): string {
+	if (customBaseURL) {
+		const parsed = new URL(customBaseURL)
+		if (!parsed.pathname.endsWith("/")) {
+			parsed.pathname += "/"
+		}
+		parsed.pathname += "room"
+		parsed.search = elementCallParams
+		return parsed.toString()
+	} else {
+		return embeddedElementCallURL.toString()
+	}
+}
+
 const ElementCall = ({ onClose }: { onClose?: () => void }) => {
 	const room = use(RoomContext)?.store ?? null
 	const client = use(ClientContext)!
-	const baseURL = usePreference(client.store, room, "element_call_base_url")
+	const customBaseURL = usePreference(client.store, room, "element_call_base_url")
 	const widgetInfo = useMemo(() => ({
 		id: `fi.mau.gomuks.call.${crypto.randomUUID().replaceAll("-", "")}`,
 		creatorUserId: client.userID,
 		type: "m.call",
-		url: `${baseURL}/room?${elementCallParams}`,
+		url: makeElementCallURL(customBaseURL),
 		waitForIframeLoad: false,
 		data: {
 			perParticipantE2EE: !!room?.meta.current.encryption_event,
 			homeserverBaseURL: client.state.current?.is_logged_in ? client.state.current.homeserver_url : "",
 		},
-	}), [room, client, baseURL])
+	}), [room, client, customBaseURL])
 	if (!room || !client) {
 		return null
 	}
-	return <LazyWidget info={widgetInfo} onClose={onClose} />
+	return <LazyWidget info={widgetInfo} onClose={onClose} noPermissionPrompt={true} />
 }
 
 export default ElementCall

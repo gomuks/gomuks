@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 	"github.com/rs/zerolog"
@@ -47,6 +48,7 @@ func (gr *GomuksRPC) Connect(ctx context.Context) error {
 	evtChan := make(chan any, 256)
 	go gr.eventLoop(ctx, evtChan)
 	go gr.readLoop(ctx, ws, cancel, evtChan)
+	go gr.pingLoop(ctx, ws)
 	gr.connCtx.Store(&ctx)
 	gr.conn.Store(ws)
 	return nil
@@ -92,43 +94,64 @@ func (gr *GomuksRPC) cancelRequest(reqID int64, reason string) {
 	})
 }
 
+func writeWebsocketJSON(ctx context.Context, conn *websocket.Conn, data any) error {
+	wr, err := conn.Writer(ctx, websocket.MessageText)
+	if err != nil {
+		return fmt.Errorf("failed to create websocket writer: %w", err)
+	}
+	err = json.NewEncoder(wr).Encode(data)
+	if err != nil {
+		return fmt.Errorf("failed to encode JSON command: %w", err)
+	}
+	err = wr.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close websocket writer: %w", err)
+	}
+	return nil
+}
+
+func (gr *GomuksRPC) getNextRequestIDNoWait() (reqID int64) {
+	reqID, _, _ = gr.getNextRequestID(false)
+	return
+}
+
+func (gr *GomuksRPC) getNextRequestID(wait bool) (reqID int64, ch chan *jsoncmd.Container[json.RawMessage], remove func()) {
+	gr.pendingRequestsLock.Lock()
+	defer gr.pendingRequestsLock.Unlock()
+	gr.reqIDCounter++
+	reqID = gr.reqIDCounter
+	if wait {
+		ch = make(chan *jsoncmd.Container[json.RawMessage], 1)
+		gr.pendingRequests[reqID] = ch
+		remove = func() {
+			gr.pendingRequestsLock.Lock()
+			defer gr.pendingRequestsLock.Unlock()
+			if gr.pendingRequests[reqID] == ch {
+				close(ch)
+				delete(gr.pendingRequests, reqID)
+			}
+		}
+	}
+	return
+}
+
 func (gr *GomuksRPC) Request(ctx context.Context, cmd jsoncmd.Name, data any) (json.RawMessage, error) {
 	conn := gr.conn.Load()
 	if conn == nil {
 		return nil, ErrNotConnectedToWebsocket
 	}
 
-	ch := make(chan *jsoncmd.Container[json.RawMessage], 1)
-	gr.pendingRequestsLock.Lock()
-	gr.reqIDCounter++
-	reqID := gr.reqIDCounter
-	gr.pendingRequests[reqID] = ch
-	gr.pendingRequestsLock.Unlock()
-	defer func() {
-		gr.pendingRequestsLock.Lock()
-		if gr.pendingRequests[reqID] == ch {
-			close(ch)
-			delete(gr.pendingRequests, reqID)
-		}
-		gr.pendingRequestsLock.Unlock()
-	}()
+	reqID, ch, remove := gr.getNextRequestID(true)
+	defer remove()
 
 	zerolog.Ctx(ctx).Trace().Int64("req_id", reqID).Stringer("command", cmd).Msg("Sending websocket request")
-	wr, err := conn.Writer(ctx, websocket.MessageText)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create websocket writer: %w", err)
-	}
-	err = json.NewEncoder(wr).Encode(&jsoncmd.Container[any]{
+	err := writeWebsocketJSON(ctx, conn, &jsoncmd.Container[any]{
 		Command:   cmd,
 		RequestID: reqID,
 		Data:      data,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode JSON command: %w", err)
-	}
-	err = wr.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to close websocket writer: %w", err)
+		return nil, err
 	}
 	select {
 	case resp := <-ch:
@@ -178,6 +201,27 @@ func (gr *GomuksRPC) handleEvent(ctx context.Context, evt any) {
 		}
 	}()
 	gr.EventHandler(ctx, evt)
+}
+
+const PingInterval = 15 * time.Second
+
+func (gr *GomuksRPC) pingLoop(ctx context.Context, ws *websocket.Conn) {
+	ticker := time.NewTicker(PingInterval)
+	for {
+		select {
+		case <-ticker.C:
+			err := writeWebsocketJSON(ctx, ws, &jsoncmd.Container[jsoncmd.PingParams]{
+				Command:   jsoncmd.ReqPing,
+				RequestID: gr.getNextRequestIDNoWait(),
+				Data:      jsoncmd.PingParams{},
+			})
+			if err != nil {
+				zerolog.Ctx(ctx).Err(err).Msg("Failed to send ping over websocket")
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (gr *GomuksRPC) readLoop(ctx context.Context, ws *websocket.Conn, cancelFunc context.CancelFunc, evtChan chan<- any) {
@@ -246,6 +290,8 @@ func (gr *GomuksRPC) readLoopItem(ctx context.Context, log *zerolog.Logger, ws *
 		log.Warn().Msg("Unexpected message type from websocket")
 	} else if err = json.NewDecoder(reader).Decode(&cmd); err != nil {
 		log.Err(err).Msg("Failed to decode JSON from websocket")
+	} else if cmd.Command == jsoncmd.RespPong {
+		log.Trace().Int64("ping_id", cmd.RequestID).Msg("Received pong from server")
 	} else if cmd.Command == jsoncmd.RespError || cmd.Command == jsoncmd.RespSuccess {
 		gr.pendingRequestsLock.Lock()
 		pendingRequest, ok := gr.pendingRequests[cmd.RequestID]

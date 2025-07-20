@@ -156,7 +156,9 @@ class GomuksWidgetDriver extends WidgetDriver {
 			&& !room.membersRequested
 		) {
 			room.membersRequested = true
-			this.client.loadRoomState(room.roomID, { omitMembers: false, refetch: false })
+			await this.client.loadRoomState(room.roomID, { omitMembers: false, refetch: false })
+		} else if (!room.stateLoaded) {
+			await this.client.loadRoomStateIfNecessary(room)
 		}
 		const stateEvts = room.state.get(eventType)
 		if (!stateEvts) {

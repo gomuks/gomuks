@@ -14,9 +14,13 @@ div.message-composer {
 		text-wrap: auto !important;
 	}
 
-	&.tombstoned {
+	&.tombstoned, &.no-permission {
 		min-height: unset;
 		padding: .5rem;
+
+		> button {
+			padding: .25rem;
+		}
 	}
 
 	> div.input-area {

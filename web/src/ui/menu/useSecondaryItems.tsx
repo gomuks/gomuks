@@ -18,6 +18,7 @@ import Client from "@/api/client.ts"
 import { useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
+import { getEventLevel } from "@/util/powerlevel.ts"
 import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, ShareModal } from "../modal"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import JSONView from "../util/JSONView.tsx"
@@ -162,8 +163,8 @@ export const useSecondaryItems = (
 	const memberEvt = useRoomMember(client, roomCtx.store, evt.sender)
 	const [pls, ownPL] = getPowerLevels(roomCtx.store, client)
 	const pins = roomCtx.store.getPinnedEvents()
-	const pinPL = pls.events?.["m.room.pinned_events"] ?? pls.state_default ?? 50
-	const redactEvtPL = pls.events?.["m.room.redaction"] ?? pls.events_default ?? 0
+	const pinPL = getEventLevel(pls, "m.room.pinned_events", true)
+	const redactEvtPL = getEventLevel(pls, "m.room.redaction", false)
 	const redactOtherPL = pls.redact ?? 50
 	// Note: Both canRedact and canUnredact can be true at the same time if the event was "redacted" by a ban event.
 	const canRedact = !evt.redacted_by

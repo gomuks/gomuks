@@ -20,11 +20,19 @@ div.room-view {
 		align-items: center;
 	}
 
-	> div.room-view-error {
+	> div.room-timeline-error, > div.room-header-error {
 		display: flex;
 		justify-content: center;
 		align-items: center;
 		height: 100%;
+
+		&.room-timeline-error {
+			grid-area: messageview;
+		}
+
+		&.room-header-error {
+			grid-area: header;
+		}
 	}
 }
 

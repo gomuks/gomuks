@@ -40,7 +40,7 @@ export default class Client {
 	readonly store = new StateStore()
 	#stateRequests: RoomStateGUID[] = []
 	#stateRequestPromise: Promise<void> | null = null
-	#gcInterval: number | undefined
+	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 
 	constructor(readonly rpc: RPCClient) {
@@ -401,6 +401,19 @@ export default class Client {
 		for (const evt of events) {
 			this.store.rooms.get(evt.room_id)?.applyState(evt)
 		}
+	}
+
+	loadRoomStateIfNecessary(room: RoomStateStore): Promise<void> {
+		if (room.stateLoaded) {
+			return Promise.resolve()
+		} else if (!room.waitStateLoaded) {
+			room.waitStateLoaded = this.loadRoomState(room.roomID)
+			room.waitStateLoaded.catch(err => {
+				console.error("Failed to load room state", err)
+				room.waitStateLoaded = undefined
+			})
+		}
+		return room.waitStateLoaded
 	}
 
 	async loadRoomState(

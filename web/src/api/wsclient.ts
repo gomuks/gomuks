@@ -52,11 +52,11 @@ function checkUpdate(etag: string) {
 export default class WSClient extends RPCClient {
 	#conn: WebSocket | null = null
 	#lastMessage: number = 0
-	#pingInterval: number | null = null
+	#pingInterval: ReturnType<typeof setInterval> | null = null
 	#lastReceivedEvt: number = 0
 	#resumeRunID: string = ""
 	#stopped = false
-	#reconnectTimeout: number | null = null
+	#reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 	#connectFailures: number = 0
 	#decompWriter: WritableStreamDefaultWriter<Uint8Array> | null = null
 

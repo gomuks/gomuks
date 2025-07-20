@@ -195,3 +195,8 @@ type MuteRoomParams struct {
 type PingParams struct {
 	LastReceivedID int64 `json:"last_received_id"`
 }
+
+type CalculateRoomIDParams struct {
+	Timestamp       int64           `json:"timestamp"`
+	CreationContent json.RawMessage `json:"content"`
+}

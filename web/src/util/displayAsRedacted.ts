@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent, MemberEventContent, PowerLevelEventContent } from "@/api/types"
+import { getUserLevel } from "@/util/powerlevel.ts"
 
 export function displayAsRedacted(
 	evt: MemDBEvent,
@@ -31,8 +32,9 @@ export function displayAsRedacted(
 			// It would be more proper to pass the power levels as a parameter so it can use useRoomState,
 			// but subscribing to updates isn't that important here.
 			const pl = room?.getStateEvent("m.room.power_levels", "")?.content as PowerLevelEventContent | undefined
+			const create = room?.getStateEvent("m.room.create", "")
 			const redactPL = pl?.redact ?? 50
-			const senderPL = pl?.users?.[memberEvt.sender] ?? pl?.users_default ?? 0
+			const senderPL = getUserLevel(pl, create, memberEvt.sender)
 			if (redactPL <= senderPL) {
 				return true
 			}

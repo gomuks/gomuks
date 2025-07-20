@@ -1,13 +1,14 @@
 import react from "@vitejs/plugin-react-swc"
 import { defineConfig } from "vite"
 import svgr from "vite-plugin-svgr"
+import elementCallPlugin from "./vite-element-call.ts"
 
 const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api"]
 
 export default defineConfig({
 	base: "./",
 	build: {
-		target: ["esnext", "firefox128", "chrome131", "safari18"],
+		target: ["esnext", "firefox128", "chrome138", "safari18"],
 		chunkSizeWarningLimit: 3500,
 		rollupOptions: {
 			output: {
@@ -32,6 +33,7 @@ export default defineConfig({
 				},
 			},
 		}),
+		elementCallPlugin,
 	],
 	resolve: {
 		alias: {

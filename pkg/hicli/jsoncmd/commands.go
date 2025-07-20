@@ -63,6 +63,7 @@ const (
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
 	ReqGetMediaConfig           Name = "get_media_config"
+	ReqCalculateRoomID          Name = "calculate_room_id"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"

@@ -17,6 +17,7 @@ import React, { CSSProperties } from "react"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent, PowerLevelEventContent } from "@/api/types"
+import { getUserLevel } from "@/util/powerlevel.ts"
 
 export const getPending = (evt: MemDBEvent): [pending: boolean, pendingTitle: string | undefined] => {
 	const isPending = evt.event_id.startsWith("~")
@@ -25,9 +26,10 @@ export const getPending = (evt: MemDBEvent): [pending: boolean, pendingTitle: st
 }
 
 export const getPowerLevels = (room: RoomStateStore, client: Client): [pls: PowerLevelEventContent, ownPL: number] => {
+	const createEvent = room.getStateEvent("m.room.create", "")
 	const plEvent = room.getStateEvent("m.room.power_levels", "")
 	const pls = (plEvent?.content ?? {}) as PowerLevelEventContent
-	const ownPL = pls.users?.[client.userID] ?? pls.users_default ?? 0
+	const ownPL = getUserLevel(pls, createEvent, client.userID)
 	return [pls, ownPL]
 }
 
@@ -52,13 +54,24 @@ export function getModalStyleFromMouse(
 	return style
 }
 
-export function getModalStyleFromButton(button: HTMLButtonElement, modalHeight: number): CSSProperties {
+export function getModalStyleFromButton(button: HTMLElement, modalHeight: number): CSSProperties {
 	const rect = button.getBoundingClientRect()
 	const style: CSSProperties = { right: window.innerWidth - rect.right }
 	if (rect.bottom + modalHeight > window.innerHeight) {
 		style.bottom = window.innerHeight - rect.top
 	} else {
 		style.top = rect.bottom
+	}
+	return style
+}
+
+export function getRightOpeningModalStyleFromButton(button: HTMLElement, modalHeight: number): CSSProperties {
+	const rect = button.getBoundingClientRect()
+	const style: CSSProperties = { left: rect.left + rect.width }
+	if (rect.top + modalHeight > window.innerHeight) {
+		style.top = window.innerHeight - modalHeight
+	} else {
+		style.top = rect.top
 	}
 	return style
 }

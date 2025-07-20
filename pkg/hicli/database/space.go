@@ -44,12 +44,26 @@ const (
 		SET parent_validated=(SELECT EXISTS(
 			SELECT 1
 			FROM room
-				INNER JOIN current_state cs ON cs.room_id = room.room_id AND cs.event_type = 'm.room.power_levels' AND cs.state_key = ''
-				INNER JOIN event pls ON cs.event_rowid = pls.rowid
+				INNER JOIN current_state plcs ON plcs.room_id = room.room_id AND plcs.event_type = 'm.room.power_levels' AND plcs.state_key = ''
+				INNER JOIN event pls ON plcs.event_rowid = pls.rowid
+				INNER JOIN current_state ccs ON ccs.room_id = room.room_id AND ccs.event_type = 'm.room.create' AND ccs.state_key = ''
+				INNER JOIN event cevt ON ccs.event_rowid = cevt.rowid
 				INNER JOIN event edgeevt ON space_edge.parent_event_rowid = edgeevt.rowid
 			WHERE	room.room_id = space_edge.space_id
 				AND room.room_type = 'm.space'
 				AND COALESCE(
+					CASE WHEN
+						cevt.content->>'$.room_version' NOT IN ('', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11')
+						AND (
+							cevt.sender = edgeevt.sender OR (
+								cevt.content->'$.additional_creators' IS NOT NULL AND EXISTS(
+									SELECT 1
+									FROM json_each(cevt.content->'$.additional_creators')
+									WHERE value=edgeevt.sender
+								)
+							)
+						)
+					THEN 9223372036854775807 END,
 					(
 						SELECT value
 						FROM json_each(pls.content, '$.users')

@@ -119,3 +119,5 @@ export const RoomMenu = ({ room, style }: RoomMenuProps) => {
 		<button onClick={leaveRoom}><DoorOpenIcon /> Leave room</button>
 	</div>
 }
+
+RoomMenu.height = 4 * 40

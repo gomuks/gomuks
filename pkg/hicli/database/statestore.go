@@ -99,7 +99,20 @@ func (c *ClientStateStore) GetPowerLevels(ctx context.Context, roomID id.RoomID)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
+	if content != nil && err == nil {
+		content.CreateEvent, err = c.GetCreate(ctx, roomID)
+	}
 	return
+}
+
+func (c *ClientStateStore) GetCreate(ctx context.Context, roomID id.RoomID) (*event.Event, error) {
+	dbEvt, err := c.CurrentState.Get(ctx, roomID, event.StateCreate, "")
+	if err != nil || dbEvt == nil {
+		return nil, err
+	}
+	mxEvt := dbEvt.AsRawMautrix()
+	err = mxEvt.Content.ParseRaw(event.StateCreate)
+	return mxEvt, err
 }
 
 func (c *ClientStateStore) GetRoomJoinedMembers(ctx context.Context, roomID id.RoomID) ([]id.UserID, error) {
@@ -167,6 +180,10 @@ func (c *ClientStateStore) ClearCachedMembers(ctx context.Context, roomID id.Roo
 }
 
 func (c *ClientStateStore) SetPowerLevels(ctx context.Context, roomID id.RoomID, levels *event.PowerLevelsEventContent) error {
+	return nil
+}
+
+func (c *ClientStateStore) SetCreate(ctx context.Context, evt *event.Event) error {
 	return nil
 }
 

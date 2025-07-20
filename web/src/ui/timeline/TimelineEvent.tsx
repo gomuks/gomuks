@@ -126,7 +126,7 @@ const TimelineEvent = ({
 			content: <EventFullMenu
 				evt={evt}
 				roomCtx={roomCtx}
-				style={getModalStyleFromMouse(mouseEvt, 9 * 40)}
+				style={getModalStyleFromMouse(mouseEvt, EventFullMenu.height)}
 			/>,
 		})
 	}

@@ -327,4 +327,8 @@ export default abstract class RPCClient {
 	setListenToDevice(listen: boolean): Promise<void> {
 		return this.request("listen_to_device", listen)
 	}
+
+	calculateRoomID(timestamp: number, content: Record<string, unknown>): Promise<RoomID> {
+		return this.request("calculate_room_id", { timestamp, content })
+	}
 }

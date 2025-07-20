@@ -21,7 +21,8 @@ export type EventType = string
 export type ContentURI = string
 export type RoomAlias = string
 export type ReceiptType = "m.read" | "m.read.private"
-export type RoomVersion = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11"
+export type RoomVersion =
+	"1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12" | "org.matrix.hydra.11"
 export type RoomType = "" | "m.space" | "support.feline.policy.lists.msc.v1" | "org.matrix.msc3417.call"
 export type RelationType = "m.annotation" | "m.reference" | "m.replace" | "m.thread"
 
@@ -39,10 +40,11 @@ export interface RoomPredecessor {
 }
 
 export interface CreateEventContent {
-	type: RoomType
-	"m.federate": boolean
-	room_version: RoomVersion
-	predecessor: RoomPredecessor
+	type?: RoomType
+	"m.federate"?: boolean
+	room_version?: RoomVersion
+	predecessor?: RoomPredecessor
+	additional_creators?: UserID[]
 }
 
 export interface TombstoneEventContent {
@@ -355,6 +357,7 @@ export interface ReqCreateRoom {
 	creation_content?: Record<string, unknown>
 	power_level_content_override?: Record<string, unknown>
 	"fi.mau.room_id"?: RoomID
+	"fi.mau.origin_server_ts"?: number
 }
 
 export interface RespCreateRoom {

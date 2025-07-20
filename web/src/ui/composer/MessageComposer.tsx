@@ -32,15 +32,19 @@ import type {
 	MemDBEvent,
 	Mentions,
 	MessageEventContent,
+	PowerLevelEventContent,
 	RelatesTo,
 	RoomID,
 	URLPreview as URLPreviewType,
 } from "@/api/types"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
+import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
+import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
+import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
 import GIFPicker from "../emojipicker/GIFPicker.tsx"
 import StickerPicker from "../emojipicker/StickerPicker.tsx"
@@ -122,12 +126,16 @@ type CaretEvent<T> = React.MouseEvent<T> | React.KeyboardEvent<T> | React.Change
 const MessageComposer = () => {
 	const roomCtx = useRoomContext()
 	const room = roomCtx.store
+	const roomMeta = useEventAsState(room.meta)
+	const isEncrypted = !!roomMeta.encryption_event
 	const client = use(ClientContext)!
+	const mainScreen = use(MainScreenContext)!
 	const openModal = use(ModalContext)
 	const [autocomplete, setAutocomplete] = useState<AutocompleteQuery | null>(null)
 	const [state, setState] = useReducer(composerReducer, uninitedComposer)
 	const [editing, rawSetEditing] = useState<MemDBEvent | null>(null)
 	const [loadingMedia, setLoadingMedia] = useState<number | null>(null)
+	const [ignorePermissions, setIgnorePermissions] = useState(false)
 	const cancelMediaUpload = useRef(() => {})
 	const fileInput = useRef<HTMLInputElement>(null)
 	const textInput = useRef<HTMLTextAreaElement>(null)
@@ -135,6 +143,9 @@ const MessageComposer = () => {
 	const textRows = useRef(1)
 	const typingSentAt = useRef(0)
 	const replyToEvt = useRoomEvent(room, state.replyTo)
+	const tombstoneEvent = useRoomState(room, "m.room.tombstone", "")
+	const createEvent = useRoomState(room, "m.room.create", "")
+	const pls = useRoomState(room, "m.room.power_levels", "")?.content as PowerLevelEventContent | undefined
 	roomCtx.insertText = useCallback((text: string) => {
 		textInput.current?.focus()
 		document.execCommand("insertText", false, text)
@@ -396,9 +407,8 @@ const MessageComposer = () => {
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
-		const encrypt = !!room.meta.current.encryption_event
 		const params = new URLSearchParams([
-			["encrypt", encrypt.toString()],
+			["encrypt", isEncrypted.toString()],
 			["progress", "true"],
 			["filename", filename],
 			...Object.entries(encodingOpts ?? {})
@@ -448,7 +458,7 @@ const MessageComposer = () => {
 		xhr.open("POST", `_gomuks/upload?${params.toString()}`)
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
-	}, [room])
+	}, [isEncrypted])
 	const openFileUploadModal = (file: File | null | undefined) => {
 		if (!file) {
 			return
@@ -486,10 +496,8 @@ const MessageComposer = () => {
 		evt.preventDefault()
 	}
 	const resolvePreview = useCallback((url: string) => {
-		console.log("RESOLVE PREVIEW", url)
-		const encrypt = !!room.meta.current.encryption_event
 		setState(s => ({ loadingPreviews: [...s.loadingPreviews, url]}))
-		fetch(`_gomuks/url_preview?encrypt=${encrypt}&url=${encodeURIComponent(url)}`, {
+		fetch(`_gomuks/url_preview?encrypt=${isEncrypted}&url=${encodeURIComponent(url)}`, {
 			method: "GET",
 		})
 			.then(async res => {
@@ -509,7 +517,7 @@ const MessageComposer = () => {
 					loadingPreviews: s.loadingPreviews.filter(u => u !== url),
 				}))
 			})
-	}, [room.meta])
+	}, [isEncrypted])
 	// To ensure the cursor jumps to the end, do this in an effect rather than as the initial value of useState
 	// To try to avoid the input bar flashing, use useLayoutEffect instead of useEffect
 	useLayoutEffect(() => {
@@ -598,7 +606,9 @@ const MessageComposer = () => {
 		mediaDisabledTitle = "Uploading file..."
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	}
-	if (state.media?.msgtype !== "m.sticker") {
+	if (!isEncrypted && getUserLevel(pls, createEvent, client.userID) < getEventLevel(pls, "m.sticker")) {
+		stickerDisabledTitle = "You don't have permission to send stickers in this room"
+	} else if (state.media?.msgtype !== "m.sticker") {
 		stickerDisabledTitle = mediaDisabledTitle
 		if (!stickerDisabledTitle && editing) {
 			stickerDisabledTitle = "You can't edit a message into a sticker"
@@ -698,7 +708,6 @@ const MessageComposer = () => {
 	const inlineButtons = state.text === "" || window.innerWidth > 720
 	const showSendButton = canSend || window.innerWidth > 720
 	const disableClearMedia = editing && state.media?.msgtype === "m.sticker"
-	const tombstoneEvent = useRoomState(room, "m.room.tombstone", "")
 	if (tombstoneEvent !== null) {
 		const content = tombstoneEvent.content
 		const hasReplacement = content.replacement_room?.startsWith("!")
@@ -707,7 +716,7 @@ const MessageComposer = () => {
 			const via = getServerName(tombstoneEvent.sender)
 			const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
 				e.preventDefault()
-				window.mainScreenContext.setActiveRoom(content.replacement_room, {
+				mainScreen.setActiveRoom(content.replacement_room, {
 					via: [via],
 				})
 			}
@@ -725,6 +734,17 @@ const MessageComposer = () => {
 		}
 		return <div className="message-composer tombstoned" ref={composerRef}>
 			{body} {link}
+		</div>
+	} else if (
+		!ignorePermissions
+		&& getUserLevel(pls, createEvent, client.userID)
+			< getEventLevel(pls, isEncrypted ? "m.room.encrypted" : "m.room.message")
+	) {
+		return <div className="message-composer no-permission" ref={composerRef}>
+			You don't have permission to send messages in this room. <a
+				href="javascript:"
+				onClick={() => setIgnorePermissions(true)}
+			>Click to show composer anyway</a>
 		</div>
 	}
 	const possiblePreviewsNotLoadingOrPreviewed = state.possiblePreviews.filter(

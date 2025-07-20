@@ -28,6 +28,7 @@ export interface WidgetProps {
 	info: IWidget
 	room: RoomStateStore
 	client: Client
+	noPermissionPrompt?: boolean
 	onClose?: () => void
 }
 
@@ -85,9 +86,11 @@ const openPermissionPrompt = (requested: Set<string>): Promise<Set<string>> => {
 	})
 }
 
-const ReactWidget = ({ room, info, client, onClose }: WidgetProps) => {
+const noopPermissions = (requested: Set<string>): Promise<Set<string>> =>  Promise.resolve(requested)
+
+const ReactWidget = ({ room, info, client, onClose, noPermissionPrompt }: WidgetProps) => {
 	const wrappedWidget = new WrappedWidget(info)
-	const driver = new GomuksWidgetDriver(client, room, openPermissionPrompt)
+	const driver = new GomuksWidgetDriver(client, room, noPermissionPrompt ? noopPermissions : openPermissionPrompt)
 	const widgetURL = addLegacyParams(wrappedWidget.getCompleteUrl({
 		widgetRoomId: room.roomID,
 		currentUserId: client.userID,

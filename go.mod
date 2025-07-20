@@ -2,7 +2,7 @@ module go.mau.fi/gomuks
 
 go 1.24.0
 
-toolchain go1.24.4
+toolchain go1.24.5
 
 require (
 	github.com/alecthomas/chroma/v2 v2.18.0
@@ -24,14 +24,14 @@ require (
 	go.mau.fi/util v0.8.8
 	go.mau.fi/webp v0.2.0
 	go.mau.fi/zeroconfig v0.1.3
-	golang.org/x/crypto v0.39.0
+	golang.org/x/crypto v0.40.0
 	golang.org/x/image v0.28.0
-	golang.org/x/net v0.41.0
-	golang.org/x/sys v0.33.0
-	golang.org/x/text v0.26.0
+	golang.org/x/net v0.42.0
+	golang.org/x/sys v0.34.0
+	golang.org/x/text v0.27.0
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.24.2-0.20250630221524-94950585c94d
+	maunium.net/go/mautrix v0.24.3-0.20250718205928-4866da52005c
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -48,8 +48,8 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/zyedidia/clipboard v1.0.4 // indirect
-	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476 // indirect
-	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
+	golang.org/x/term v0.33.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 

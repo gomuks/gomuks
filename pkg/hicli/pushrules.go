@@ -83,6 +83,21 @@ func (p *pushRoom) GetPowerLevels() *event.PowerLevelsEventContent {
 			Msg("Failed to unmarshal power levels in push rule evaluator")
 		return nil
 	}
+	createEvt, err := p.h.DB.CurrentState.Get(p.ctx, p.roomID, event.StateCreate, "")
+	if err != nil {
+		zerolog.Ctx(p.ctx).Err(err).
+			Stringer("room_id", p.roomID).
+			Msg("Failed to get creation content in push rule evaluator")
+		return nil
+	} else if createEvt == nil {
+		zerolog.Ctx(p.ctx).Warn().
+			Stringer("room_id", p.roomID).
+			Msg("Create event not found in push rule evaluator")
+		return nil
+	} else {
+		p.pl.CreateEvent = createEvt.AsRawMautrix()
+		_ = p.pl.CreateEvent.Content.ParseRaw(event.StateCreate)
+	}
 	return p.pl
 }
 
