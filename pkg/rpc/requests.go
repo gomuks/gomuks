@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/rs/zerolog"
-
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 
@@ -202,12 +200,4 @@ func (gr *GomuksRPC) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServe
 
 func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {
 	return ParseResponse[*mautrix.RespMediaConfig](gr.Request(ctx, jsoncmd.ReqGetMediaConfig, nil))
-}
-
-func (gr *GomuksRPC) Ping(ctx context.Context, params *jsoncmd.PingParams) (struct{}, error) {
-	defer func() {
-		zerolog.Ctx(ctx).Debug().Int64("last_received_id", params.LastReceivedID).Msg("PONG RECEIVED")
-	}()
-	zerolog.Ctx(ctx).Debug().Int64("last_received_id", params.LastReceivedID).Msg("PING SEND")
-	return ParseResponse[struct{}](gr.Request(ctx, jsoncmd.ReqPing, params))
 }

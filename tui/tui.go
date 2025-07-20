@@ -18,7 +18,6 @@ package tui
 
 import (
 	"context"
-	"errors"
 	"os"
 	"time"
 
@@ -86,32 +85,6 @@ func (gt *GomuksTUI) App() *mauview.Application {
 	return gt.app
 }
 
-func (gt *GomuksTUI) PingTicker(ctx context.Context) {
-	log := gt.Gomuks.Log.With().Str("component", "tui.ping_ticker").Logger()
-	log.Debug().Msg("starting ping ticker")
-	for {
-		select {
-		case <-ctx.Done():
-			log.Warn().Msg("ping ticker context done, stopping ping ticker")
-			return
-		case <-gt.pingTicker.C:
-			log.Debug().Msg("pinging gomuks over RPC")
-			if gt.rpc != nil {
-				log.Debug().Int64("last_received_id", gt.rpc.LastReqID).Msg("sending ping request to gomuks over RPC")
-				_, err := gt.rpc.Ping(ctx, &jsoncmd.PingParams{LastReceivedID: gt.rpc.LastReqID})
-				log.Debug().Int64("last_received_id", gt.rpc.LastReqID).Msg("pong received from gomuks over RPC")
-				if err != nil && !errors.Is(err, rpc.ErrNotConnectedToWebsocket) {
-					log.Err(err).Msg("failed to ping gomuks over RPC")
-				} else {
-					log.Debug().Msg("ping successful")
-				}
-			} else {
-				log.Warn().Msg("RPC client is not initialized, cannot ping")
-			}
-		}
-	}
-}
-
 func (gt *GomuksTUI) InitViews(ctx context.Context) {
 	gt.authView = ui.NewAuthenticateView(ctx, gt)
 	gt.syncView = ui.NewSyncingView(gt)
@@ -137,7 +110,6 @@ func (gt *GomuksTUI) Run() {
 	defer gt.pingTicker.Stop()
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	defer cancelCtx()
-	go gt.PingTicker(ctx)
 	gt.InitViews(ctx)
 
 	go func() {
