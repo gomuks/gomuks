@@ -209,8 +209,7 @@ export interface EventUnsigned {
 	prev_content?: unknown
 	prev_sender?: UserID
 
-	"fi.mau.soft_failed"?: boolean
-	"fi.mau.rejection_reason"?: string | null
+	"io.element.synapse.soft_failed"?: boolean
 }
 
 export interface ClientWellKnown {

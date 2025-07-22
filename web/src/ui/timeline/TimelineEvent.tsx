@@ -197,7 +197,7 @@ const TimelineEvent = ({
 	if (isFocused) {
 		wrapperClassNames.push("focused-event")
 	}
-	if (evt.unsigned["fi.mau.soft_failed"]) {
+	if (evt.unsigned["io.element.synapse.soft_failed"]) {
 		wrapperClassNames.push("soft-failed")
 	}
 	let dateSeparator = null
