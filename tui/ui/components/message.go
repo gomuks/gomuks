@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"encoding/json"
+	"github.com/gdamore/tcell/v2"
 
 	"go.mau.fi/mauview"
 	"maunium.net/go/mautrix/event"
@@ -35,10 +36,14 @@ func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Mes
 			content = &event.MessageEventContent{Body: "failed to parse content: " + err.Error(), MsgType: event.MsgNotice}
 		}
 	}
+	body := mauview.NewTextView().SetText(content.Body)
+	if content.MsgType == event.MsgNotice {
+		body.SetTextColor(tcell.ColorDimGrey)
+	}
 
 	msg.SetColumns([]int{15, width - 20, 5}).SetRows([]int{1})
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Sender.Localpart()), 0, 0, 1, 1)
-	msg.AddComponent(mauview.NewTextView().SetText(content.Body), 1, 0, 1, 1)
+	msg.AddComponent(body, 1, 0, 1, 1)
 	msg.AddComponent(mauview.NewTextField().SetText(evt.Timestamp.Format("15:04")), 2, 0, 1, 1)
 	return msg
 }
