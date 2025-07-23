@@ -50,11 +50,13 @@ func (t *TimelineComponent) AddEvent(evt *database.Event) {
 	timelineElement := NewMessage(t.ctx, t.app, evt)
 	t.AddFixedComponent(timelineElement, 1)
 	t.elements[evt.ID] = timelineElement
-	if _, h := t.app.App().Screen().Size(); len(t.elements) >= h {
+	_, h := t.app.App().Screen().Size()
+	for len(t.elements) >= h {
 		for obj, elem := range t.elements {
 			if obj != evt.ID {
 				t.RemoveComponent(elem)
 				delete(t.elements, obj)
+				break
 			}
 		}
 	}
