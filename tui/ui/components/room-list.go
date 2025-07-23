@@ -30,10 +30,10 @@ type RoomList struct {
 	ctx           context.Context
 	Elements      map[id.RoomID]*mauview.Button
 	focused       id.RoomID
-	onFocusChange func(old, new id.RoomID)
+	onFocusChange func(ctx context.Context, old, new id.RoomID)
 }
 
-func NewRoomList(ctx context.Context, app abstract.App, onFocusChange func(old, new id.RoomID)) *RoomList {
+func NewRoomList(ctx context.Context, app abstract.App, onFocusChange func(ctx context.Context, old, new id.RoomID)) *RoomList {
 	rl := &RoomList{
 		app:           app,
 		ctx:           ctx,
@@ -41,11 +41,10 @@ func NewRoomList(ctx context.Context, app abstract.App, onFocusChange func(old, 
 		Elements:      make(map[id.RoomID]*mauview.Button),
 		onFocusChange: onFocusChange,
 	}
-	rl.AddFixedComponent(mauview.NewTextField().SetText("Room List"), 1)
 	return rl
 }
 
-func (rl *RoomList) focusRoom(roomID id.RoomID) {
+func (rl *RoomList) focusRoom(ctx context.Context, roomID id.RoomID) {
 	old := rl.focused
 	if roomID == rl.focused {
 		return
@@ -62,17 +61,17 @@ func (rl *RoomList) focusRoom(roomID id.RoomID) {
 		}
 	}
 	rl.app.Gmx().Log.Debug().Msgf("focused room: %s", string(roomID))
-	rl.onFocusChange(old, roomID)
+	rl.onFocusChange(ctx, old, roomID)
 }
 
-func (rl *RoomList) AddRoom(roomID id.RoomID, room *jsoncmd.SyncRoom) *RoomList {
+func (rl *RoomList) AddRoom(ctx context.Context, roomID id.RoomID, room *jsoncmd.SyncRoom) *RoomList {
 	// todo: re-rendering should be its own func
 	if _, exists := rl.Elements[roomID]; exists {
 		return rl
 	}
 	button := mauview.NewButton(lazyRoomName(room, roomID))
 	button.SetOnClick(func() {
-		rl.focusRoom(roomID)
+		rl.focusRoom(ctx, roomID)
 	})
 	rl.Elements[roomID] = button
 	rl.Flex.AddFixedComponent(button, 1)
@@ -87,7 +86,7 @@ func (rl *RoomList) OnKeyEvent(event mauview.KeyEvent) bool {
 		var prevRoomID id.RoomID
 		for roomID := range rl.Elements {
 			if roomID == rl.focused {
-				rl.focusRoom(prevRoomID)
+				rl.focusRoom(rl.ctx, prevRoomID)
 				return true
 			}
 			prevRoomID = roomID
@@ -101,9 +100,9 @@ func (rl *RoomList) OnKeyEvent(event mauview.KeyEvent) bool {
 		for i, roomID := range roomIDs {
 			if roomID == rl.focused {
 				if i+1 < len(roomIDs) {
-					rl.focusRoom(roomIDs[i+1])
+					rl.focusRoom(rl.ctx, roomIDs[i+1])
 				} else {
-					rl.focusRoom(roomIDs[0]) // wrap around
+					rl.focusRoom(rl.ctx, roomIDs[0]) // wrap around
 				}
 				return true
 			}

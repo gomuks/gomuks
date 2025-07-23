@@ -29,7 +29,6 @@ func NewMemberList(ctx context.Context, app abstract.App, members []id.UserID, p
 		elements:    make(map[id.UserID]mauview.Component),
 	}
 	list.SetDirection(mauview.FlexRow)
-	list.AddFixedComponent(mauview.NewTextField().SetText("Member List"), 1)
 	list.Render()
 	return list
 }

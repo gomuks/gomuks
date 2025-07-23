@@ -30,7 +30,6 @@ func NewTimeline(ctx context.Context, app abstract.App) *TimelineComponent {
 		ctx:      ctx,
 		elements: make(map[id.EventID]mauview.Component),
 	}
-	timeline.AddFixedComponent(mauview.NewTextField().SetText("Timeline"), 1)
 	return timeline
 }
 

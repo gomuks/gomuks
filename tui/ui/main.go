@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 	"encoding/json"
+	"slices"
+	"strings"
 	"sync"
 
 	"maunium.net/go/mautrix/event"
@@ -44,7 +46,7 @@ func (m *MainView) OnSync(resp *jsoncmd.SyncComplete) {
 	for _, room := range resp.InvitedRooms {
 		//m.RoomList.AddRoom(room.ID)
 		// bad!
-		m.RoomList.AddRoom(room.ID, &jsoncmd.SyncRoom{})
+		m.RoomList.AddRoom(m.ctx, room.ID, &jsoncmd.SyncRoom{})
 		logger.Debug().Interface("room", room).Msg("Adding invited room to room list")
 	}
 
@@ -60,7 +62,7 @@ func (m *MainView) OnSync(resp *jsoncmd.SyncComplete) {
 		} else {
 			// Add new room
 			logger.Debug().Interface("room", room).Msg("Adding new room to room list")
-			m.RoomList.AddRoom(roomID, room)
+			m.RoomList.AddRoom(m.ctx, roomID, room)
 		}
 
 		timeline, exists := m.Timelines[roomID]
@@ -79,7 +81,7 @@ func (m *MainView) OnSync(resp *jsoncmd.SyncComplete) {
 	}
 }
 
-func (m *MainView) OnRoomSelected(old, new id.RoomID) {
+func (m *MainView) OnRoomSelected(ctx context.Context, old, new id.RoomID) {
 	if old == new {
 		m.app.Gmx().Log.Debug().Msgf("ignoring room switch from %s to itself", old)
 		return
@@ -93,8 +95,14 @@ func (m *MainView) OnRoomSelected(old, new id.RoomID) {
 	m.app.Gmx().Log.Debug().Msgf("switching to room view for %s from %s", old, new)
 	evts, err := m.app.Rpc().GetRoomState(m.ctx, &jsoncmd.GetRoomStateParams{RoomID: new, IncludeMembers: true})
 	if err == nil {
+		var powerLevels event.PowerLevelsEventContent
 		for _, evt := range evts {
-			if evt.Type == "m.room.member" {
+			if evt.Type == "m.room.power_levels" && evt.StateKey != nil {
+				if err = json.Unmarshal(evt.Content, &powerLevels); err != nil {
+					m.app.Gmx().Log.Error().Err(err).Msgf("failed to parse power levels for room %s", new)
+				}
+			}
+			if evt.Type == "m.room.member" && evt.StateKey != nil {
 				var content event.MemberEventContent
 				if err = json.Unmarshal(evt.Content, &content); err != nil {
 					continue
@@ -105,10 +113,19 @@ func (m *MainView) OnRoomSelected(old, new id.RoomID) {
 				}
 			}
 		}
+		slices.SortStableFunc(memberlist.Members, func(a, b id.UserID) int {
+			aPL := powerLevels.GetUserLevel(a)
+			bPL := powerLevels.GetUserLevel(b)
+			if aPL == bPL {
+				return strings.Compare(a.String(), b.String())
+			}
+			return aPL - bPL
+		})
 	}
 	m.RemoveComponent(m.memberListElement)
 	m.memberListElement = memberlist
 	m.memberListElement.Render()
+	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
 
 	timeline := m.Timelines[new]
 	if timeline == nil {
@@ -116,6 +133,22 @@ func (m *MainView) OnRoomSelected(old, new id.RoomID) {
 		timeline = components.NewTimeline(m.ctx, m.app)
 		m.Timelines[new] = timeline
 		//m.AddComponent(timeline, 1, 0, 1, 1)
+	}
+	// Fetch history for the new timeline
+	history, err := m.app.Rpc().Paginate(ctx, &jsoncmd.PaginateParams{
+		RoomID: new,
+		Limit:  50,
+		Reset:  true,
+	})
+	if err != nil {
+		m.app.Gmx().Log.Error().Err(err).Msgf("failed to fetch history for room %s", new)
+	} else {
+		m.app.Gmx().Log.Debug().Msgf("adding %d events to timeline for room %s", len(history.Events), new)
+		slices.Reverse(history.Events)
+		for _, evt := range history.Events {
+			m.app.Gmx().Log.Debug().Interface("event", evt).Stringer("room_id", new).Msg("Adding event to timeline")
+			timeline.AddEvent(evt)
+		}
 	}
 	m.app.Gmx().Log.Debug().Msgf("Removing timeline for room %s", old)
 	m.RemoveComponent(m.timelineElement)
