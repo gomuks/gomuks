@@ -39,6 +39,10 @@ func (t *TimelineComponent) AddEvent(evt *database.Event) {
 		// Event already exists in the timeline
 		return
 	}
+	if evt.StateKey != nil {
+		// TODO: handle state events properly
+		return
+	}
 	var content event.MessageEventContent
 	if evt.Type != "m.room.message" {
 		content = event.MessageEventContent{Body: "sent event: " + evt.Type}
