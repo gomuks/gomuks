@@ -39,7 +39,7 @@
             src = ./.;
 
             # Go dependency hash (should be updated when dependencies are)
-            vendorHash = "sha256-oViJGEdep4vk38EwygkUXy51NRdvndJqlXZOxWYCbv4=";
+            vendorHash = "sha256-egATEctnV8k9pfhI2qUox/Mbrb9lZIrXo9I2ahBRnEw=";
 
             buildInputs = with pkgs; [
               outPackages.gomuks-web
@@ -63,7 +63,7 @@
             src = ./web;
 
             # Same as the Go dependency hash but for NPM packages
-            npmDepsHash = "sha256-tPRgzp6c9zXbHQIEPf4gEKkBWWzQAfUCNAijYPdONpM=";
+            npmDepsHash = "sha256-8+jmfmf+etQeY2ghmZ/SyUy2jKyHW5IJZzvYWO/n4v4=";
 
             installPhase = ''
               mkdir -p $out/dist
