@@ -2,7 +2,6 @@ package components
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -10,7 +9,6 @@ import (
 	"github.com/gdamore/tcell/v2"
 
 	"go.mau.fi/mauview"
-	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
@@ -135,12 +133,11 @@ func (t *TimelineComponent) AddEvent(evt *database.Event) {
 	}
 	t.elementsMutex.Lock()
 	defer t.elementsMutex.Unlock()
-	var content event.MessageEventContent
-	if evt.Type != "m.room.message" {
-		content = event.MessageEventContent{Body: "sent event: " + evt.Type}
-	} else {
-		if err := json.Unmarshal(evt.Content, &content); err != nil {
-			content = event.MessageEventContent{Body: fmt.Sprintf("failed to parse content: %v", err)}
+
+	for _, existing := range t.elements {
+		if existing.EventID == evt.ID {
+			t.app.Gmx().Log.Debug().Msgf("Event %s already exists in timeline, skipping", evt.ID)
+			return
 		}
 	}
 
@@ -185,6 +182,7 @@ func (t *TimelineComponent) OnKeyEvent(event mauview.KeyEvent) bool {
 	if t.offset < 0 {
 		t.offset = 0
 	}
+	// TODO: paginate properly
 	t.app.App().Redraw()
 	return false
 }

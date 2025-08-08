@@ -178,9 +178,9 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 
 	m.RoomList = components.NewRoomList(ctx, app, m.OnRoomSelected)
 
-	m.AddComponent(m.RoomList, 0, 0, 1, 2)
+	m.AddComponent(m.RoomList, 0, 0, 1, 1)
 	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
-	m.AddComponent(m.memberListElement, 2, 0, 1, 2)
-	m.AddComponent(m.composerElement, 1, 1, 1, 1)
+	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
+	m.AddComponent(mauview.NewBox(m.composerElement).SetBorder(true), 0, 1, 2, 1)
 	return m
 }
