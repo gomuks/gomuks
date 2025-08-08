@@ -30,6 +30,7 @@ type MainView struct {
 
 	memberListElement *components.MemberList
 	timelineElement   *components.TimelineComponent
+	composerElement   *components.Composer
 }
 
 func (m *MainView) OnSync(resp *jsoncmd.SyncComplete) {
@@ -164,25 +165,22 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 		screenW, screenH = 253, 65
 	)
 	m := &MainView{
-		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH}),
+		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH - 3, 3}),
 		app:               app,
 		ctx:               ctx,
 		MemberLists:       make(map[id.RoomID]*components.MemberList),
 		memberListElement: components.NewMemberList(ctx, app, []id.UserID{}, nil),
 		Timelines:         make(map[id.RoomID]*components.TimelineComponent),
 		timelineElement:   components.NewTimeline(ctx, app),
+		composerElement:   components.NewComposer(ctx, app),
 	}
-	m.timelineElement.AddFixedComponent(mauview.NewTextField().SetText("messages here"), 1)
 	m.MemberLists[""] = m.memberListElement
 
 	m.RoomList = components.NewRoomList(ctx, app, m.OnRoomSelected)
 
-	m.AddComponent(m.RoomList, 0, 0, 1, 1)
+	m.AddComponent(m.RoomList, 0, 0, 1, 2)
 	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
-	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
-	// rooms: x1
-	// timeline: x4
-	// members: x1
-	// ?
+	m.AddComponent(m.memberListElement, 2, 0, 1, 2)
+	m.AddComponent(m.composerElement, 1, 1, 1, 1)
 	return m
 }

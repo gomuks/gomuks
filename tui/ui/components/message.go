@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/gdamore/tcell/v2"
 
 	"go.mau.fi/mauview"
@@ -13,19 +14,16 @@ import (
 )
 
 type Message struct {
-	*mauview.Grid
+	*mauview.TextView
 	app abstract.App
 	ctx context.Context
-
-	//dbEvt *database.Event
 }
 
 func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Message {
-	width, _ := app.App().Screen().Size()
 	msg := &Message{
-		Grid: mauview.NewGrid(),
-		app:  app,
-		ctx:  ctx,
+		TextView: mauview.NewTextView().SetWrap(true),
+		app:      app,
+		ctx:      ctx,
 	}
 	var content *event.MessageEventContent
 	if evt.Type != "m.room.message" {
@@ -36,14 +34,9 @@ func NewMessage(ctx context.Context, app abstract.App, evt *database.Event) *Mes
 			content = &event.MessageEventContent{Body: "failed to parse content: " + err.Error(), MsgType: event.MsgNotice}
 		}
 	}
-	body := mauview.NewTextView().SetText(content.Body)
+	body := msg.SetText(content.Body)
 	if content.MsgType == event.MsgNotice {
 		body.SetTextColor(tcell.ColorDimGrey)
 	}
-
-	msg.SetColumns([]int{15, width - 20, 5}).SetRows([]int{1})
-	msg.AddComponent(mauview.NewTextField().SetText(evt.Sender.Localpart()), 0, 0, 1, 1)
-	msg.AddComponent(body, 1, 0, 1, 1)
-	msg.AddComponent(mauview.NewTextField().SetText(evt.Timestamp.Format("15:04")), 2, 0, 1, 1)
 	return msg
 }
