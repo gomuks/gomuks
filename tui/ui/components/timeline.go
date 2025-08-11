@@ -141,8 +141,14 @@ func (t *TimelineComponent) AddEvent(evt *database.Event) {
 		}
 	}
 
+	membership, _ := t.app.Gmx().Client.ClientStore.GetMember(t.ctx, evt.RoomID, evt.Sender)
+	displayName := membership.Displayname
+	if displayName == "" {
+		displayName = evt.Sender.Localpart()
+	}
+
 	timestampElement := mauview.NewTextField().SetText(evt.Timestamp.Format("15:04"))
-	senderElement := mauview.NewTextField().SetText(evt.Sender.Localpart())
+	senderElement := mauview.NewTextField().SetText(displayName)
 	bodyElement := NewMessage(t.ctx, t.app, evt)
 	timestampElement.SetTextColor(tcell.ColorDimGrey)
 	senderElement.SetTextColor(tcell.ColorLightBlue)

@@ -15,17 +15,26 @@ import (
 type MemberList struct {
 	*mauview.Flex
 	app         abstract.App
+	ctx         context.Context
 	Members     []id.UserID
 	PowerLevels *event.PowerLevelsEventContent
+	roomID      id.RoomID
 	elements    map[id.UserID]mauview.Component
 }
 
-func NewMemberList(ctx context.Context, app abstract.App, members []id.UserID, powerLevels *event.PowerLevelsEventContent) *MemberList {
+func NewMemberList(
+	ctx context.Context,
+	app abstract.App,
+	members []id.UserID,
+	powerLevels *event.PowerLevelsEventContent,
+	roomID id.RoomID) *MemberList {
 	list := &MemberList{
 		Flex:        mauview.NewFlex(),
 		app:         app,
+		ctx:         ctx,
 		Members:     members,
 		PowerLevels: powerLevels,
+		roomID:      roomID,
 		elements:    make(map[id.UserID]mauview.Component),
 	}
 	list.SetDirection(mauview.FlexRow)
@@ -59,8 +68,17 @@ func (ml *MemberList) Render() {
 	for _, element := range ml.elements {
 		ml.RemoveComponent(element)
 	}
+	conflictingNames := make(map[string]struct{})
 	for _, userID := range ml.sortedMembers() {
-		e := mauview.NewButton(userID.String())
+		membership, _ := ml.app.Gmx().Client.ClientStore.GetMember(ml.ctx, ml.roomID, userID)
+		displayName := membership.Displayname
+		_, confusable := conflictingNames[displayName]
+		if displayName == "" || confusable {
+			displayName = userID.String()
+		} else {
+			conflictingNames[displayName] = struct{}{}
+		}
+		e := mauview.NewButton(displayName)
 		ml.AddFixedComponent(e, 1)
 		ml.elements[userID] = e
 		ml.app.Gmx().Log.Debug().Msgf("Added member %s to member list", userID)

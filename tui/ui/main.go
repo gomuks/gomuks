@@ -90,7 +90,7 @@ func (m *MainView) OnRoomSelected(ctx context.Context, old, new id.RoomID) {
 	memberlist, ok := m.MemberLists[new]
 	if !ok {
 		m.app.Gmx().Log.Debug().Msgf("creating new member list for room %s", new)
-		memberlist = components.NewMemberList(m.ctx, m.app, []id.UserID{}, nil)
+		memberlist = components.NewMemberList(m.ctx, m.app, []id.UserID{}, nil, new)
 		m.MemberLists[new] = memberlist
 	}
 	m.app.Gmx().Log.Debug().Msgf("switching to room view for %s from %s", old, new)
@@ -114,6 +114,7 @@ func (m *MainView) OnRoomSelected(ctx context.Context, old, new id.RoomID) {
 				}
 			}
 		}
+		memberlist.PowerLevels = &powerLevels
 		slices.SortStableFunc(memberlist.Members, func(a, b id.UserID) int {
 			aPL := powerLevels.GetUserLevel(a)
 			bPL := powerLevels.GetUserLevel(b)
@@ -165,11 +166,11 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 		screenW, screenH = 253, 65
 	)
 	m := &MainView{
-		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH - 3, 3}),
+		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH - 10, 10}),
 		app:               app,
 		ctx:               ctx,
 		MemberLists:       make(map[id.RoomID]*components.MemberList),
-		memberListElement: components.NewMemberList(ctx, app, []id.UserID{}, nil),
+		memberListElement: components.NewMemberList(ctx, app, []id.UserID{}, nil, ""),
 		Timelines:         make(map[id.RoomID]*components.TimelineComponent),
 		timelineElement:   components.NewTimeline(ctx, app),
 		composerElement:   components.NewComposer(ctx, app),
@@ -181,6 +182,6 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 	m.AddComponent(m.RoomList, 0, 0, 1, 1)
 	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
 	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
-	m.AddComponent(mauview.NewBox(m.composerElement).SetBorder(true), 0, 1, 2, 1)
+	m.AddComponent(mauview.NewBox(mauview.NewInputArea().SetPlaceholder("meow")).SetBorder(true), 0, 1, 3, 1)
 	return m
 }
