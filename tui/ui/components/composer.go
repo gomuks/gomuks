@@ -43,10 +43,43 @@ func (composer *Composer) InterceptCommand(body string) string {
 			// TODO: shouldn't be a panic
 			panic("join command requires a room ID or alias")
 		}
-		_, err := composer.app.Rpc().JoinRoom(composer.ctx, &jsoncmd.JoinRoomParams{RoomIDOrAlias: target})
-		if err != nil {
-			zerolog.Ctx(composer.ctx).Warn().Err(err).Msg("failed to join room")
+		go func() {
+			zerolog.Ctx(composer.ctx).Info().Str("target", target).Msg("joining room")
+			_, err := composer.app.Rpc().JoinRoom(composer.ctx, &jsoncmd.JoinRoomParams{RoomIDOrAlias: target})
+			if err != nil {
+				zerolog.Ctx(composer.ctx).Warn().Err(err).Str("target", target).Msg("failed to join room")
+			}
+		}()
+	case "leave", "part":
+		var target id.RoomID
+		targetRawParts := strings.SplitN(body, " ", 2)
+		if len(targetRawParts) == 1 || targetRawParts[1] == "" {
+			target = composer.CurrentRoom
+		} else {
+			targetRaw := strings.TrimSpace(targetRawParts[1])
+			if strings.HasPrefix(targetRaw, "!") {
+				target = id.RoomID(targetRaw)
+			} else if strings.HasPrefix(targetRaw, "#") {
+				alias := id.RoomAlias(targetRaw)
+				roomId, err := composer.app.Rpc().ResolveAlias(composer.ctx, &jsoncmd.ResolveAliasParams{Alias: alias})
+				if err != nil {
+					zerolog.Ctx(composer.ctx).Warn().Err(err).Msg("failed to resolve room alias")
+					return ""
+				}
+				target = roomId.RoomID
+			} else {
+				zerolog.Ctx(composer.ctx).Warn().Msg("leave command requires a room ID or alias")
+				return ""
+			}
 		}
+
+		go func() {
+			zerolog.Ctx(composer.ctx).Info().Stringer("room_id", target).Msg("leaving room")
+			_, err := composer.app.Rpc().LeaveRoom(composer.ctx, &jsoncmd.LeaveRoomParams{RoomID: target})
+			if err != nil {
+				zerolog.Ctx(composer.ctx).Warn().Err(err).Stringer("room_id", target).Msg("failed to leave room")
+			}
+		}()
 	default:
 		return body
 	}
