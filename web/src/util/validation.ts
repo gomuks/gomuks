@@ -35,7 +35,7 @@ export function validated<T>(value: T | undefined, validator: (value: T) => bool
 
 export const isEventID = (eventID: unknown) => isIdentifier<EventID>(eventID, "$", false)
 export const isUserID = (userID: unknown) => isIdentifier<UserID>(userID, "@", true)
-export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", true)
+export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", false)
 export const isRoomAlias = (roomAlias: unknown) => isIdentifier<RoomAlias>(roomAlias, "#", true)
 export const isMXC = (mxc: unknown): mxc is ContentURI => typeof mxc === "string" && mediaRegex.test(mxc)
 
