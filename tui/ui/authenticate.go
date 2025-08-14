@@ -31,7 +31,7 @@ func NewAuthenticateView(ctx context.Context, app abstract.App) *AuthenticateVie
 	a.Container = mauview.Center(mauview.NewBox(a).SetTitle("Sign in to Gomuks").SetBorder(true), 36, 6).SetAlwaysFocusChild(true)
 
 	a.passwordField = mauview.NewInputField()
-	a.errorBody = mauview.NewTextField().SetText("...")
+	a.errorBody = mauview.NewTextField().SetText("")
 
 	submitButton := mauview.NewButton("Submit")
 	submitButton.SetOnClick(func() {

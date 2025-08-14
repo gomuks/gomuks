@@ -64,7 +64,13 @@ func processMessage(ctx context.Context, app abstract.App, evt *database.Event, 
 			app.Gmx().Log.Debug().Interface("event", evt).Msg("Decrypted event")
 			return processMessage(ctx, app, evt, evt.DecryptedType)
 		}
-		return &event.MessageEventContent{Body: "no decrypted message", MsgType: event.MsgNotice}
+		if evt.DecryptionError != "" {
+			return &event.MessageEventContent{
+				Body:    "failed to decrypt: " + evt.DecryptionError,
+				MsgType: event.MsgNotice,
+			}
+		}
+		return &event.MessageEventContent{Body: "failed to render: no decrypted content?", MsgType: event.MsgNotice}
 	case "m.sticker":
 		return &event.MessageEventContent{
 			Body:    "sticker message",
