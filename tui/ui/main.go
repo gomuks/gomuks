@@ -157,6 +157,7 @@ func (m *MainView) OnRoomSelected(ctx context.Context, old, new id.RoomID) {
 	m.timelineElement = timeline
 	m.app.Gmx().Log.Debug().Msgf("Timeline for %s from %s", old, new)
 	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
+	m.composerElement.CurrentRoom = new
 	m.app.App().Redraw()
 }
 
@@ -165,8 +166,11 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 	var (
 		screenW, screenH = 253, 65
 	)
+	if app.App().Screen() != nil {
+		screenW, screenH = app.App().Screen().Size()
+	}
 	m := &MainView{
-		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH - 10, 10}),
+		Grid:              mauview.NewGrid().SetColumns([]int{30, screenW - 60, 30}).SetRows([]int{screenH - 5, 5}),
 		app:               app,
 		ctx:               ctx,
 		MemberLists:       make(map[id.RoomID]*components.MemberList),
@@ -179,9 +183,9 @@ func NewMainView(ctx context.Context, app abstract.App) *MainView {
 
 	m.RoomList = components.NewRoomList(ctx, app, m.OnRoomSelected)
 
-	m.AddComponent(m.RoomList, 0, 0, 1, 1)
+	m.AddComponent(m.RoomList, 0, 0, 1, 2)
 	m.AddComponent(m.timelineElement, 1, 0, 1, 1)
-	m.AddComponent(m.memberListElement, 2, 0, 1, 1)
-	m.AddComponent(mauview.NewBox(mauview.NewInputArea().SetPlaceholder("meow")).SetBorder(true), 0, 1, 3, 1)
+	m.AddComponent(m.memberListElement, 2, 0, 1, 2)
+	m.AddComponent(mauview.NewBox(m.composerElement).SetBorder(true), 1, 1, 1, 1)
 	return m
 }
