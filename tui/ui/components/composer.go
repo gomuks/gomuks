@@ -43,6 +43,8 @@ func (composer *Composer) OnKeyEvent(event mauview.KeyEvent) bool {
 		composer.InputArea.MoveCursorHome(false)
 		return true
 	} else {
+		// TODO: check user preferences
+		_, _ = composer.app.Rpc().SetTyping(composer.ctx, &jsoncmd.SetTypingParams{RoomID: composer.CurrentRoom, Timeout: 10000})
 		return composer.InputArea.OnKeyEvent(event)
 	}
 }
