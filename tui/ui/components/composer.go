@@ -28,12 +28,25 @@ func (composer *Composer) InterceptCommand(body string) string {
 	// This method is called when the user runs a command from the composer
 	// Some commands, like /me, should go down RPC, whereas ones like /quit should be intercepted.
 	zerolog.Ctx(composer.ctx).Info().Str("command", body).Msg("Running command from composer")
+	if !strings.HasPrefix(body, "/") {
+		return body
+	}
 	switch strings.TrimPrefix(strings.Split(body, " ")[0], "/") {
 	case "quit", "exit", "stop":
 		composer.app.Gmx().Stop()
 	case "upload":
 		// TODO: upload file
 		break
+	case "join":
+		target := strings.TrimPrefix(body, "/join ")
+		if target == "" {
+			// TODO: shouldn't be a panic
+			panic("join command requires a room ID or alias")
+		}
+		_, err := composer.app.Rpc().JoinRoom(composer.ctx, &jsoncmd.JoinRoomParams{RoomIDOrAlias: target})
+		if err != nil {
+			zerolog.Ctx(composer.ctx).Warn().Err(err).Msg("failed to join room")
+		}
 	default:
 		return body
 	}
