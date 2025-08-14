@@ -251,6 +251,9 @@ func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.Ev
 }
 
 func (h *HiClient) SetTyping(ctx context.Context, roomID id.RoomID, timeout time.Duration) error {
+	if h.Client.HomeserverURL == nil {
+		return fmt.Errorf("homeserver URL is not set")
+	}
 	_, err := h.Client.UserTyping(ctx, roomID, timeout > 0, timeout)
 	return err
 }
