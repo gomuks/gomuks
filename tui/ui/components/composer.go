@@ -2,6 +2,7 @@ package components
 
 import (
 	"context"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rs/zerolog"
@@ -19,11 +20,18 @@ type Composer struct {
 	ctx         context.Context
 	app         abstract.App
 	CurrentRoom id.RoomID
+	sendLock    sync.Mutex
 }
 
 func (composer *Composer) OnKeyEvent(event mauview.KeyEvent) bool {
+	if ok := composer.sendLock.TryLock(); !ok {
+		// If we can't acquire the lock, it means a send operation is already in progress
+		// Don't do anything, just return
+		return false
+	}
+	defer composer.sendLock.Unlock()
 	if event.Key() == tcell.KeyEnter && event.Modifiers()&tcell.ModShift == 0 {
-		// SEND MESSAGE
+		// TODO: local echo
 		_, err := composer.app.Rpc().SendMessage(composer.ctx, &jsoncmd.SendMessageParams{
 			RoomID: composer.CurrentRoom,
 			Text:   composer.InputArea.GetText(),
@@ -32,6 +40,7 @@ func (composer *Composer) OnKeyEvent(event mauview.KeyEvent) bool {
 			zerolog.Ctx(composer.ctx).Warn().Err(err).Msg("failed to send message to composer")
 		}
 		composer.InputArea.SetText("") // Clear input area after sending
+		composer.InputArea.MoveCursorHome(false)
 		return true
 	} else {
 		return composer.InputArea.OnKeyEvent(event)
