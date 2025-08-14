@@ -62,6 +62,14 @@ func processMessage(ctx context.Context, app abstract.App, evt *database.Event, 
 		if evt.Decrypted != nil {
 			evt.Content = evt.Decrypted // TODO: problematic?
 			app.Gmx().Log.Debug().Interface("event", evt).Msg("Decrypted event")
+			if evt.DecryptedType == "m.room.encrypted" {
+				// This would cause a recursion loop.
+				// Why is there an encrypted decrypted encrypted event?
+				return &event.MessageEventContent{
+					Body:    "failed to render: event was decrypted into an encrypted event. The event is invalid.",
+					MsgType: event.MsgNotice,
+				}
+			}
 			return processMessage(ctx, app, evt, evt.DecryptedType)
 		}
 		if evt.DecryptionError != "" {
