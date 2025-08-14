@@ -2,6 +2,9 @@ package components
 
 import (
 	"context"
+	"maps"
+	"slices"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"go.mau.fi/mauview"
@@ -30,6 +33,7 @@ type RoomList struct {
 	ctx           context.Context
 	Elements      map[id.RoomID]*mauview.Button
 	focused       id.RoomID
+	Index         int
 	onFocusChange func(ctx context.Context, old, new id.RoomID)
 }
 
@@ -42,6 +46,26 @@ func NewRoomList(ctx context.Context, app abstract.App, onFocusChange func(ctx c
 		onFocusChange: onFocusChange,
 	}
 	return rl
+}
+
+func (rl *RoomList) Render() mauview.Component {
+	// Render the room list
+	rl.Flex = mauview.NewFlex().SetDirection(mauview.FlexRow)
+	roomIDs := slices.Collect(maps.Keys(rl.Elements))
+	slices.SortStableFunc(roomIDs, func(a, b id.RoomID) int {
+		return strings.Compare(a.String(), b.String())
+	})
+	for _, roomID := range roomIDs {
+		if button, exists := rl.Elements[roomID]; exists {
+			rl.Flex.AddFixedComponent(button, 1)
+			if roomID == rl.focused {
+				button.Focus()
+			} else {
+				button.Blur()
+			}
+		}
+	}
+	return rl.Flex
 }
 
 func (rl *RoomList) focusRoom(ctx context.Context, roomID id.RoomID) {
@@ -74,7 +98,7 @@ func (rl *RoomList) AddRoom(ctx context.Context, roomID id.RoomID, room *jsoncmd
 		rl.focusRoom(ctx, roomID)
 	})
 	rl.Elements[roomID] = button
-	rl.Flex.AddFixedComponent(button, 1)
+	rl.Render()
 	rl.app.App().Redraw()
 	return rl
 }
