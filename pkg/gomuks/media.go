@@ -51,7 +51,6 @@ import (
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/util/random"
-	cwebp "go.mau.fi/webp"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
@@ -199,6 +198,14 @@ func decodeImageWithOrientationFix(file *os.File) (image.Image, error) {
 	return decoded, nil
 }
 
+var encodeAvatarThumbnail = func(writer io.Writer, img image.Image) error {
+	return fmt.Errorf("thumbnail encoding not implemented")
+}
+
+var encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossless bool) error {
+	return fmt.Errorf("webp encoding not implemented")
+}
+
 func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) error {
 	cacheFile, err := os.Open(gmx.cacheEntryToPath(entry.Hash[:]))
 	if err != nil {
@@ -220,7 +227,7 @@ func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) erro
 	thumbnailImage := imaging.Thumbnail(img, size, size, imaging.Lanczos)
 	fileHasher := sha256.New()
 	wrappedWriter := io.MultiWriter(fileHasher, tempFile)
-	err = cwebp.Encode(wrappedWriter, thumbnailImage, &cwebp.Options{Quality: 80})
+	err = encodeAvatarThumbnail(wrappedWriter, thumbnailImage)
 	if err != nil {
 		return fmt.Errorf("failed to encode thumbnail: %w", err)
 	}
@@ -568,10 +575,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 		}
 		switch encTo {
 		case "image/webp":
-			err = cwebp.Encode(tempFile, decoded, &cwebp.Options{
-				Quality:  float32(quality),
-				Lossless: quality >= 100,
-			})
+			err = encodeWebp(tempFile, decoded, float32(quality), quality >= 100)
 		case "image/jpeg":
 			err = jpeg.Encode(tempFile, decoded, &jpeg.Options{Quality: quality})
 		case "image/png":

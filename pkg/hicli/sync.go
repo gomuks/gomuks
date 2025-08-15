@@ -168,7 +168,9 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 	}
 	if !h.firstSyncReceived {
 		h.firstSyncReceived = true
-		h.Client.Client.Transport.(*http.Transport).ResponseHeaderTimeout = 60 * time.Second
+		if tp, ok := h.Client.Client.Transport.(*http.Transport); ok {
+			tp.ResponseHeaderTimeout = 60 * time.Second
+		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
 	if !syncCtx.evt.IsEmpty() {

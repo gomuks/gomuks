@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2025 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,22 +13,31 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import "./go_wasm_exec.js"
+import initGomuksWasm from "./gomuks.wasm?init"
+import initSqlite from "./sqlite_bridge.ts"
 
-//go:build cgo && !(arm || noheic)
-
-package gomuks
-
-import (
-	"runtime"
-
-	"go.mau.fi/goheif"
-	"golang.org/x/sys/cpu"
-)
-
-func init() {
-	if runtime.GOARCH != "amd64" || cpu.X86.HasSSE41 {
-		goheif.Init()
-		// why is there an unsafe mode??
-		goheif.SafeEncoding = true
-	}
-}
+(async () => {
+	const go = new Go()
+	await initSqlite()
+	const instance = await initGomuksWasm(go.importObject)
+	await go.run(instance)
+	self.postMessage({
+		command: "wasm-connection",
+		data: {
+			connected: false,
+			reconnecting: false,
+			error: `Go process exited`,
+		},
+	})
+})().catch(err => {
+	console.error("Fatal error in wasm worker:", err)
+	self.postMessage({
+		command: "wasm-connection",
+		data: {
+			connected: false,
+			reconnecting: false,
+			error: `${err}`,
+		},
+	})
+})

@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2025 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build cgo && !(arm || noheic)
+//go:build cgo
 
 package gomuks
 
 import (
-	"runtime"
+	"image"
+	"io"
 
-	"go.mau.fi/goheif"
-	"golang.org/x/sys/cpu"
+	cwebp "go.mau.fi/webp"
 )
 
 func init() {
-	if runtime.GOARCH != "amd64" || cpu.X86.HasSSE41 {
-		goheif.Init()
-		// why is there an unsafe mode??
-		goheif.SafeEncoding = true
+	encodeAvatarThumbnail = func(writer io.Writer, img image.Image) error {
+		return cwebp.Encode(writer, img, &cwebp.Options{Quality: 80})
+	}
+	encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossless bool) error {
+		return cwebp.Encode(writer, img, &cwebp.Options{
+			Lossless: lossless,
+			Quality:  quality,
+		})
 	}
 }

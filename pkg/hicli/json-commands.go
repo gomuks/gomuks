@@ -142,7 +142,7 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		})
 	case jsoncmd.ReqGetRelatedEvents:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
-			return h.DB.Event.GetRelatedEvents(ctx, params.RoomID, params.EventID, params.RelationType)
+			return nonNilArray(h.DB.Event.GetRelatedEvents(ctx, params.RoomID, params.EventID, params.RelationType))
 		})
 	case jsoncmd.ReqGetEventContext:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {
@@ -158,7 +158,7 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		})
 	case jsoncmd.ReqGetSpecificRoomState:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.GetSpecificRoomStateParams) ([]*database.Event, error) {
-			return h.DB.CurrentState.GetMany(ctx, params.Keys)
+			return nonNilArray(h.DB.CurrentState.GetMany(ctx, params.Keys))
 		})
 	case jsoncmd.ReqGetReceipts:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.GetReceiptsParams) (map[id.EventID][]*database.Receipt, error) {
@@ -239,7 +239,11 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return true, h.LogoutFunc(ctx)
 	case jsoncmd.ReqLogin:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.LoginParams) (bool, error) {
-			return true, h.LoginPassword(ctx, params.HomeserverURL, params.Username, params.Password)
+			err := h.LoginPassword(ctx, params.HomeserverURL, params.Username, params.Password)
+			if err != nil {
+				h.Log.Err(err).Msg("Failed to login")
+			}
+			return true, err
 		})
 	case jsoncmd.ReqLoginCustom:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.LoginCustomParams) (bool, error) {
@@ -248,7 +252,11 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 			if err != nil {
 				return false, err
 			}
-			return true, h.Login(ctx, params.Request)
+			err = h.Login(ctx, params.Request)
+			if err != nil {
+				h.Log.Err(err).Msg("Failed to login")
+			}
+			return true, err
 		})
 	case jsoncmd.ReqVerify:
 		return unmarshalAndCall(req.Data, func(params *jsoncmd.VerifyParams) (bool, error) {
@@ -293,6 +301,13 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 	default:
 		return nil, fmt.Errorf("unknown command %q", req.Command)
 	}
+}
+
+func nonNilArray[T any](arr []T, err error) ([]T, error) {
+	if arr == nil && err == nil {
+		return []T{}, nil
+	}
+	return arr, err
 }
 
 func unmarshalAndCall[T, O any](data json.RawMessage, fn func(*T) (O, error)) (output O, err error) {

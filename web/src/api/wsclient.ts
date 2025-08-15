@@ -101,13 +101,13 @@ export default class WSClient extends RPCClient {
 			this.#conn?.close(4002, "Ping timeout")
 			return
 		}
-		this.send(JSON.stringify({
+		this.send({
 			command: "ping",
 			data: {
 				last_received_id: this.#lastReceivedEvt,
 			},
 			request_id: this.nextRequestID,
-		}))
+		})
 	}
 
 	stop() {
@@ -123,11 +123,11 @@ export default class WSClient extends RPCClient {
 		return this.#conn?.readyState === WebSocket.OPEN
 	}
 
-	send(data: string) {
+	send(data: RPCCommand) {
 		if (!this.#conn) {
 			throw new Error("Websocket not connected")
 		}
-		this.#conn.send(data)
+		this.#conn.send(JSON.stringify(data))
 	}
 
 	async #decompressedReadLoop(dc: DecompressionStream) {

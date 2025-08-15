@@ -88,7 +88,7 @@ export default abstract class RPCClient {
 	#requestIDCounter: number = 1
 
 	protected abstract isConnected: boolean
-	protected abstract send(data: string): void
+	protected abstract send(data: RPCCommand): void
 	public abstract start(): void
 	public abstract stop(): void
 
@@ -125,6 +125,27 @@ export default abstract class RPCClient {
 		return this.#requestIDCounter++
 	}
 
+	async doAuth(signal: AbortSignal): Promise<boolean> {
+		try {
+			const resp = await fetch("_gomuks/auth", {
+				method: "POST",
+				signal,
+			})
+			if (!resp.ok && !signal.aborted) {
+				this.connect.emit({
+					connected: false,
+					reconnecting: false,
+					error: `Authentication failed: ${resp.statusText}`,
+				})
+				return false
+			}
+			return true
+		} catch (err) {
+			this.connect.emit({ connected: false, reconnecting: false, error: `Authentication failed: ${err}` })
+			return false
+		}
+	}
+
 	request<Req, Resp>(command: string, data: Req): CancellablePromise<Resp> {
 		if (!this.isConnected) {
 			return new CancellablePromise((_resolve, reject) => {
@@ -139,11 +160,11 @@ export default abstract class RPCClient {
 				return
 			}
 			this.pendingRequests.set(request_id, { resolve: resolve as ((value: unknown) => void), reject })
-			this.send(JSON.stringify({
+			this.send({
 				command,
 				request_id,
 				data,
-			}))
+			} as RPCCommand)
 		}, this.cancelRequest.bind(this, request_id))
 	}
 

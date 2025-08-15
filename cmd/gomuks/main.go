@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/chzyer/readline"
 	"go.mau.fi/util/exhttp"
 	flag "maunium.net/go/mauflag"
 
@@ -33,6 +34,8 @@ var wantHelp, _ = flag.MakeHelpFlag()
 var wantVersion = flag.MakeFull("v", "version", "View gomuks version and quit.", "false").Bool()
 
 func main() {
+	gomuks.PromptInput = readline.Line
+	gomuks.PromptPassword = readline.Password
 	hicli.InitialDeviceDisplayName = "gomuks web"
 	exhttp.AutoAllowCORS = false
 	flag.SetHelpTitles(

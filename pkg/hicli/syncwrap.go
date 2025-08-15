@@ -8,11 +8,9 @@ package hicli
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
@@ -31,6 +29,10 @@ const (
 	syncContextKey contextKey = iota
 )
 
+var isDatabaseBusyError = func(error) bool {
+	return false
+}
+
 func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, since string) error {
 	c := (*HiClient)(h)
 	c.lastSync = time.Now()
@@ -48,8 +50,7 @@ func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, 
 		err = c.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 			return c.processSyncResponse(ctx, resp, since)
 		})
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) && sqliteErr.Code == sqlite3.ErrBusy && i < 24 {
+		if i < 24 && isDatabaseBusyError(err) {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("Database is busy, retrying")
 			c.markSyncErrored(err, false)
 			continue

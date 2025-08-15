@@ -8,7 +8,7 @@ require github.com/wailsapp/wails/v3 v3.0.0-alpha.21
 
 require (
 	go.mau.fi/gomuks v0.4.0
-	go.mau.fi/util v0.8.9-0.20250810202017-1d053aac320a
+	go.mau.fi/util v0.8.9-0.20250813172851-79bf3eba563d
 )
 
 require (
@@ -20,7 +20,6 @@ require (
 	github.com/alecthomas/chroma/v2 v2.18.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/buckket/go-blurhash v1.1.0 // indirect
-	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/coder/websocket v1.8.13 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
@@ -46,8 +45,8 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v1.14.28 // indirect
-	github.com/petermattis/goid v0.0.0-20250721140440-ea1c0173183e // indirect
+	github.com/mattn/go-sqlite3 v1.14.31 // indirect
+	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -64,21 +63,21 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.21 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/yuin/goldmark v1.7.12 // indirect
+	github.com/yuin/goldmark v1.7.13 // indirect
 	go.mau.fi/goheif v0.0.0-20250809103256-ca48e8691d2f // indirect
 	go.mau.fi/webp v0.2.0 // indirect
-	go.mau.fi/zeroconfig v0.1.3 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
+	go.mau.fi/zeroconfig v0.1.4-0.20250815135457-2dde0f0a1f6c // indirect
+	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/image v0.28.0 // indirect
-	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	maunium.net/go/mautrix v0.24.3-0.20250811075824-5d84bddc62e6 // indirect
+	maunium.net/go/mautrix v0.24.3-0.20250815134518-cd022c9010d5 // indirect
 	mvdan.cc/xurls/v2 v2.6.0 // indirect
 )
 
