@@ -51,21 +51,8 @@ export default class Client {
 	}
 
 	async #reallyStart(signal: AbortSignal) {
-		try {
-			const resp = await fetch("_gomuks/auth", {
-				method: "POST",
-				signal,
-			})
-			if (!resp.ok && !signal.aborted) {
-				this.rpc.connect.emit({
-					connected: false,
-					reconnecting: false,
-					error: `Authentication failed: ${resp.statusText}`,
-				})
-				return
-			}
-		} catch (err) {
-			this.rpc.connect.emit({ connected: false, reconnecting: false, error: `Authentication failed: ${err}` })
+		if (!await this.rpc.doAuth(signal)) {
+			return
 		}
 		if (signal.aborted) {
 			return

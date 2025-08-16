@@ -16,6 +16,24 @@ cache:
 variables:
   GOTOOLCHAIN: local
 
+wasm:
+  image: golang:1.25-alpine3.22
+  stage: frontend
+  cache:
+    paths:
+    - .cache
+  before_script:
+  - mkdir -p .cache
+  - export GOPATH="$CI_PROJECT_DIR/.cache"
+  - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+  script:
+  - cd web
+  - ./build-wasm.sh
+  artifacts:
+    paths:
+    - web/src/api/wasm/gomuks.wasm
+    expire_in: 1 hour
+
 frontend:
   image: node:22-alpine
   stage: frontend
@@ -30,6 +48,10 @@ frontend:
     paths:
     - web/dist
     expire_in: 1 hour
+  dependencies:
+  - wasm
+  needs:
+  - wasm
 
 .build-linux: &build-linux
   stage: build

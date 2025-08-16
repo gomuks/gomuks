@@ -253,6 +253,9 @@ const handleURLHash = (client: Client, context: MainScreenContextFields, hashOnl
 			const currentETag = (
 				document.querySelector("meta[name=gomuks-frontend-etag]") as HTMLMetaElement
 			)?.content
+			if (!currentETag) {
+				return history.state
+			}
 			const newURL = new URL(location.href)
 			const updateTo = newURL.searchParams.get("updateTo")
 			if (updateTo === currentETag) {

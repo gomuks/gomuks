@@ -20,6 +20,7 @@ import (
 	"embed"
 )
 
+//go:generate ./build-wasm.sh
 //go:generate npm install
 //go:generate npm run build
 //go:embed dist

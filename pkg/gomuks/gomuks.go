@@ -66,6 +66,8 @@ type Gomuks struct {
 	Config      Config
 	DisableAuth bool
 
+	GetDBConfig func() dbutil.PoolConfig
+
 	stopOnce sync.Once
 	stopChan chan struct{}
 
@@ -78,12 +80,21 @@ type Gomuks struct {
 }
 
 func NewGomuks() *Gomuks {
-	return &Gomuks{
+	gmx := &Gomuks{
 		stopChan: make(chan struct{}),
 
 		temporaryMXCToPermanent:         map[id.ContentURIString]id.ContentURIString{},
 		temporaryMXCToEncryptedFileInfo: map[id.ContentURIString]*event.EncryptedFileInfo{},
 	}
+	gmx.GetDBConfig = func() dbutil.PoolConfig {
+		return dbutil.PoolConfig{
+			Type:         "sqlite3-fk-wal",
+			URI:          fmt.Sprintf("file:%s/gomuks.db?_txlock=immediate", gmx.DataDir),
+			MaxOpenConns: 5,
+			MaxIdleConns: 1,
+		}
+	}
+	return gmx
 }
 
 func (gmx *Gomuks) InitDirectories() {
@@ -166,12 +177,7 @@ func (gmx *Gomuks) SetupLog() {
 func (gmx *Gomuks) StartClient() {
 	hicli.HTMLSanitizerImgSrcTemplate = "_gomuks/media/%s/%s?encrypted=false"
 	rawDB, err := dbutil.NewFromConfig("gomuks", dbutil.Config{
-		PoolConfig: dbutil.PoolConfig{
-			Type:         "sqlite3-fk-wal",
-			URI:          fmt.Sprintf("file:%s/gomuks.db?_txlock=immediate", gmx.DataDir),
-			MaxOpenConns: 5,
-			MaxIdleConns: 1,
-		},
+		PoolConfig: gmx.GetDBConfig(),
 	}, dbutil.ZeroLogger(gmx.Log.With().Str("component", "hicli").Str("db_section", "main").Logger()))
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to open database")
@@ -187,14 +193,19 @@ func (gmx *Gomuks) StartClient() {
 	)
 	gmx.Client.LogoutFunc = gmx.Logout
 	httpClient := gmx.Client.Client.Client
-	httpClient.Transport.(*http.Transport).ForceAttemptHTTP2 = false
-	if !gmx.Config.Matrix.DisableHTTP2 {
-		h2, err := http2.ConfigureTransports(httpClient.Transport.(*http.Transport))
-		if err != nil {
-			gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to configure HTTP/2")
-			os.Exit(13)
+	if runtime.GOOS == "js" {
+		gmx.Client.Client.UserAgent = ""
+		httpClient.Transport = nil
+	} else {
+		httpClient.Transport.(*http.Transport).ForceAttemptHTTP2 = false
+		if !gmx.Config.Matrix.DisableHTTP2 {
+			h2, err := http2.ConfigureTransports(httpClient.Transport.(*http.Transport))
+			if err != nil {
+				gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to configure HTTP/2")
+				os.Exit(13)
+			}
+			h2.ReadIdleTimeout = 30 * time.Second
 		}
-		h2.ReadIdleTimeout = 30 * time.Second
 	}
 	userID, err := gmx.Client.DB.Account.GetFirstUserID(ctx)
 	if err != nil {

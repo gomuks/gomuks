@@ -32,7 +32,7 @@ import {
 	UserID,
 } from "./mxtypes.ts"
 
-interface BaseRPCCommand<T> {
+export interface BaseRPCCommand<T> {
 	command: string
 	request_id: number
 	data: T
@@ -157,6 +157,10 @@ export interface ErrorCommand extends BaseRPCCommand<unknown> {
 	command: "error"
 }
 
+export interface PingCommand extends BaseRPCCommand<{ last_received_id: number }> {
+	command: "ping"
+}
+
 export type RPCEvent =
 	ClientStateEvent |
 	SyncStatusEvent |
@@ -168,4 +172,4 @@ export type RPCEvent =
 	InitCompleteEvent |
 	RunIDEvent
 
-export type RPCCommand = RPCEvent | ResponseCommand | ErrorCommand
+export type RPCCommand = RPCEvent | ResponseCommand | ErrorCommand | PingCommand

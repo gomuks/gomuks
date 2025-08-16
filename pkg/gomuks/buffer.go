@@ -37,6 +37,8 @@ type EventBuffer struct {
 	maxID   int64
 	MaxSize int
 
+	DisableCache bool
+
 	websocketClosers map[uint64]WebsocketCloseFunc
 	lastAckedID      map[uint64]int64
 	eventListeners   map[uint64]func(*BufferedEvent)
@@ -44,18 +46,20 @@ type EventBuffer struct {
 }
 
 func NewEventBuffer(maxSize int) *EventBuffer {
+	disableCache := maxSize <= 0
 	return &EventBuffer{
 		websocketClosers: make(map[uint64]WebsocketCloseFunc),
 		lastAckedID:      make(map[uint64]int64),
 		eventListeners:   make(map[uint64]func(*BufferedEvent)),
 		buf:              make([]*BufferedEvent, 0, 32),
 		MaxSize:          maxSize,
+		DisableCache:     disableCache,
 		minID:            -1,
 	}
 }
 
 func (eb *EventBuffer) Push(evt any) {
-	allowCache := true
+	allowCache := !eb.DisableCache
 	if syncComplete, ok := evt.(*jsoncmd.SyncComplete); ok && syncComplete.Since != nil && *syncComplete.Since == "" {
 		// Don't cache initial sync responses
 		allowCache = false

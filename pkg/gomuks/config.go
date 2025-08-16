@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/chzyer/readline"
 	"github.com/rs/zerolog"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/util/random"
@@ -92,6 +92,21 @@ func makeDefaultConfig() Config {
 	}
 }
 
+var PromptInput = func(prompt string) (string, error) {
+	fmt.Print(prompt)
+	var input string
+	_, err := fmt.Scanln(&input)
+	return strings.TrimSpace(input), err
+}
+
+var PromptPassword = func(prompt string) ([]byte, error) {
+	val, err := PromptInput(prompt)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(val), nil
+}
+
 func (gmx *Gomuks) LoadConfig() error {
 	file, err := os.Open(filepath.Join(gmx.ConfigDir, "config.yaml"))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -114,13 +129,13 @@ func (gmx *Gomuks) LoadConfig() error {
 	if !gmx.DisableAuth && (gmx.Config.Web.Username == "" || gmx.Config.Web.PasswordHash == "") {
 		fmt.Println("Please create a username and password for authenticating the web app")
 		fmt.Println("This is only used for gomuks and is NOT your Matrix account")
-		gmx.Config.Web.Username, err = readline.Line("Username: ")
+		gmx.Config.Web.Username, err = PromptInput("Username: ")
 		if err != nil {
 			return fmt.Errorf("failed to read username: %w", err)
 		} else if len(gmx.Config.Web.Username) == 0 || len(gmx.Config.Web.Username) > 32 {
 			return fmt.Errorf("username must be 1-32 characters long")
 		}
-		passwd, err := readline.Password("Password: ")
+		passwd, err := PromptPassword("Password: ")
 		if err != nil {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
