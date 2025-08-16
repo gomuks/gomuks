@@ -32,6 +32,12 @@ export default class WasmClient extends RPCClient {
 	async start() {
 		this.#worker = new WasmuksWorker({ name: "gomuks-wasm-worker" })
 		this.#worker.addEventListener("message", this.#onMessage)
+		navigator.storage.persist().then(res => console.info("Storage persistence permission:", res))
+		navigator.serviceWorker.register("/wasmuks-media-sw.js", {
+			scope: "/",
+		}).then(reg => {
+			console.info("Media service worker registered", reg)
+		}).catch(err => console.error("Failed to register media service worker", err))
 	}
 
 	async doAuth(): Promise<boolean> {

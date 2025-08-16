@@ -284,9 +284,13 @@ func isAllowedAvatarMime(mime string) bool {
 	}
 }
 
+func MakeFallbackAvatar(bgColor string, character string) []byte {
+	return []byte(fmt.Sprintf(fallbackAvatarTemplate, bgColor, html.EscapeString(character)))
+}
+
 func (w *avatarResponseWriter) WriteHeader(statusCode int) {
 	if statusCode != http.StatusOK && statusCode != http.StatusNotModified {
-		data := []byte(fmt.Sprintf(fallbackAvatarTemplate, w.bgColor, html.EscapeString(w.character)))
+		data := MakeFallbackAvatar(w.bgColor, w.character)
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 		w.Header().Del("Content-Disposition")

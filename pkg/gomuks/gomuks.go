@@ -72,6 +72,7 @@ type Gomuks struct {
 	stopChan chan struct{}
 
 	EventBuffer *EventBuffer
+	DisablePush bool
 
 	// Maps from temporary MXC URIs from by the media repository for URL
 	// previews to permanent MXC URIs suitable for sending in an inline preview
@@ -223,7 +224,7 @@ func (gmx *Gomuks) StartClient() {
 func (gmx *Gomuks) HandleEvent(evt any) {
 	gmx.EventBuffer.Push(evt)
 	syncComplete, ok := evt.(*jsoncmd.SyncComplete)
-	if ok && ptr.Val(syncComplete.Since) != "" {
+	if ok && ptr.Val(syncComplete.Since) != "" && !gmx.DisablePush {
 		go gmx.SendPushNotifications(syncComplete)
 	}
 }

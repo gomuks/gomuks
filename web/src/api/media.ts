@@ -51,7 +51,7 @@ export const getUserColor = (userID: UserID) => {
 	return fallbackColors[getUserColorIndex(userID)]
 }
 
-// note: this should stay in sync with fallbackAvatarTemplate in cmd/gomuks.media.go
+// note: this should stay in sync with fallbackAvatarTemplate in cmd/gomuks/media.go
 function makeFallbackAvatar(backgroundColor: string, fallbackCharacter: string): string {
 	return "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
   <rect x="0" y="0" width="1000" height="1000" fill="${backgroundColor}"/>

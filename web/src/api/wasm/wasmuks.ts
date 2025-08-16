@@ -17,10 +17,54 @@ import "./go_wasm_exec.js"
 import initGomuksWasm from "./gomuks.wasm?init"
 import initSqlite from "./sqlite_bridge.ts"
 
-(async () => {
+interface MediaResponse { buffer: Uint8Array, contentType: string, contentDisposition: string }
+
+declare global {
+	interface Window {
+		meowDownloadMedia: (
+			path: string,
+			query: string,
+			callbacks: {
+				resolve: (data: MediaResponse) => void,
+				reject: () => void
+			},
+		) => void
+	}
+}
+
+async function setupMediaChannel() {
+	const bc = new BroadcastChannel("wasmuks-media-download")
+	const cache = await caches.open("wasmuks-media-v1")
+	bc.addEventListener("message", async evt => {
+		if (evt.data.type !== "request") {
+			return
+		}
+		const parsedURL = new URL(evt.data.url)
+		try {
+			const result = await new Promise<MediaResponse>((resolve, reject) => {
+				self.meowDownloadMedia(parsedURL.pathname, parsedURL.search, { resolve, reject })
+			})
+			const headers: Record<string, string> = {
+				"Content-Type": result.contentType,
+			}
+			if (result.contentDisposition) {
+				headers["Content-Disposition"] = result.contentDisposition
+			}
+			await cache.put(parsedURL, new Response(result.buffer, { status: 200, headers }))
+			bc.postMessage({ type: "response", url: evt.data.url })
+		} catch (err) {
+			console.error("Error handling media download request:", err)
+			await cache.put(parsedURL, new Response("Failed to download", { status: 500 }))
+			bc.postMessage({ type: "response", url: evt.data.url, failed: true })
+		}
+	})
+}
+
+;(async () => {
 	const go = new Go()
 	await initSqlite()
 	const instance = await initGomuksWasm(go.importObject)
+	await setupMediaChannel()
 	await go.run(instance)
 	self.postMessage({
 		command: "wasm-connection",
