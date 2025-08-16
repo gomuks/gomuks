@@ -47,7 +47,6 @@ func (s *Stmt) NumInput() int {
 	return s.d.CAPI.Call("sqlite3_bind_parameter_count", s.cptr).Int()
 }
 
-var uint8Array = js.Global().Get("Uint8Array")
 var bigInt = js.Global().Get("BigInt")
 
 const maxSafeJSInt = 1<<53 - 1
@@ -87,9 +86,6 @@ func (s *Stmt) bindNonPointerValue(_ context.Context, index int, val any) error 
 	case []byte:
 		funcName = "sqlite3_bind_blob"
 		rc = s.bindBytes(funcName, index, typedVal)
-	case uint8, uint16, uint32, uint, int8, int16, int32, int:
-		funcName = "sqlite3_bind_int"
-		rc = s.d.CAPI.Call(funcName, s.cptr, index, typedVal)
 	case float32, float64:
 		funcName = "sqlite3_bind_double"
 		rc = s.d.CAPI.Call(funcName, s.cptr, index, typedVal)
@@ -101,23 +97,23 @@ func (s *Stmt) bindNonPointerValue(_ context.Context, index int, val any) error 
 		funcName = "sqlite3_bind_int"
 		rc = s.d.CAPI.Call(funcName, s.cptr, index, realVal)
 	case int64:
+		funcName = "sqlite3_bind_int64"
+		var numberVal js.Value
 		if typedVal > maxSafeJSInt || typedVal < minSafeJSInt {
-			bigIntVal := bigInt.New(strconv.FormatInt(typedVal, 10))
-			funcName = "sqlite3_bind_int64"
-			rc = s.d.CAPI.Call(funcName, s.cptr, index, bigIntVal)
+			numberVal = bigInt.New(strconv.FormatInt(typedVal, 10))
 		} else {
-			funcName = "sqlite3_bind_int"
-			rc = s.d.CAPI.Call(funcName, s.cptr, index, typedVal)
+			numberVal = js.ValueOf(typedVal)
 		}
+		rc = s.d.CAPI.Call(funcName, s.cptr, index, numberVal)
 	case uint64:
+		funcName = "sqlite3_bind_int64"
+		var numberVal js.Value
 		if typedVal > maxSafeJSInt {
-			bigIntVal := bigInt.New(strconv.FormatUint(typedVal, 10))
-			funcName = "sqlite3_bind_int64"
-			rc = s.d.CAPI.Call(funcName, s.cptr, index, bigIntVal)
+			numberVal = bigInt.New(strconv.FormatUint(typedVal, 10))
 		} else {
-			funcName = "sqlite3_bind_int"
-			rc = s.d.CAPI.Call(funcName, s.cptr, index, typedVal)
+			numberVal = js.ValueOf(typedVal)
 		}
+		rc = s.d.CAPI.Call(funcName, s.cptr, index, numberVal)
 	default:
 		return fmt.Errorf("unsupported type %T", val)
 	}
@@ -141,13 +137,27 @@ func (s *Stmt) BindValue(ctx context.Context, val driver.NamedValue) error {
 		val.Value = typedVal.UTC().Format(sqliteTimeFormat)
 	case *time.Time:
 		val.Value = typedVal.UTC().Format(sqliteTimeFormat)
+	case int:
+		val.Value = int64(typedVal)
+	case int8:
+		val.Value = int64(typedVal)
+	case int16:
+		val.Value = int64(typedVal)
+	case int32:
+		val.Value = int64(typedVal)
+	case uint:
+		val.Value = int64(typedVal)
+	case uint8:
+		val.Value = int64(typedVal)
+	case uint16:
+		val.Value = int64(typedVal)
+	case uint32:
+		val.Value = int64(typedVal)
 	}
 
 	// Fast path for supported unwrapped types
 	switch val.Value.(type) {
-	case int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64,
-		float32, float64, bool, string, []byte:
+	case int64, uint64, float32, float64, bool, string, []byte:
 		return s.bindNonPointerValue(ctx, index, val.Value)
 	case nil:
 		return s.bindNil(ctx, index)
@@ -173,13 +183,9 @@ func (s *Stmt) BindValue(ctx context.Context, val driver.NamedValue) error {
 			return s.bindNonPointerValue(ctx, index, reflectVal.String())
 		case reflect.Bool:
 			return s.bindNonPointerValue(ctx, index, reflectVal.Bool())
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32:
-			return s.bindNonPointerValue(ctx, index, int(reflectVal.Int()))
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
-			return s.bindNonPointerValue(ctx, index, uint(reflectVal.Uint()))
-		case reflect.Int64:
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			return s.bindNonPointerValue(ctx, index, reflectVal.Int())
-		case reflect.Uint64:
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			return s.bindNonPointerValue(ctx, index, reflectVal.Uint())
 		case reflect.Float32, reflect.Float64:
 			return s.bindNonPointerValue(ctx, index, reflectVal.Float())

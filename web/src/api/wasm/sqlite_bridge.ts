@@ -8,7 +8,8 @@ interface Meowlite extends Sqlite3Static {
 			rc?: number,
 			ptr?: WasmPointer,
 		}
-		last_insert_rowid: (connPtr: Database | WasmPointer) => string
+		last_insert_rowid: (connPtr: Database | WasmPointer) => number | string
+		read_int64_column: (rowPtr: Database | WasmPointer, columnIndex: number) => number | string
 	}
 }
 
@@ -16,6 +17,13 @@ declare global {
 	interface Window {
 		sqlite3: Meowlite
 	}
+}
+
+function safeFormatBigint(value: bigint): string | number {
+	if (value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER) {
+		return value.toString()
+	}
+	return Number(value)
 }
 
 async function init() {
@@ -43,7 +51,10 @@ async function init() {
 			}
 		},
 		last_insert_rowid: (connPtr) => {
-			return sqlite3.capi.sqlite3_last_insert_rowid(connPtr).toString()
+			return safeFormatBigint(sqlite3.capi.sqlite3_last_insert_rowid(connPtr))
+		},
+		read_int64_column(rowPtr, columnIndex: number): number | string {
+			return safeFormatBigint(sqlite3.capi.sqlite3_column_int64(rowPtr, columnIndex))
 		},
 	}
 

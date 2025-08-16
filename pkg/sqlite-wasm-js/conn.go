@@ -12,9 +12,10 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
-	"strconv"
 	"sync/atomic"
 	"syscall/js"
+
+	"go.mau.fi/util/exerrors"
 )
 
 var noContextFunc = context.Background()
@@ -162,9 +163,7 @@ func valuesToNamedValues(args []driver.Value) []driver.NamedValue {
 }
 
 func (c *Conn) lastInsertRowID() int64 {
-	// TODO make this more efficient (e.g. by dropping over 53-bit values)
-	val, _ := strconv.ParseInt(c.d.Meow.Call("last_insert_rowid", c.cptr).String(), 10, 64)
-	return val
+	return exerrors.Must(parseStrOrNumber(c.d.Meow.Call("last_insert_rowid", c.cptr)))
 }
 
 func (c *Conn) rowsAffected() int64 {

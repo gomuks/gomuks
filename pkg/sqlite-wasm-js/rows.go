@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
+	"strings"
 	"syscall/js"
 	"time"
 )
@@ -47,12 +49,22 @@ func (r *Rows) Close() error {
 	return r.reset(r.ctx)
 }
 
+func parseStrOrNumber(val js.Value) (int64, error) {
+	switch val.Type() {
+	case js.TypeNumber:
+		return int64(val.Int()), nil
+	case js.TypeString:
+		return strconv.ParseInt(val.String(), 10, 64)
+	default:
+		return 0, fmt.Errorf("unexpected JS type %s for integer", val.Type().String())
+	}
+}
+
 func (r *Rows) scanColumn(index int) (driver.Value, error) {
 	columnType := r.d.CAPI.Call("sqlite3_column_type", r.cptr, index).Int()
 	switch columnType {
 	case SQLITE_INTEGER:
-		// TODO bigints
-		return r.d.CAPI.Call("sqlite3_column_int", r.cptr, index).Int(), nil
+		return parseStrOrNumber(r.d.Meow.Call("read_int64_column", r.cptr, index))
 	case SQLITE_FLOAT:
 		return r.d.CAPI.Call("sqlite3_column_double", r.cptr, index).Float(), nil
 	case SQLITE_TEXT:
@@ -132,6 +144,9 @@ func (r *Rows) ColumnTypeScanType(index int) reflect.Type {
 	case SQLITE_FLOAT:
 		return reflect.TypeOf(float64(0))
 	case SQLITE_TEXT:
+		if r.columnTypes[index] == "timestamp" {
+			return reflect.TypeOf(time.Time{})
+		}
 		return reflect.TypeOf("")
 	case SQLITE_BLOB:
 		return reflect.TypeOf([]byte{})
@@ -143,18 +158,5 @@ func (r *Rows) ColumnTypeScanType(index int) reflect.Type {
 }
 
 func (r *Rows) ColumnTypeDatabaseTypeName(index int) string {
-	switch r.d.CAPI.Call("sqlite3_column_type", r.cptr, index).Int() {
-	case SQLITE_INTEGER:
-		return "INTEGER"
-	case SQLITE_FLOAT:
-		return "FLOAT"
-	case SQLITE_TEXT:
-		return "TEXT"
-	case SQLITE_BLOB:
-		return "BLOB"
-	case SQLITE_NULL:
-		return "NULL"
-	default:
-		return ""
-	}
+	return strings.ToUpper(r.columnTypes[index])
 }
