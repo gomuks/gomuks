@@ -19,7 +19,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -28,10 +31,40 @@ import (
 
 	"github.com/rs/zerolog"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 )
+
+func uploadMedia(ctx context.Context, fileName string, encrypt bool, payload []byte) (*event.MessageEventContent, error) {
+	msgType, info, defaultFileName, err := gmx.GenerateFileInfo(ctx, bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate file info: %w", err)
+	}
+	info.Size = len(payload)
+	if fileName == "" {
+		fileName = defaultFileName
+	}
+	content := &event.MessageEventContent{
+		MsgType:  msgType,
+		Body:     fileName,
+		Info:     info,
+		FileName: fileName,
+	}
+	checksum := sha256.Sum256(payload)
+	content.File, content.URL, err = gmx.UploadFile(
+		ctx,
+		checksum[:],
+		bytes.NewReader(payload),
+		encrypt,
+		int64(info.Size),
+		info.MimeType,
+		fileName,
+		nil,
+	)
+	return content, err
+}
 
 func realJSDownloadCallback(ctx context.Context, path, rawQuery string, callbacks js.Value) {
 	resolved := false
@@ -50,7 +83,7 @@ func realJSDownloadCallback(ctx context.Context, path, rawQuery string, callback
 		Homeserver: parts[len(parts)-2],
 		FileID:     parts[len(parts)-1],
 	}
-	query, err := url.ParseQuery(rawQuery)
+	query, err := url.ParseQuery(strings.TrimPrefix(rawQuery, "?"))
 	if err != nil {
 		log.Err(err).Msg("Failed to parse media download query")
 		return

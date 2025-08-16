@@ -64,6 +64,23 @@ func jsMessageListener(_ js.Value, args []js.Value) any {
 		RequestID: int64(data.Get("request_id").Int()),
 		Data:      exstrings.UnsafeBytes(data.Get("data").String()),
 	}
+	if wrappedCmd.Command == "wasm-upload" {
+		fileName := data.Get("filename").String()
+		encrypt := data.Get("encrypt").Bool()
+		payloadVal := data.Get("payload")
+		payload := make([]byte, payloadVal.Length())
+		js.CopyBytesToGo(payload, payloadVal)
+		go func() {
+			ctx := gmx.Log.With().Str("action", "wasmuks upload").Logger().WithContext(context.Background())
+			resp, err := uploadMedia(ctx, fileName, encrypt, payload)
+			if err != nil {
+				postMessage(jsoncmd.RespError, wrappedCmd.RequestID, ptr.Ptr(gomuks.ToRespError(err)))
+			} else {
+				postMessage(jsoncmd.RespSuccess, wrappedCmd.RequestID, resp)
+			}
+		}()
+		return nil
+	}
 	go func() {
 		resp := gmx.Client.SubmitJSONCommand(context.Background(), wrappedCmd)
 		postMessage(resp.Command, resp.RequestID, resp.Data)

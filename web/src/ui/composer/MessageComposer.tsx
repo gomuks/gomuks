@@ -436,6 +436,14 @@ const MessageComposer = () => {
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
+		if (client.rpc.rpcMediaUpload) {
+			setLoadingMedia(0)
+			client.rpc.uploadMedia(file, filename, isEncrypted).then(
+				media => setState({ media, location: null }),
+				err => window.alert(`Failed to upload file: ${err.message}`),
+			).finally(() => setLoadingMedia(null))
+			return
+		}
 		const params = new URLSearchParams([
 			["encrypt", isEncrypted.toString()],
 			["progress", "true"],
@@ -487,7 +495,7 @@ const MessageComposer = () => {
 		xhr.open("POST", `_gomuks/upload?${params.toString()}`)
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
-	}, [isEncrypted])
+	}, [client.rpc, isEncrypted])
 	const openFileUploadModal = (file: File | null | undefined) => {
 		if (!file) {
 			return

@@ -674,7 +674,7 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Err(err).Msg("Failed to upload media")
 		if respEnc != nil {
-			_ = respEnc.Encode(ptr.Ptr(toRespError(err)))
+			_ = respEnc.Encode(ptr.Ptr(ToRespError(err)))
 		} else {
 			writeMaybeRespError(err, w)
 		}
@@ -806,7 +806,7 @@ func (gmx *Gomuks) cacheAndUploadMedia(
 		return nil, fmt.Errorf("failed to open cache file: %w", err)
 	}
 
-	msgType, info, defaultFileName, err := gmx.generateFileInfo(ctx, cacheFile)
+	msgType, info, defaultFileName, err := gmx.GenerateFileInfo(ctx, cacheFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate file info: %w", err)
 	}
@@ -826,7 +826,7 @@ func (gmx *Gomuks) cacheAndUploadMedia(
 		Info:     info,
 		FileName: fileName,
 	}
-	content.File, content.URL, err = gmx.uploadFile(
+	content.File, content.URL, err = gmx.UploadFile(
 		ctx, checksum, cacheFile, encrypt, int64(info.Size), info.MimeType, fileName, progressCallback,
 	)
 	if err != nil {
@@ -868,10 +868,10 @@ func (pr *progressReader) Close() error {
 	return pr.r.Close()
 }
 
-func (gmx *Gomuks) uploadFile(
+func (gmx *Gomuks) UploadFile(
 	ctx context.Context,
 	checksum []byte,
-	cacheFile *os.File,
+	cacheReader io.Reader,
 	encrypt bool,
 	fileSize int64,
 	mimeType,
@@ -884,24 +884,29 @@ func (gmx *Gomuks) uploadFile(
 		Size:     fileSize,
 		Hash:     (*[32]byte)(checksum),
 	}
-	var cacheReader io.ReadSeekCloser = cacheFile
 	if encrypt {
 		cm.EncFile = attachment.NewEncryptedFile()
 		cacheReader = cm.EncFile.EncryptStream(cacheReader)
 		mimeType = "application/octet-stream"
 		fileName = ""
 	}
-	resp, err := gmx.Client.Client.UploadMedia(ctx, mautrix.ReqUploadMedia{
-		Content: &progressReader{
+	if progressCallback != nil {
+		cacheReader = &progressReader{
 			cb:    progressCallback,
 			total: fileSize,
-			r:     cacheReader,
-		},
+			r:     cacheReader.(io.ReadSeekCloser),
+		}
+	}
+	resp, err := gmx.Client.Client.UploadMedia(ctx, mautrix.ReqUploadMedia{
+		Content:       cacheReader,
 		ContentLength: fileSize,
 		ContentType:   mimeType,
 		FileName:      fileName,
 	})
-	err2 := cacheReader.Close()
+	var err2 error
+	if readCloser, ok := cacheReader.(io.ReadCloser); ok {
+		err2 = readCloser.Close()
+	}
 	if err != nil {
 		return nil, "", err
 	} else if err2 != nil {
@@ -951,11 +956,7 @@ func getDimensionsWithMagick(ctx context.Context, file *os.File) (w, h int) {
 	return 0, 0
 }
 
-func (gmx *Gomuks) generateFileInfo(ctx context.Context, file *os.File) (event.MessageType, *event.FileInfo, string, error) {
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return "", nil, "", fmt.Errorf("failed to stat cache file: %w", err)
-	}
+func (gmx *Gomuks) GenerateFileInfo(ctx context.Context, file io.ReadSeeker) (event.MessageType, *event.FileInfo, string, error) {
 	mimeType, err := mimetype.DetectReader(file)
 	if err != nil {
 		return "", nil, "", fmt.Errorf("failed to detect mime type: %w", err)
@@ -966,7 +967,14 @@ func (gmx *Gomuks) generateFileInfo(ctx context.Context, file *os.File) (event.M
 	}
 	info := &event.FileInfo{
 		MimeType: mimeType.String(),
-		Size:     int(fileInfo.Size()),
+	}
+	osFile, _ := file.(*os.File)
+	if osFile != nil {
+		fileInfo, err := osFile.Stat()
+		if err != nil {
+			return "", nil, "", fmt.Errorf("failed to stat cache file: %w", err)
+		}
+		info.Size = int(fileInfo.Size())
 	}
 	var msgType event.MessageType
 	var defaultFileName string
@@ -976,9 +984,9 @@ func (gmx *Gomuks) generateFileInfo(ctx context.Context, file *os.File) (event.M
 		defaultFileName = "image" + mimeType.Extension()
 		img, _, err := image.Decode(file)
 		if err != nil {
-			if magickPath != "" {
+			if magickPath != "" && osFile != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to decode image config, trying with magick")
-				info.Width, info.Height = getDimensionsWithMagick(ctx, file)
+				info.Width, info.Height = getDimensionsWithMagick(ctx, osFile)
 			} else {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to decode image config and magick not installed")
 			}
@@ -1017,8 +1025,8 @@ func (gmx *Gomuks) generateFileInfo(ctx context.Context, file *os.File) (event.M
 		msgType = event.MsgFile
 		defaultFileName = "file" + mimeType.Extension()
 	}
-	if msgType == event.MsgVideo || msgType == event.MsgAudio {
-		probe, err := ffmpeg.Probe(ctx, file.Name())
+	if osFile != nil && (msgType == event.MsgVideo || msgType == event.MsgAudio) {
+		probe, err := ffmpeg.Probe(ctx, osFile.Name())
 		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to probe video")
 		} else if probe != nil && probe.Format != nil {
@@ -1104,7 +1112,7 @@ func (gmx *Gomuks) generateVideoThumbnail(ctx context.Context, filePath string, 
 	if err != nil {
 		return fmt.Errorf("failed to open renamed file: %w", err)
 	}
-	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.uploadFile(
+	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.UploadFile(
 		ctx, checksum, tempFile, encrypt, fileInfo.Size(), "image/jpeg", "thumbnail.jpeg", func(_ float64) {},
 	)
 	if err != nil {
@@ -1114,7 +1122,7 @@ func (gmx *Gomuks) generateVideoThumbnail(ctx context.Context, filePath string, 
 	return nil
 }
 
-func toRespError(err error) mautrix.RespError {
+func ToRespError(err error) mautrix.RespError {
 	var httpErr mautrix.HTTPError
 	if errors.As(err, &httpErr) {
 		if httpErr.WrappedError != nil {
@@ -1130,5 +1138,5 @@ func toRespError(err error) mautrix.RespError {
 }
 
 func writeMaybeRespError(err error, w http.ResponseWriter) {
-	toRespError(err).Write(w)
+	ToRespError(err).Write(w)
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import RPCClient, { ConnectionEvent } from "./rpc.ts"
-import type { BaseRPCCommand, RPCCommand } from "./types"
+import type { BaseRPCCommand, MediaMessageEventContent, RPCCommand } from "./types"
 import WasmuksWorker from "./wasm/wasmuks.ts?worker"
 
 interface WasmConnectionCommand extends BaseRPCCommand<ConnectionEvent> {
@@ -26,6 +26,7 @@ interface RawJSONCommand extends BaseRPCCommand<string> {
 }
 
 export default class WasmClient extends RPCClient {
+	public readonly rpcMediaUpload = true
 	protected isConnected = true
 	#worker?: Worker
 
@@ -42,6 +43,26 @@ export default class WasmClient extends RPCClient {
 
 	async doAuth(): Promise<boolean> {
 		return true
+	}
+
+	async uploadMedia(file: Blob, filename: string, encrypt: boolean): Promise<MediaMessageEventContent> {
+		const request_id = this.nextRequestID
+		const payload = await file.bytes()
+		return new Promise((resolve, reject) => {
+			if (!this.#worker) {
+				reject(new Error("Worker not initialized"))
+				return
+			}
+			this.pendingRequests.set(request_id, { resolve: resolve as ((value: unknown) => void), reject })
+			this.#worker.postMessage({
+				command: "wasm-upload",
+				request_id,
+				data: "",
+				encrypt,
+				filename,
+				payload,
+			}, [payload.buffer])
+		})
 	}
 
 	#onMessage = (evt: MessageEvent<RawJSONCommand | WasmConnectionCommand>) => {

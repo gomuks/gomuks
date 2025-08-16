@@ -26,6 +26,7 @@ import type {
 	LoginFlowsResponse,
 	LoginRequest,
 	ManualPaginationResponse,
+	MediaMessageEventContent,
 	MembershipAction,
 	Mentions,
 	MessageEventContent,
@@ -81,6 +82,7 @@ export interface SendMessageParams {
 export default abstract class RPCClient {
 	public readonly connect: CachedEventDispatcher<ConnectionEvent> = new CachedEventDispatcher()
 	public readonly event: EventDispatcher<RPCEvent> = new EventDispatcher()
+	public readonly rpcMediaUpload: boolean = false
 	protected readonly pendingRequests: Map<number, {
 		resolve: (data: unknown) => void,
 		reject: (err: Error) => void
@@ -123,6 +125,11 @@ export default abstract class RPCClient {
 
 	protected get nextRequestID(): number {
 		return this.#requestIDCounter++
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	async uploadMedia(_file: Blob, _filename: string, _encrypt: boolean): Promise<MediaMessageEventContent> {
+		throw new Error("Media upload not supported by this RPC client")
 	}
 
 	async doAuth(signal: AbortSignal): Promise<boolean> {
