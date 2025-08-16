@@ -54,7 +54,7 @@ frontend:
   - wasm
 
 deploy wasmuks:
-  image: alpine
+  image: golang:1.25-alpine3.22
   stage: frontend
   tags:
   - webdeploy
@@ -62,6 +62,8 @@ deploy wasmuks:
   - tulir/wasmuks
   script:
   - apk add --no-cache rsync
+  - mkdir -p web/dist/_gomuks/codeblock
+  - go run ./cmd/chromagen web/dist/_gomuks/codeblock/
   - rsync -rcthvl --delete web/dist/ /srv/web/demo.gomuks.app/
   dependencies:
   - frontend
