@@ -1,5 +1,11 @@
-import type { Database, SAHPoolUtil, Sqlite3Static, WasmPointer } from "./libsqlite/sqlite3.d.ts"
-import sqlite3InitModule from "./libsqlite/sqlite3.js"
+// Copyright (c) 2025 Tulir Asokan
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+import type { Database, SAHPoolUtil, Sqlite3Static, WasmPointer } from "@sqlite.org/sqlite-wasm"
+import sqlite3InitModule from "@sqlite.org/sqlite-wasm"
 
 interface Meowlite extends Sqlite3Static {
 	PoolUtil?: SAHPoolUtil
