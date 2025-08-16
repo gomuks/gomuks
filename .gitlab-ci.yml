@@ -53,6 +53,20 @@ frontend:
   needs:
   - wasm
 
+deploy wasmuks:
+  image: alpine
+  tags:
+  - webdeploy
+  only:
+  - tulir/wasmuks
+  script:
+  - apk add --no-cache rsync
+  - rsync -rcthvl --delete web/dist/ /srv/web/demo.gomuks.app/
+  dependencies:
+  - frontend
+  needs:
+  - frontend
+
 .build-linux: &build-linux
   stage: build
   cache:
