@@ -13,8 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import initGomuksWasm from "./_gomuks.wasm?init"
 import "./go_wasm_exec.js"
-import initGomuksWasm from "./gomuks.wasm?init"
 import initSqlite from "./sqlite_bridge.ts"
 
 interface MediaResponse { buffer: Uint8Array, contentType: string, contentDisposition: string }

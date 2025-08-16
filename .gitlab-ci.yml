@@ -31,7 +31,7 @@ wasm:
   - ./build-wasm.sh
   artifacts:
     paths:
-    - web/src/api/wasm/gomuks.wasm
+    - web/src/api/wasm/_gomuks.wasm
     expire_in: 1 hour
 
 frontend:
