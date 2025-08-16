@@ -31,7 +31,7 @@ function makeRPCClient(): RPCClient {
 	if (window.wails || window._wails || navigator.userAgent.includes("wails.io")) {
 		return new WailsClient()
 	}
-	if (location.search.includes("wasm")) {
+	if (import.meta.env.PROD && !document.querySelector("meta[name=gomuks-frontend-etag]")) {
 		return new WasmClient()
 	}
 	const lb = getLocalStoragePreferences("global_prefs", () => {}).low_bandwidth
