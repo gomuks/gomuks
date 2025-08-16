@@ -55,6 +55,7 @@ frontend:
 
 deploy wasmuks:
   image: alpine
+  stage: frontend
   tags:
   - webdeploy
   only:
