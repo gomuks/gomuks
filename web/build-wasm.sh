@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 export MAUTRIX_VERSION=$(cat ../go.mod | grep 'maunium.net/go/mautrix ' | head -n1 | awk '{ print $2 }')
 export GOOS=js
 export GOARCH=wasm
