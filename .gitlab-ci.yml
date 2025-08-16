@@ -59,7 +59,7 @@ deploy wasmuks:
   tags:
   - webdeploy
   only:
-  - tulir/wasmuks
+  - main
   script:
   - apk add --no-cache rsync
   - mkdir -p web/dist/_gomuks/codeblock
