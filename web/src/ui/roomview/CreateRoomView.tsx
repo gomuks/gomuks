@@ -55,6 +55,7 @@ const CreateRoomView = () => {
   }
 }`)
 
+	const isRoomV12 = !preV12.has(roomVersion)
 	const onSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
 		let creation_content, power_level_content_override
 		try {
@@ -102,7 +103,7 @@ const CreateRoomView = () => {
 			room_version: roomVersion || undefined,
 			creation_content,
 			power_level_content_override,
-			"fi.mau.room_id": roomID || undefined,
+			"fi.mau.room_id": !isRoomV12 || roomCreateTS ? roomID || undefined : undefined,
 			"fi.mau.origin_server_ts": roomCreateTS || undefined,
 		}).then(resp => {
 			closeModal()
@@ -119,7 +120,6 @@ const CreateRoomView = () => {
 	}
 
 	const serverName = getServerName(client.store.userID)
-	const isRoomV12 = !preV12.has(roomVersion)
 	useEffect(() => {
 		if (!isRoomV12 || !roomCreateTS) {
 			return

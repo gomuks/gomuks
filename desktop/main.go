@@ -56,11 +56,11 @@ func (c *CommandHandler) HandleCommand(cmd *hicli.JSONCommand) *hicli.JSONComman
 
 func (c *CommandHandler) Init() {
 	c.Gomuks.Log.Info().Msg("Sending initial state to client")
-	c.App.EmitEvent("hicli_event", &jsoncmd.Container[*jsoncmd.ClientState]{
+	c.App.Event.Emit("hicli_event", &jsoncmd.Container[*jsoncmd.ClientState]{
 		Command: jsoncmd.EventClientState,
 		Data:    c.Gomuks.Client.State(),
 	})
-	c.App.EmitEvent("hicli_event", &jsoncmd.Container[*jsoncmd.SyncStatus]{
+	c.App.Event.Emit("hicli_event", &jsoncmd.Container[*jsoncmd.SyncStatus]{
 		Command: jsoncmd.EventSyncStatus,
 		Data:    c.Gomuks.Client.SyncStatus.Load(),
 	})
@@ -71,7 +71,7 @@ func (c *CommandHandler) Init() {
 			var roomCount int
 			for payload := range c.Gomuks.Client.GetInitialSync(ctx, 100) {
 				roomCount += len(payload.Rooms)
-				c.App.EmitEvent("hicli_event", &jsoncmd.Container[*jsoncmd.SyncComplete]{
+				c.App.Event.Emit("hicli_event", &jsoncmd.Container[*jsoncmd.SyncComplete]{
 					Command:   jsoncmd.EventSyncComplete,
 					RequestID: 0,
 					Data:      payload,
@@ -80,7 +80,7 @@ func (c *CommandHandler) Init() {
 			if ctx.Err() != nil {
 				return
 			}
-			c.App.EmitEvent("hicli_event", &jsoncmd.Container[any]{
+			c.App.Event.Emit("hicli_event", &jsoncmd.Container[any]{
 				Command:   jsoncmd.EventInitComplete,
 				RequestID: 0,
 			})
@@ -120,7 +120,7 @@ func main() {
 		Name:        "gomuks-desktop",
 		Description: "A Matrix client written in Go and React",
 		Services: []application.Service{
-			application.NewService(
+			application.NewServiceWithOptions(
 				&PointableHandler{gmx.CreateAPIRouter()},
 				application.ServiceOptions{Route: "/_gomuks"},
 			),
@@ -141,7 +141,7 @@ func main() {
 	})
 	ch.App = app
 
-	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "gomuks desktop",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
@@ -153,7 +153,7 @@ func main() {
 	})
 
 	gmx.EventBuffer.Subscribe(0, nil, func(command *gomuks.BufferedEvent) {
-		app.EmitEvent("hicli_event", command)
+		app.Event.Emit("hicli_event", command)
 	})
 
 	err = app.Run()

@@ -20,6 +20,7 @@ import TypingNotifications from "../composer/TypingNotifications.tsx"
 import RightPanel, { RightPanelProps } from "../rightpanel/RightPanel.tsx"
 import TimelineView from "../timeline/TimelineView.tsx"
 import ErrorBoundary from "../util/ErrorBoundary.tsx"
+import { jumpToEvent } from "../util/jumpToEvent.tsx"
 import ElementCall from "../widget/ElementCall.tsx"
 import RoomViewHeader from "./RoomViewHeader.tsx"
 import { RoomContext, RoomContextData } from "./roomcontext.ts"
@@ -48,6 +49,10 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 	const [forceDefaultTimeline, setForceDefaultTimeline] = useState(false)
 	const [roomContextData] = useState(() => new RoomContextData(room, setForceDefaultTimeline))
 	useEffect(() => {
+		if (room.hackyPendingJumpToEventID) {
+			jumpToEvent(roomContextData, room.hackyPendingJumpToEventID)
+			room.hackyPendingJumpToEventID = null
+		}
 		window.activeRoomContext = roomContextData
 		window.addEventListener("resize", roomContextData.scrollToBottom)
 		return () => {
@@ -56,7 +61,7 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 				window.activeRoomContext = undefined
 			}
 		}
-	}, [roomContextData])
+	}, [room, roomContextData])
 	const onClick = (evt: React.MouseEvent<HTMLDivElement>) => {
 		if (roomContextData.focusedEventRowID) {
 			roomContextData.setFocusedEventRowID(null)
@@ -74,7 +79,7 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 	return <RoomContext value={roomContextData}>
 		<div className="room-view" onClick={onClick}>
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
-				<div id="mobile-event-menu-container"/>
+				<div className="mobile-event-menu-container" id="mobile-event-menu-container"/>
 				<RoomViewHeader room={room}/>
 			</ErrorBoundary>
 			<ErrorBoundary thing="room timeline" wrapperClassName="room-timeline-error">

@@ -16,7 +16,6 @@
 import { use } from "react"
 import { getAvatarThumbnailURL, getUserColorIndex } from "@/api/media.ts"
 import {
-	RoomStateStore,
 	applyPerMessageSender,
 	maybeRedactMemberEvent,
 	useRoomEvent,
@@ -26,9 +25,13 @@ import { EventID, MemDBEvent } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
+import MainScreenContext from "../MainScreenContext.ts"
+import { RoomContextData } from "../roomview/roomcontext.ts"
 import TooltipButton from "../util/TooltipButton.tsx"
+import { jumpToEvent } from "../util/jumpToEvent.tsx"
 import { ContentErrorBoundary, getBodyType, getPerMessageProfile } from "./content"
 import CloseIcon from "@/icons/close.svg?react"
+import EditIcon from "@/icons/edit.svg?react"
 import NotificationsOffIcon from "@/icons/notifications-off.svg?react"
 import NotificationsIcon from "@/icons/notifications.svg?react"
 import ReplyIcon from "@/icons/reply.svg?react"
@@ -36,9 +39,10 @@ import ThreadIcon from "@/icons/thread.svg?react"
 import "./ReplyBody.css"
 
 interface ReplyBodyProps {
-	room: RoomStateStore
+	roomCtx: RoomContextData
 	event: MemDBEvent
 	isThread: boolean
+	threadRoot?: EventID
 	small?: boolean
 	isEditing?: boolean
 	onClose?: (evt: React.MouseEvent) => void
@@ -51,17 +55,18 @@ interface ReplyBodyProps {
 }
 
 interface ReplyIDBodyProps {
-	room: RoomStateStore
+	roomCtx: RoomContextData
 	eventID: EventID
 	isThread: boolean
+	threadRoot?: EventID
 	small: boolean
 }
 
-export const ReplyIDBody = ({ room, eventID, isThread, small }: ReplyIDBodyProps) => {
-	const event = useRoomEvent(room, eventID)
+export const ReplyIDBody = ({ roomCtx, eventID, isThread, threadRoot, small }: ReplyIDBodyProps) => {
+	const event = useRoomEvent(roomCtx.store, eventID)
 	if (!event) {
 		// This caches whether the event is requested or not, so it doesn't need to be wrapped in an effect.
-		use(ClientContext)!.requestEvent(room, eventID)
+		use(ClientContext)!.requestEvent(roomCtx.store, eventID)
 		return <blockquote className={`reply-body sender-color-null ${small ? "small" : ""}`}>
 			{small && <div className="reply-spine"/>}
 			Reply to unknown event
@@ -69,35 +74,18 @@ export const ReplyIDBody = ({ room, eventID, isThread, small }: ReplyIDBodyProps
 			<code>{eventID}</code>
 		</blockquote>
 	}
-	return <ReplyBody room={room} event={event} isThread={isThread} small={small}/>
-}
-
-const onClickReply = (evt: React.MouseEvent) => {
-	const targetEvt = document.querySelector(
-		`div[data-event-id="${CSS.escape(evt.currentTarget.getAttribute("data-reply-to") ?? "")}"]`,
-	)
-	if (targetEvt) {
-		targetEvt.scrollIntoView({
-			block: "center",
-		})
-		targetEvt.classList.add("jump-highlight")
-		setTimeout(() => {
-			targetEvt.classList.add("jump-highlight-fadeout")
-			targetEvt.classList.remove("jump-highlight")
-			setTimeout(() => {
-				targetEvt.classList.remove("jump-highlight-fadeout")
-			}, 1500)
-		}, 3000)
-	}
+	return <ReplyBody roomCtx={roomCtx} event={event} isThread={isThread} threadRoot={threadRoot} small={small}/>
 }
 
 export const ReplyBody = ({
-	room, event, onClose, isThread, isEditing, small,
+	roomCtx, event, onClose, isThread, threadRoot, isEditing, small,
 	isSilent, onSetSilent,
 	isExplicitInThread, onSetExplicitInThread,
 	startNewThread, onSetStartNewThread,
 }: ReplyBodyProps) => {
+	const room = roomCtx.store
 	const client = use(ClientContext)
+	const mainScreen = use(MainScreenContext)
 	const memberEvt = useRoomMember(client, room, event.sender)
 	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
 	const BodyType = getBodyType(
@@ -120,7 +108,17 @@ export const ReplyBody = ({
 	const renderMemberEvtContent = applyPerMessageSender(memberEvtContent, perMessageSender)
 	const userColorIndex = getUserColorIndex(perMessageSender?.id ?? event.sender)
 	classNames.push(`sender-color-${userColorIndex}`)
-	return <blockquote data-reply-to={event.event_id} className={classNames.join(" ")} onClick={onClickReply}>
+	const onClick = () => {
+		if (isThread && threadRoot) {
+			mainScreen.setRightPanel({
+				type: "thread",
+				threadRoot,
+			})
+		} else {
+			jumpToEvent(roomCtx, event.event_id)
+		}
+	}
+	return <blockquote className={classNames.join(" ")} onClick={onClick}>
 		{small && <div className="reply-spine"/>}
 		<div className="reply-sender">
 			<div
@@ -140,6 +138,12 @@ export const ReplyBody = ({
 			>
 				{getDisplayname(event.sender, renderMemberEvtContent)}
 			</span>
+			{isThread ? <span className="sender-extra thread-logo">
+				(<ThreadIcon width=".75rem" height=".75rem" /> thread)
+			</span> : null}
+			{isEditing ? <span className="sender-extra editing-logo">
+				(<EditIcon width="1rem" height="1rem"/> editing)
+			</span> : null}
 			{perMessageSender && <div className="per-message-event-sender">
 				<span className="via">via</span>
 				<span

@@ -12,7 +12,9 @@
 	},
 	"dependencies": {
 		"@element-hq/element-call-embedded": "^0.13.1",
+		"@sqlite.org/sqlite-wasm": "^3.50.4-build1",
 		"@streamparser/json-whatwg": "^0.0.22",
+		"@types/golang-wasm-exec": "^1.15.2",
 		"@wailsio/runtime": "^3.0.0-alpha.29",
 		"blurhash": "^2.0.5",
 		"fast-deep-equal": "^3.1.3",

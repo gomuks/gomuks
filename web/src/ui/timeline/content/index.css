@@ -189,6 +189,9 @@ div.html-body {
 }
 
 div.media-container {
+	/* TODO can this be done in the container size calculation to avoid leaving blank space at the bottom? */
+	max-width: 100%;
+
 	> div.placeholder {
 		position: relative;
 		width: 100%;

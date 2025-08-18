@@ -38,6 +38,8 @@ const (
 	ReqTrackUserDevices         Name = "track_user_devices"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
 	ReqGetEvent                 Name = "get_event"
+	ReqGetEventContext          Name = "get_event_context"
+	ReqPaginateManual           Name = "paginate_manual"
 	ReqGetRelatedEvents         Name = "get_related_events"
 	ReqGetRoomState             Name = "get_room_state"
 	ReqGetSpecificRoomState     Name = "get_specific_room_state"

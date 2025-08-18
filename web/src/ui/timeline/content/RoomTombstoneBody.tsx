@@ -29,7 +29,9 @@ const RoomTombstoneBody = ({ event, sender }: EventContentProps) => {
 	const onClick = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
 		e.preventDefault()
 		mainScreen.setActiveRoom(replacementRoom, {
-			via: [via],
+			previewMeta: {
+				via: [via],
+			},
 		})
 	}
 	let description: JSX.Element

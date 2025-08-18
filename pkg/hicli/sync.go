@@ -168,7 +168,9 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 	}
 	if !h.firstSyncReceived {
 		h.firstSyncReceived = true
-		h.Client.Client.Transport.(*http.Transport).ResponseHeaderTimeout = 60 * time.Second
+		if tp, ok := h.Client.Client.Transport.(*http.Transport); ok {
+			tp.ResponseHeaderTimeout = 60 * time.Second
+		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
 	if !syncCtx.evt.IsEmpty() {
@@ -627,7 +629,7 @@ func (h *HiClient) postDecryptProcess(ctx context.Context, llSummary *mautrix.La
 	if dbEvt.RowID != 0 {
 		h.cacheMedia(ctx, evt, dbEvt.RowID)
 	}
-	if evt.Sender != h.Account.UserID && !evt.Unsigned.MauSoftFailed {
+	if evt.Sender != h.Account.UserID && !evt.Unsigned.ElementSoftFailed {
 		dbEvt.UnreadType = h.evaluatePushRules(ctx, llSummary, dbEvt.GetNonPushUnreadType(), evt)
 	}
 	dbEvt.LocalContent, inlineImages = h.calculateLocalContent(ctx, dbEvt, evt)
@@ -834,7 +836,7 @@ func (h *HiClient) processStateAndTimeline(
 			}
 			updatedRoom.BumpSortingTimestamp(dbEvt)
 		}
-		if evt.StateKey != nil && !evt.Unsigned.MauSoftFailed {
+		if evt.StateKey != nil && !evt.Unsigned.ElementSoftFailed {
 			var membership event.Membership
 			if evt.Type == event.StateMember {
 				membership = event.Membership(gjson.GetBytes(evt.Content.VeryRaw, "membership").Str)

@@ -17,6 +17,7 @@ import type { IWidget } from "matrix-widget-api"
 import { JSX, use } from "react"
 import type { UserID } from "@/api/types"
 import MainScreenContext, { MainScreenContextFields } from "../MainScreenContext.ts"
+import ThreadView from "../timeline/ThreadView.tsx"
 import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import ElementCall from "../widget/ElementCall.tsx"
 import LazyWidget from "../widget/LazyWidget.tsx"
@@ -28,7 +29,7 @@ import BackIcon from "@/icons/back.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import "./RightPanel.css"
 
-export type RightPanelType = "pinned-messages" | "members" | "widgets" | "widget" | "user" | "element-call"
+export type RightPanelType = "pinned-messages" | "members" | "widgets" | "widget" | "user" | "thread" | "element-call"
 
 interface RightPanelSimpleProps {
 	type: "pinned-messages" | "members" | "widgets" | "element-call"
@@ -44,7 +45,16 @@ interface RightPanelUserProps {
 	userID: UserID
 }
 
-export type RightPanelProps = RightPanelUserProps | RightPanelWidgetProps | RightPanelSimpleProps
+interface RightPanelThreadProps {
+	type: "thread"
+	threadRoot: string
+}
+
+export type RightPanelProps =
+	RightPanelUserProps
+	| RightPanelWidgetProps
+	| RightPanelThreadProps
+	| RightPanelSimpleProps
 
 function getTitle(props: RightPanelProps): string {
 	switch (props.type) {
@@ -60,6 +70,8 @@ function getTitle(props: RightPanelProps): string {
 		return "Element Call"
 	case "user":
 		return "User Info"
+	case "thread":
+		return "Thread"
 	}
 }
 
@@ -77,6 +89,8 @@ function renderRightPanelContent(props: RightPanelProps, mainScreen: MainScreenC
 		return <LazyWidget info={props.info} onClose={mainScreen.closeRightPanel} />
 	case "user":
 		return <UserInfo userID={props.userID} />
+	case "thread":
+		return <ThreadView key={props.threadRoot} threadRoot={props.threadRoot} />
 	}
 }
 
@@ -95,6 +109,7 @@ const RightPanel = (props: RightPanelProps) => {
 		><BackIcon/></button>
 	}
 	return <div className="right-panel">
+		<div className="mobile-event-menu-container" id="mobile-thread-event-menu-container"/>
 		<div className="right-panel-header">
 			<div className="left-side">
 				{backButton}

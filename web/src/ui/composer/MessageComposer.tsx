@@ -42,7 +42,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getServerName } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -106,8 +106,14 @@ const composerReducer = (
 })
 
 const draftStore = {
-	get: (roomID: RoomID): ComposerState | null => {
-		const data = localStorage.getItem(`draft-${roomID}`)
+	makeDraftKey(roomID: RoomID, threadID?: EventID): string {
+		if (threadID) {
+			return `draft-${roomID}-${threadID}`
+		}
+		return `draft-${roomID}`
+	},
+	get: (roomID: RoomID, threadID?: EventID): ComposerState | null => {
+		const data = localStorage.getItem(draftStore.makeDraftKey(roomID, threadID))
 		if (!data) {
 			return null
 		}
@@ -117,8 +123,10 @@ const draftStore = {
 			return null
 		}
 	},
-	set: (roomID: RoomID, data: ComposerState) => localStorage.setItem(`draft-${roomID}`, JSON.stringify(data)),
-	clear: (roomID: RoomID) => localStorage.removeItem(`draft-${roomID}`),
+	set: (roomID: RoomID, data: ComposerState, threadID?: EventID) =>
+		localStorage.setItem(draftStore.makeDraftKey(roomID, threadID), JSON.stringify(data)),
+	clear: (roomID: RoomID, threadID?: EventID) =>
+		localStorage.removeItem(draftStore.makeDraftKey(roomID, threadID)),
 }
 
 type CaretEvent<T> = React.MouseEvent<T> | React.KeyboardEvent<T> | React.ChangeEvent<T>
@@ -181,7 +189,7 @@ const MessageComposer = () => {
 	roomCtx.setEditing = useCallback((evt: MemDBEvent | null) => {
 		if (evt === null) {
 			rawSetEditing(null)
-			setState(draftStore.get(room.roomID) ?? emptyComposer)
+			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
 			return
 		}
 		const evtContent = evt.content as MessageEventContent
@@ -210,7 +218,7 @@ const MessageComposer = () => {
 				[],
 		})
 		textInput.current?.focus()
-	}, [room.roomID])
+	}, [room.roomID, roomCtx.threadRoot])
 	const canSend = Boolean(state.text || state.media || state.location)
 	const onClickSend = (evt: React.FormEvent) => {
 		evt.preventDefault()
@@ -221,7 +229,7 @@ const MessageComposer = () => {
 	}
 	const doSendMessage = (state: ComposerState) => {
 		if (editing) {
-			setState(draftStore.get(room.roomID) ?? emptyComposer)
+			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
 		} else {
 			setState(emptyComposer)
 		}
@@ -232,25 +240,40 @@ const MessageComposer = () => {
 			room: false,
 		}
 		let relates_to: RelatesTo | undefined = undefined
+		if (roomCtx.threadRoot) {
+			relates_to = {
+				rel_type: "m.thread",
+				event_id: roomCtx.threadRoot,
+				is_falling_back: true,
+				"m.in_reply_to": {
+					event_id: roomCtx.lastThreadEventID ?? roomCtx.threadRoot,
+				},
+			}
+		}
 		if (editing) {
 			relates_to = {
 				rel_type: "m.replace",
 				event_id: editing.event_id,
 			}
 		} else if (replyToEvt) {
-			const isThread = replyToEvt.content?.["m.relates_to"]?.rel_type === "m.thread"
-				&& typeof replyToEvt.content?.["m.relates_to"]?.event_id === "string"
+			const replyToEvtRelation = getRelatesTo(replyToEvt)
+			const isThread = !roomCtx.threadRoot
+				&& replyToEvtRelation?.rel_type === "m.thread"
+				&& isEventID(replyToEvtRelation?.event_id)
 			if (!state.silentReply && (!isThread || state.explicitReplyInThread)) {
 				mentions.user_ids.push(replyToEvt.sender)
 			}
-			relates_to = {
-				"m.in_reply_to": {
-					event_id: replyToEvt.event_id,
-				},
+			if (!relates_to) {
+				relates_to = {}
 			}
-			if (isThread) {
+			relates_to["m.in_reply_to"] = {
+				event_id: replyToEvt.event_id,
+			}
+			if (roomCtx.threadRoot) {
+				relates_to.is_falling_back = false
+			} else if (isThread) {
 				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToEvt.content?.["m.relates_to"].event_id
+				relates_to.event_id = replyToEvtRelation.event_id
 				relates_to.is_falling_back = !state.explicitReplyInThread
 			} else if (state.startNewThread) {
 				relates_to.rel_type = "m.thread"
@@ -389,6 +412,12 @@ const MessageComposer = () => {
 		const now = Date.now()
 		if (evt.target.value !== "" && typingSentAt.current + 5_000 < now) {
 			typingSentAt.current = now
+			if (!room.groupSessionAutoShared && isEncrypted) {
+				client.rpc.ensureGroupSessionShared(room.roomID).then(
+					() => room.groupSessionAutoShared = true,
+					err => console.error("Failed to share group session:", err),
+				)
+			}
 			if (room.preferences.send_typing_notifications) {
 				client.rpc.setTyping(room.roomID, 10_000)
 					.catch(err => console.error("Failed to send typing notification:", err))
@@ -407,6 +436,14 @@ const MessageComposer = () => {
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
+		if (client.rpc.rpcMediaUpload) {
+			setLoadingMedia(0)
+			client.rpc.uploadMedia(file, filename, isEncrypted).then(
+				media => setState({ media, location: null }),
+				err => window.alert(`Failed to upload file: ${err.message}`),
+			).finally(() => setLoadingMedia(null))
+			return
+		}
 		const params = new URLSearchParams([
 			["encrypt", isEncrypted.toString()],
 			["progress", "true"],
@@ -458,7 +495,7 @@ const MessageComposer = () => {
 		xhr.open("POST", `_gomuks/upload?${params.toString()}`)
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
-	}, [isEncrypted])
+	}, [client.rpc, isEncrypted])
 	const openFileUploadModal = (file: File | null | undefined) => {
 		if (!file) {
 			return
@@ -521,7 +558,7 @@ const MessageComposer = () => {
 	// To ensure the cursor jumps to the end, do this in an effect rather than as the initial value of useState
 	// To try to avoid the input bar flashing, use useLayoutEffect instead of useEffect
 	useLayoutEffect(() => {
-		const draft = draftStore.get(room.roomID)
+		const draft = draftStore.get(room.roomID, roomCtx.threadRoot)
 		setState(draft ?? emptyComposer)
 		setAutocomplete(null)
 		return () => {
@@ -533,7 +570,7 @@ const MessageComposer = () => {
 				}
 			}
 		}
-	}, [client, room])
+	}, [client, room, roomCtx])
 	useLayoutEffect(() => {
 		if (!textInput.current) {
 			return
@@ -562,9 +599,9 @@ const MessageComposer = () => {
 			return
 		}
 		if (!state.text && !state.media && !state.replyTo && !state.location) {
-			draftStore.clear(room.roomID)
+			draftStore.clear(room.roomID, roomCtx.threadRoot)
 		} else {
-			draftStore.set(room.roomID, state)
+			draftStore.set(room.roomID, state, roomCtx.threadRoot)
 		}
 	}, [roomCtx, room, state, editing])
 	useEffect(() => {
@@ -695,18 +732,20 @@ const MessageComposer = () => {
 			><AttachIcon/>{includeText && "File"}</button>
 		</>
 	}
-	const openButtonsModal = () => {
-		const style: CSSProperties = getEmojiPickerStyle()
-		style.left = style.right
-		delete style.right
+	const openButtonsModal = (evt: React.MouseEvent<HTMLButtonElement>) => {
+		const style: CSSProperties = {
+			bottom: (composerRef.current?.clientHeight ?? 32) + 4 + 24,
+			left: evt.currentTarget.getBoundingClientRect().left - 1,
+		}
 		openModal({
 			content: <div className="context-menu event-context-menu" style={style}>
 				{makeAttachmentButtons(true)}
 			</div>,
 		})
 	}
-	const inlineButtons = state.text === "" || window.innerWidth > 720
-	const showSendButton = canSend || window.innerWidth > 720
+	const collapseButtons = (composerRef.current ? composerRef.current.clientWidth : window.innerWidth - 16) < 600
+	const inlineButtons = state.text === "" || !collapseButtons
+	const showSendButton = canSend || !collapseButtons
 	const disableClearMedia = editing && state.media?.msgtype === "m.sticker"
 	if (tombstoneEvent !== null) {
 		const content = tombstoneEvent.content
@@ -717,7 +756,9 @@ const MessageComposer = () => {
 			const handleNavigate = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
 				e.preventDefault()
 				mainScreen.setActiveRoom(content.replacement_room, {
-					via: [via],
+					previewMeta: {
+						via: [via],
+					},
 				})
 			}
 			const url = `matrix:roomid/${content.replacement_room.slice(1)}?via=${via}`
@@ -760,19 +801,19 @@ const MessageComposer = () => {
 		/></div>}
 		<div className="message-composer" ref={composerRef}>
 			{replyToEvt && <ReplyBody
-				room={room}
+				roomCtx={roomCtx}
 				event={replyToEvt}
 				onClose={closeReply}
-				isThread={replyToEvt.content?.["m.relates_to"]?.rel_type === "m.thread"}
+				isThread={!roomCtx.threadRoot && getRelatesTo(replyToEvt)?.rel_type === "m.thread"}
 				isSilent={state.silentReply}
 				onSetSilent={setSilentReply}
 				isExplicitInThread={state.explicitReplyInThread}
-				onSetExplicitInThread={setExplicitReplyInThread}
+				onSetExplicitInThread={!roomCtx.threadRoot ? setExplicitReplyInThread : undefined}
 				startNewThread={state.startNewThread}
-				onSetStartNewThread={setStartNewThread}
+				onSetStartNewThread={!roomCtx.threadRoot ? setStartNewThread : undefined}
 			/>}
 			{editing && <ReplyBody
-				room={room}
+				roomCtx={roomCtx}
 				event={editing}
 				isEditing={true}
 				isThread={false}

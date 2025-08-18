@@ -91,7 +91,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		for (let i = client.store.roomList.current.length - 1; i >= 0; i--) {
 			const entry = client.store.roomList.current[i]
 			if (entry[wantedField] > 0 && space.include(entry)) {
-				mainScreen.setActiveRoom(entry.room_id, undefined, space)
+				mainScreen.setActiveRoom(entry.room_id, { toSpace: space })
 				evt.stopPropagation()
 				return
 			}
@@ -106,7 +106,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				search_name: item.meta.current.name || "",
 				name: item.meta.current.name || "",
 			})) {
-				mainScreen.setActiveRoom(item.roomID, undefined, space)
+				mainScreen.setActiveRoom(item.roomID, { toSpace: space })
 				evt.stopPropagation()
 				return
 			}

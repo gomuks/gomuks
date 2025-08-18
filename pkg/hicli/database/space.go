@@ -9,6 +9,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"go.mau.fi/util/dbutil"
 	"maunium.net/go/mautrix/id"
@@ -153,20 +154,20 @@ func (seq *SpaceEdgeQuery) SetChildren(ctx context.Context, spaceID id.RoomID, c
 	if clear {
 		err := seq.Exec(ctx, clearSpaceChildrenQuery, spaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to clear children: %w", err)
 		}
 	} else if len(removedChildren) > 0 {
 		for _, child := range removedChildren {
 			err := seq.Exec(ctx, removeSpaceChildQuery, spaceID, child)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to remove child: %w", err)
 			}
 		}
 	}
 	if len(removedChildren) > 0 {
-		err := seq.Exec(ctx, deleteEmptySpaceEdgeRowsQuery, spaceID)
+		err := seq.Exec(ctx, deleteEmptySpaceEdgeRowsQuery)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete empty space edges: %w", err)
 		}
 	}
 	if len(children) == 0 {
@@ -180,20 +181,20 @@ func (seq *SpaceEdgeQuery) SetParents(ctx context.Context, childID id.RoomID, pa
 	if clear {
 		err := seq.Exec(ctx, clearSpaceParentsQuery, childID)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to clear parents: %w", err)
 		}
 	} else if len(removedParents) > 0 {
 		for _, parent := range removedParents {
 			err := seq.Exec(ctx, removeSpaceParentQuery, childID, parent)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to remove parent: %w", err)
 			}
 		}
 	}
 	if len(removedParents) > 0 {
 		err := seq.Exec(ctx, deleteEmptySpaceEdgeRowsQuery)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete empty space edges: %w", err)
 		}
 	}
 	if len(parents) == 0 {

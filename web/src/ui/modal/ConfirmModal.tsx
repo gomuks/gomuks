@@ -47,7 +47,7 @@ const ConfirmModal = <T extends readonly unknown[] = []>({
 	return <form className="confirm-message-modal" onSubmit={onConfirmWrapped}>
 		<h3>{title}</h3>
 		{evt ? <div className="timeline-event-container">
-			<TimelineEvent evt={evt} prevEvt={null} disableMenu={true} />
+			<TimelineEvent evt={evt} prevEvt={null} disableMenu={true} viewType="confirm" />
 		</div> : null}
 		{description ? <div className="confirm-description">
 			{description}

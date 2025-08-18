@@ -16,8 +16,26 @@ cache:
 variables:
   GOTOOLCHAIN: local
 
+wasm:
+  image: golang:1.25-alpine
+  stage: frontend
+  cache:
+    paths:
+    - .cache
+  before_script:
+  - mkdir -p .cache
+  - export GOPATH="$CI_PROJECT_DIR/.cache"
+  - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+  script:
+  - cd web
+  - ./build-wasm.sh
+  artifacts:
+    paths:
+    - web/src/api/wasm/_gomuks.wasm
+    expire_in: 1 hour
+
 frontend:
-  image: node:22-alpine
+  image: node:24-alpine
   stage: frontend
   cache:
     paths:
@@ -30,6 +48,27 @@ frontend:
     paths:
     - web/dist
     expire_in: 1 hour
+  dependencies:
+  - wasm
+  needs:
+  - wasm
+
+deploy wasmuks:
+  image: golang:1.25-alpine
+  stage: frontend
+  tags:
+  - webdeploy
+  only:
+  - main
+  script:
+  - apk add --no-cache rsync
+  - mkdir -p web/dist/_gomuks/codeblock
+  - go run ./cmd/chromagen web/dist/_gomuks/codeblock/
+  - rsync -rcthvl --delete web/dist/ /srv/web/demo.gomuks.app/
+  dependencies:
+  - frontend
+  needs:
+  - frontend
 
 .build-linux: &build-linux
   stage: build

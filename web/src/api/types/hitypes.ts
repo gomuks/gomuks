@@ -194,6 +194,19 @@ export interface PaginationResponse {
 	has_more: boolean
 }
 
+export interface EventContextResponse {
+	end: string
+	start: string
+	before: RawDBEvent[]
+	after: RawDBEvent[]
+	event: RawDBEvent
+}
+
+export interface ManualPaginationResponse {
+	events: RawDBEvent[]
+	next_batch: string
+}
+
 export interface ResolveAliasResponse {
 	room_id: RoomID
 	servers: string[]
@@ -209,8 +222,8 @@ export interface EventUnsigned {
 	prev_content?: unknown
 	prev_sender?: UserID
 
-	"fi.mau.soft_failed"?: boolean
-	"fi.mau.rejection_reason"?: string | null
+	"io.element.synapse.soft_failed"?: boolean
+	"io.element.synapse.policy_server_spammy"?: boolean
 }
 
 export interface ClientWellKnown {

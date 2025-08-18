@@ -2,7 +2,7 @@ module go.mau.fi/gomuks
 
 go 1.24.0
 
-toolchain go1.24.5
+toolchain go1.25.0
 
 require (
 	github.com/alecthomas/chroma/v2 v2.18.0
@@ -12,26 +12,26 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/gabriel-vasile/mimetype v1.4.9
 	github.com/gdamore/tcell/v2 v2.7.4
-	github.com/jdeng/goheif v0.0.0-20250603221700-0b111b5c3adb
 	github.com/lucasb-eyer/go-colorful v1.2.0
-	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/mattn/go-sqlite3 v1.14.31
 	github.com/rivo/uniseg v0.4.7
 	github.com/rs/zerolog v1.34.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
-	github.com/yuin/goldmark v1.7.12
+	github.com/yuin/goldmark v1.7.13
+	go.mau.fi/goheif v0.0.0-20250809103256-ca48e8691d2f
 	go.mau.fi/mauview v0.2.2-0.20241209125653-292e0a6914c5
-	go.mau.fi/util v0.8.8
+	go.mau.fi/util v0.8.9-0.20250813172851-79bf3eba563d
 	go.mau.fi/webp v0.2.0
-	go.mau.fi/zeroconfig v0.1.3
-	golang.org/x/crypto v0.40.0
+	go.mau.fi/zeroconfig v0.1.4-0.20250815135457-2dde0f0a1f6c
+	golang.org/x/crypto v0.41.0
 	golang.org/x/image v0.28.0
-	golang.org/x/net v0.42.0
-	golang.org/x/sys v0.34.0
-	golang.org/x/text v0.27.0
+	golang.org/x/net v0.43.0
+	golang.org/x/sys v0.35.0
+	golang.org/x/text v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.24.3-0.20250718205928-4866da52005c
+	maunium.net/go/mautrix v0.24.3-0.20250815134518-cd022c9010d5
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -43,14 +43,12 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
+	github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/zyedidia/clipboard v1.0.4 // indirect
-	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
-	golang.org/x/term v0.33.0 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
+	golang.org/x/term v0.34.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
-
-replace github.com/jdeng/goheif => github.com/tulir/goheif v0.0.0-20250501140641-64420fbcc40f

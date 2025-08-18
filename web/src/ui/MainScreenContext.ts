@@ -19,8 +19,15 @@ import type { RoomID } from "@/api/types"
 import type { RightPanelProps } from "./rightpanel/RightPanel.tsx"
 import type { RoomPreviewProps } from "./roomview/RoomPreview.tsx"
 
+export interface SetActiveRoomExtra {
+	previewMeta?: Partial<RoomPreviewProps>,
+	toSpace?: RoomListFilter,
+	pushState?: boolean,
+	openEventID?: string | null,
+}
+
 export interface MainScreenContextFields {
-	setActiveRoom: (roomID: RoomID | null, previewMeta?: Partial<RoomPreviewProps>, toSpace?: RoomListFilter) => void
+	setActiveRoom: (roomID: RoomID | null, extra?: SetActiveRoomExtra) => void
 	setSpace: (space: RoomListFilter | null, pushState?: boolean) => void
 	clickRoom: (evt: React.MouseEvent) => void
 	clearActiveRoom: () => void

@@ -23,7 +23,7 @@ import EventContentProps from "./props.ts"
 
 function useChangeDescription(
 	sender: UserID, target: UserID, content: MemberEventContent, prevContent?: MemberEventContent,
-): string | React.ReactElement {
+): string | React.ReactElement | [string | React.ReactElement, boolean] {
 	const openLightbox = use(LightboxContext)!
 	const mainScreen = use(MainScreenContext)
 	const makeTargetAvatar = () => <img
@@ -57,15 +57,17 @@ function useChangeDescription(
 			if (content.avatar_url !== prevContent.avatar_url) {
 				return <>changed their displayname and avatar</>
 			} else if (!content.displayname) {
-				return <>removed their displayname</>
+				return [<>
+					<span className="name">{ensureString(prevContent.displayname)}</span> removed their displayname
+				</>, false]
 			} else if (!prevContent.displayname) {
 				return <>set their displayname to <span className="name">{ensureString(content.displayname)}</span></>
 			}
-			return <>
-				changed their displayname from <span className="name">
+			return [<>
+				<span className="name">
 					{ensureString(prevContent.displayname)}
-				</span> to <span className="name">{ensureString(content.displayname)}</span>
-			</>
+				</span> changed their displayname to <span className="name">{ensureString(content.displayname)}</span>
+			</>, false]
 		} else if (content.avatar_url !== prevContent.avatar_url) {
 			if (!content.avatar_url) {
 				return "removed their avatar"
@@ -120,11 +122,14 @@ function useChangeDescription(
 const MemberBody = ({ event, sender }: EventContentProps) => {
 	const content = event.content as MemberEventContent
 	const prevContent = event.unsigned.prev_content as MemberEventContent | undefined
+	const cd = useChangeDescription(event.sender, event.state_key as UserID, content, prevContent)
+	const changeDesc = Array.isArray(cd) ? cd[0] : cd
+	const includeName = !Array.isArray(cd) || cd[1]
 	return <div className="member-body">
-		<span className="name sender-name">
+		{includeName ? <span className="name sender-name">
 			{getDisplayname(event.sender, sender?.content)}
-		</span> <span className="change-description">
-			{useChangeDescription(event.sender, event.state_key as UserID, content, prevContent)}
+		</span> : null} <span className="change-description">
+			{changeDesc}
 		</span>
 		{content.reason ? <span className="reason"> for {ensureString(content.reason)}</span> : null}
 	</div>

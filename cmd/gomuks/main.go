@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/chzyer/readline"
 	"go.mau.fi/util/exhttp"
 	flag "maunium.net/go/mauflag"
 
@@ -35,6 +36,8 @@ var wantVersion = flag.MakeFull("v", "version", "View gomuks version and quit.",
 var wantTUI = flag.MakeFull("t", "tui", "Open gomuks terminal", "false").Bool()
 
 func main() {
+	gomuks.PromptInput = readline.Line
+	gomuks.PromptPassword = readline.Password
 	hicli.InitialDeviceDisplayName = "gomuks web"
 	exhttp.AutoAllowCORS = false
 	flag.SetHelpTitles(

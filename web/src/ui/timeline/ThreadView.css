@@ -1,0 +1,18 @@
+div.thread-view {
+	--timeline-horizontal-padding: .5rem;
+	--timeline-status-size: 2rem;
+	overflow: hidden;
+
+	display: grid;
+	grid-template:
+		"messageview" 1fr
+		"autocomplete" 0
+		"input" auto
+		"typing" auto
+		/ 1fr;
+	height: 100%;
+
+	> div.timeline-view {
+		justify-content: unset;
+	}
+}

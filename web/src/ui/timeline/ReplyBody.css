@@ -77,21 +77,26 @@ blockquote.reply-body {
 		}
 	}
 
-	&.thread > div.reply-sender > span.event-sender::after {
-		content: " (thread)";
-		font-size: .75rem;
-		color: var(--secondary-text-color);
-	}
-
-	&.editing > div.reply-sender > span.event-sender::after {
-		content: " (editing message)";
-		color: var(--secondary-text-color);
-	}
-
 	> div.reply-sender {
 		display: flex;
 		align-items: center;
 		text-wrap: nowrap;
+
+		> span.sender-extra {
+			display: inline-flex;
+			align-items: center;
+			color: var(--secondary-text-color);
+			user-select: none;
+			margin-left: .25rem;
+
+			&.thread-logo {
+				font-size: .75rem;
+			}
+
+			> svg {
+				margin-right: .25em;
+			}
+		}
 
 		> div.sender-avatar {
 			width: 1rem;

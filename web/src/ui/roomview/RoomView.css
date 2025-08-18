@@ -36,17 +36,29 @@ div.room-view {
 	}
 }
 
-div#mobile-event-menu-container {
-	grid-area: header;
+div.mobile-event-menu-container {
 	overflow: hidden;
 	border-bottom: 1px solid var(--border-color);
-	padding-top: var(--window-top-margin);
 
 	&:empty {
 		display: none;
 	}
+}
+
+div#mobile-event-menu-container {
+	grid-area: header;
+	padding-top: var(--window-top-margin);
 
 	&:not(:empty) + div.room-header {
+		display: none;
+	}
+}
+
+div#mobile-thread-event-menu-container {
+	height: 3.5rem;
+	box-sizing: border-box;
+
+	&:not(:empty) + div.right-panel-header {
 		display: none;
 	}
 }

@@ -25,13 +25,14 @@ import {
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { getDisplayname, isEventID } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
 import { ModalContext, NestableModalContext } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
+import { jumpToVisibleEvent, openEventContextModal } from "../util/jumpToEvent.tsx"
 import EventEditHistory from "./EventEditHistory.tsx"
 import ReadReceipts from "./ReadReceipts.tsx"
 import { ReplyIDBody } from "./ReplyBody.tsx"
@@ -41,13 +42,15 @@ import PendingIcon from "@/icons/pending.svg?react"
 import SentIcon from "@/icons/sent.svg?react"
 import "./TimelineEvent.css"
 
+export type TimelineEventViewType = "timeline" | "thread" | "context" | "pinned" | "edit-history" | "confirm"
+
 export interface TimelineEventProps {
 	evt: MemDBEvent
 	prevEvt: MemDBEvent | null
 	disableMenu?: boolean
 	smallReplies?: boolean
 	isFocused?: boolean
-	editHistoryView?: boolean
+	viewType: TimelineEventViewType
 }
 
 const fullTimeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
@@ -102,7 +105,7 @@ const EventURLPreviews = ({ event, room }: {
 }
 
 const TimelineEvent = ({
-	evt, prevEvt, disableMenu, smallReplies, isFocused, editHistoryView,
+	evt, prevEvt, disableMenu, smallReplies, isFocused, viewType,
 }: TimelineEventProps) => {
 	const roomCtx = useRoomContext()
 	const client = use(ClientContext)!
@@ -156,6 +159,13 @@ const TimelineEvent = ({
 		mouseEvt.stopPropagation()
 		roomCtx.setFocusedEventRowID(roomCtx.focusedEventRowID === evt.rowid ? null : evt.rowid)
 	}
+	const onClickTimestamp = () => {
+		if (viewType === "pinned") {
+			if (!jumpToVisibleEvent(evt.event_id, document.querySelector("div.room-view"))) {
+				openEventContextModal(roomCtx, evt.event_id)
+			}
+		}
+	}
 	const openEditHistory = () => {
 		openNestableModal({
 			content: <EventEditHistory evt={evt} roomCtx={roomCtx}/>,
@@ -191,21 +201,30 @@ const TimelineEvent = ({
 	if (evt.sender === client.userID) {
 		wrapperClassNames.push("own-event")
 	}
-	if ((isMobileDevice && !editHistoryView) || disableMenu) {
+	const forceContextMenuOnMobile = viewType === "edit-history" || viewType === "context" || viewType === "pinned"
+	if ((isMobileDevice && !forceContextMenuOnMobile) || disableMenu) {
 		wrapperClassNames.push("no-hover")
 	}
 	if (isFocused) {
 		wrapperClassNames.push("focused-event")
 	}
-	if (evt.unsigned["fi.mau.soft_failed"]) {
+	if (evt.unsigned["io.element.synapse.soft_failed"]) {
 		wrapperClassNames.push("soft-failed")
 	}
+	if (evt.unsigned["io.element.synapse.policy_server_spammy"]) {
+		wrapperClassNames.push("policy-server-spammy")
+	}
 	let dateSeparator = null
+	const showInitialDateSeparator = viewType === "timeline" || viewType === "thread" || viewType === "context"
 	const prevEvtDate = prevEvt ? new Date(prevEvt.timestamp) : null
-	if (prevEvtDate && (
-		eventTS.getDate() !== prevEvtDate.getDate() ||
-		eventTS.getMonth() !== prevEvtDate.getMonth() ||
-		eventTS.getFullYear() !== prevEvtDate.getFullYear())) {
+	if (
+		(showInitialDateSeparator && !prevEvt)
+		|| (prevEvtDate && (
+			eventTS.getDate() !== prevEvtDate.getDate() ||
+			eventTS.getMonth() !== prevEvtDate.getMonth() ||
+			eventTS.getFullYear() !== prevEvtDate.getFullYear()
+		))
+	) {
 		dateSeparator = <div className="date-separator">
 			<hr role="none"/>
 			{dateFormatter.format(eventTS)}
@@ -213,15 +232,25 @@ const TimelineEvent = ({
 		</div>
 	}
 	const isSmallBodyType = isSmallEvent(BodyType)
-	const relatesTo = (evt.orig_content ?? evt.content)?.["m.relates_to"]
+	const relatesTo = getRelatesTo(evt)
 	const replyTo = relatesTo?.["m.in_reply_to"]?.event_id
+	const threadRoot = relatesTo?.rel_type === "m.thread" && isEventID(relatesTo.event_id)
+		? relatesTo.event_id : undefined
+	const isFallbackReply = relatesTo?.is_falling_back
 	let replyAboveMessage: JSX.Element | null = null
 	let replyInMessage: JSX.Element | null = null
-	if (isEventID(replyTo) && BodyType !== HiddenEvent && !isRedacted && !editHistoryView) {
+	if (
+		isEventID(replyTo)
+		&& BodyType !== HiddenEvent
+		&& !isRedacted
+		&& viewType !== "edit-history"
+		&& (!isFallbackReply || viewType !== "thread")
+	) {
 		const replyElem = <ReplyIDBody
-			room={roomCtx.store}
+			roomCtx={roomCtx}
 			eventID={replyTo}
-			isThread={relatesTo?.rel_type === "m.thread"}
+			isThread={viewType !== "thread" && relatesTo?.rel_type === "m.thread"}
+			threadRoot={threadRoot}
 			small={!!smallReplies}
 		/>
 		if (smallReplies && !isSmallBodyType) {
@@ -251,7 +280,7 @@ const TimelineEvent = ({
 		eventTimeOnly = true
 		renderAvatar = false
 	}
-	if (editHistoryView) {
+	if (viewType === "edit-history") {
 		wrapperClassNames.push("edit-history-event")
 	}
 	const fullTime = fullTimeFormatter.format(eventTS)
@@ -260,16 +289,17 @@ const TimelineEvent = ({
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
 		onContextMenu={onContextMenu}
-		onClick={!disableMenu && !editHistoryView && isMobileDevice ? onClick : undefined}
+		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice ? onClick : undefined}
 	>
-		{!disableMenu && (!isMobileDevice || editHistoryView) && <div
+		{!disableMenu && (!isMobileDevice || forceContextMenuOnMobile) && <div
 			className={`context-menu-container ${forceContextMenuOpen ? "force-open" : ""}`}
 		>
 			<EventHoverMenu evt={evt} roomCtx={roomCtx} setForceOpen={setForceContextMenuOpen}/>
 		</div>}
 		{isMobileDevice && isFocused && createPortal(
 			<EventFixedMenu evt={evt} roomCtx={roomCtx} />,
-			document.getElementById("mobile-event-menu-container")!,
+			document.getElementById(roomCtx.threadRoot
+				? "mobile-thread-event-menu-container" : "mobile-event-menu-container")!,
 		)}
 		{replyAboveMessage}
 		{renderAvatar && <div
@@ -306,8 +336,8 @@ const TimelineEvent = ({
 					{getDisplayname(evt.sender, memberEvtContent)}
 				</span>
 			</div>}
-			<span className="event-time" title={fullTime}>{shortTime}</span>
-		</div> : <div className="event-time-only">
+			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
+		</div> : <div className="event-time-only" onClick={onClickTimestamp}>
 			<span className="event-time" title={fullTime}>{shortTime}</span>
 		</div>}
 		<div className="event-content">
@@ -316,7 +346,7 @@ const TimelineEvent = ({
 				<BodyType room={roomCtx.store} sender={memberEvt} event={evt}/>
 				{!isSmallBodyType && !isRedacted && <EventURLPreviews room={roomCtx.store} event={evt}/>}
 			</ContentErrorBoundary>
-			{(!editHistoryView && editEventTS) ? <div
+			{(viewType !== "edit-history" && editEventTS) ? <div
 				className="event-edited"
 				title={`Edited at ${fullTimeFormatter.format(editEventTS)}`}
 				onClick={openEditHistory}
@@ -325,9 +355,12 @@ const TimelineEvent = ({
 			</div> : null}
 			{evt.reactions ? <EventReactions reactions={evt.reactions} onRereact={onRereact} /> : null}
 		</div>
-		{!evt.event_id.startsWith("~") && roomCtx.store.preferences.display_read_receipts && !editHistoryView &&
-			<ReadReceipts room={roomCtx.store} eventID={evt.event_id} />}
-		{evt.sender === client.userID && evt.transaction_id && !editHistoryView ? <EventSendStatus evt={evt}/> : null}
+		{!evt.event_id.startsWith("~")
+			&& roomCtx.store.preferences.display_read_receipts
+			&& viewType === "timeline"
+			? <ReadReceipts room={roomCtx.store} eventID={evt.event_id} /> : null}
+		{evt.sender === client.userID && evt.transaction_id && viewType !== "edit-history"
+			? <EventSendStatus evt={evt}/> : null}
 	</div>
 	return <>
 		{dateSeparator}

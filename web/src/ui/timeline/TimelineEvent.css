@@ -28,6 +28,10 @@ div.timeline-event {
 		background-color: var(--timeline-soft-failed-bg-color);
 	}
 
+	&.policy-server-spammy {
+		background-color: var(--timeline-policy-server-spammy-bg-color);
+	}
+
 	&:hover:not(.no-hover), &.focused-event {
 		background-color: var(--timeline-hover-bg-color);
 

@@ -30,11 +30,11 @@ div.right-panel {
 			width: 2.5rem;
 		}
 	}
+}
 
-	> div.right-panel-content {
-		flex: 1;
-		overflow: auto;
-	}
+div.right-panel-content {
+	flex: 1;
+	overflow: auto;
 }
 
 div.right-panel-content.pinned-messages {
@@ -255,8 +255,14 @@ div.right-panel-content.user {
 	}
 }
 
+div.right-panel-content.thread {
+	overflow: hidden;
+}
+
 div.right-panel-content.members {
 	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 
 	> input.member-filter {
 		border: none;

@@ -18,12 +18,12 @@ import { JSX, use, useEffect, useMemo, useReducer, useRef, useState } from "reac
 import { SyncLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomListFilter, RoomStateStore } from "@/api/statestore"
-import type { RoomID } from "@/api/types"
+import type { EventID, RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { hackyIsSafari } from "@/util/ismobile.ts"
 import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validation.ts"
 import ClientContext from "./ClientContext.ts"
-import MainScreenContext, { MainScreenContextFields } from "./MainScreenContext.ts"
+import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
 import StylePreferences from "./StylePreferences.tsx"
 import Keybindings from "./keybindings.ts"
 import { ModalContext, ModalWrapper, NestableModalContext } from "./modal"
@@ -31,6 +31,7 @@ import RightPanel, { RightPanelProps } from "./rightpanel/RightPanel.tsx"
 import RoomList from "./roomlist/RoomList.tsx"
 import RoomPreview, { RoomPreviewProps } from "./roomview/RoomPreview.tsx"
 import RoomView from "./roomview/RoomView.tsx"
+import { jumpToEvent } from "./util/jumpToEvent.tsx"
 import { useResizeHandle } from "./util/useResizeHandle.tsx"
 import "./MainScreen.css"
 
@@ -87,20 +88,18 @@ class ContextFields implements MainScreenContextFields {
 
 	setActiveRoom = (
 		roomID: RoomID | null,
-		previewMeta?: Partial<RoomPreviewProps>,
-		toSpace?: RoomListFilter,
-		pushState = true,
+		{ previewMeta, toSpace, pushState, openEventID }: SetActiveRoomExtra = {},
 	) => {
 		console.log("Switching to room", roomID)
 		if (roomID) {
 			const room = this.client.store.rooms.get(roomID)
 			if (room) {
-				this.#setActiveRoom(room, toSpace, pushState)
+				this.#setActiveRoom(room, toSpace, pushState ?? true, openEventID)
 			} else {
-				this.#setPreviewRoom(roomID, pushState, previewMeta)
+				this.#setPreviewRoom(roomID, pushState ?? true, previewMeta)
 			}
 		} else {
-			this.#closeActiveRoom(pushState)
+			this.#closeActiveRoom(pushState ?? true)
 		}
 	}
 
@@ -145,7 +144,19 @@ class ContextFields implements MainScreenContextFields {
 		return room.preferences.room_window_title.replace("$room", name!)
 	}
 
-	#setActiveRoom(room: RoomStateStore, space: RoomListFilter | undefined | null, pushState: boolean) {
+	#setActiveRoom(
+		room: RoomStateStore,
+		space: RoomListFilter | undefined | null,
+		pushState: boolean,
+		openEventID?: EventID | null,
+	) {
+		if (openEventID) {
+			if (window.activeRoomContext?.store === room) {
+				jumpToEvent(window.activeRoomContext, openEventID)
+			} else {
+				room.hackyPendingJumpToEventID = openEventID
+			}
+		}
 		window.activeRoom = room
 		this.directSetActiveRoom(room)
 		this.directSetRightPanel(null)
@@ -242,6 +253,9 @@ const handleURLHash = (client: Client, context: MainScreenContextFields, hashOnl
 			const currentETag = (
 				document.querySelector("meta[name=gomuks-frontend-etag]") as HTMLMetaElement
 			)?.content
+			if (!currentETag) {
+				return history.state
+			}
 			const newURL = new URL(location.href)
 			const updateTo = newURL.searchParams.get("updateTo")
 			if (updateTo === currentETag) {
@@ -279,18 +293,24 @@ const handleURLHash = (client: Client, context: MainScreenContextFields, hashOnl
 		history.replaceState(newState, "", newURL.toString())
 		return newState
 	} else if (uri.identifier.startsWith("!")) {
-		const newState = { room_id: uri.identifier, source_via: uri.params.getAll("via") }
+		const newState = {
+			room_id: uri.identifier,
+			source_via: uri.params.getAll("via"),
+		}
 		history.replaceState(newState, "", newURL.toString())
+		if (uri.eventID) {
+			return { ...newState, event_id: uri.eventID }
+		}
 		return newState
 	} else if (uri.identifier.startsWith("#")) {
 		history.replaceState(history.state, "", newURL.toString())
 		// TODO loading indicator or something for this?
 		client.rpc.resolveAlias(uri.identifier).then(
 			res => {
-				context.setActiveRoom(res.room_id, {
+				context.setActiveRoom(res.room_id, { previewMeta: {
 					alias: uri.identifier,
 					via: res.servers.slice(0, 3),
-				})
+				}})
 			},
 			err => window.alert(`Failed to resolve room alias ${uri.identifier}: ${err}`),
 		)
@@ -339,9 +359,14 @@ const MainScreen = () => {
 			}
 			if (roomID !== client.store.activeRoomID) {
 				context.setActiveRoom(roomID, {
-					alias: ensureString(evt.state?.source_alias) || undefined,
-					via: ensureStringArray(evt.state?.source_via),
-				}, undefined, false)
+					previewMeta: {
+						alias: ensureString(evt.state?.source_alias) || undefined,
+						via: ensureStringArray(evt.state?.source_via),
+					},
+					pushState: false,
+					// This isn't actually a part of the history state, but does appear in hash change events.
+					openEventID: evt.state?.event_id,
+				})
 			}
 			context.setRightPanel(evt.state?.right_panel ?? null, false)
 		}

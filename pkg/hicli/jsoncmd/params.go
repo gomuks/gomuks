@@ -109,6 +109,12 @@ type GetEventParams struct {
 	Unredact bool       `json:"unredact"`
 }
 
+type GetEventContextParams struct {
+	RoomID  id.RoomID  `json:"room_id"`
+	EventID id.EventID `json:"event_id"`
+	Limit   int        `json:"limit"`
+}
+
 type GetRelatedEventsParams struct {
 	RoomID  id.RoomID  `json:"room_id"`
 	EventID id.EventID `json:"event_id"`
@@ -169,6 +175,14 @@ type PaginateParams struct {
 	MaxTimelineID database.TimelineRowID `json:"max_timeline_id"`
 	Limit         int                    `json:"limit"`
 	Reset         bool                   `json:"reset"`
+}
+
+type PaginateManualParams struct {
+	RoomID     id.RoomID         `json:"room_id"`
+	ThreadRoot id.EventID        `json:"thread_root"`
+	Since      string            `json:"since"`
+	Direction  mautrix.Direction `json:"direction"`
+	Limit      int               `json:"limit"`
 }
 
 type JoinRoomParams struct {

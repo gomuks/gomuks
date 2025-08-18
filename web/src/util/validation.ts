@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2025 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { ContentURI, EventID, RoomAlias, RoomID, UserID, UserProfile } from "@/api/types"
+import { ContentURI, EventID, MemDBEvent, RelatesTo, RoomAlias, RoomID, UserID, UserProfile } from "@/api/types"
 
 const simpleHomeserverRegex = /^[a-zA-Z0-9.:-]+$/
 const mediaRegex = /^mxc:\/\/([a-zA-Z0-9.:-]+)\/([a-zA-Z0-9_-]+)$/
@@ -35,9 +35,13 @@ export function validated<T>(value: T | undefined, validator: (value: T) => bool
 
 export const isEventID = (eventID: unknown) => isIdentifier<EventID>(eventID, "$", false)
 export const isUserID = (userID: unknown) => isIdentifier<UserID>(userID, "@", true)
-export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", true)
+export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", false)
 export const isRoomAlias = (roomAlias: unknown) => isIdentifier<RoomAlias>(roomAlias, "#", true)
 export const isMXC = (mxc: unknown): mxc is ContentURI => typeof mxc === "string" && mediaRegex.test(mxc)
+
+export function getRelatesTo(evt: MemDBEvent): RelatesTo | undefined {
+	return (evt.orig_content ?? evt.content)?.["m.relates_to"] as RelatesTo | undefined
+}
 
 export interface ParsedMatrixURI {
 	identifier: UserID | RoomID | RoomAlias

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -388,7 +389,29 @@ func (h *HiClient) send(
 	return dbEvt, nil
 }
 
-func (h *HiClient) actuallySend(ctx context.Context, room *database.Room, dbEvt *database.Event, evtType event.Type, synchronous bool) {
+func (h *HiClient) getSendLock(roomID id.RoomID) *sync.Mutex {
+	h.sendLockLock.Lock()
+	defer h.sendLockLock.Unlock()
+	l, ok := h.sendLock[roomID]
+	if !ok {
+		l = &sync.Mutex{}
+		h.sendLock[roomID] = l
+	}
+	return l
+}
+
+func (h *HiClient) actuallySend(
+	ctx context.Context,
+	room *database.Room,
+	dbEvt *database.Event,
+	evtType event.Type,
+	synchronous bool,
+) {
+	if !synchronous {
+		l := h.getSendLock(room.ID)
+		l.Lock()
+		defer l.Unlock()
+	}
 	var err error
 	defer func() {
 		if dbEvt.SendError != "" {

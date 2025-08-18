@@ -16,11 +16,11 @@
 import { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import { usePreference, useRoomTimeline } from "@/api/statestore"
-import { EventRowID, MemDBEvent } from "@/api/types"
+import { EventRowID } from "@/api/types"
 import useFocus from "@/util/focus.ts"
 import ClientContext from "../ClientContext.ts"
 import { useRoomContext } from "../roomview/roomcontext.ts"
-import TimelineEvent from "./TimelineEvent.tsx"
+import { renderTimelineList } from "./timelineutil.tsx"
 import "./TimelineView.css"
 
 const TimelineView = () => {
@@ -114,9 +114,8 @@ const TimelineView = () => {
 		return () => observer.unobserve(topElem)
 	}, [room, room.hasMoreHistory, loadHistory, oldestTimelineRow])
 
-	let prevEvt: MemDBEvent | null = null
 	return <div className="timeline-view" onScroll={handleScroll} ref={timelineViewRef}>
-		<div className="timeline-beginning">
+		<div className="timeline-edge beginning">
 			{room.hasMoreHistory ? <button onClick={loadHistory} disabled={isLoadingHistory}>
 				{isLoadingHistory
 					? <><ScaleLoader color="var(--primary-color)"/> Loading history...</>
@@ -125,20 +124,7 @@ const TimelineView = () => {
 		</div>
 		<div className="timeline-list">
 			<div className="timeline-top-ref" ref={topRef}/>
-			{timeline.map(entry => {
-				if (!entry) {
-					return null
-				}
-				const thisEvt = <TimelineEvent
-					key={entry.rowid}
-					evt={entry}
-					prevEvt={prevEvt}
-					smallReplies={smallReplies}
-					isFocused={focusedEventRowID === entry.rowid}
-				/>
-				prevEvt = entry
-				return thisEvt
-			})}
+			{renderTimelineList("timeline", timeline, { smallReplies, focusedEventRowID })}
 			<div className="timeline-bottom-ref" ref={bottomRef}/>
 		</div>
 	</div>

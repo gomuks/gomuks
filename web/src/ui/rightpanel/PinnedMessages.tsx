@@ -33,7 +33,7 @@ const PinnedMessage = ({ evtID, room }: PinnedMessageProps) => {
 		use(ClientContext)!.requestEvent(room, evtID)
 		return <>Event {evtID} not found</>
 	}
-	return <TimelineEvent evt={evt} prevEvt={null} />
+	return <TimelineEvent evt={evt} prevEvt={null} viewType="pinned" />
 }
 
 const PinnedMessages = () => {

@@ -1,5 +1,5 @@
 pre.json-view {
-	white-space: wrap;
+	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	margin: 0;
 

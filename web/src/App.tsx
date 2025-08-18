@@ -19,6 +19,7 @@ import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
 import { getLocalStoragePreferences } from "./api/types/preferences"
 import WailsClient from "./api/wailsclient.ts"
+import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
 import MainScreen from "./ui/MainScreen.tsx"
@@ -29,6 +30,9 @@ import { useEventAsState } from "./util/eventdispatcher.ts"
 function makeRPCClient(): RPCClient {
 	if (window.wails || window._wails || navigator.userAgent.includes("wails.io")) {
 		return new WailsClient()
+	}
+	if (import.meta.env.PROD && !document.querySelector("meta[name=gomuks-frontend-etag]")) {
+		return new WasmClient()
 	}
 	const lb = getLocalStoragePreferences("global_prefs", () => {}).low_bandwidth
 	return new WSClient("_gomuks/websocket", lb ?? false)

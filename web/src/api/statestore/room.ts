@@ -19,7 +19,7 @@ import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
-import { getDisplayname, getServerName } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getServerName } from "@/util/validation.ts"
 import {
 	ContentURI,
 	DBReceipt,
@@ -89,6 +89,14 @@ const collator = new Intl.Collator()
 
 const UNSENT_TIMELINE_ROWID_BASE = 1000000000000000
 
+function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
+	if (!threadRoot) {
+		return false
+	}
+	const rel = getRelatesTo(evt)
+	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
+}
+
 export class RoomStateStore {
 	readonly roomID: RoomID
 	readonly meta: NonNullCachedEventDispatcher<DBRoom>
@@ -129,6 +137,11 @@ export class RoomStateStore {
 	readUpToRow = -1
 	hasMoreHistory = true
 	hidden = false
+	groupSessionAutoShared = false
+	#threadListenerRoot: EventID | null = null
+	#threadListener: ((append?: MemDBEvent[], overwrite?: MemDBEvent) => void) | null = null
+
+	hackyPendingJumpToEventID: EventID | null = null
 
 	constructor(meta: DBRoom, private parent: StateStore) {
 		this.roomID = meta.room_id
@@ -370,10 +383,17 @@ export class RoomStateStore {
 			...evt,
 			viewing_redacted: view,
 		}
-		this.eventsByRowID.set(evt.rowid, modified)
-		this.eventsByID.set(evt.event_id, modified)
-		this.eventSubs.notify(evt.event_id)
+		this.#saveEventToMaps(modified)
 		this.notifyTimelineSubscribers()
+	}
+
+	#saveEventToMaps(evt: MemDBEvent) {
+		this.eventsByRowID.set(evt.rowid, evt)
+		this.eventsByID.set(evt.event_id, evt)
+		this.eventSubs.notify(evt.event_id)
+		if (isInThread(evt, this.#threadListenerRoot)) {
+			this.#threadListener?.(undefined, evt)
+		}
 	}
 
 	applyEvent(evt: RawDBEvent, pending: boolean = false, viewRedacted: boolean = false) {
@@ -412,13 +432,9 @@ export class RoomStateStore {
 					content: memEvt.content["m.new_content"] ?? memEvt.content,
 					local_content: memEvt.local_content,
 				}
-				this.eventsByRowID.set(editTarget.rowid, modified)
-				this.eventsByID.set(editTarget.event_id, modified)
-				this.eventSubs.notify(editTarget.event_id)
+				this.#saveEventToMaps(modified)
 			}
 		}
-		this.eventsByRowID.set(memEvt.rowid, memEvt)
-		this.eventsByID.set(memEvt.event_id, memEvt)
 		this.requestedEvents.delete(memEvt.event_id)
 		if (!pending) {
 			const pendingIdx = this.pendingEvents.indexOf(memEvt.rowid)
@@ -426,7 +442,7 @@ export class RoomStateStore {
 				this.pendingEvents.splice(pendingIdx, 1)
 			}
 		}
-		this.eventSubs.notify(memEvt.event_id)
+		this.#saveEventToMaps(memEvt)
 		return memEvt
 	}
 
@@ -506,12 +522,29 @@ export class RoomStateStore {
 		for (const [evtID, receipts] of Object.entries(sync.receipts ?? {})) {
 			this.applyReceipts(receipts, evtID, false)
 		}
-		if (hasWidgets && ((sync.timeline && sync.timeline.length > 0) || newState.length > 0)) {
+		if (
+			(hasWidgets || this.#threadListener)
+			&& ((sync.timeline && sync.timeline.length > 0) || newState.length > 0)
+		) {
 			const evts = sync.timeline?.map(evt => this.eventsByRowID.get(evt.event_rowid)).filter(evt => !!evt)
+			if (this.#threadListener && this.#threadListenerRoot && evts) {
+				this.#threadListener(evts.filter(evt => isInThread(evt, this.#threadListenerRoot)))
+			}
 			this.parent.widgetListeners.forEach(listener => {
 				evts?.forEach(listener.onTimelineEvent)
 				newState.forEach(listener.onStateEvent)
 			})
+		}
+	}
+
+	subscribeThread(threadRoot: EventID, listener: (append?: MemDBEvent[], overwrite?: MemDBEvent) => void) {
+		this.#threadListenerRoot = threadRoot
+		this.#threadListener = listener
+		return () => {
+			if (this.#threadListenerRoot === threadRoot) {
+				this.#threadListener = null
+				this.#threadListenerRoot = null
+			}
 		}
 	}
 

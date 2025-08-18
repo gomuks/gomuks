@@ -28,6 +28,7 @@ export class RoomContextData {
 	public setReplyTo: (eventID: EventID | null) => void = noop("setReplyTo")
 	public setEditing: (evt: MemDBEvent | null) => void = noop("setEditing")
 	public insertText: (text: string) => void = noop("insertText")
+	public lastThreadEventID: EventID | null = null
 	public directSetFocusedEventRowID: (eventRowID: EventRowID | null) => void = noop("setFocusedEventRowID")
 	public focusedEventRowID: EventRowID | null = null
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
@@ -35,8 +36,10 @@ export class RoomContextData {
 	public setForceDefaultTimeline: (force: boolean) => void = noop("setForceDefaultTimeline")
 
 	constructor(
-		public store: RoomStateStore,
+		public readonly store: RoomStateStore,
 		setForceDefaultTimeline?: (force: boolean) => void,
+		public readonly threadRoot?: EventID,
+		public readonly threadParentRoom?: RoomContextData,
 	) {
 		if (setForceDefaultTimeline) {
 			this.setForceDefaultTimeline = setForceDefaultTimeline

@@ -72,7 +72,7 @@ const EventEditHistory = ({ evt, roomCtx }: EventEditHistoryProps) => {
 				key={rev.rowid}
 				evt={rev}
 				prevEvt={revisions[i-1] ?? null}
-				editHistoryView={true}
+				viewType="edit-history"
 			/>)}
 		</RoomContext>
 	</>

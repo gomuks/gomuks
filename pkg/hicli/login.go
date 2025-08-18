@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/rs/zerolog"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
 
@@ -62,18 +63,24 @@ func (h *HiClient) Login(ctx context.Context, req *mautrix.ReqLogin) error {
 	}
 	h.CryptoStore.AccountID = resp.UserID.String()
 	h.CryptoStore.DeviceID = resp.DeviceID
+	log := zerolog.Ctx(ctx)
+	log.Debug().Msg("Saving account to database after login")
 	err = h.DB.Account.Put(ctx, h.Account)
 	if err != nil {
 		return err
 	}
+	log.Debug().Msg("Creating Olm account instance")
 	err = h.Crypto.Load(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load olm machine: %w", err)
 	}
+	// FIXME if this fails, the login still appears to go through
+	log.Debug().Msg("Generating and uploading e2ee device keys to server")
 	err = h.Crypto.ShareKeys(ctx, 0)
 	if err != nil {
 		return err
 	}
+	log.Debug().Msg("Fetching own device list from server")
 	_, err = h.Crypto.FetchKeys(ctx, []id.UserID{h.Account.UserID}, true)
 	if err != nil {
 		return fmt.Errorf("failed to fetch own devices: %w", err)

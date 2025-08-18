@@ -1,0 +1,26 @@
+div.event-context-loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+
+	height: 100%;
+	width: 100%;
+}
+
+div.event-context-modal {
+	--timeline-horizontal-padding: 0;
+	--timeline-status-size: 2rem;
+
+	width: 100%;
+	height: 100%;
+
+	> div.modal-box-inner {
+		width: 100%;
+		height: 100%;
+	}
+
+	div.timeline-list {
+		padding-bottom: 0;
+	}
+}

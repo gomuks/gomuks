@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { CSSProperties, use } from "react"
+import { CSSProperties, MouseEvent, use } from "react"
 import { MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
@@ -61,11 +61,15 @@ export const EventFixedMenu = ({ evt, roomCtx }: BaseEventMenuProps) => {
 	const client = use(ClientContext)!
 	const primary = usePrimaryItems(client, roomCtx, evt, false, true, undefined, undefined)
 	const secondary = useSecondaryItems(client, roomCtx, evt, false)
+	const onClose = (evt: MouseEvent<HTMLButtonElement>) => {
+		evt.stopPropagation()
+		roomCtx.setFocusedEventRowID(null)
+	}
 	return <div className="event-fixed-menu">
 		{primary}
 		<div className="vertical-line"/>
 		{secondary}
 		<div className="vertical-line"/>
-		<button className="close"><CloseIcon/></button>
+		<button className="close" onClick={onClose}><CloseIcon/></button>
 	</div>
 }

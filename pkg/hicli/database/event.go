@@ -87,7 +87,7 @@ const (
 		AND edit.type = main.type
 		AND edit.sender = main.sender
 		AND edit.redacted_by IS NULL
-		WHERE main.event_id IN (%s)
+		WHERE main.room_id = ? AND main.event_id IN (%s)
 		ORDER BY main.event_id, edit.timestamp
 	`
 	setLastEditRowIDQuery = `

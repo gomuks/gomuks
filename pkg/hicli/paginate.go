@@ -387,7 +387,7 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}
 		err = h.DB.Event.FillReactionCounts(ctx, roomID, events)
 		if err != nil {
-			return fmt.Errorf("failed to fill last edit row IDs: %w", err)
+			return fmt.Errorf("failed to fill reaction counts: %w", err)
 		}
 		err = h.DB.Event.FillLastEditRowIDs(ctx, roomID, events)
 		if err != nil {
@@ -415,4 +415,94 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		HasMore:    resp.End != database.PrevBatchPaginationComplete,
 		FromServer: true,
 	}, err
+}
+
+func (h *HiClient) GetEventContext(ctx context.Context, roomID id.RoomID, eventID id.EventID, limit int) (*jsoncmd.EventContextResponse, error) {
+	filter := &mautrix.FilterPart{LazyLoadMembers: true}
+	resp, err := h.Client.Context(ctx, roomID, eventID, filter, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get event context: %w", err)
+	}
+	wrappedResp := &jsoncmd.EventContextResponse{
+		Start:  resp.Start,
+		End:    resp.End,
+		Before: make([]*database.Event, len(resp.EventsBefore)),
+		After:  make([]*database.Event, len(resp.EventsAfter)),
+	}
+	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
+	wrappedResp.Event, err = h.processEvent(ctx, resp.Event, nil, decryptionQueue, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process event: %w", err)
+	}
+	for i, evt := range resp.EventsBefore {
+		if wrappedResp.Before[i], err = h.processEvent(ctx, evt, nil, decryptionQueue, true); err != nil {
+			return nil, fmt.Errorf("failed to process before event #%d: %w", i+1, err)
+		}
+	}
+	for i, evt := range resp.EventsAfter {
+		if wrappedResp.After[i], err = h.processEvent(ctx, evt, nil, decryptionQueue, true); err != nil {
+			return nil, fmt.Errorf("failed to process after event #%d: %w", i+1, err)
+		}
+	}
+	for _, entry := range decryptionQueue {
+		err = h.DB.SessionRequest.Put(ctx, entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
+		}
+	}
+	if len(decryptionQueue) > 0 {
+		h.WakeupRequestQueue()
+	}
+	return wrappedResp, nil
+}
+
+func (h *HiClient) PaginateManual(
+	ctx context.Context,
+	roomID id.RoomID,
+	threadRoot id.EventID,
+	since string,
+	direction mautrix.Direction,
+	limit int,
+) (*jsoncmd.ManualPaginationResponse, error) {
+	var chunk []*event.Event
+	var wrappedResp jsoncmd.ManualPaginationResponse
+	if threadRoot == "" {
+		resp, err := h.Client.Messages(ctx, roomID, since, "", direction, nil, limit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get messages from server: %w", err)
+		}
+		chunk = resp.Chunk
+		wrappedResp.NextBatch = resp.End
+	} else {
+		resp, err := h.Client.GetRelations(ctx, roomID, threadRoot, &mautrix.ReqGetRelations{
+			RelationType: event.RelThread,
+			Dir:          direction,
+			From:         since,
+			Limit:        limit,
+			Recurse:      true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get thread messages from server: %w", err)
+		}
+		chunk = resp.Chunk
+		wrappedResp.NextBatch = resp.NextBatch
+	}
+	wrappedResp.Events = make([]*database.Event, len(chunk))
+	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
+	var err error
+	for i, evt := range chunk {
+		if wrappedResp.Events[i], err = h.processEvent(ctx, evt, nil, decryptionQueue, true); err != nil {
+			return nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
+		}
+	}
+	for _, entry := range decryptionQueue {
+		err = h.DB.SessionRequest.Put(ctx, entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
+		}
+	}
+	if len(decryptionQueue) > 0 {
+		h.WakeupRequestQueue()
+	}
+	return &wrappedResp, nil
 }

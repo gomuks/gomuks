@@ -71,6 +71,9 @@ type HiClient struct {
 
 	paginationInterrupterLock sync.Mutex
 	paginationInterrupter     map[id.RoomID]context.CancelCauseFunc
+
+	sendLock     map[id.RoomID]*sync.Mutex
+	sendLockLock sync.Mutex
 }
 
 var (
@@ -100,6 +103,7 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 		requestQueueWakeup:    make(chan struct{}, 1),
 		jsonRequests:          make(map[int64]context.CancelCauseFunc),
 		paginationInterrupter: make(map[id.RoomID]context.CancelCauseFunc),
+		sendLock:              make(map[id.RoomID]*sync.Mutex),
 
 		EventHandler: evtHandler,
 	}

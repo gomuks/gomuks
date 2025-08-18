@@ -37,3 +37,16 @@ type PaginationResponse struct {
 	HasMore       bool                               `json:"has_more"`
 	FromServer    bool                               `json:"from_server"`
 }
+
+type EventContextResponse struct {
+	End    string            `json:"end"`
+	Start  string            `json:"start"`
+	Before []*database.Event `json:"before"`
+	After  []*database.Event `json:"after"`
+	Event  *database.Event   `json:"event"`
+}
+
+type ManualPaginationResponse struct {
+	Events    []*database.Event `json:"events"`
+	NextBatch string            `json:"next_batch"`
+}
