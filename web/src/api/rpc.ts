@@ -216,8 +216,14 @@ export default abstract class RPCClient {
 		return this.request("update_delayed_event", { delay_id, action })
 	}
 
-	setMembership(room_id: RoomID, user_id: UserID, action: MembershipAction, reason?: string): Promise<void> {
-		return this.request("set_membership", { room_id, user_id, action, reason })
+	setMembership(
+		room_id: RoomID,
+		user_id: UserID,
+		action: MembershipAction,
+		reason?: string,
+		msc4293_redact_events?: boolean,
+	): Promise<void> {
+		return this.request("set_membership", { room_id, user_id, action, reason, msc4293_redact_events })
 	}
 
 	setAccountData(type: EventType, content: unknown, room_id?: RoomID): Promise<boolean> {

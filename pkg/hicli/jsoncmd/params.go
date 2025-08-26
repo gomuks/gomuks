@@ -71,10 +71,11 @@ type UpdateDelayedEventParams struct {
 }
 
 type SetMembershipParams struct {
-	Action string    `json:"action"`
-	RoomID id.RoomID `json:"room_id"`
-	UserID id.UserID `json:"user_id"`
-	Reason string    `json:"reason"`
+	Action              string    `json:"action"`
+	RoomID              id.RoomID `json:"room_id"`
+	UserID              id.UserID `json:"user_id"`
+	Reason              string    `json:"reason"`
+	MSC4293RedactEvents bool      `json:"msc4293_redact_events"`
 }
 
 type SetAccountDataParams struct {

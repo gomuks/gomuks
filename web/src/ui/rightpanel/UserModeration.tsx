@@ -55,8 +55,8 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		if (!room) {
 			throw new Error("runAction called without room")
 		}
-		const callback = (reason: string) => {
-			client.rpc.setMembership(room.roomID, userID, action, reason).then(
+		const callback = (reason: string, redact?: boolean) => {
+			client.rpc.setMembership(room.roomID, userID, action, reason, action == "ban" && redact).then(
 				() => console.debug("Actioned", userID),
 				err => {
 					console.error("Failed to action", err)
@@ -99,14 +99,14 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		return timeline.filter((evt): evt is MemDBEvent =>
 			evt !== null && evt.room_id == room.roomID && evt.sender === userID && !evt.redacted_by)
 	}
-	const makeRecentMessageRedactor = (banCallback?: (reason: string) => void) => {
+	const makeRecentMessageRedactor = (banCallback?: (reason: string, redact?: boolean) => void) => {
 		if (!room) {
 			throw new Error("makeRecentMessageRedactor called without room")
 		}
 		const eligibleEvents = calculateRedactions()
 		const nonStateEvents = eligibleEvents.filter(evt => evt.state_key === undefined)
 		const callback = async (doRedact: boolean, preserveState: boolean, reason: string) => {
-			banCallback?.(reason)
+			banCallback?.(reason, doRedact)
 			if (!doRedact) {
 				return
 			}
