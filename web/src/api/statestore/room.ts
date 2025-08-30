@@ -41,8 +41,11 @@ import {
 	TimelineRowTuple,
 	UnknownEventContent,
 	UserID,
+	WrappedBotCommand,
+	mapCommandContent,
 	roomStateGUIDToString,
 } from "../types"
+import { StandardCommands } from "../types/stdcommands.ts"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {
@@ -130,6 +133,7 @@ export class RoomStateStore {
 	#membersCache: AutocompleteMemberEntry[] | null = null
 	membersRequested: boolean = false
 	#allPacksCache: Record<string, CustomEmojiPack> | null = null
+	#allCommandsCache: WrappedBotCommand[] | null = null
 	lastOpened: number = 0
 	readonly pendingEvents: EventRowID[] = []
 	paginating = false
@@ -220,6 +224,17 @@ export class RoomStateStore {
 			)
 		}
 		return this.#allPacksCache
+	}
+
+	getAllBotCommands(): WrappedBotCommand[] {
+		if (this.#allCommandsCache === null) {
+			const roomCommands = this.state.get("org.matrix.msc4332.commands")?.entries()
+				.flatMap(([stateKey, rowID]) =>
+					mapCommandContent(stateKey, this.eventsByRowID.get(rowID)?.content))
+				.toArray() ?? []
+			this.#allCommandsCache = roomCommands.concat(mapCommandContent("gomuks", StandardCommands))
+		}
+		return this.#allCommandsCache
 	}
 
 	#fillMembersCache() {
@@ -465,6 +480,8 @@ export class RoomStateStore {
 			this.requestedMembers.delete(key as UserID)
 		} else if (evtType === "m.room.power_levels") {
 			this.#membersCache = null
+		} else if (evtType === "org.matrix.msc4332.commands") {
+			this.#allCommandsCache = null
 		}
 		this.stateSubs.notify(this.stateSubKey(evtType, key))
 	}
@@ -579,6 +596,7 @@ export class RoomStateStore {
 		}
 		this.#emojiPacksCache.clear()
 		this.#allPacksCache = null
+		this.#allCommandsCache = null
 		if (omitMembers) {
 			newStateMap.set("m.room.member", this.state.get("m.room.member") ?? new Map())
 		} else {

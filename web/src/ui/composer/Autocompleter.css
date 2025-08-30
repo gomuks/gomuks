@@ -1,9 +1,9 @@
-div.autocompletions-wrapper {
+div.autocompletions-wrapper, div.command-argument-wrapper {
 	position: relative;
 	grid-area: autocomplete;
 }
 
-div.autocompletions {
+div.autocompletions, div.command-arguments {
 	position: absolute;
 	bottom: 1.25rem;
 	left: var(--timeline-horizontal-padding);
@@ -36,6 +36,36 @@ div.autocompletions {
 			width: 1.5rem;
 			height: 1.5rem;
 			object-fit: contain;
+		}
+	}
+
+	&.command-arguments {
+		display: grid;
+		grid-template-columns: auto auto;
+		grid-gap: .25rem;
+		align-items: center;
+
+		input[type="checkbox"] {
+			width: 1.5rem;
+			height: 1.5rem;
+			padding: 0;
+			margin: 0;
+			accent-color: var(--primary-color-dark);
+		}
+
+		input[type="text"], input[type="number"] {
+			padding: .25rem;
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+
+			&:hover {
+				border-color: var(--primary-color);
+			}
+
+			&:focus {
+				outline: none;
+				border-color: var(--primary-color-dark);
+			}
 		}
 	}
 }

@@ -16,16 +16,17 @@
 import { JSX, RefObject, use, useEffect } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
 import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
+import { WrappedBotCommand, findArgumentNames, getDefaultArguments, replaceArgumentValues } from "@/api/types"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
-import { useFilteredMembers } from "./userautocomplete.ts"
+import { useFilteredCommands, useFilteredMembers } from "./userautocomplete.ts"
 import "./Autocompleter.css"
 
 export interface AutocompleteQuery {
-	type: "user" | "room" | "emoji"
+	type: "user" | "room" | "emoji" | "command"
 	query: string
 	startPos: number
 	endPos: number
@@ -49,30 +50,38 @@ interface InnerAutocompleterProps<T> extends AutocompleterProps {
 	items: T[]
 	getText: (item: T) => string
 	getKey: (item: T) => string
+	getNewState?: (item: T, params: AutocompleteQuery) => readonly [Partial<ComposerState>, number]
 	render: (item: T) => JSX.Element
 }
 
 function useAutocompleter<T>({
 	params, state, setState, setAutocomplete, textInput,
-	items, getText, getKey, render,
+	items, getText, getKey, getNewState, render,
 }: InnerAutocompleterProps<T>) {
 	const onSelect = useEvent((index: number) => {
 		if (items.length === 0) {
 			return
 		}
 		index = positiveMod(index, items.length)
-		const replacementText = getText(items[index])
-		const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
-		const endPos = params.startPos + replacementText.length
-		if (textInput.current) {
+		let newState: Partial<ComposerState>
+		let endPos: number
+		if (getNewState) {
+			[newState, endPos] = getNewState(items[index], params)
+		} else {
+			const replacementText = getText(items[index])
+			const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
+			endPos = params.startPos + replacementText.length
+			newState = {
+				text: newText,
+			}
+		}
+		if (textInput.current && newState.text) {
 			// React messes up the selection when changing the value for some reason,
 			// so bypass react here to avoid the caret jumping to the end and closing the autocompleter
-			textInput.current.value = newText
+			textInput.current.value = newState.text
 			textInput.current.setSelectionRange(endPos, endPos)
 		}
-		setState({
-			text: newText,
-		})
+		setState(newState)
 		setAutocomplete({
 			...params,
 			endPos,
@@ -151,4 +160,30 @@ export const RoomAutocompleter = ({ params }: AutocompleterProps) => {
 	return <div className="autocompletions">
 		Autocomplete {params.type} {params.query}
 	</div>
+}
+
+const commandFuncs = {
+	getText: () => "",
+	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.syntax,
+	getNewState: (cmd: WrappedBotCommand) => {
+		const argNames = findArgumentNames(cmd.syntax)
+		const state = {
+			command: {
+				spec: cmd,
+				argNames,
+				inputArgs: getDefaultArguments(cmd, argNames),
+			},
+			text: "",
+		}
+		state.text = "/" + replaceArgumentValues(cmd.syntax, state.command.inputArgs)
+		return [state, state.text.length] as const
+	},
+	render: (cmd: WrappedBotCommand) => <>
+		<code>/{cmd.syntax}</code>
+	</>,
+}
+
+export const CommandAutocompleter = ({ params, room, ...rest }: AutocompleterProps) => {
+	const items = useFilteredCommands(room, (params.frozenQuery ?? params.query).slice(1))
+	return useAutocompleter({ params, room, ...rest, items, ...commandFuncs })
 }

@@ -1,0 +1,208 @@
+// gomuks - A Matrix client written in Go.
+// Copyright (C) 2024 Tulir Asokan
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { ensureArray, ensureStringArray } from "@/util/validation.ts"
+import { UnknownEventContent } from "./hitypes.ts"
+import { BotArgument, BotArgumentValue, BotCommand, SingleBotArgumentValue, UserID } from "./mxtypes.ts"
+
+export interface WrappedBotCommand extends BotCommand {
+	source: UserID | "gomuks"
+	sigil: string
+}
+
+export function mapCommandContent(stateKey: UserID, content?: UnknownEventContent): WrappedBotCommand[] {
+	if (!content || !Array.isArray(content.commands) || typeof content.sigil !== "string") {
+		return []
+	}
+	return content.commands.map((cmd): WrappedBotCommand | null => {
+		if (typeof cmd.syntax !== "string") {
+			return null
+		}
+		return {
+			source: stateKey,
+			sigil: content.sigil,
+			syntax: cmd.syntax,
+			arguments: ensureArray(cmd.arguments) as BotArgument[], // TODO validate?
+			description: cmd.description,
+			"fi.mau.aliases": ensureStringArray(cmd["fi.mau.aliases"]),
+		}
+	}).filter(x => x !== null)
+}
+
+const argNameRegex = /{(.+?)}/g
+
+export function findArgumentNames(syntax: string): string[] {
+	return syntax
+		.matchAll(argNameRegex)
+		.map(item => item[1])
+		.toArray()
+}
+
+function argToString(arg: BotArgumentValue): string | null {
+	switch (typeof arg) {
+	case "boolean":
+		return arg ? "true" : "false"
+	case "number":
+		return arg.toString()
+	case "string":
+		return quote(arg)
+	case "object":
+		if (arg === null) {
+			return null
+		} else if (Array.isArray(arg)) {
+			return arg.map(argToString).join(" ")
+		} else if (typeof arg.id === "string") {
+			return quote(arg.id)
+		}
+	}
+	return null
+}
+
+function quote(val: string): string {
+	if (!val) {
+		return `""`
+	}
+	val = val
+		.replaceAll("\\", "\\\\")
+		.replaceAll(`"`, `\\"`)
+	if (val.includes(" ")) {
+		val = `"${val}"`
+	}
+	return val
+}
+
+function parseQuoted(val: string): [string, string] {
+	if (!val.startsWith(`"`)) {
+		const spaceIdx = val.indexOf(" ")
+		if (spaceIdx === -1) {
+			return [val, ""]
+		}
+		return [val.slice(0, spaceIdx).replaceAll("\\\\", "\\"), val.slice(spaceIdx)]
+	}
+	val = val.slice(1)
+	const out = []
+	while (true) {
+		const quoteIdx = val.indexOf(`"`)
+		const escapeIdx = val.slice(0, quoteIdx).indexOf(`\\`)
+		if (escapeIdx >= 0) {
+			out.push(val.slice(0, escapeIdx))
+			out.push(val.charAt(escapeIdx+1))
+			val = val.slice(escapeIdx+2)
+		} else if (quoteIdx >= 0) {
+			out.push(val.slice(0, quoteIdx))
+			val = val.slice(quoteIdx + 1)
+			break
+		} else if (!out.length) {
+			return [val, ""]
+		} else {
+			out.push(val)
+			val = ""
+			break
+		}
+	}
+	return [out.join(""), val]
+}
+
+export function getDefaultArguments(
+	spec: WrappedBotCommand, argNames?: string[],
+): Record<string, BotArgumentValue> {
+	if (!argNames) {
+		argNames = findArgumentNames(spec.syntax)
+	}
+	return Object.fromEntries(spec.arguments?.map((param, index) => {
+		let defVal: BotArgumentValue | undefined = param["fi.mau.default_value"]
+		if (defVal == undefined) {
+			if (param.type === "boolean") {
+				defVal = false
+			} else if (param.type === "integer") {
+				defVal = 0
+			} else if (param.type === "enum") {
+				defVal = param.enum[0]
+			} else {
+				defVal = ""
+			}
+			if (param.variadic) {
+				defVal = [defVal]
+			}
+		}
+		return [argNames[index], defVal]
+	}) ?? [])
+}
+
+function castArgument(spec: BotArgument, val: string): SingleBotArgumentValue {
+	if (spec.type === "boolean") {
+		return val === "true"
+	} else if (spec.type === "integer") {
+		const intVal = parseInt(val)
+		return isNaN(intVal) ? 0 : intVal
+	} else if (spec.type === "enum") {
+		if (!spec.enum.includes(val)) {
+			return spec.enum[0]
+		}
+	}
+	return val
+}
+
+export function parseArgumentValues(
+	spec: WrappedBotCommand, input: string,
+): Record<string, BotArgumentValue> | null {
+	if (!input.startsWith("/")) {
+		return null
+	}
+	input = input.slice(1)
+	const args = getDefaultArguments(spec)
+	let i = 0
+	for (const part of spec.syntax.split(argNameRegex)) {
+		if (i === 0) {
+			if (!input.startsWith(part)) {
+				return null
+			}
+			input = input.slice(part.length)
+		} else if (i % 2 === 0) {
+			if (!input.startsWith(part)) {
+				return args
+			}
+			input = input.slice(part.length)
+		} else {
+			let argVal: string
+			[argVal, input] = parseQuoted(input)
+			const argSpec = spec.arguments![Math.floor(i/2)]
+			if (argSpec.variadic) {
+				args[part] = [castArgument(argSpec, argVal)]
+				while (input.startsWith(" ")) {
+					[argVal, input] = parseQuoted(input.trimStart())
+					args[part].push(castArgument(argSpec, argVal))
+				}
+			} else {
+				args[part] = castArgument(argSpec, argVal)
+			}
+		}
+		i++
+	}
+	return args
+}
+
+export function replaceArgumentValues(
+	syntax: string,
+	argValues: Record<string, BotArgumentValue>,
+): string {
+	for (const [key, val] of Object.entries(argValues)) {
+		const repl = argToString(val)
+		if (repl !== null) {
+			syntax = syntax.replace(`{${key}}`, repl)
+		}
+	}
+	return syntax
+}

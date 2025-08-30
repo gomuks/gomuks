@@ -18,12 +18,13 @@ import { RoomStateStore } from "@/api/statestore"
 import {
 	AutocompleteQuery,
 	AutocompleterProps,
+	CommandAutocompleter,
 	EmojiAutocompleter,
 	RoomAutocompleter,
 	UserAutocompleter,
 } from "./Autocompleter.tsx"
 
-export function charToAutocompleteType(newChar?: string): AutocompleteQuery["type"] | null {
+export function charToAutocompleteType(newChar?: string, pos?: number): AutocompleteQuery["type"] | null {
 	switch (newChar) {
 	case ":":
 		return "emoji"
@@ -31,6 +32,8 @@ export function charToAutocompleteType(newChar?: string): AutocompleteQuery["typ
 		return "user"
 	case "#":
 		return "room"
+	case "/":
+		return pos === 0 ? "command" : null
 	default:
 		return null
 	}
@@ -65,6 +68,8 @@ export function getAutocompleter(
 			return null
 		}
 		return RoomAutocompleter
+	case "command":
+		return CommandAutocompleter
 	default:
 		return null
 	}

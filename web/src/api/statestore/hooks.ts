@@ -25,6 +25,7 @@ import type {
 	MemberEventContent,
 	UnknownEventContent,
 	UserID,
+	WrappedBotCommand,
 } from "../types"
 import { Preferences, preferences } from "../types/preferences"
 import type { StateStore } from "./main.ts"
@@ -200,4 +201,11 @@ export function useCustomEmojis(
 		}
 		return Object.values(allPacksObject).filter(pack => pack[usage].length > 0)
 	}, [personalPack, watchedRoomPacks, specialRoomPacks, usage])
+}
+
+export function useBotCommands(room: RoomStateStore): WrappedBotCommand[] {
+	return useSyncExternalStore(
+		room.stateSubs.getSubscriber("org.matrix.msc4332.commands"),
+		() => room.getAllBotCommands(),
+	)
 }
