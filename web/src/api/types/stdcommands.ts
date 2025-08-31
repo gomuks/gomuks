@@ -258,5 +258,52 @@ export const StandardCommands: BotCommandsEventContent = {
 				],
 			},
 		},
+		{
+			"syntax": "dumbparams >{string}<-{woof}!! hello {text...}",
+			"arguments": [
+				{
+					"type": "string",
+					"description": {
+						"m.text": [
+							{
+								"mimetype": "text/plain",
+								"body": "Meow",
+							},
+						],
+					},
+				},
+				{
+					"type": "string",
+					"description": {
+						"m.text": [
+							{
+								"mimetype": "text/plain",
+								"body": "Woof",
+							},
+						],
+					},
+				},
+				{
+					"type": "string",
+					"variadic": true,
+					"description": {
+						"m.text": [
+							{
+								"mimetype": "text/plain",
+								"body": "A text argument",
+							},
+						],
+					},
+				},
+			],
+			"description": {
+				"m.text": [
+					{
+						"mimetype": "text/plain",
+						"body": "Test command with all argument types",
+					},
+				],
+			},
+		},
 	],
 }

@@ -13,13 +13,59 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { ensureArray, ensureStringArray } from "@/util/validation.ts"
+import { ensureStringArray } from "@/util/validation.ts"
 import { UnknownEventContent } from "./hitypes.ts"
-import { BotArgument, BotArgumentValue, BotCommand, SingleBotArgumentValue, UserID } from "./mxtypes.ts"
+import {
+	BotArgument,
+	BotArgumentValue,
+	BotCommand,
+	ExtensibleTextContainer,
+	SingleBotArgumentValue,
+	UserID,
+} from "./mxtypes.ts"
 
 export interface WrappedBotCommand extends BotCommand {
 	source: UserID | "gomuks"
 	sigil: string
+}
+
+function sanitizeDescription(desc?: ExtensibleTextContainer): ExtensibleTextContainer {
+	if (!desc || !Array.isArray(desc["m.text"]) || !desc["m.text"].length) {
+		return {
+			"m.text": [{ body: "", mimetype: "text/plain" }],
+		}
+	}
+	for (const part of desc["m.text"]) {
+		if (typeof part.body !== "string") {
+			part.body = ""
+		}
+		if (part.mimetype !== undefined && typeof part.mimetype !== "string") {
+			delete part.mimetype
+		}
+	}
+	return desc
+}
+
+function sanitizeArguments(args: BotArgument[] | undefined): BotArgument[] {
+	if (!Array.isArray(args)) {
+		return []
+	}
+	let index = 0
+	for (const arg of args) {
+		arg.type = typeof arg.type !== "string" ? "string" : arg.type
+		arg.description = sanitizeDescription(arg.description)
+		if (typeof arg.variadic !== "boolean" || index !== args.length - 1) {
+			delete arg.variadic
+		}
+		if (arg.type === "enum") {
+			arg.enum = ensureStringArray(arg.enum)
+			if (arg.enum.length === 0) {
+				arg.enum = [""]
+			}
+		}
+		index++
+	}
+	return args
 }
 
 export function mapCommandContent(stateKey: UserID, content?: UnknownEventContent): WrappedBotCommand[] {
@@ -34,8 +80,8 @@ export function mapCommandContent(stateKey: UserID, content?: UnknownEventConten
 			source: stateKey,
 			sigil: content.sigil,
 			syntax: cmd.syntax,
-			arguments: ensureArray(cmd.arguments) as BotArgument[], // TODO validate?
-			description: cmd.description,
+			arguments: sanitizeArguments(cmd.arguments),
+			description: sanitizeDescription(cmd.description),
 			"fi.mau.aliases": ensureStringArray(cmd["fi.mau.aliases"]),
 		}
 	}).filter(x => x !== null)
@@ -178,8 +224,9 @@ export function parseArgumentValues(
 		} else {
 			let argVal: string
 			[argVal, input] = parseQuoted(input)
-			const argSpec = spec.arguments![Math.floor(i/2)]
-			if (argSpec.variadic) {
+			const argIdx = Math.floor(i/2)
+			const argSpec = spec.arguments![argIdx]
+			if (argSpec.variadic && argIdx === spec.arguments!.length - 1) {
 				args[part] = [castArgument(argSpec, argVal)]
 				while (input.startsWith(" ")) {
 					[argVal, input] = parseQuoted(input.trimStart())
@@ -198,11 +245,20 @@ export function replaceArgumentValues(
 	syntax: string,
 	argValues: Record<string, BotArgumentValue>,
 ): string {
-	for (const [key, val] of Object.entries(argValues)) {
-		const repl = argToString(val)
-		if (repl !== null) {
-			syntax = syntax.replace(`{${key}}`, repl)
+	const parts = syntax.split(argNameRegex)
+	for (let i = 1; i < parts.length; i += 2) {
+		const key = parts[i]
+		const val = argToString(argValues[key])
+		if (val !== null) {
+			// For extremely weird syntaxes where the parameter isn't separated by a space,
+			// we need to always quote it to find where it ends.
+			const needsQuote = parts[i+1] && !parts[i+1].startsWith(" ")
+			if (needsQuote && !val.startsWith(`"`) && !Array.isArray(argValues[key])) {
+				parts[i] = `"${val}"`
+			} else {
+				parts[i] = val
+			}
 		}
 	}
-	return syntax
+	return parts.join("")
 }

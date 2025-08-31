@@ -109,7 +109,9 @@ const CommandArgument = ({ index, name, spec, value, setValue }: CommandArgument
 		}
 		content = <div className="variadic-items">
 			{(value as SingleBotArgumentValue[]).map((item, itemIdx) =>
-				renderArgumentContent(spec, item, valueSetter(itemIdx), description, contentID, false, onKeyDown))}
+				renderArgumentContent(
+					spec, item, valueSetter(itemIdx), description, contentID, false, onKeyDown, itemIdx,
+				))}
 		</div>
 	} else {
 		content = renderArgumentContent(spec, value, setValue, description, contentID, false, onKeyDown)
