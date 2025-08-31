@@ -16,7 +16,7 @@
 import type { MouseEvent } from "react"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
-import { RoomStateStore, StateStore, WidgetListener } from "./statestore"
+import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
 import type {
 	ClientState,
 	ElementRecentEmoji,
@@ -359,7 +359,11 @@ export default class Client {
 			if (!room.pendingEvents.includes(dbEvent.rowid)) {
 				room.pendingEvents.push(dbEvent.rowid)
 			}
-			room.applyEvent(dbEvent, true)
+			const fake = dbEvent.sender === fakeGomuksSender
+			room.applyEvent(dbEvent, !fake)
+			if (fake) {
+				room.timeline.push({ timeline_rowid: dbEvent.timeline_rowid, event_rowid: dbEvent.rowid })
+			}
 			room.notifyTimelineSubscribers()
 		}
 	}

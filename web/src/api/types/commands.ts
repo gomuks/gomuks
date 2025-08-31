@@ -25,7 +25,7 @@ import {
 } from "./mxtypes.ts"
 
 export interface WrappedBotCommand extends BotCommand {
-	source: UserID | "gomuks"
+	source: UserID | "@gomuks"
 	sigil: string
 }
 

@@ -11,30 +11,31 @@ import (
 )
 
 const (
-	CmdJoin           = "join {room_reference}"
-	CmdLeave          = "leave"
-	CmdInvite         = "invite {user_id} {reason}"
-	CmdKick           = "kick {user_id} {reason}"
-	CmdBan            = "ban {user_id} {reason}"
-	CmdMyRoomNick     = "myroomnick {name}"
-	CmdRaw            = "raw {event_type} {json}"
-	CmdRawState       = "rawstate {event_type} {state_key} {json}"
-	CmdDiscardSession = "discardsession"
+	Join           = "join {room_reference}"
+	Leave          = "leave"
+	Invite         = "invite {user_id} {reason}"
+	Kick           = "kick {user_id} {reason}"
+	Ban            = "ban {user_id} {reason}"
+	MyRoomNick     = "myroomnick {name}"
+	Raw            = "raw {event_type} {json}"
+	UnencryptedRaw = "unencryptedraw {event_type} {json}"
+	RawState       = "rawstate {event_type} {state_key} {json}"
+	DiscardSession = "discardsession"
 )
 
-var BuiltInCommands = []*event.BotCommand{{
-	Syntax:      CmdJoin,
+var CommandDefinitions = []*event.BotCommand{{
+	Syntax:      Join,
 	Description: event.MakeExtensibleText("Jump to the join room view by ID, alias or link"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Room identifier"),
 	}},
 }, {
-	Syntax:      CmdLeave,
+	Syntax:      Leave,
 	Aliases:     []string{"part"},
 	Description: event.MakeExtensibleText("Leave the current room"),
 }, {
-	Syntax:      CmdInvite,
+	Syntax:      Invite,
 	Description: event.MakeExtensibleText("Invite a user to the current room"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeUserID,
@@ -44,7 +45,7 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("Reason for invite"),
 	}},
 }, {
-	Syntax:      CmdKick,
+	Syntax:      Kick,
 	Description: event.MakeExtensibleText("Kick a user from the current room"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeUserID,
@@ -54,7 +55,7 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("Reason for kick"),
 	}},
 }, {
-	Syntax:      CmdBan,
+	Syntax:      Ban,
 	Description: event.MakeExtensibleText("Ban a user from the current room"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeUserID,
@@ -64,7 +65,7 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("Reason for ban"),
 	}},
 }, {
-	Syntax:      CmdMyRoomNick,
+	Syntax:      MyRoomNick,
 	Aliases:     []string{"roomnick {name}"},
 	Description: event.MakeExtensibleText("Set your display name in the current room"),
 	Arguments: []*event.BotCommandArgument{{
@@ -72,7 +73,7 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("New display name"),
 	}},
 }, {
-	Syntax:      CmdRaw,
+	Syntax:      Raw,
 	Description: event.MakeExtensibleText("Send a raw timeline event to the current room"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeString,
@@ -82,7 +83,17 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("Event content as JSON"),
 	}},
 }, {
-	Syntax:      CmdRawState,
+	Syntax:      UnencryptedRaw,
+	Description: event.MakeExtensibleText("Send an unencrypted raw timeline event to the current room"),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Event type"),
+	}, {
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Event content as JSON"),
+	}},
+}, {
+	Syntax:      RawState,
 	Description: event.MakeExtensibleText("Send a raw state event to the current room"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeString,
@@ -95,6 +106,6 @@ var BuiltInCommands = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("Event content as JSON"),
 	}},
 }, {
-	Syntax:      CmdDiscardSession,
+	Syntax:      DiscardSession,
 	Description: event.MakeExtensibleText("Discard the outbound Megolm session in the current room"),
 }}

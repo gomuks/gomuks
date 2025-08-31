@@ -21,7 +21,7 @@ import (
 func main() {
 	output := exerrors.Must(json.Marshal(&event.BotCommandsEventContent{
 		Sigil:    "/",
-		Commands: cmdspec.BuiltInCommands,
+		Commands: cmdspec.CommandDefinitions,
 	}))
 	if len(os.Args) > 1 && os.Args[1] != "-" {
 		exerrors.PanicIfNotNil(os.WriteFile(os.Args[1], output, 0644))

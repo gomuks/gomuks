@@ -158,6 +158,7 @@ const CommandInput = ({ state, setState }: CommandInputProps) => {
 				}}
 			/>
 		})}
+		{!cmd.spec.arguments?.length ? "Selected /" + cmd.spec.syntax : null}
 	</div>
 }
 

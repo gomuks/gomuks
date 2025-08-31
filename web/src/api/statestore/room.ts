@@ -100,6 +100,28 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
 }
 
+export const fakeGomuksSender: UserID = "@gomuks"
+
+const fakeGomuksMember: MemDBEvent = {
+	mem: true,
+	pending: false,
+	rowid: -1,
+	timeline_rowid: 0,
+	room_id: "",
+	event_id: "",
+	sender: fakeGomuksSender,
+	type: "m.room.member",
+	state_key: fakeGomuksSender,
+	timestamp: 0,
+	unread_type: 0,
+	content: {
+		membership: "join",
+		displayname: "gomuks",
+		avatar_url: "mxc://maunium.net/nDpAldyJKmHQApuIJhVmprFq",
+	},
+	unsigned: {},
+}
+
 export class RoomStateStore {
 	readonly roomID: RoomID
 	readonly meta: NonNullCachedEventDispatcher<DBRoom>
@@ -186,6 +208,9 @@ export class RoomStateStore {
 	}
 
 	getStateEvent(type: EventType, stateKey: string): MemDBEvent | undefined {
+		if (type === "m.room.member" && stateKey === fakeGomuksSender) {
+			return fakeGomuksMember
+		}
 		const rowID = this.state.get(type)?.get(stateKey)
 		if (!rowID) {
 			return
@@ -232,7 +257,7 @@ export class RoomStateStore {
 				.flatMap(([stateKey, rowID]) =>
 					mapCommandContent(stateKey, this.eventsByRowID.get(rowID)?.content))
 				.toArray() ?? []
-			this.#allCommandsCache = roomCommands.concat(mapCommandContent("gomuks", StandardCommands))
+			this.#allCommandsCache = roomCommands.concat(mapCommandContent(fakeGomuksSender, StandardCommands))
 		}
 		return this.#allCommandsCache
 	}

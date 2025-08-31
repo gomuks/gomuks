@@ -84,48 +84,13 @@ func (h *HiClient) SendMessage(
 	mentions *event.Mentions,
 	urlPreviews []*event.BeeperLinkPreview,
 ) (*database.Event, error) {
-	if text == "/discardsession" {
-		err := h.CryptoStore.RemoveOutboundGroupSession(ctx, roomID)
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("outbound megolm session successfully discarded")
+	if base != nil && base.MSC4332BotCommand != nil && mentions.Has(FakeGomuksSender) {
+		return h.ProcessCommand(ctx, roomID, base.MSC4332BotCommand, relatesTo)
 	}
 	var unencrypted bool
 	if strings.HasPrefix(text, "/unencrypted ") {
 		text = strings.TrimPrefix(text, "/unencrypted ")
 		unencrypted = true
-	}
-	if strings.HasPrefix(text, "/raw ") {
-		parts := strings.SplitN(text, " ", 3)
-		if len(parts) < 2 || len(parts[1]) == 0 {
-			return nil, fmt.Errorf("invalid /raw command")
-		}
-		var content json.RawMessage
-		if len(parts) == 3 {
-			content = json.RawMessage(parts[2])
-		} else {
-			content = json.RawMessage("{}")
-		}
-		if !json.Valid(content) {
-			return nil, fmt.Errorf("invalid JSON in /raw command")
-		}
-		return h.send(ctx, roomID, event.Type{Type: parts[1]}, content, "", unencrypted, false)
-	} else if strings.HasPrefix(text, "/rawstate ") {
-		parts := strings.SplitN(text, " ", 4)
-		if len(parts) < 4 || len(parts[1]) == 0 {
-			return nil, fmt.Errorf("invalid /rawstate command")
-		}
-		if parts[2] == "{" || strings.HasPrefix(parts[2], `{"`) {
-			parts[3] = parts[2] + parts[3]
-			parts[2] = ""
-		}
-		content := json.RawMessage(parts[3])
-		if !json.Valid(content) {
-			return nil, fmt.Errorf("invalid JSON in /rawstate command")
-		}
-		_, err := h.SetState(ctx, roomID, event.Type{Type: parts[1], Class: event.StateEventType}, parts[2], content)
-		return nil, err
 	}
 	var rawInputBody bool
 	if strings.HasPrefix(text, "/rawinputbody ") {
