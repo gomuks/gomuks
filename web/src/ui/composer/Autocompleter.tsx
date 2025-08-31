@@ -176,7 +176,10 @@ const commandFuncs = {
 			text: "",
 		}
 		state.text = "/" + replaceArgumentValues(cmd.syntax, state.command.inputArgs)
-		const firstArgPos = cmd.syntax.indexOf("{") + 1
+		let firstArgPos = cmd.syntax.indexOf("{") + 1
+		if (state.text.charAt(firstArgPos) === `"`) {
+			firstArgPos++
+		}
 		return [state, firstArgPos || state.text.length] as const
 	},
 	render: (cmd: WrappedBotCommand) => <>
