@@ -295,8 +295,8 @@ div.right-panel-content.members {
 
 			&:hover {
 				grid-template:
-					"avatar  displayname" auto
-					"avatar  userid"      auto
+					"avatar  displayname" 1.75rem
+					"avatar  userid"      1.25rem
 					/ 2.5rem 1fr;
 
 				> div.user-id {

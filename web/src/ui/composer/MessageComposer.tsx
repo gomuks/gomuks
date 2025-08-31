@@ -935,7 +935,7 @@ const MessageComposer = () => {
 					onClick={onComposerCaretChange}
 					onPaste={onPaste}
 					onChange={onChange}
-					placeholder="Send a message"
+					placeholder={isEncrypted ? "Send a message (encrypted)" : "Send a message"}
 					id="message-composer"
 				/>
 				{inlineButtons && makeAttachmentButtons()}
