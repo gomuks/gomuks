@@ -16,7 +16,13 @@
 import { JSX, RefObject, use, useEffect } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
 import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
-import { WrappedBotCommand, findArgumentNames, getDefaultArguments, replaceArgumentValues } from "@/api/types"
+import {
+	WrappedBotCommand,
+	findArgumentNames,
+	getDefaultArguments,
+	replaceArgumentValues,
+	unpackExtensibleText,
+} from "@/api/types"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
@@ -106,13 +112,13 @@ function useAutocompleter<T>({
 	}, [onSelect, setAutocomplete, params.selected, params.close])
 	const selected = params.selected !== undefined ? positiveMod(params.selected, items.length) : -1
 	return <div
-		className={`autocompletions ${items.length === 0 ? "empty" : "has-items"}`}
+		className={`autocompletions ac-${params.type} ${items.length === 0 ? "empty" : "has-items"}`}
 		id="composer-autocompletions"
 	>
 		{items.map((item, i) => <div
 			onClick={onClick}
 			data-index={i}
-			className={`autocompletion-item ${selected === i ? "selected" : ""}`}
+			className={`autocompletion-item ac-${params.type} ${selected === i ? "selected" : ""}`}
 			key={getKey(item)}
 		>{render(item)}</div>)}
 	</div>
@@ -183,7 +189,7 @@ const commandFuncs = {
 		return [state, firstArgPos || state.text.length] as const
 	},
 	render: (cmd: WrappedBotCommand) => <>
-		<code>/{cmd.syntax}</code>
+		<code>/{cmd.syntax}</code> - {unpackExtensibleText(cmd.description)}
 	</>,
 }
 

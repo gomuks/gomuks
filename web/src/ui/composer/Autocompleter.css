@@ -16,6 +16,11 @@ div.autocompletions, div.command-arguments {
 	max-width: 30rem;
 	overflow: auto;
 
+	&.ac-command {
+		max-width: calc(100% - 4rem);
+		overflow-x: auto;
+	}
+
 	> .autocompletion-item {
 		padding: .25rem;
 		border-radius: .25rem;
@@ -30,6 +35,14 @@ div.autocompletions, div.command-arguments {
 
 		&.selected, &:hover {
 			background-color: var(--light-hover-color);
+		}
+
+		&.ac-command {
+			padding: .375rem .25rem;
+			height: auto;
+			contain-intrinsic-height: unset;
+			content-visibility: visible;
+			display: block;
 		}
 
 		> img {

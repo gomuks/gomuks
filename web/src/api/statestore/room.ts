@@ -45,7 +45,7 @@ import {
 	mapCommandContent,
 	roomStateGUIDToString,
 } from "../types"
-import { StandardCommands } from "../types/stdcommands.ts"
+import StandardCommands from "../types/stdcommands.json"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {

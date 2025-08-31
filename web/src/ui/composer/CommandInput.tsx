@@ -13,9 +13,15 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX } from "react"
+import React, { JSX } from "react"
 import { RoomStateStore } from "@/api/statestore"
-import { BotArgument, BotArgumentValue, SingleBotArgumentValue, replaceArgumentValues } from "@/api/types"
+import {
+	BotArgument,
+	BotArgumentValue,
+	SingleBotArgumentValue,
+	replaceArgumentValues,
+	unpackExtensibleText,
+} from "@/api/types"
 import { ComposerState } from "./MessageComposer.tsx"
 
 interface CommandArgumentProps {
@@ -85,9 +91,7 @@ function renderArgumentContent(
 }
 
 const CommandArgument = ({ index, name, spec, value, setValue }: CommandArgumentProps) => {
-	const description = spec.description?.["m.text"]
-		?.find(item => !item.mimetype || item.mimetype === "text/plain")?.body
-		?? name
+	const description = unpackExtensibleText(spec.description) || name
 	const contentID = `cmd-arg-${index}`
 	const onKeyDown = (evt: React.KeyboardEvent) => {
 		if (evt.key === "Enter") {

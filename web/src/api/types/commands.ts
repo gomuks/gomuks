@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { ensureStringArray } from "@/util/validation.ts"
+import { ensureString, ensureStringArray } from "@/util/validation.ts"
 import { UnknownEventContent } from "./hitypes.ts"
 import {
 	BotArgument,
@@ -29,23 +29,6 @@ export interface WrappedBotCommand extends BotCommand {
 	sigil: string
 }
 
-function sanitizeDescription(desc?: ExtensibleTextContainer): ExtensibleTextContainer {
-	if (!desc || !Array.isArray(desc["m.text"]) || !desc["m.text"].length) {
-		return {
-			"m.text": [{ body: "", mimetype: "text/plain" }],
-		}
-	}
-	for (const part of desc["m.text"]) {
-		if (typeof part.body !== "string") {
-			part.body = ""
-		}
-		if (part.mimetype !== undefined && typeof part.mimetype !== "string") {
-			delete part.mimetype
-		}
-	}
-	return desc
-}
-
 function sanitizeArguments(args: BotArgument[] | undefined): BotArgument[] {
 	if (!Array.isArray(args)) {
 		return []
@@ -53,7 +36,6 @@ function sanitizeArguments(args: BotArgument[] | undefined): BotArgument[] {
 	let index = 0
 	for (const arg of args) {
 		arg.type = typeof arg.type !== "string" ? "string" : arg.type
-		arg.description = sanitizeDescription(arg.description)
 		if (typeof arg.variadic !== "boolean" || index !== args.length - 1) {
 			delete arg.variadic
 		}
@@ -81,7 +63,7 @@ export function mapCommandContent(stateKey: UserID, content?: UnknownEventConten
 			sigil: content.sigil,
 			syntax: cmd.syntax,
 			arguments: sanitizeArguments(cmd.arguments),
-			description: sanitizeDescription(cmd.description),
+			description: cmd.description,
 			"fi.mau.aliases": ensureStringArray(cmd["fi.mau.aliases"]),
 		}
 	}).filter(x => x !== null)
@@ -123,7 +105,7 @@ function quote(val: string): string {
 	val = val
 		.replaceAll("\\", "\\\\")
 		.replaceAll(`"`, `\\"`)
-	if (val.includes(" ")) {
+	if (val.includes(" ") || val.includes("\\")) {
 		val = `"${val}"`
 	}
 	return val
@@ -135,7 +117,7 @@ function parseQuoted(val: string): [string, string] {
 		if (spaceIdx === -1) {
 			return [val, ""]
 		}
-		return [val.slice(0, spaceIdx).replaceAll("\\\\", "\\"), val.slice(spaceIdx)]
+		return [val.slice(0, spaceIdx), val.slice(spaceIdx)]
 	}
 	val = val.slice(1)
 	const out = []
@@ -222,16 +204,22 @@ export function parseArgumentValues(
 			}
 			input = input.slice(part.length)
 		} else {
+			const origInput = input
 			let argVal: string
 			[argVal, input] = parseQuoted(input)
 			const argIdx = Math.floor(i/2)
 			const argSpec = spec.arguments![argIdx]
-			if (argSpec.variadic && argIdx === spec.arguments!.length - 1) {
+			const isLastArg = argIdx === spec.arguments!.length - 1
+			if (argSpec.variadic && isLastArg) {
 				args[part] = [castArgument(argSpec, argVal)]
 				while (input.startsWith(" ")) {
 					[argVal, input] = parseQuoted(input.trimStart())
 					args[part].push(castArgument(argSpec, argVal))
 				}
+			} else if (isLastArg && !origInput.startsWith(`"`)) {
+				// If the last argument is not quoted and not variadic, just treat the rest of the string
+				// as the argument without escapes (arguments with escapes should be quoted).
+				args[part] = castArgument(argSpec, origInput)
 			} else {
 				args[part] = castArgument(argSpec, argVal)
 			}
@@ -261,4 +249,8 @@ export function replaceArgumentValues(
 		}
 	}
 	return parts.join("")
+}
+
+export function unpackExtensibleText(text?: ExtensibleTextContainer): string {
+	return ensureString(text?.["m.text"]?.find(item => !item.mimetype || item.mimetype === "text/plain")?.body)
 }

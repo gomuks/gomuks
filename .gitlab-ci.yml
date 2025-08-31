@@ -28,10 +28,12 @@ wasm:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   script:
   - cd web
+  - go run ../pkg/hicli/cmdspec/print > src/api/types/stdcommands.json
   - ./build-wasm.sh
   artifacts:
     paths:
     - web/src/api/wasm/_gomuks.wasm
+    - web/src/api/types/stdcommands.json
     expire_in: 1 hour
 
 frontend:

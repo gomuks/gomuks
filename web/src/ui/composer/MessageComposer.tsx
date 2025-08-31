@@ -345,7 +345,12 @@ const MessageComposer = () => {
 	const onComposerCaretChange = (evt: CaretEvent<HTMLTextAreaElement>, newText?: string) => {
 		const area = evt.currentTarget
 		if (area.selectionStart <= (autocomplete?.startPos ?? 0)) {
-			if (autocomplete) {
+			if (
+				autocomplete
+				// Don't stop autocomplete on care move for commands, except if the leading / is removed
+				&& (autocomplete.type !== "command"
+					|| (newText !== undefined && !newText.startsWith("/")))
+			) {
 				setAutocomplete(null)
 			}
 			return
@@ -356,7 +361,10 @@ const MessageComposer = () => {
 			}
 		} else if (autocomplete) {
 			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, area.selectionEnd)
-			if (newQuery.includes(" ") || (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))) {
+			if (
+				(newQuery.includes(" ") && autocomplete.type !== "command")
+				|| (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))
+			) {
 				setAutocomplete(null)
 			} else if (newQuery !== autocomplete.query) {
 				setAutocomplete({ ...autocomplete, query: newQuery, endPos: area.selectionEnd })
