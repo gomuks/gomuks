@@ -84,7 +84,8 @@ func (h *HiClient) SendMessage(
 	mentions *event.Mentions,
 	urlPreviews []*event.BeeperLinkPreview,
 ) (*database.Event, error) {
-	if base != nil && base.MSC4332BotCommand != nil && mentions.Has(FakeGomuksSender) {
+	hasCommand := base != nil && base.MSC4332BotCommand != nil
+	if hasCommand && mentions.Has(FakeGomuksSender) {
 		return h.ProcessCommand(ctx, roomID, base.MSC4332BotCommand, relatesTo)
 	}
 	var unencrypted bool
@@ -118,6 +119,13 @@ func (h *HiClient) SendMessage(
 		text = strings.TrimPrefix(text, "/html ")
 		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
 	} else if text != "" {
+		if !hasCommand && strings.HasPrefix(text, "/") && !unencrypted && !rawInputBody && msgType == event.MsgText {
+			if strings.HasPrefix(text, "//") {
+				text = text[1:]
+			} else {
+				return makeFakeEvent(roomID, "Use two slashes to send a non-command message starting with a slash"), nil
+			}
+		}
 		content = format.RenderMarkdownCustom(text, defaultNoHTML)
 	}
 	if rawInputBody {
