@@ -13,9 +13,12 @@ import (
 	"html"
 	"time"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 	"go.mau.fi/util/exstrings"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/random"
+	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
@@ -53,6 +56,20 @@ func (h *HiClient) ProcessCommand(
 	switch cmd.Syntax {
 	case cmdspec.DiscardSession:
 		responseText = h.handleCmdDiscardSession(ctx, roomID)
+	case cmdspec.Meow:
+		responseText = "Meow " + gjson.GetBytes(cmd.Arguments, "meow").Str
+	case cmdspec.Invite:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdInvite)
+	case cmdspec.Kick:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdKick)
+	case cmdspec.Ban:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdBan)
+	case cmdspec.Join:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdJoin)
+	case cmdspec.Leave:
+		responseText = h.handleCmdLeave(ctx, roomID)
+	case cmdspec.MyRoomNick:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdMyRoomNick)
 	case cmdspec.Raw:
 		return callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdRaw)
 	case cmdspec.UnencryptedRaw:
@@ -73,20 +90,6 @@ func (h *HiClient) ProcessCommand(
 	return makeFakeEvent(roomID, responseHTML), nil
 }
 
-func (h *HiClient) handleCmdDiscardSession(ctx context.Context, roomID id.RoomID) string {
-	err := h.CryptoStore.RemoveOutboundGroupSession(ctx, roomID)
-	if err != nil {
-		return fmt.Sprintf("Failed to remove outbound megolm session: %s", err)
-	}
-	return "Successfully discarded the outbound megolm session for this room"
-}
-
-type rawArguments struct {
-	EventType string  `json:"event_type"`
-	StateKey  *string `json:"state_key"`
-	JSON      string  `json:"json"`
-}
-
 func callWithParsedArgs[T, R any](
 	ctx context.Context,
 	roomID id.RoomID,
@@ -101,6 +104,107 @@ func callWithParsedArgs[T, R any](
 		return zero, err
 	}
 	return fn(ctx, roomID, parsedArgs, relatesTo), nil
+}
+
+func (h *HiClient) handleCmdDiscardSession(ctx context.Context, roomID id.RoomID) string {
+	err := h.CryptoStore.RemoveOutboundGroupSession(ctx, roomID)
+	if err != nil {
+		return fmt.Sprintf("Failed to remove outbound megolm session: %s", err)
+	}
+	return "Successfully discarded the outbound megolm session for this room"
+}
+
+type inviteArgs struct {
+	UserID id.UserID `json:"user_id"`
+	Reason string    `json:"reason"`
+}
+
+func (h *HiClient) handleCmdInvite(ctx context.Context, roomID id.RoomID, args inviteArgs, _ *event.RelatesTo) string {
+	_, err := h.Client.InviteUser(ctx, roomID, &mautrix.ReqInviteUser{
+		Reason: args.Reason,
+		UserID: args.UserID,
+	})
+	if err != nil {
+		return fmt.Sprintf("Failed to send invite: %v", err)
+	}
+	return ""
+}
+
+func (h *HiClient) handleCmdKick(ctx context.Context, roomID id.RoomID, args inviteArgs, _ *event.RelatesTo) string {
+	_, err := h.Client.KickUser(ctx, roomID, &mautrix.ReqKickUser{
+		Reason: args.Reason,
+		UserID: args.UserID,
+	})
+	if err != nil {
+		return fmt.Sprintf("Failed to kick user: %v", err)
+	}
+	return ""
+}
+
+func (h *HiClient) handleCmdBan(ctx context.Context, roomID id.RoomID, args inviteArgs, _ *event.RelatesTo) string {
+	_, err := h.Client.BanUser(ctx, roomID, &mautrix.ReqBanUser{
+		Reason: args.Reason,
+		UserID: args.UserID,
+	})
+	if err != nil {
+		return fmt.Sprintf("Failed to kick user: %v", err)
+	}
+	return ""
+}
+
+type joinArgs struct {
+	RoomReference string `json:"room_reference"`
+	Reason        string `json:"reason"`
+}
+
+func (h *HiClient) handleCmdJoin(ctx context.Context, _ id.RoomID, args joinArgs, _ *event.RelatesTo) string {
+	roomRef := args.RoomReference
+	req := &mautrix.ReqJoinRoom{
+		Reason: args.Reason,
+	}
+	if url, _ := id.ParseMatrixURIOrMatrixToURL(roomRef); url != nil {
+		roomRef = url.PrimaryIdentifier()
+		req.Via = url.Via
+	}
+	if len(roomRef) == 0 || (roomRef[0] != '!' && roomRef[0] != '#') {
+		return "Input is not a room ID or alias"
+	}
+	_, err := h.Client.JoinRoom(ctx, args.RoomReference, req)
+	if err != nil {
+		return fmt.Sprintf("Failed to join room: %v", err)
+	}
+	return ""
+}
+
+func (h *HiClient) handleCmdLeave(ctx context.Context, roomID id.RoomID) string {
+	_, err := h.Client.LeaveRoom(ctx, roomID)
+	if err != nil {
+		return fmt.Sprintf("Failed to leave room: %v", err)
+	}
+	return ""
+}
+
+type myRoomNickParams struct {
+	Name string `json:"name"`
+}
+
+func (h *HiClient) handleCmdMyRoomNick(ctx context.Context, roomID id.RoomID, params myRoomNickParams, _ *event.RelatesTo) string {
+	if evt, err := h.DB.CurrentState.Get(ctx, roomID, event.StateMember, h.Account.UserID.String()); err != nil {
+		return fmt.Sprintf("Failed to get current member event: %v", err)
+	} else if evt == nil {
+		return "No member event found for self in this room"
+	} else if content, err := sjson.SetBytes(evt.Content, "displayname", params.Name); err != nil {
+		return fmt.Sprintf("Failed to mutate member event content: %v", err)
+	} else if _, err = h.Client.SendStateEvent(ctx, roomID, event.StateMember, h.Account.UserID.String(), json.RawMessage(content)); err != nil {
+		return fmt.Sprintf("Failed to update member event: %v", err)
+	}
+	return ""
+}
+
+type rawArguments struct {
+	EventType string  `json:"event_type"`
+	StateKey  *string `json:"state_key"`
+	JSON      string  `json:"json"`
 }
 
 func (h *HiClient) handleCmdRaw(ctx context.Context, roomID id.RoomID, args rawArguments, _ *event.RelatesTo) *database.Event {

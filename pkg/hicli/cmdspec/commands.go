@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Join           = "join {room_reference}"
+	Join           = "join {room_reference} {reason}"
 	Leave          = "leave"
 	Invite         = "invite {user_id} {reason}"
 	Kick           = "kick {user_id} {reason}"
@@ -21,14 +21,25 @@ const (
 	UnencryptedRaw = "unencryptedraw {event_type} {json}"
 	RawState       = "rawstate {event_type} {state_key} {json}"
 	DiscardSession = "discardsession"
+	Meow           = "meow {meow}"
 )
 
 var CommandDefinitions = []*event.BotCommand{{
+	Syntax:      Meow,
+	Description: event.MakeExtensibleText("Meow"),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Meow"),
+	}},
+}, {
 	Syntax:      Join,
 	Description: event.MakeExtensibleText("Jump to the join room view by ID, alias or link"),
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Room identifier"),
+	}, {
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Reason for joining"),
 	}},
 }, {
 	Syntax:      Leave,
