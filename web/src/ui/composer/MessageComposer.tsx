@@ -319,9 +319,7 @@ const MessageComposer = () => {
 		}
 		if (state.command) {
 			base_content = {
-				// @ts-expect-error typescript is dumb and thinks this will always be overwritten by the expansion
-				msgtype: "m.text",
-				...(base_content ?? {}),
+				...(base_content ?? { msgtype: "m.text" }),
 				body: text.replace("/", state.command.spec.sigil),
 				"org.matrix.msc4332.command": {
 					syntax: state.command.spec.syntax,
