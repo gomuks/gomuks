@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, RefObject, use, useEffect, useRef } from "react"
+import { JSX, RefObject, use, useEffect, useLayoutEffect, useRef } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
 import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
 import {
@@ -66,17 +66,18 @@ function useAutocompleter<T>({
 	items, getText, getKey, getNewState, render,
 }: InnerAutocompleterProps<T>) {
 	const prevItems = useRef<T[]>(null)
-	const onSelect = useEvent((index: number) => {
+	const onSelect = useEvent((index: number, clearAutocomplete = false) => {
 		if (items.length === 0) {
 			return
 		}
 		index = positiveMod(index, items.length)
+		const item = items[index]
 		let newState: Partial<ComposerState>
 		let endPos: number
 		if (getNewState) {
-			[newState, endPos] = getNewState(items[index], params)
+			[newState, endPos] = getNewState(item, params)
 		} else {
-			const replacementText = getText(items[index])
+			const replacementText = getText(item)
 			const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
 			endPos = params.startPos + replacementText.length
 			newState = {
@@ -90,7 +91,7 @@ function useAutocompleter<T>({
 			textInput.current.setSelectionRange(endPos, endPos)
 		}
 		setState(newState)
-		setAutocomplete({
+		setAutocomplete(clearAutocomplete ? null : {
 			...params,
 			endPos,
 			frozenQuery: params.frozenQuery ?? params.query,
@@ -100,31 +101,33 @@ function useAutocompleter<T>({
 	const onClick = (evt: React.MouseEvent<HTMLDivElement>) => {
 		const idx = evt.currentTarget.getAttribute("data-index")
 		if (idx) {
-			onSelect(+idx)
-			setAutocomplete(null)
+			onSelect(+idx, true)
 		}
 	}
 	useEffect(() => {
 		if (params.selected !== undefined) {
-			onSelect(params.selected)
-			if (params.close) {
-				setAutocomplete(null)
-			}
+			onSelect(params.selected, params.close)
 		}
-	}, [onSelect, setAutocomplete, params.selected, params.close])
-	useEffect(() => {
-		if (params.type === "command" && items.length === 0 && (prevItems.current?.length ?? 0) > 0 && state.text) {
-			let i = 0
+	}, [onSelect, params.selected, params.close])
+	useLayoutEffect(() => {
+		if (params.type === "command" && items.length === 0 && prevItems.current?.length && state.text) {
 			for (const item of prevItems.current as WrappedBotCommand[]) {
-				if (parseArgumentValues(item, state.text) !== null) {
-					onSelect(i)
+				const argVals = parseArgumentValues(item, state.text)
+				if (argVals !== null) {
+					setState({
+						command: {
+							spec: item,
+							argNames: findArgumentNames(item.syntax),
+							inputArgs: argVals,
+						},
+					})
 					setAutocomplete(null)
+					break
 				}
-				i++
 			}
 		}
 		prevItems.current = items
-	}, [params.type, items])
+	}, [params.type, items, state.text, setAutocomplete, setState])
 	const selected = params.selected !== undefined ? positiveMod(params.selected, items.length) : -1
 	return <div
 		className={`autocompletions ac-${params.type} ${items.length === 0 ? "empty" : "has-items"}`}

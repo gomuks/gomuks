@@ -451,14 +451,15 @@ const MessageComposer = () => {
 		}
 	}
 	const onChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-		const newState: Partial<ComposerState> = { text: evt.target.value }
+		const newText = evt.target.value
+		const newState: Partial<ComposerState> = { text: newText }
 		if (state.command) {
-			const inputArgs = parseArgumentValues(state.command.spec, evt.target.value)
+			const inputArgs = parseArgumentValues(state.command.spec, newText)
 			if (inputArgs === null) {
-				if (state.text.startsWith("/")) {
+				if (newText.startsWith("/")) {
 					setAutocomplete({
 						type: "command",
-						query: state.text,
+						query: newText,
 						startPos: 0,
 						endPos: evt.currentTarget.selectionEnd,
 					})
