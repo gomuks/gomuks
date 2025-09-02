@@ -101,8 +101,9 @@ var CommandDefinitions = []*event.BotCommand{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Event type"),
 	}, {
-		Type:        event.BotArgumentTypeString,
-		Description: event.MakeExtensibleText("Event content as JSON"),
+		Type:         event.BotArgumentTypeString,
+		Description:  event.MakeExtensibleText("Event content as JSON"),
+		DefaultValue: "{}",
 	}},
 }, {
 	Syntax:      UnencryptedRaw,
@@ -111,8 +112,9 @@ var CommandDefinitions = []*event.BotCommand{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Event type"),
 	}, {
-		Type:        event.BotArgumentTypeString,
-		Description: event.MakeExtensibleText("Event content as JSON"),
+		Type:         event.BotArgumentTypeString,
+		Description:  event.MakeExtensibleText("Event content as JSON"),
+		DefaultValue: "{}",
 	}},
 }, {
 	Syntax:      RawState,
@@ -124,8 +126,9 @@ var CommandDefinitions = []*event.BotCommand{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("State key"),
 	}, {
-		Type:        event.BotArgumentTypeString,
-		Description: event.MakeExtensibleText("Event content as JSON"),
+		Type:         event.BotArgumentTypeString,
+		Description:  event.MakeExtensibleText("Event content as JSON"),
+		DefaultValue: "{}",
 	}},
 }, {
 	Syntax:      DiscardSession,

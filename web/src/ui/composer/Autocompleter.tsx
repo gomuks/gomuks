@@ -29,6 +29,7 @@ import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
+import { isLegacyCommand } from "./getAutocompleter.ts"
 import { useFilteredCommands, useFilteredMembers } from "./userautocomplete.ts"
 import "./Autocompleter.css"
 
@@ -110,7 +111,14 @@ function useAutocompleter<T>({
 		}
 	}, [onSelect, params.selected, params.close])
 	useLayoutEffect(() => {
-		if (params.type === "command" && items.length === 0 && prevItems.current?.length && state.text) {
+		if (params.type !== "command" || !state.text) {
+			return
+		}
+		if (isLegacyCommand(state.text)) {
+			// Special case commands that don't use MSC4332
+			setAutocomplete(null)
+			return
+		} else if (items.length === 0 && prevItems.current?.length) {
 			for (const item of prevItems.current as WrappedBotCommand[]) {
 				const argVals = parseArgumentValues(item, state.text)
 				if (argVals !== null) {
@@ -122,7 +130,7 @@ function useAutocompleter<T>({
 						},
 					})
 					setAutocomplete(null)
-					break
+					return
 				}
 			}
 		}
@@ -139,6 +147,7 @@ function useAutocompleter<T>({
 			className={`autocompletion-item ac-${params.type} ${selected === i ? "selected" : ""}`}
 			key={getKey(item)}
 		>{render(item)}</div>)}
+		{!items.length ? `No ${params.type}s matching ${params.query} found` : null}
 	</div>
 }
 

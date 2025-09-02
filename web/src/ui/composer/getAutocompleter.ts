@@ -24,7 +24,7 @@ import {
 	UserAutocompleter,
 } from "./Autocompleter.tsx"
 
-export function charToAutocompleteType(newChar?: string, pos?: number): AutocompleteQuery["type"] | null {
+export function charToAutocompleteType(newChar?: string): AutocompleteQuery["type"] | null {
 	switch (newChar) {
 	case ":":
 		return "emoji"
@@ -32,14 +32,20 @@ export function charToAutocompleteType(newChar?: string, pos?: number): Autocomp
 		return "user"
 	case "#":
 		return "room"
-	case "/":
-		return pos === 0 ? "command" : null
 	default:
 		return null
 	}
 }
 
 export const emojiQueryRegex = /[a-zA-Z0-9_+-]*$/
+
+export function isLegacyCommand(text: string): boolean {
+	return text.startsWith("/plain ")
+		|| text.startsWith("/me ")
+		|| text.startsWith("/notice ")
+		|| text.startsWith("/rainbow ")
+		|| text.startsWith("/html ")
+}
 
 export function getAutocompleter(
 	params: AutocompleteQuery | null, client: Client, room: RoomStateStore,

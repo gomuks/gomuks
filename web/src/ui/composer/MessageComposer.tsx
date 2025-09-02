@@ -62,7 +62,7 @@ import type { AutocompleteQuery } from "./Autocompleter.tsx"
 import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
 import MediaUploadDialog from "./MediaUploadDialog.tsx"
-import { charToAutocompleteType, emojiQueryRegex, getAutocompleter } from "./getAutocompleter.ts"
+import { charToAutocompleteType, emojiQueryRegex, getAutocompleter, isLegacyCommand } from "./getAutocompleter.ts"
 import AttachIcon from "@/icons/attach.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import EmojiIcon from "@/icons/emoji-categories/smileys-emotion.svg?react"
@@ -362,7 +362,8 @@ const MessageComposer = () => {
 		} else if (autocomplete) {
 			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, area.selectionEnd)
 			if (
-				(newQuery.includes(" ") && autocomplete.type !== "command")
+				(autocomplete.type !== "command" && newQuery.includes(" "))
+				|| (autocomplete.type === "command" && !newQuery.startsWith("/"))
 				|| (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))
 			) {
 				setAutocomplete(null)
@@ -370,9 +371,16 @@ const MessageComposer = () => {
 				setAutocomplete({ ...autocomplete, query: newQuery, endPos: area.selectionEnd })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
-			const acType = charToAutocompleteType(
-				newText?.slice(area.selectionStart - 1, area.selectionStart), area.selectionStart - 1,
-			)
+			if (newText?.startsWith("/") && !state.command && !isLegacyCommand(state.text)) {
+				setAutocomplete({
+					type: "command",
+					query: newText,
+					startPos: 0,
+					endPos: area.selectionEnd,
+				})
+				return
+			}
+			const acType = charToAutocompleteType(newText?.slice(area.selectionStart - 1, area.selectionStart))
 			if (
 				acType && (
 					area.selectionStart === 1
