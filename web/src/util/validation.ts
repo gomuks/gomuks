@@ -52,6 +52,26 @@ export interface ParsedMatrixURI {
 	params: URLSearchParams
 }
 
+export function matrixToToMatrixURI(url: string): string | null {
+	if (!url.startsWith("https://matrix.to/")) {
+		return null
+	}
+	const parsedURL = new URL(url)
+	const parts = parsedURL.hash.split("/")
+	if (parts[1][0] === "#") {
+		return `matrix:r/${parts[1].slice(1)}`
+	} else if (parts[1][0] === "!") {
+		if (parts.length >= 4 && parts[3][0] === "$") {
+			return `matrix:roomid/${parts[1].slice(1)}/e/${parts[4].slice(1)}`
+		} else {
+			return `matrix:roomid/${parts[1].slice(1)}`
+		}
+	} else if (parts[1][0] === "@") {
+		return `matrix:u/${parts[1].slice(1)}`
+	}
+	return null
+}
+
 export function parseMatrixURI(uri: unknown): ParsedMatrixURI | undefined {
 	if (typeof uri !== "string") {
 		return

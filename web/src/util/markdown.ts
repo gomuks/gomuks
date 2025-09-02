@@ -15,10 +15,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { UserID } from "@/api/types"
 
+export const escapeHTML = (input: string) => input
+	.replaceAll("&", "&amp;")
+	.replaceAll("<", "&lt;")
+	.replaceAll(">", "&gt;")
+	.replaceAll(`"`, "&quot;")
+	.replaceAll("'", "&#039;")
+
 export const escapeMarkdown = (input: string) => input
 	.replace(/([\\`*_[\]()])/g, "\\$1")
-	.replace("<", "&lt;")
-	.replace(">", "&gt;")
+	.replaceAll("<", "&lt;")
+	.replaceAll(">", "&gt;")
 
 export const escapeMarkdownAndURI = (input: string) => {
 	return escapeMarkdown(encodeURIComponent(input))

@@ -354,7 +354,7 @@ export default class Client {
 		room?.notifyTimelineSubscribers()
 	}
 
-	#handleOutgoingEvent(dbEvent: RawDBEvent, room: RoomStateStore) {
+	handleOutgoingEvent(dbEvent: RawDBEvent, room: RoomStateStore) {
 		if (!room.eventsByRowID.has(dbEvent.rowid)) {
 			if (!room.pendingEvents.includes(dbEvent.rowid)) {
 				room.pendingEvents.push(dbEvent.rowid)
@@ -376,7 +376,7 @@ export default class Client {
 			throw new Error("Room not found")
 		}
 		const dbEvent = await this.rpc.sendEvent(roomID, type, content, disableEncryption)
-		this.#handleOutgoingEvent(dbEvent, room)
+		this.handleOutgoingEvent(dbEvent, room)
 	}
 
 	async sendMessage(params: SendMessageParams): Promise<void> {
@@ -386,7 +386,7 @@ export default class Client {
 		}
 		const dbEvent = await this.rpc.sendMessage(params)
 		if (dbEvent) {
-			this.#handleOutgoingEvent(dbEvent, room)
+			this.handleOutgoingEvent(dbEvent, room)
 		}
 	}
 

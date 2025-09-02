@@ -63,6 +63,7 @@ import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
 import MediaUploadDialog from "./MediaUploadDialog.tsx"
 import { charToAutocompleteType, emojiQueryRegex, getAutocompleter, isLegacyCommand } from "./getAutocompleter.ts"
+import { interceptCommand } from "./localcommands.ts"
 import AttachIcon from "@/icons/attach.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import EmojiIcon from "@/icons/emoji-categories/smileys-emotion.svg?react"
@@ -329,6 +330,9 @@ const MessageComposer = () => {
 			mentions.user_ids = [state.command.spec.source]
 			mentions.room = false
 			text = ""
+			if (interceptCommand(client, mainScreen, roomCtx, state.command.spec, state.command.inputArgs)) {
+				return
+			}
 		}
 		client.sendMessage({
 			room_id: room.roomID,
@@ -592,7 +596,7 @@ const MessageComposer = () => {
 			&& state.text.slice(input.selectionStart, input.selectionStart + 8) !== text.slice(0, 8)
 		) {
 			document.execCommand("insertText", false, `[${
-				escapeMarkdown(state.text.slice(input.selectionStart, input.selectionEnd))
+				state.text.slice(input.selectionStart, input.selectionEnd)
 			}](${escapeMarkdown(text)})`)
 		} else if (input.selectionStart === 0 && input.selectionEnd === state.text.length && text.startsWith("/")) {
 			for (const spec of room.getAllBotCommands()) {

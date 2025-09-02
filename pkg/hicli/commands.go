@@ -52,6 +52,7 @@ func (h *HiClient) ProcessCommand(
 	cmd *event.BotCommandInput,
 	relatesTo *event.RelatesTo,
 ) (*database.Event, error) {
+	ctx = mautrix.WithMaxRetries(ctx, 0)
 	var responseHTML, responseText string
 	var retErr error
 	switch cmd.Syntax {
