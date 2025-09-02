@@ -13,13 +13,14 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, RefObject, use, useEffect } from "react"
+import { JSX, RefObject, use, useEffect, useRef } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
 import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
 import {
 	WrappedBotCommand,
 	findArgumentNames,
 	getDefaultArguments,
+	parseArgumentValues,
 	replaceArgumentValues,
 	unpackExtensibleText,
 } from "@/api/types"
@@ -64,6 +65,7 @@ function useAutocompleter<T>({
 	params, state, setState, setAutocomplete, textInput,
 	items, getText, getKey, getNewState, render,
 }: InnerAutocompleterProps<T>) {
+	const prevItems = useRef<T[]>(null)
 	const onSelect = useEvent((index: number) => {
 		if (items.length === 0) {
 			return
@@ -110,6 +112,19 @@ function useAutocompleter<T>({
 			}
 		}
 	}, [onSelect, setAutocomplete, params.selected, params.close])
+	useEffect(() => {
+		if (params.type === "command" && items.length === 0 && (prevItems.current?.length ?? 0) > 0 && state.text) {
+			let i = 0
+			for (const item of prevItems.current as WrappedBotCommand[]) {
+				if (parseArgumentValues(item, state.text) !== null) {
+					onSelect(i)
+					setAutocomplete(null)
+				}
+				i++
+			}
+		}
+		prevItems.current = items
+	}, [params.type, items])
 	const selected = params.selected !== undefined ? positiveMod(params.selected, items.length) : -1
 	return <div
 		className={`autocompletions ac-${params.type} ${items.length === 0 ? "empty" : "has-items"}`}

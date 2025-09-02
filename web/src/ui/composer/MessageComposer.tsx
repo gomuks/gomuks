@@ -455,6 +455,14 @@ const MessageComposer = () => {
 		if (state.command) {
 			const inputArgs = parseArgumentValues(state.command.spec, evt.target.value)
 			if (inputArgs === null) {
+				if (state.text.startsWith("/")) {
+					setAutocomplete({
+						type: "command",
+						query: state.text,
+						startPos: 0,
+						endPos: evt.currentTarget.selectionEnd,
+					})
+				}
 				newState.command = null
 			} else {
 				newState.command = { ...state.command, inputArgs }
