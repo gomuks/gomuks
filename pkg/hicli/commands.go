@@ -150,7 +150,7 @@ func (h *HiClient) handleCmdBan(ctx context.Context, roomID id.RoomID, args invi
 		UserID: args.UserID,
 	})
 	if err != nil {
-		return fmt.Sprintf("Failed to kick user: %v", err)
+		return fmt.Sprintf("Failed to ban user: %v", err)
 	}
 	return ""
 }
