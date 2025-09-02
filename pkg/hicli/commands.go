@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -70,6 +71,8 @@ func (h *HiClient) ProcessCommand(
 		responseText = h.handleCmdLeave(ctx, roomID)
 	case cmdspec.MyRoomNick:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdMyRoomNick)
+	case cmdspec.Redact:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdRedact)
 	case cmdspec.Raw:
 		return callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdRaw)
 	case cmdspec.UnencryptedRaw:
@@ -197,6 +200,32 @@ func (h *HiClient) handleCmdMyRoomNick(ctx context.Context, roomID id.RoomID, pa
 		return fmt.Sprintf("Failed to mutate member event content: %v", err)
 	} else if _, err = h.Client.SendStateEvent(ctx, roomID, event.StateMember, h.Account.UserID.String(), json.RawMessage(content)); err != nil {
 		return fmt.Sprintf("Failed to update member event: %v", err)
+	}
+	return ""
+}
+
+type redactParams struct {
+	EventID id.EventID `json:"event_id"`
+	Reason  string     `json:"reason"`
+}
+
+func (h *HiClient) handleCmdRedact(ctx context.Context, roomID id.RoomID, params redactParams, _ *event.RelatesTo) string {
+	if !strings.HasPrefix(string(params.EventID), "$") {
+		url, err := id.ParseMatrixURIOrMatrixToURL(string(params.EventID))
+		if err != nil {
+			return "Input is not a valid event ID or URL"
+		}
+		roomID = url.RoomID()
+		params.EventID = url.EventID()
+		if params.EventID == "" {
+			return "Input is not a valid event ID or event URL"
+		}
+	}
+	_, err := h.Client.RedactEvent(ctx, roomID, params.EventID, mautrix.ReqRedact{
+		Reason: params.Reason,
+	})
+	if err != nil {
+		return fmt.Sprintf("Failed to redact event: %v", err)
 	}
 	return ""
 }

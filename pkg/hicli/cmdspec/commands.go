@@ -17,6 +17,7 @@ const (
 	Kick           = "kick {user_id} {reason}"
 	Ban            = "ban {user_id} {reason}"
 	MyRoomNick     = "myroomnick {name}"
+	Redact         = "redact {event_id} {reason}"
 	Raw            = "raw {event_type} {json}"
 	UnencryptedRaw = "unencryptedraw {event_type} {json}"
 	RawState       = "rawstate {event_type} {state_key} {json}"
@@ -82,6 +83,16 @@ var CommandDefinitions = []*event.BotCommand{{
 	Arguments: []*event.BotCommandArgument{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("New display name"),
+	}},
+}, {
+	Syntax:      Redact,
+	Description: event.MakeExtensibleText("Redact an event"),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeEventID,
+		Description: event.MakeExtensibleText("Event ID or link"),
+	}, {
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Reason for redaction"),
 	}},
 }, {
 	Syntax:      Raw,
