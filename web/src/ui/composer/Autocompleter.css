@@ -38,11 +38,21 @@ div.autocompletions, div.command-arguments {
 		}
 
 		&.ac-command {
-			padding: .375rem .25rem;
 			height: auto;
 			contain-intrinsic-height: unset;
 			content-visibility: visible;
 			display: block;
+
+			> span, > code {
+				vertical-align: middle;
+			}
+
+			> img {
+				vertical-align: middle;
+				width: 1.5rem;
+				height: 1.5rem;
+				margin-right: .25rem;
+			}
 		}
 
 		> img {

@@ -15,8 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, RefObject, use, useEffect, useLayoutEffect, useRef } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
-import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
 import {
+	AutocompleteMemberEntry,
+	RoomStateStore,
+	maybeRedactMemberEvent,
+	useCustomEmojis,
+	useRoomMember,
+} from "@/api/statestore"
+import {
+	UserID,
 	WrappedBotCommand,
 	findArgumentNames,
 	getDefaultArguments,
@@ -28,6 +35,7 @@ import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
+import { RoomContext } from "../roomview/roomcontext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
 import { charToAutocompleteType, isLegacyCommand } from "./getAutocompleter.ts"
 import { useFilteredCommands, useFilteredMembers } from "./userautocomplete.ts"
@@ -208,6 +216,19 @@ export const RoomAutocompleter = ({ params }: AutocompleterProps) => {
 	</div>
 }
 
+const BotSourceIcon = ({ source }: { source: UserID }) => {
+	const client = use(ClientContext)
+	const roomCtx = use(RoomContext)
+	const memberEvt = useRoomMember(client, roomCtx?.store, source)
+	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
+	return <img
+		className="avatar"
+		loading="lazy"
+		src={getAvatarThumbnailURL(source, memberEvtContent)}
+		alt=""
+	/>
+}
+
 const commandFuncs = {
 	getText: () => "",
 	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.syntax,
@@ -229,7 +250,9 @@ const commandFuncs = {
 		return [state, firstArgPos || state.text.length] as const
 	},
 	render: (cmd: WrappedBotCommand) => <>
-		<code>/{cmd.syntax}</code> - {unpackExtensibleText(cmd.description)}
+		<BotSourceIcon source={cmd.source} />
+		<code>/{cmd.syntax}</code>
+		<span> - {unpackExtensibleText(cmd.description)}</span>
 	</>,
 }
 
