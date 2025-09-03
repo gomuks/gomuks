@@ -16,13 +16,13 @@
 import Client from "@/api/client.ts"
 import { fakeGomuksSender } from "@/api/statestore"
 import { BotArgumentValue, RawDBEvent, RoomID, WrappedBotCommand } from "@/api/types"
+import type { CommandName } from "@/api/types/stdcommands.d.ts"
 import { escapeHTML } from "@/util/markdown.ts"
 import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
 import { MainScreenContextFields } from "../MainScreenContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 
-// TODO add typing to ensure only existing commands can be here
-const commandHandlers: Record<string, CommandCallback> = {
+const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 	"join {room_reference} {reason}": ({ client, mainScreen, reply }, { room_reference }) => {
 		if (typeof room_reference !== "string") {
 			return
@@ -82,7 +82,7 @@ export function interceptCommand(
 	if (spec.source !== fakeGomuksSender) {
 		return false
 	}
-	const handler = commandHandlers[spec.syntax]
+	const handler = commandHandlers[spec.syntax as CommandName]
 	if (!handler) {
 		return false
 	}
@@ -106,7 +106,7 @@ function makeFakeEvent(roomID: RoomID, sanitized_html: string): RawDBEvent {
 		rowid: -ts,
 		timeline_rowid: 0,
 		room_id: roomID,
-		event_id:            `$gomuks-internal-fe-${ts}`,
+		event_id: `$gomuks-internal-fe-${ts}`,
 		sender: fakeGomuksSender,
 		type: "m.room.message",
 		timestamp: ts,

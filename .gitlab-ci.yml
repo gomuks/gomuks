@@ -28,7 +28,7 @@ wasm:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   script:
   - cd web
-  - go run ../pkg/hicli/cmdspec/print > src/api/types/stdcommands.json
+  - go run ../pkg/hicli/cmdspec/print src/api/types/stdcommands.json src/api/types/stdcommands.d.ts
   - ./build-wasm.sh
   artifacts:
     paths:
