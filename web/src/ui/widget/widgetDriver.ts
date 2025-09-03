@@ -31,6 +31,7 @@ import {
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { EventRowID, RoomID } from "@/api/types"
+import { matrixToToMatrixURI } from "@/util/validation.ts"
 import { filterEvent, isRecord, iterRoomTimeline, memDBEventToIRoomEvent, notNull } from "./util"
 
 class GomuksWidgetDriver extends WidgetDriver {
@@ -253,21 +254,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 	}
 
 	async navigate(uri: string): Promise<void> {
-		if (uri.startsWith("https://matrix.to/")) {
-			const parsedURL = new URL(uri)
-			const parts = parsedURL.hash.split("/")
-			if (parts[1][0] === "#") {
-				uri = `matrix:r/${parts[1].slice(1)}`
-			} else if (parts[1][0] === "!") {
-				if (parts.length >= 4 && parts[3][0] === "$") {
-					uri = `matrix:roomid/${parts[1].slice(1)}/e/${parts[4].slice(1)}`
-				} else {
-					uri = `matrix:roomid/${parts[1].slice(1)}`
-				}
-			} else if (parts[1][0] === "@") {
-				uri = `matrix:u/${parts[1].slice(1)}`
-			}
-		}
+		uri = matrixToToMatrixURI(uri) ?? uri
 		if (uri.startsWith("matrix:")) {
 			window.location.hash = `#/uri/${encodeURIComponent(uri)}`
 		} else {

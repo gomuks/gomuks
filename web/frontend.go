@@ -20,6 +20,7 @@ import (
 	"embed"
 )
 
+//go:generate go run ../pkg/hicli/cmdspec/print src/api/types/stdcommands.json src/api/types/stdcommands.d.ts
 //go:generate ./build-wasm.sh
 //go:generate npm install
 //go:generate npm run build

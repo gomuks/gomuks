@@ -16,7 +16,7 @@
 import { use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
 import { getAvatarURL } from "@/api/media.ts"
-import { maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
+import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
 import { UserID, UserProfile } from "@/api/types"
 import { ensureString, getLocalpart } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -41,6 +41,9 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const [globalProfile, setGlobalProfile] = useState<UserProfile | null>(null)
 	const [errors, setErrors] = useState<string[] | null>(null)
 	const refreshProfile = useCallback((clearState = false) => {
+		if (userID === fakeGomuksSender) {
+			return
+		}
 		if (clearState) {
 			setErrors(null)
 			setGlobalProfile(null)
@@ -54,6 +57,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const displayname = ensureString(member?.displayname)
 		|| ensureString(globalProfile?.displayname)
 		|| getLocalpart(userID)
+	const fakeUser = userID === fakeGomuksSender
 	return <>
 		<div className="avatar-container">
 			{member === null && globalProfile === null && errors == null ? <PuffLoader
@@ -70,9 +74,18 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		</div>
 		<div className="displayname" title={displayname}>{displayname}</div>
 		<div className="userid" title={userID}>{userID}</div>
-		<UserExtendedProfile profile={globalProfile} refreshProfile={refreshProfile} client={client} userID={userID}/>
-		<DeviceList client={client} room={roomCtx?.store} userID={userID}/>
-		{userID !== client.userID && <>
+		{fakeUser && <div className="info-text">
+			This is a fake user used to represent messages sent by the backend,
+			such as command responses.
+		</div>}
+		{!fakeUser && <UserExtendedProfile
+			profile={globalProfile}
+			refreshProfile={refreshProfile}
+			client={client}
+			userID={userID}
+		/>}
+		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
+		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
 			<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
 		</>}

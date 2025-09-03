@@ -22,7 +22,7 @@ export type ContentURI = string
 export type RoomAlias = string
 export type ReceiptType = "m.read" | "m.read.private"
 export type RoomVersion =
-	"1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12" | "org.matrix.hydra.11"
+	"1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12"
 export type RoomType = "" | "m.space" | "support.feline.policy.lists.msc.v1" | "org.matrix.msc3417.call"
 export type RelationType = "m.annotation" | "m.reference" | "m.replace" | "m.thread"
 export type Direction = "b" | "f"
@@ -194,6 +194,67 @@ export interface BeeperPerMessageProfile extends UserProfile {
 	id: string
 }
 
+export interface ExtensibleText {
+	body: string
+	mimetype?: string
+}
+
+export interface ExtensibleTextContainer {
+	"m.text": ExtensibleText[]
+}
+
+export interface BotCommandsEventContent {
+	sigil: string
+	commands: BotCommand[]
+}
+
+export type BotArgumentType =
+	"string" |
+	"enum" |
+	"integer" |
+	"boolean" |
+	"user_id" |
+	"room_id" |
+	"room_alias" |
+	"event_id"
+
+export interface BaseBotArgument {
+	"fi.mau.default_value"?: SingleBotArgumentValue
+	description?: ExtensibleTextContainer
+	variadic?: boolean
+}
+
+export interface OtherBotArgument extends BaseBotArgument {
+	type: Exclude<BotArgumentType, "enum">
+}
+
+export interface BotArgumentEnum extends BaseBotArgument {
+	type: "enum"
+	enum: string[]
+}
+
+export type BotArgument = OtherBotArgument | BotArgumentEnum
+
+export interface BotCommand {
+	syntax: string
+	"fi.mau.aliases"?: string[]
+	arguments?: BotArgument[]
+	description?: ExtensibleTextContainer
+}
+
+export interface BotArgumentRoomIDValue {
+	id: RoomID
+	via?: string[]
+}
+
+export type SingleBotArgumentValue = string | number | boolean | BotArgumentRoomIDValue
+export type BotArgumentValue = SingleBotArgumentValue | SingleBotArgumentValue[]
+
+export interface BotCommandInput {
+	syntax: string
+	arguments?: Record<string, BotArgumentValue>
+}
+
 export interface BaseMessageEventContent {
 	msgtype: string
 	body: string
@@ -207,6 +268,7 @@ export interface BaseMessageEventContent {
 	"m.url_previews"?: URLPreview[]
 	"com.beeper.linkpreviews"?: URLPreview[]
 	"com.beeper.per_message_profile"?: BeeperPerMessageProfile
+	"org.matrix.msc4332.command"?: BotCommandInput
 }
 
 export interface TextMessageEventContent extends BaseMessageEventContent {

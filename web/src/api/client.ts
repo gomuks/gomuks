@@ -16,7 +16,7 @@
 import type { MouseEvent } from "react"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
-import { RoomStateStore, StateStore, WidgetListener } from "./statestore"
+import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
 import type {
 	ClientState,
 	ElementRecentEmoji,
@@ -354,12 +354,16 @@ export default class Client {
 		room?.notifyTimelineSubscribers()
 	}
 
-	#handleOutgoingEvent(dbEvent: RawDBEvent, room: RoomStateStore) {
+	handleOutgoingEvent(dbEvent: RawDBEvent, room: RoomStateStore) {
 		if (!room.eventsByRowID.has(dbEvent.rowid)) {
 			if (!room.pendingEvents.includes(dbEvent.rowid)) {
 				room.pendingEvents.push(dbEvent.rowid)
 			}
-			room.applyEvent(dbEvent, true)
+			const fake = dbEvent.sender === fakeGomuksSender
+			room.applyEvent(dbEvent, !fake)
+			if (fake) {
+				room.timeline.push({ timeline_rowid: dbEvent.timeline_rowid, event_rowid: dbEvent.rowid })
+			}
 			room.notifyTimelineSubscribers()
 		}
 	}
@@ -372,7 +376,7 @@ export default class Client {
 			throw new Error("Room not found")
 		}
 		const dbEvent = await this.rpc.sendEvent(roomID, type, content, disableEncryption)
-		this.#handleOutgoingEvent(dbEvent, room)
+		this.handleOutgoingEvent(dbEvent, room)
 	}
 
 	async sendMessage(params: SendMessageParams): Promise<void> {
@@ -382,7 +386,7 @@ export default class Client {
 		}
 		const dbEvent = await this.rpc.sendMessage(params)
 		if (dbEvent) {
-			this.#handleOutgoingEvent(dbEvent, room)
+			this.handleOutgoingEvent(dbEvent, room)
 		}
 	}
 

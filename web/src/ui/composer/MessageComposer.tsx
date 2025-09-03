@@ -25,7 +25,8 @@ import React, {
 	useState,
 } from "react"
 import { useRoomEvent, useRoomState } from "@/api/statestore"
-import type {
+import {
+	BotArgumentValue,
 	EventID,
 	MediaEncodingOptions,
 	MediaMessageEventContent,
@@ -36,6 +37,9 @@ import type {
 	RelatesTo,
 	RoomID,
 	URLPreview as URLPreviewType,
+	WrappedBotCommand,
+	findArgumentNames,
+	parseArgumentValues,
 } from "@/api/types"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -53,10 +57,19 @@ import { ModalContext } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import { ReplyBody } from "../timeline/ReplyBody.tsx"
 import URLPreview from "../urlpreview/URLPreview.tsx"
+import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import type { AutocompleteQuery } from "./Autocompleter.tsx"
+import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
 import MediaUploadDialog from "./MediaUploadDialog.tsx"
-import { charToAutocompleteType, emojiQueryRegex, getAutocompleter } from "./getAutocompleter.ts"
+import {
+	canAutocompleteCommand,
+	charToAutocompleteType,
+	emojiQueryRegex,
+	getAutocompleter,
+	startsWithSingleSlash,
+} from "./getAutocompleter.ts"
+import { interceptCommand } from "./localcommands.ts"
 import AttachIcon from "@/icons/attach.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
 import EmojiIcon from "@/icons/emoji-categories/smileys-emotion.svg?react"
@@ -67,10 +80,17 @@ import SendIcon from "@/icons/send.svg?react"
 import StickerIcon from "@/icons/sticker.svg?react"
 import "./MessageComposer.css"
 
+export interface CommandState {
+	spec: WrappedBotCommand
+	argNames: string[]
+	inputArgs: Record<string, BotArgumentValue>
+}
+
 export interface ComposerState {
 	text: string
 	media: MediaMessageEventContent | null
 	location: ComposerLocationValue | null
+	command: CommandState | null
 	previews: URLPreviewType[]
 	loadingPreviews: string[]
 	possiblePreviews: string[]
@@ -87,6 +107,7 @@ const emptyComposer: ComposerState = {
 	text: "",
 	media: null,
 	location: null,
+	command: null,
 	previews: [],
 	loadingPreviews: [],
 	possiblePreviews: [],
@@ -212,6 +233,7 @@ const MessageComposer = () => {
 			silentReply: false,
 			explicitReplyInThread: false,
 			startNewThread: false,
+			command: null,
 			previews:
 				evt.content["m.url_previews"] ??
 				evt.content["com.beeper.linkpreviews"] ??
@@ -283,6 +305,7 @@ const MessageComposer = () => {
 		}
 		let base_content: MessageEventContent | undefined
 		let extra: Record<string, unknown> | undefined
+		let text = state.text
 		if (state.media) {
 			base_content = state.media
 		} else if (state.location) {
@@ -301,11 +324,27 @@ const MessageComposer = () => {
 				},
 			}
 		}
+		if (state.command) {
+			base_content = {
+				...(base_content ?? { msgtype: "m.text" }),
+				body: text.replace("/", state.command.spec.sigil),
+				"org.matrix.msc4332.command": {
+					syntax: state.command.spec.syntax,
+					arguments: state.command.inputArgs as Record<string, BotArgumentValue>,
+				},
+			}
+			mentions.user_ids = [state.command.spec.source]
+			mentions.room = false
+			text = ""
+			if (interceptCommand(client, mainScreen, roomCtx, state.command.spec, state.command.inputArgs)) {
+				return
+			}
+		}
 		client.sendMessage({
 			room_id: room.roomID,
 			base_content,
 			extra,
-			text: state.text,
+			text,
 			relates_to,
 			mentions,
 			url_previews: state.previews,
@@ -314,7 +353,12 @@ const MessageComposer = () => {
 	const onComposerCaretChange = (evt: CaretEvent<HTMLTextAreaElement>, newText?: string) => {
 		const area = evt.currentTarget
 		if (area.selectionStart <= (autocomplete?.startPos ?? 0)) {
-			if (autocomplete) {
+			if (
+				autocomplete
+				// Don't stop autocomplete on care move for commands, except if the leading / is removed
+				&& (autocomplete.type !== "command"
+					|| (newText !== undefined && !startsWithSingleSlash(newText)))
+			) {
 				setAutocomplete(null)
 			}
 			return
@@ -324,19 +368,35 @@ const MessageComposer = () => {
 				setAutocomplete(null)
 			}
 		} else if (autocomplete) {
-			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, area.selectionEnd)
-			if (newQuery.includes(" ") || (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))) {
+			const newEndPos = autocomplete.type === "command" ? (newText ?? state.text).length : area.selectionEnd
+			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, newEndPos)
+			if (
+				(autocomplete.type !== "command" && newQuery.includes(" "))
+				|| (autocomplete.type === "command" && !startsWithSingleSlash(newQuery))
+				|| (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))
+			) {
 				setAutocomplete(null)
 			} else if (newQuery !== autocomplete.query) {
-				setAutocomplete({ ...autocomplete, query: newQuery, endPos: area.selectionEnd })
+				setAutocomplete({ ...autocomplete, query: newQuery, endPos: newEndPos })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
+			if (newText && !state.command && canAutocompleteCommand(newText)) {
+				setAutocomplete({
+					type: "command",
+					query: newText,
+					startPos: 0,
+					endPos: area.selectionEnd,
+				})
+				return
+			}
 			const acType = charToAutocompleteType(newText?.slice(area.selectionStart - 1, area.selectionStart))
+			const prevChar = newText?.[area.selectionStart - 2]
 			if (
 				acType && (
 					area.selectionStart === 1
-					|| newText?.[area.selectionStart - 2] === " "
-					|| newText?.[area.selectionStart - 2] === "\n"
+					|| prevChar === " "
+					|| prevChar === "\n"
+					|| prevChar === `"`
 				)
 			) {
 				setAutocomplete({
@@ -357,8 +417,9 @@ const MessageComposer = () => {
 		if (fullKey === sendKey && (
 			// If the autocomplete already has a selected item or has no results, send message even if it's open.
 			// Otherwise, don't send message on enter, select the first autocomplete entry instead.
+			// Also don't send for command autocompletions, as we need to open the argument input.
 			!autocomplete
-			|| autocomplete.selected !== undefined
+			|| (autocomplete.selected !== undefined && autocomplete.type !== "command")
 			|| !document.getElementById("composer-autocompletions")?.classList.contains("has-items")
 		)) {
 			onClickSend(evt)
@@ -369,7 +430,7 @@ const MessageComposer = () => {
 			} else if (fullKey === "Shift+Tab" || fullKey === "ArrowUp") {
 				autocompleteUpdate = { selected: (autocomplete.selected ?? 0) - 1 }
 			} else if (fullKey === "Enter") {
-				autocompleteUpdate = { selected: 0, close: true }
+				autocompleteUpdate = { selected: autocomplete.selected ?? 0, close: true }
 			} else if (fullKey === "Escape") {
 				autocompleteUpdate = null
 				if (autocomplete.frozenQuery) {
@@ -377,6 +438,7 @@ const MessageComposer = () => {
 						text: state.text.slice(0, autocomplete.startPos)
 							+ autocomplete.frozenQuery
 							+ state.text.slice(autocomplete.endPos),
+						command: null,
 					})
 				}
 			}
@@ -408,7 +470,25 @@ const MessageComposer = () => {
 		}
 	}
 	const onChange = (evt: React.ChangeEvent<HTMLTextAreaElement>) => {
-		setState({ text: evt.target.value })
+		const newText = evt.target.value
+		const newState: Partial<ComposerState> = { text: newText }
+		if (state.command) {
+			const inputArgs = parseArgumentValues(state.command.spec, newText)
+			if (inputArgs === null) {
+				if (canAutocompleteCommand(newText)) {
+					setAutocomplete({
+						type: "command",
+						query: newText,
+						startPos: 0,
+						endPos: evt.currentTarget.selectionEnd,
+					})
+				}
+				newState.command = null
+			} else {
+				newState.command = { ...state.command, inputArgs }
+			}
+		}
+		setState(newState)
 		const now = Date.now()
 		if (evt.target.value !== "" && typingSentAt.current + 5_000 < now) {
 			typingSentAt.current = now
@@ -525,8 +605,27 @@ const MessageComposer = () => {
 			&& state.text.slice(input.selectionStart, input.selectionStart + 8) !== text.slice(0, 8)
 		) {
 			document.execCommand("insertText", false, `[${
-				escapeMarkdown(state.text.slice(input.selectionStart, input.selectionEnd))
+				state.text.slice(input.selectionStart, input.selectionEnd)
 			}](${escapeMarkdown(text)})`)
+		} else if (
+			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
+		) {
+			for (const spec of room.getAllBotCommands()) {
+				const inputArgs = parseArgumentValues(spec, text)
+				if (inputArgs !== null) {
+					setState({
+						text,
+						command: {
+							spec,
+							inputArgs,
+							argNames: findArgumentNames(spec.syntax),
+						},
+					})
+					evt.preventDefault()
+					break
+				}
+			}
+			return
 		} else {
 			return
 		}
@@ -791,14 +890,26 @@ const MessageComposer = () => {
 	const possiblePreviewsNotLoadingOrPreviewed = state.possiblePreviews.filter(
 		url => !state.loadingPreviews.includes(url) && !state.previews.some(p => p.matched_url === url))
 	return <>
-		{Autocompleter && autocomplete && <div className="autocompletions-wrapper"><Autocompleter
-			params={autocomplete}
-			room={room}
-			state={state}
-			setState={setState}
-			setAutocomplete={setAutocomplete}
-			textInput={textInput}
-		/></div>}
+		{Autocompleter && autocomplete ? <div className="autocompletions-wrapper">
+			<ErrorBoundary thing="autocompleter" wrapperClassName="autocompletions">
+				<Autocompleter
+					params={autocomplete}
+					room={room}
+					state={state}
+					setState={setState}
+					setAutocomplete={setAutocomplete}
+					textInput={textInput}
+				/>
+			</ErrorBoundary>
+		</div> : state.command ? <div className="command-argument-wrapper">
+			<ErrorBoundary thing="command input" wrapperClassName="command-arguments">
+				<CommandInput
+					room={room}
+					state={state}
+					setState={setState}
+				/>
+			</ErrorBoundary>
+		</div> : null}
 		<div className="message-composer" ref={composerRef}>
 			{replyToEvt && <ReplyBody
 				roomCtx={roomCtx}

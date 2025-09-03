@@ -13,19 +13,36 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, RefObject, use, useEffect } from "react"
+import { JSX, RefObject, use, useEffect, useLayoutEffect, useRef } from "react"
 import { getAvatarThumbnailURL, getMediaURL } from "@/api/media.ts"
-import { AutocompleteMemberEntry, RoomStateStore, useCustomEmojis } from "@/api/statestore"
+import {
+	AutocompleteMemberEntry,
+	RoomStateStore,
+	maybeRedactMemberEvent,
+	useCustomEmojis,
+	useRoomMember,
+} from "@/api/statestore"
+import {
+	UserID,
+	WrappedBotCommand,
+	findArgumentNames,
+	getDefaultArguments,
+	parseArgumentValues,
+	replaceArgumentValues,
+	unpackExtensibleText,
+} from "@/api/types"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
+import { RoomContext } from "../roomview/roomcontext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
-import { useFilteredMembers } from "./userautocomplete.ts"
+import { charToAutocompleteType, isLegacyCommand } from "./getAutocompleter.ts"
+import { useFilteredCommands, useFilteredMembers } from "./userautocomplete.ts"
 import "./Autocompleter.css"
 
 export interface AutocompleteQuery {
-	type: "user" | "room" | "emoji"
+	type: "user" | "room" | "emoji" | "command"
 	query: string
 	startPos: number
 	endPos: number
@@ -47,33 +64,43 @@ const positiveMod = (val: number, div: number) => (val % div + div) % div
 
 interface InnerAutocompleterProps<T> extends AutocompleterProps {
 	items: T[]
-	getText: (item: T) => string
+	getText: (item: T, state: ComposerState) => string
 	getKey: (item: T) => string
+	getNewState?: (item: T, params: AutocompleteQuery) => readonly [Partial<ComposerState>, number]
 	render: (item: T) => JSX.Element
 }
 
 function useAutocompleter<T>({
 	params, state, setState, setAutocomplete, textInput,
-	items, getText, getKey, render,
+	items, getText, getKey, getNewState, render,
 }: InnerAutocompleterProps<T>) {
-	const onSelect = useEvent((index: number) => {
+	const prevItems = useRef<T[]>(null)
+	const onSelect = useEvent((index: number, clearAutocomplete = false) => {
 		if (items.length === 0) {
 			return
 		}
 		index = positiveMod(index, items.length)
-		const replacementText = getText(items[index])
-		const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
-		const endPos = params.startPos + replacementText.length
-		if (textInput.current) {
+		const item = items[index]
+		let newState: Partial<ComposerState>
+		let endPos: number
+		if (getNewState) {
+			[newState, endPos] = getNewState(item, params)
+		} else {
+			const replacementText = getText(item, state)
+			const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
+			endPos = params.startPos + replacementText.length
+			newState = {
+				text: newText,
+			}
+		}
+		if (textInput.current && newState.text) {
 			// React messes up the selection when changing the value for some reason,
 			// so bypass react here to avoid the caret jumping to the end and closing the autocompleter
-			textInput.current.value = newText
+			textInput.current.value = newState.text
 			textInput.current.setSelectionRange(endPos, endPos)
 		}
-		setState({
-			text: newText,
-		})
-		setAutocomplete({
+		setState(newState)
+		setAutocomplete(clearAutocomplete ? null : {
 			...params,
 			endPos,
 			frozenQuery: params.frozenQuery ?? params.query,
@@ -83,29 +110,65 @@ function useAutocompleter<T>({
 	const onClick = (evt: React.MouseEvent<HTMLDivElement>) => {
 		const idx = evt.currentTarget.getAttribute("data-index")
 		if (idx) {
-			onSelect(+idx)
-			setAutocomplete(null)
+			onSelect(+idx, true)
 		}
 	}
 	useEffect(() => {
 		if (params.selected !== undefined) {
-			onSelect(params.selected)
-			if (params.close) {
-				setAutocomplete(null)
+			onSelect(params.selected, params.close)
+		}
+	}, [onSelect, params.selected, params.close])
+	useLayoutEffect(() => {
+		if (params.type !== "command" || !state.text) {
+			return
+		}
+		if (isLegacyCommand(state.text)) {
+			// Special case commands that don't use MSC4332
+			setAutocomplete(null)
+			return
+		} else if (items.length === 0 && prevItems.current?.length) {
+			for (const item of prevItems.current as WrappedBotCommand[]) {
+				const argVals = parseArgumentValues(item, state.text)
+				if (argVals !== null) {
+					setState({
+						command: {
+							spec: item,
+							argNames: findArgumentNames(item.syntax),
+							inputArgs: argVals,
+						},
+					})
+					// This is an evil hack to make non-command autocompletion immediately start after
+					// command autocompletion ends (if applicable) because onComposerCaretChange isn't fired.
+					const acType = charToAutocompleteType(state.text.slice(-1))
+					const secondToLastChar = state.text[state.text.length - 2]
+					if (acType && (secondToLastChar === " " || secondToLastChar === "\n")) {
+						setAutocomplete({
+							type: acType,
+							query: "",
+							startPos: state.text.length - 1,
+							endPos: state.text.length,
+						})
+					} else {
+						setAutocomplete(null)
+					}
+					return
+				}
 			}
 		}
-	}, [onSelect, setAutocomplete, params.selected, params.close])
+		prevItems.current = items
+	}, [params.type, items, state.text, setAutocomplete, setState])
 	const selected = params.selected !== undefined ? positiveMod(params.selected, items.length) : -1
 	return <div
-		className={`autocompletions ${items.length === 0 ? "empty" : "has-items"}`}
+		className={`autocompletions ac-${params.type} ${items.length === 0 ? "empty" : "has-items"}`}
 		id="composer-autocompletions"
 	>
 		{items.map((item, i) => <div
 			onClick={onClick}
 			data-index={i}
-			className={`autocompletion-item ${selected === i ? "selected" : ""}`}
+			className={`autocompletion-item ac-${params.type} ${selected === i ? "selected" : ""}`}
 			key={getKey(item)}
 		>{render(item)}</div>)}
+		{!items.length ? `No ${params.type}s matching ${params.query} found` : null}
 	</div>
 }
 
@@ -129,7 +192,8 @@ export const EmojiAutocompleter = ({ params, room, ...rest }: AutocompleterProps
 }
 
 const userFuncs = {
-	getText: (user: AutocompleteMemberEntry) => makeMentionMarkdown(user.displayName, user.userID),
+	getText: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
+		? user.userID : makeMentionMarkdown(user.displayName, user.userID),
 	getKey: (user: AutocompleteMemberEntry) => user.userID,
 	render: (user: AutocompleteMemberEntry) => <>
 		<img
@@ -151,4 +215,49 @@ export const RoomAutocompleter = ({ params }: AutocompleterProps) => {
 	return <div className="autocompletions">
 		Autocomplete {params.type} {params.query}
 	</div>
+}
+
+const BotSourceIcon = ({ source }: { source: UserID }) => {
+	const client = use(ClientContext)
+	const roomCtx = use(RoomContext)
+	const memberEvt = useRoomMember(client, roomCtx?.store, source)
+	const memberEvtContent = maybeRedactMemberEvent(memberEvt)
+	return <img
+		className="avatar"
+		loading="lazy"
+		src={getAvatarThumbnailURL(source, memberEvtContent)}
+		alt=""
+	/>
+}
+
+const commandFuncs = {
+	getText: () => "",
+	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.syntax,
+	getNewState: (cmd: WrappedBotCommand) => {
+		const argNames = findArgumentNames(cmd.syntax)
+		const state = {
+			command: {
+				spec: cmd,
+				argNames,
+				inputArgs: getDefaultArguments(cmd, argNames),
+			},
+			text: "",
+		}
+		state.text = "/" + replaceArgumentValues(cmd.syntax, state.command.inputArgs)
+		let firstArgPos = cmd.syntax.indexOf("{") + 1
+		if (state.text.charAt(firstArgPos) === `"`) {
+			firstArgPos++
+		}
+		return [state, firstArgPos || state.text.length] as const
+	},
+	render: (cmd: WrappedBotCommand) => <>
+		<BotSourceIcon source={cmd.source} />
+		<code>/{cmd.syntax}</code>
+		<span> - {unpackExtensibleText(cmd.description)}</span>
+	</>,
+}
+
+export const CommandAutocompleter = ({ params, room, ...rest }: AutocompleterProps) => {
+	const items = useFilteredCommands(room, (params.frozenQuery ?? params.query).slice(1))
+	return useAutocompleter({ params, room, ...rest, items, ...commandFuncs })
 }

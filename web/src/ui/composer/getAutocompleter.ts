@@ -18,6 +18,7 @@ import { RoomStateStore } from "@/api/statestore"
 import {
 	AutocompleteQuery,
 	AutocompleterProps,
+	CommandAutocompleter,
 	EmojiAutocompleter,
 	RoomAutocompleter,
 	UserAutocompleter,
@@ -37,6 +38,22 @@ export function charToAutocompleteType(newChar?: string): AutocompleteQuery["typ
 }
 
 export const emojiQueryRegex = /[a-zA-Z0-9_+-]*$/
+
+export function startsWithSingleSlash(text: string): boolean {
+	return text.startsWith("/") && !text.startsWith("//")
+}
+
+export function canAutocompleteCommand(text: string): boolean {
+	return startsWithSingleSlash(text) && !isLegacyCommand(text)
+}
+
+export function isLegacyCommand(text: string): boolean {
+	return text.startsWith("/plain ")
+		|| text.startsWith("/me ")
+		|| text.startsWith("/notice ")
+		|| text.startsWith("/rainbow ")
+		|| text.startsWith("/html ")
+}
 
 export function getAutocompleter(
 	params: AutocompleteQuery | null, client: Client, room: RoomStateStore,
@@ -65,6 +82,8 @@ export function getAutocompleter(
 			return null
 		}
 		return RoomAutocompleter
+	case "command":
+		return CommandAutocompleter
 	default:
 		return null
 	}

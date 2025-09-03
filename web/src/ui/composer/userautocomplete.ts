@@ -14,41 +14,40 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useRef } from "react"
-import { AutocompleteMemberEntry, RoomStateStore, useRoomMembers } from "@/api/statestore"
+import { AutocompleteMemberEntry, RoomStateStore, useBotCommands, useRoomMembers } from "@/api/statestore"
+import { WrappedBotCommand } from "@/api/types"
 import toSearchableString from "@/util/searchablestring.ts"
 
-export function filterAndSort(users: AutocompleteMemberEntry[], query: string): AutocompleteMemberEntry[] {
-	query = toSearchableString(query)
-	return users
-		.map(user => ({ user, matchIndex: user.searchString.indexOf(query) }))
+export function filterAndSort<T>(items: T[], key: keyof T, query: string): T[] {
+	return items
+		.map(user => ({ user, matchIndex: (user[key] as string).indexOf(query) }))
 		.filter(({ matchIndex }) => matchIndex !== -1)
 		.sort((e1, e2) => e1.matchIndex - e2.matchIndex)
 		.map(({ user }) => user)
 }
 
-export function filter(users: AutocompleteMemberEntry[], query: string): AutocompleteMemberEntry[] {
-	query = toSearchableString(query)
-	return users.filter(user => user.searchString.includes(query))
+export function filter<T>(items: T[], key: keyof T, query: string): T[] {
+	return items.filter(user => (user[key] as string).includes(query))
 }
 
-interface filteredUserCache {
+interface filterCache<T> {
 	query: string
-	result: AutocompleteMemberEntry[]
-	slicedResult?: AutocompleteMemberEntry[]
+	result: T[]
+	slicedResult?: T[]
 }
 
-export function useFilteredMembers(
-	room: RoomStateStore | undefined, query: string, sort = true, slice = true,
-): AutocompleteMemberEntry[] {
-	const allMembers = useRoomMembers(room)
-	const prev = useRef<filteredUserCache>({ query: "", result: allMembers })
+export function useFiltered<T>(
+	allItems: T[], key: keyof T, query: string, sort = true, slice = true,
+): T[] {
+	const prev = useRef<filterCache<T>>({ query: "", result: allItems })
 	if (!query) {
 		prev.current.query = ""
-		prev.current.result = allMembers
-		prev.current.slicedResult = slice && allMembers.length > 100 ? allMembers.slice(0, 100) : undefined
+		prev.current.result = allItems
+		prev.current.slicedResult = slice && allItems.length > 100 ? allItems.slice(0, 100) : undefined
 	} else if (prev.current.query !== query) {
 		prev.current.result = (sort ? filterAndSort : filter)(
-			query.startsWith(prev.current.query) ? prev.current.result : allMembers,
+			query.startsWith(prev.current.query) ? prev.current.result : allItems,
+			key,
 			query,
 		)
 		prev.current.slicedResult = prev.current.result.length > 100 && slice
@@ -57,4 +56,16 @@ export function useFilteredMembers(
 		prev.current.query = query
 	}
 	return prev.current.slicedResult ?? prev.current.result
+}
+
+export function useFilteredMembers(
+	room: RoomStateStore | undefined, query: string, sort = true, slice = true,
+): AutocompleteMemberEntry[] {
+	return useFiltered(useRoomMembers(room), "searchString", toSearchableString(query), sort, slice)
+}
+
+export function useFilteredCommands(
+	room: RoomStateStore, query: string, sort = true, slice = true,
+): WrappedBotCommand[] {
+	return useFiltered(useBotCommands(room), "syntax", query, sort, slice)
 }

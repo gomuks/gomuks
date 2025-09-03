@@ -41,8 +41,11 @@ import {
 	TimelineRowTuple,
 	UnknownEventContent,
 	UserID,
+	WrappedBotCommand,
+	mapCommandContent,
 	roomStateGUIDToString,
 } from "../types"
+import StandardCommands from "../types/stdcommands.json"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {
@@ -97,6 +100,28 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
 }
 
+export const fakeGomuksSender: UserID = "@gomuks"
+
+const fakeGomuksMember: MemDBEvent = {
+	mem: true,
+	pending: false,
+	rowid: -1,
+	timeline_rowid: 0,
+	room_id: "",
+	event_id: "",
+	sender: fakeGomuksSender,
+	type: "m.room.member",
+	state_key: fakeGomuksSender,
+	timestamp: 0,
+	unread_type: 0,
+	content: {
+		membership: "join",
+		displayname: "gomuks",
+		avatar_url: "mxc://maunium.net/nDpAldyJKmHQApuIJhVmprFq",
+	},
+	unsigned: {},
+}
+
 export class RoomStateStore {
 	readonly roomID: RoomID
 	readonly meta: NonNullCachedEventDispatcher<DBRoom>
@@ -130,6 +155,7 @@ export class RoomStateStore {
 	#membersCache: AutocompleteMemberEntry[] | null = null
 	membersRequested: boolean = false
 	#allPacksCache: Record<string, CustomEmojiPack> | null = null
+	#allCommandsCache: WrappedBotCommand[] | null = null
 	lastOpened: number = 0
 	readonly pendingEvents: EventRowID[] = []
 	paginating = false
@@ -182,6 +208,9 @@ export class RoomStateStore {
 	}
 
 	getStateEvent(type: EventType, stateKey: string): MemDBEvent | undefined {
+		if (type === "m.room.member" && stateKey === fakeGomuksSender) {
+			return fakeGomuksMember
+		}
 		const rowID = this.state.get(type)?.get(stateKey)
 		if (!rowID) {
 			return
@@ -220,6 +249,17 @@ export class RoomStateStore {
 			)
 		}
 		return this.#allPacksCache
+	}
+
+	getAllBotCommands(): WrappedBotCommand[] {
+		if (this.#allCommandsCache === null) {
+			const roomCommands = this.state.get("org.matrix.msc4332.commands")?.entries()
+				.flatMap(([stateKey, rowID]) =>
+					mapCommandContent(stateKey, this.eventsByRowID.get(rowID)?.content))
+				.toArray() ?? []
+			this.#allCommandsCache = roomCommands.concat(mapCommandContent(fakeGomuksSender, StandardCommands))
+		}
+		return this.#allCommandsCache
 	}
 
 	#fillMembersCache() {
@@ -465,6 +505,8 @@ export class RoomStateStore {
 			this.requestedMembers.delete(key as UserID)
 		} else if (evtType === "m.room.power_levels") {
 			this.#membersCache = null
+		} else if (evtType === "org.matrix.msc4332.commands") {
+			this.#allCommandsCache = null
 		}
 		this.stateSubs.notify(this.stateSubKey(evtType, key))
 	}
@@ -579,6 +621,7 @@ export class RoomStateStore {
 		}
 		this.#emojiPacksCache.clear()
 		this.#allPacksCache = null
+		this.#allCommandsCache = null
 		if (omitMembers) {
 			newStateMap.set("m.room.member", this.state.get("m.room.member") ?? new Map())
 		} else {
