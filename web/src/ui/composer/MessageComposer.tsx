@@ -390,11 +390,13 @@ const MessageComposer = () => {
 				return
 			}
 			const acType = charToAutocompleteType(newText?.slice(area.selectionStart - 1, area.selectionStart))
+			const prevChar = newText?.[area.selectionStart - 2]
 			if (
 				acType && (
 					area.selectionStart === 1
-					|| newText?.[area.selectionStart - 2] === " "
-					|| newText?.[area.selectionStart - 2] === "\n"
+					|| prevChar === " "
+					|| prevChar === "\n"
+					|| prevChar === `"`
 				)
 			) {
 				setAutocomplete({

@@ -29,7 +29,7 @@ import { makeMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
-import { isLegacyCommand } from "./getAutocompleter.ts"
+import { charToAutocompleteType, isLegacyCommand } from "./getAutocompleter.ts"
 import { useFilteredCommands, useFilteredMembers } from "./userautocomplete.ts"
 import "./Autocompleter.css"
 
@@ -129,7 +129,20 @@ function useAutocompleter<T>({
 							inputArgs: argVals,
 						},
 					})
-					setAutocomplete(null)
+					// This is an evil hack to make non-command autocompletion immediately start after
+					// command autocompletion ends (if applicable) because onComposerCaretChange isn't fired.
+					const acType = charToAutocompleteType(state.text.slice(-1))
+					const secondToLastChar = state.text[state.text.length - 2]
+					if (acType && (secondToLastChar === " " || secondToLastChar === "\n")) {
+						setAutocomplete({
+							type: acType,
+							query: "",
+							startPos: state.text.length - 1,
+							endPos: state.text.length,
+						})
+					} else {
+						setAutocomplete(null)
+					}
 					return
 				}
 			}
