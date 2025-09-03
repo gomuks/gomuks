@@ -21,6 +21,7 @@ import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
 import { MainScreenContextFields } from "../MainScreenContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 
+// TODO add typing to ensure only existing commands can be here
 const commandHandlers: Record<string, CommandCallback> = {
 	"join {room_reference} {reason}": ({ client, mainScreen, reply }, { room_reference }) => {
 		if (typeof room_reference !== "string") {

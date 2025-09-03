@@ -39,6 +39,14 @@ export function charToAutocompleteType(newChar?: string): AutocompleteQuery["typ
 
 export const emojiQueryRegex = /[a-zA-Z0-9_+-]*$/
 
+export function startsWithSingleSlash(text: string): boolean {
+	return text.startsWith("/") && !text.startsWith("//")
+}
+
+export function canAutocompleteCommand(text: string): boolean {
+	return startsWithSingleSlash(text) && !isLegacyCommand(text)
+}
+
 export function isLegacyCommand(text: string): boolean {
 	return text.startsWith("/plain ")
 		|| text.startsWith("/me ")

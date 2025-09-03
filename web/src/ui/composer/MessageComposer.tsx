@@ -62,7 +62,13 @@ import type { AutocompleteQuery } from "./Autocompleter.tsx"
 import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
 import MediaUploadDialog from "./MediaUploadDialog.tsx"
-import { charToAutocompleteType, emojiQueryRegex, getAutocompleter, isLegacyCommand } from "./getAutocompleter.ts"
+import {
+	canAutocompleteCommand,
+	charToAutocompleteType,
+	emojiQueryRegex,
+	getAutocompleter,
+	startsWithSingleSlash,
+} from "./getAutocompleter.ts"
 import { interceptCommand } from "./localcommands.ts"
 import AttachIcon from "@/icons/attach.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
@@ -351,7 +357,7 @@ const MessageComposer = () => {
 				autocomplete
 				// Don't stop autocomplete on care move for commands, except if the leading / is removed
 				&& (autocomplete.type !== "command"
-					|| (newText !== undefined && !newText.startsWith("/")))
+					|| (newText !== undefined && !startsWithSingleSlash(newText)))
 			) {
 				setAutocomplete(null)
 			}
@@ -362,18 +368,19 @@ const MessageComposer = () => {
 				setAutocomplete(null)
 			}
 		} else if (autocomplete) {
-			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, area.selectionEnd)
+			const newEndPos = autocomplete.type === "command" ? (newText ?? state.text).length : area.selectionEnd
+			const newQuery = (newText ?? state.text).slice(autocomplete.startPos, newEndPos)
 			if (
 				(autocomplete.type !== "command" && newQuery.includes(" "))
-				|| (autocomplete.type === "command" && !newQuery.startsWith("/"))
+				|| (autocomplete.type === "command" && !startsWithSingleSlash(newQuery))
 				|| (autocomplete.type === "emoji" && !emojiQueryRegex.test(newQuery))
 			) {
 				setAutocomplete(null)
 			} else if (newQuery !== autocomplete.query) {
-				setAutocomplete({ ...autocomplete, query: newQuery, endPos: area.selectionEnd })
+				setAutocomplete({ ...autocomplete, query: newQuery, endPos: newEndPos })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
-			if (newText?.startsWith("/") && !state.command && !isLegacyCommand(state.text)) {
+			if (newText && !state.command && canAutocompleteCommand(newText)) {
 				setAutocomplete({
 					type: "command",
 					query: newText,
@@ -466,7 +473,7 @@ const MessageComposer = () => {
 		if (state.command) {
 			const inputArgs = parseArgumentValues(state.command.spec, newText)
 			if (inputArgs === null) {
-				if (newText.startsWith("/")) {
+				if (canAutocompleteCommand(newText)) {
 					setAutocomplete({
 						type: "command",
 						query: newText,
@@ -598,7 +605,9 @@ const MessageComposer = () => {
 			document.execCommand("insertText", false, `[${
 				state.text.slice(input.selectionStart, input.selectionEnd)
 			}](${escapeMarkdown(text)})`)
-		} else if (input.selectionStart === 0 && input.selectionEnd === state.text.length && text.startsWith("/")) {
+		} else if (
+			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
+		) {
 			for (const spec of room.getAllBotCommands()) {
 				const inputArgs = parseArgumentValues(spec, text)
 				if (inputArgs !== null) {
