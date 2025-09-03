@@ -64,7 +64,7 @@ const positiveMod = (val: number, div: number) => (val % div + div) % div
 
 interface InnerAutocompleterProps<T> extends AutocompleterProps {
 	items: T[]
-	getText: (item: T) => string
+	getText: (item: T, state: ComposerState) => string
 	getKey: (item: T) => string
 	getNewState?: (item: T, params: AutocompleteQuery) => readonly [Partial<ComposerState>, number]
 	render: (item: T) => JSX.Element
@@ -86,7 +86,7 @@ function useAutocompleter<T>({
 		if (getNewState) {
 			[newState, endPos] = getNewState(item, params)
 		} else {
-			const replacementText = getText(item)
+			const replacementText = getText(item, state)
 			const newText = state.text.slice(0, params.startPos) + replacementText + state.text.slice(params.endPos)
 			endPos = params.startPos + replacementText.length
 			newState = {
@@ -192,7 +192,8 @@ export const EmojiAutocompleter = ({ params, room, ...rest }: AutocompleterProps
 }
 
 const userFuncs = {
-	getText: (user: AutocompleteMemberEntry) => makeMentionMarkdown(user.displayName, user.userID),
+	getText: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
+		? user.userID : makeMentionMarkdown(user.displayName, user.userID),
 	getKey: (user: AutocompleteMemberEntry) => user.userID,
 	render: (user: AutocompleteMemberEntry) => <>
 		<img
