@@ -116,6 +116,7 @@ func (gmx *Gomuks) LoadConfig() error {
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	address := gmx.Config.Web.ListenAddress
 	gmx.Config = makeDefaultConfig()
 	changed := false
 	if file != nil {
@@ -125,6 +126,9 @@ func (gmx *Gomuks) LoadConfig() error {
 		}
 	} else {
 		changed = true
+	}
+	if address != "" {
+		gmx.Config.Web.ListenAddress = address
 	}
 	if gmx.Config.Web.TokenKey == "" {
 		gmx.Config.Web.TokenKey = random.String(64)
