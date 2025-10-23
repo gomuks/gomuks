@@ -13,34 +13,80 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { PinnedEventsContent } from "@/api/types"
+import { JSX, MouseEvent } from "react"
+import { EventID, PinnedEventsContent, RoomID } from "@/api/types"
+import { RoomContextData, useRoomContext } from "@/ui/roomview/roomcontext.ts"
+import { jumpToEvent, jumpToVisibleEvent } from "@/ui/util/jumpToEvent.tsx"
 import { listDiff } from "@/util/diff.ts"
-import { humanJoin } from "@/util/join.ts"
 import { ensureTypedArray, getDisplayname, isEventID } from "@/util/validation.ts"
 import EventContentProps from "./props.ts"
 
-function renderPinChanges(content: PinnedEventsContent, prevContent?: PinnedEventsContent): string {
+function renderPinChanges(
+	roomID: RoomID,
+	roomCtx: RoomContextData,
+	content: PinnedEventsContent,
+	prevContent?: PinnedEventsContent,
+): JSX.Element {
 	const [added, removed] = listDiff(
 		ensureTypedArray(content.pinned ?? [], isEventID),
 		ensureTypedArray(prevContent?.pinned ?? [], isEventID),
 	)
-	if (added.length) {
-		if (removed.length) {
-			return `pinned ${humanJoin(added)} and unpinned ${humanJoin(removed)}`
+	const jumpToOnClick = (event_id: EventID) => (evt: MouseEvent<HTMLAnchorElement>) => {
+		evt.preventDefault()
+		evt.stopPropagation()
+		if (!jumpToVisibleEvent(event_id, evt.currentTarget.closest(".timeline-list"))) {
+			jumpToEvent(roomCtx, event_id)
 		}
-		return `pinned ${humanJoin(added)}`
+	}
+	const encode = (value: string) => encodeURIComponent(value).replace("%3A", ":")
+	const uri = (e: EventID) => `matrix:roomid/${encode(roomID.slice(1))}/e/${encode(e.slice(1))}`
+
+	const renderEventLink = (event_id: EventID) => (
+		<a key={event_id} href={uri(event_id)} onClick={jumpToOnClick(event_id)}>
+			{event_id}
+		</a>
+	)
+
+	const joinElements = (elements: JSX.Element[]) => {
+		if (elements.length === 0) {
+			return null
+		}
+		if (elements.length === 1) {
+			return elements[0]
+		}
+		if (elements.length === 2) {
+			return <>{elements[0]} and {elements[1]}</>
+		}
+		return <>
+			{elements.slice(0, -1).map((el, i) => (
+				<span key={i}>{el}{i < elements.length - 2 ? ", " : ""}</span>
+			))}
+			{" and "}
+			{elements[elements.length - 1]}
+		</>
+	}
+
+	if (added.length) {
+		const addedLinks = added.map(renderEventLink)
+		if (removed.length) {
+			const removedLinks = removed.map(renderEventLink)
+			return <>pinned {joinElements(addedLinks)} and unpinned {joinElements(removedLinks)}</>
+		}
+		return <>pinned {joinElements(addedLinks)}</>
 	} else if (removed.length) {
-		return `unpinned ${humanJoin(removed)}`
+		const removedLinks = removed.map(renderEventLink)
+		return <>unpinned {joinElements(removedLinks)}</>
 	} else {
-		return "sent a no-op pin event"
+		return <>sent a no-op pin event</>
 	}
 }
 
-const PinnedEventsBody = ({ event, sender }: EventContentProps) => {
+const PinnedEventsBody = ({ room, event, sender }: EventContentProps) => {
+	const roomCtx = useRoomContext()
 	const content = event.content as PinnedEventsContent
 	const prevContent = event.unsigned.prev_content as PinnedEventsContent | undefined
 	return <div className="pinned-events-body">
-		{getDisplayname(event.sender, sender?.content)} {renderPinChanges(content, prevContent)}
+		{getDisplayname(event.sender, sender?.content)} {renderPinChanges(room.roomID, roomCtx, content, prevContent)}
 	</div>
 }
 
