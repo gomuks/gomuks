@@ -10,6 +10,7 @@ export type CommandName =
 	| "kick {user_id} {reason}"
 	| "ban {user_id} {reason}"
 	| "myroomnick {name}"
+	| "globalnick {name}"
 	| "redact {event_id} {reason}"
 	| "raw {event_type} {json}"
 	| "unencryptedraw {event_type} {json}"

@@ -86,6 +86,14 @@ var CommandDefinitions = []*event.BotCommand{{
 		Description: event.MakeExtensibleText("New display name"),
 	}},
 }, {
+	Syntax:      GlobalNick,
+	Aliases:     []string{"globalnick {name}"},
+	Description: event.MakeExtensibleText("Set your global display name"),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("New display name"),
+	}},
+}, {
 	Syntax:      Redact,
 	Description: event.MakeExtensibleText("Redact an event"),
 	Arguments: []*event.BotCommandArgument{{
