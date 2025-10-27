@@ -72,6 +72,8 @@ func (h *HiClient) ProcessCommand(
 		responseText = h.handleCmdLeave(ctx, roomID)
 	case cmdspec.MyRoomNick:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdMyRoomNick)
+	case cmdspec.GlobalNick:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdGlobalNick)
 	case cmdspec.Redact:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdRedact)
 	case cmdspec.Raw:
@@ -201,6 +203,13 @@ func (h *HiClient) handleCmdMyRoomNick(ctx context.Context, roomID id.RoomID, pa
 		return fmt.Sprintf("Failed to mutate member event content: %v", err)
 	} else if _, err = h.Client.SendStateEvent(ctx, roomID, event.StateMember, h.Account.UserID.String(), json.RawMessage(content)); err != nil {
 		return fmt.Sprintf("Failed to update member event: %v", err)
+	}
+	return ""
+}
+
+func (h *HiClient) handleCmdGlobalNick(ctx context.Context, _ id.RoomID, params myRoomNickParams, _ *event.RelatesTo) string {
+	if err := h.Client.SetProfileField(ctx, "displayname", params.Name); err != nil {
+		return fmt.Sprintf("Failed to set display name: %v", err)
 	}
 	return ""
 }

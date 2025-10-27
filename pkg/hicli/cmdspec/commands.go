@@ -17,6 +17,7 @@ const (
 	Kick           = "kick {user_id} {reason}"
 	Ban            = "ban {user_id} {reason}"
 	MyRoomNick     = "myroomnick {name}"
+	GlobalNick     = "globalnick {name}"
 	Redact         = "redact {event_id} {reason}"
 	Raw            = "raw {event_type} {json}"
 	UnencryptedRaw = "unencryptedraw {event_type} {json}"
