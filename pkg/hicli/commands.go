@@ -91,6 +91,10 @@ func (h *HiClient) ProcessCommand(
 		return callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdUnencryptedRaw)
 	case cmdspec.RawState:
 		return callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdRaw)
+	case cmdspec.AddAlias:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdAddAlias)
+	case cmdspec.DelAlias:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdDelAlias)
 	default:
 		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Syntax))
 	}
@@ -338,4 +342,22 @@ func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, a
 		}
 		return evt
 	}
+}
+
+func (h *HiClient) handleCmdAddAlias(ctx context.Context, roomID id.RoomID, args myRoomNickParams, _ *event.RelatesTo) string {
+	fullAlias := id.NewRoomAlias(args.Name, h.Account.UserID.Homeserver())
+	_, err := h.Client.CreateAlias(ctx, fullAlias, roomID)
+	if err != nil {
+		return fmt.Sprintf("Failed to create alias: %v", err)
+	}
+	return fmt.Sprintf("Created alias %s", fullAlias)
+}
+
+func (h *HiClient) handleCmdDelAlias(ctx context.Context, _ id.RoomID, args myRoomNickParams, _ *event.RelatesTo) string {
+	fullAlias := id.NewRoomAlias(args.Name, h.Account.UserID.Homeserver())
+	_, err := h.Client.DeleteAlias(ctx, fullAlias)
+	if err != nil {
+		return fmt.Sprintf("Failed to delete alias: %v", err)
+	}
+	return fmt.Sprintf("Deleted alias %s", fullAlias)
 }

@@ -20,5 +20,7 @@ export type CommandName =
 	| "unencryptedraw {event_type} {json}"
 	| "rawstate {event_type} {state_key} {json}"
 	| "discardsession"
+	| "alias add {name}"
+	| "alias del {name}"
 
 export default BotCommandsEventContent

@@ -28,6 +28,8 @@ const (
 	RawState       = "rawstate {event_type} {state_key} {json}"
 	DiscardSession = "discardsession"
 	Meow           = "meow {meow}"
+	AddAlias       = "alias add {name}"
+	DelAlias       = "alias del {name}"
 )
 
 var CommandDefinitions = []*event.BotCommand{{
@@ -162,4 +164,18 @@ var CommandDefinitions = []*event.BotCommand{{
 }, {
 	Syntax:      DiscardSession,
 	Description: event.MakeExtensibleText("Discard the outbound Megolm session in the current room"),
+}, {
+	Syntax:      AddAlias,
+	Description: event.MakeExtensibleText("Add a room alias to the current room. Does not update the canonical alias event."),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Room alias name to add (without the # and domain)"),
+	}},
+}, {
+	Syntax:      DelAlias,
+	Description: event.MakeExtensibleText("Remove a room alias from the current room. Does not update the canonical alias event."),
+	Arguments: []*event.BotCommandArgument{{
+		Type:        event.BotArgumentTypeString,
+		Description: event.MakeExtensibleText("Room alias name to remove (without the # and domain)"),
+	}},
 }}
