@@ -171,6 +171,7 @@ var CommandDefinitions = []*event.BotCommand{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Room alias name to add (without the # and domain)"),
 	}},
+	Aliases: []string{"alias create {name}"},
 }, {
 	Syntax:      DelAlias,
 	Description: event.MakeExtensibleText("Remove a room alias from the current room. Does not update the canonical alias event."),
@@ -178,4 +179,5 @@ var CommandDefinitions = []*event.BotCommand{{
 		Type:        event.BotArgumentTypeString,
 		Description: event.MakeExtensibleText("Room alias name to remove (without the # and domain)"),
 	}},
+	Aliases: []string{"alias remove {name}", "alias rm {name}", "alias delete {name}"},
 }}
