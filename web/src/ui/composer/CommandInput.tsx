@@ -16,24 +16,23 @@
 import React, { JSX } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import {
-	BotArgument,
 	BotArgumentValue,
+	BotParameter,
 	SingleBotArgumentValue,
-	replaceArgumentValues,
+	commandArgsToString,
 	unpackExtensibleText,
 } from "@/api/types"
 import { ComposerState } from "./MessageComposer.tsx"
 
 interface CommandArgumentProps {
 	index: number
-	name: string
-	spec: BotArgument
+	spec: BotParameter
 	value: BotArgumentValue
 	setValue: (value: BotArgumentValue) => void
 }
 
 function renderArgumentContent(
-	spec: BotArgument,
+	spec: BotParameter,
 	value: BotArgumentValue,
 	setValue: (value: SingleBotArgumentValue) => void, description: string,
 	contentID: string,
@@ -41,7 +40,7 @@ function renderArgumentContent(
 	onKeyDown: (evt: React.KeyboardEvent) => void,
 	key?: number,
 ): JSX.Element {
-	if (spec.type === "boolean") {
+	if (spec.type.schema_type === "primitive" && spec.type.type === "boolean") {
 		return <input
 			key={key}
 			id={contentID}
@@ -51,7 +50,7 @@ function renderArgumentContent(
 			onChange={evt => setValue(evt.target.checked)}
 			onKeyDown={onKeyDown}
 		/>
-	} else if (spec.type === "integer") {
+	} else if (spec.type.schema_type === "primitive" && spec.type.type === "integer") {
 		return <input
 			key={key}
 			id={contentID}
@@ -65,7 +64,7 @@ function renderArgumentContent(
 			onKeyDown={onKeyDown}
 			placeholder={description}
 		/>
-	} else if (spec.type === "enum") {
+	}/* else if (spec.type === "enum") {
 		return <select
 			key={key}
 			id={contentID}
@@ -76,7 +75,7 @@ function renderArgumentContent(
 		>
 			{spec.enum.map(option => <option key={option} value={option}>{option}</option>)}
 		</select>
-	} else {
+	} */ else {
 		return <input
 			key={key}
 			id={contentID}
@@ -90,8 +89,8 @@ function renderArgumentContent(
 	}
 }
 
-const CommandArgument = ({ index, name, spec, value, setValue }: CommandArgumentProps) => {
-	const description = unpackExtensibleText(spec.description) || name
+const CommandArgument = ({ index, spec, value, setValue }: CommandArgumentProps) => {
+	const description = unpackExtensibleText(spec.description) || spec.key
 	const contentID = `cmd-arg-${index}`
 	const onKeyDown = (evt: React.KeyboardEvent) => {
 		if (evt.key === "Enter") {
@@ -105,7 +104,7 @@ const CommandArgument = ({ index, name, spec, value, setValue }: CommandArgument
 		}
 	}
 	let content: JSX.Element
-	if (spec.variadic) {
+	if (spec.type.schema_type === "array") {
 		const valueSetter = (itemIdx: number) => (itemVal: SingleBotArgumentValue) => {
 			const newArr = [...value as SingleBotArgumentValue[]]
 			newArr[itemIdx] = itemVal
@@ -121,7 +120,7 @@ const CommandArgument = ({ index, name, spec, value, setValue }: CommandArgument
 		content = renderArgumentContent(spec, value, setValue, description, contentID, false, onKeyDown)
 	}
 	return <>
-		<label htmlFor={contentID} title={description}>{name}</label>
+		<label htmlFor={contentID} title={description}>{spec.key}</label>
 		{content}
 	</>
 }
@@ -135,21 +134,19 @@ export interface CommandInputProps {
 const CommandInput = ({ state, setState }: CommandInputProps) => {
 	const cmd = state.command!
 	return <div className="command-arguments">
-		{cmd.spec.arguments?.map((spec, index) => {
-			const argName = cmd.argNames[index]
+		{cmd.spec.parameters?.map((spec, index) => {
 			return <CommandArgument
 				key={index}
 				index={index}
-				name={argName}
 				spec={spec}
-				value={cmd.inputArgs[argName]}
+				value={cmd.inputArgs[spec.key]}
 				setValue={val => {
 					const inputArgs = {
 						...cmd.inputArgs,
-						[argName]: val,
+						[spec.key]: val,
 					}
 					setState({
-						text: "/" + replaceArgumentValues(cmd.spec.syntax, inputArgs),
+						text: commandArgsToString(cmd.spec, inputArgs),
 						command: {
 							...cmd,
 							inputArgs,
@@ -158,7 +155,7 @@ const CommandInput = ({ state, setState }: CommandInputProps) => {
 				}}
 			/>
 		})}
-		{!cmd.spec.arguments?.length ? "Selected /" + cmd.spec.syntax : null}
+		{!cmd.spec.parameters?.length ? "Selected /" + cmd.spec.command : null}
 	</div>
 }
 

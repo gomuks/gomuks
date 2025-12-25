@@ -33,6 +33,8 @@ export function validated<T>(value: T | undefined, validator: (value: T) => bool
 	return value !== undefined && validator(value)
 }
 
+export const isServerName = (serverName: unknown): serverName is string =>
+	typeof serverName === "string" && simpleHomeserverRegex.test(serverName)
 export const isEventID = (eventID: unknown) => isIdentifier<EventID>(eventID, "$", false)
 export const isUserID = (userID: unknown) => isIdentifier<UserID>(userID, "@", true)
 export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", false)
@@ -103,6 +105,8 @@ export function parseMatrixURI(uri: unknown): ParsedMatrixURI | undefined {
 	}
 	return output as ParsedMatrixURI
 }
+
+export const lessNoisyEncodeURIComponent = (str: string) => encodeURIComponent(str).replace("%3A", ":")
 
 export function getLocalpart(userID: UserID): string {
 	const idx = userID.indexOf(":")

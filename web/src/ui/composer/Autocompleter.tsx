@@ -25,10 +25,9 @@ import {
 import {
 	UserID,
 	WrappedBotCommand,
-	findArgumentNames,
+	commandArgsToString,
 	getDefaultArguments,
-	parseArgumentValues,
-	replaceArgumentValues,
+	stringToCommandArgs,
 	unpackExtensibleText,
 } from "@/api/types"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
@@ -128,12 +127,11 @@ function useAutocompleter<T>({
 			return
 		} else if (items.length === 0 && prevItems.current?.length) {
 			for (const item of prevItems.current as WrappedBotCommand[]) {
-				const argVals = parseArgumentValues(item, state.text)
+				const argVals = stringToCommandArgs(item, state.text)
 				if (argVals !== null) {
 					setState({
 						command: {
 							spec: item,
-							argNames: findArgumentNames(item.syntax),
 							inputArgs: argVals,
 						},
 					})
@@ -253,19 +251,18 @@ const BotSourceIcon = ({ source }: { source: UserID }) => {
 
 const commandFuncs = {
 	getText: () => "",
-	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.syntax,
+	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.command,
 	getNewState: (cmd: WrappedBotCommand) => {
-		const argNames = findArgumentNames(cmd.syntax)
 		const state = {
 			command: {
 				spec: cmd,
-				argNames,
-				inputArgs: getDefaultArguments(cmd, argNames),
+				inputArgs: getDefaultArguments(cmd),
 			},
 			text: "",
 		}
-		state.text = "/" + replaceArgumentValues(cmd.syntax, state.command.inputArgs)
-		let firstArgPos = cmd.syntax.indexOf("{") + 1
+		state.text = commandArgsToString(cmd, state.command.inputArgs)
+		// TODO adding cmd.source might be disabled, make sure to sync with commandArgsToString
+		let firstArgPos = cmd.command.length + cmd.source.length + 2
 		if (state.text.charAt(firstArgPos) === `"`) {
 			firstArgPos++
 		}
@@ -273,7 +270,8 @@ const commandFuncs = {
 	},
 	render: (cmd: WrappedBotCommand) => <>
 		<BotSourceIcon source={cmd.source} />
-		<code>/{cmd.syntax}</code>
+		<code>/{cmd.command}{cmd.parameters.map(param =>
+			` {${param.key}${param.type.schema_type === "array" ? "..." : ""}}`)}</code>
 		<span> - {unpackExtensibleText(cmd.description)}</span>
 	</>,
 }

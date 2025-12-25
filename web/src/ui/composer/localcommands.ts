@@ -23,7 +23,7 @@ import { MainScreenContextFields } from "../MainScreenContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 
 const commandHandlers: { [K in CommandName]?: CommandCallback } = {
-	"join {room_reference} {reason}": ({ client, mainScreen, reply }, { room_reference }) => {
+	join: ({ client, mainScreen, reply }, { room_reference }) => {
 		if (typeof room_reference !== "string") {
 			return
 		}
@@ -82,7 +82,7 @@ export function interceptCommand(
 	if (spec.source !== fakeGomuksSender) {
 		return false
 	}
-	const handler = commandHandlers[spec.syntax as CommandName]
+	const handler = commandHandlers[spec.command as CommandName]
 	if (!handler) {
 		return false
 	}
