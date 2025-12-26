@@ -213,6 +213,74 @@ BEGIN
 	  AND reactions IS NOT NULL;
 END;
 
+CREATE TRIGGER event_insert_encrypted_fill_reactions
+	AFTER INSERT
+	ON event
+	WHEN NEW.type = 'm.room.encrypted'
+		AND NEW.decrypted_type = 'm.reaction'
+		AND NEW.relation_type = 'm.annotation'
+		AND NEW.redacted_by IS NULL
+		AND typeof(NEW.decrypted ->> '$."m.relates_to".key') = 'text'
+		AND NEW.decrypted ->> '$."m.relates_to".key' NOT LIKE '%"%'
+BEGIN
+	UPDATE event
+	SET reactions=json_set(
+		reactions,
+		'$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key'),
+		coalesce(
+			reactions ->> ('$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key')),
+			0
+		) + 1)
+	WHERE event_id = NEW.relates_to
+	  AND reactions IS NOT NULL;
+END;
+
+CREATE TRIGGER event_update_decrypt_fill_reactions
+	AFTER UPDATE
+	ON event
+	WHEN NEW.type = 'm.room.encrypted'
+		AND OLD.decrypted_type IS NULL
+		AND NEW.decrypted_type = 'm.reaction'
+		AND NEW.relation_type = 'm.annotation'
+		AND NEW.redacted_by IS NULL
+		AND typeof(NEW.decrypted ->> '$."m.relates_to".key') = 'text'
+		AND NEW.decrypted ->> '$."m.relates_to".key' NOT LIKE '%"%'
+BEGIN
+	UPDATE event
+	SET reactions=json_set(
+		reactions,
+		'$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key'),
+		coalesce(
+			reactions ->> ('$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key')),
+			0
+		) - 1)
+	WHERE event_id = NEW.relates_to
+	  AND reactions IS NOT NULL;
+END;
+
+CREATE TRIGGER event_redact_encrypted_fill_reactions
+	AFTER UPDATE
+	ON event
+	WHEN NEW.type = 'm.room.encrypted'
+		AND NEW.decrypted_type = 'm.reaction'
+		AND NEW.relation_type = 'm.annotation'
+		AND NEW.redacted_by IS NOT NULL
+		AND OLD.redacted_by IS NULL
+		AND typeof(NEW.decrypted ->> '$."m.relates_to".key') = 'text'
+		AND NEW.decrypted ->> '$."m.relates_to".key' NOT LIKE '%"%'
+BEGIN
+	UPDATE event
+	SET reactions=json_set(
+		reactions,
+		'$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key'),
+		coalesce(
+			reactions ->> ('$.' || json_quote(NEW.decrypted ->> '$."m.relates_to".key')),
+			0
+		) - 1)
+	WHERE event_id = NEW.relates_to
+	  AND reactions IS NOT NULL;
+END;
+
 CREATE TABLE media (
 	mxc             TEXT NOT NULL PRIMARY KEY,
 	enc_file        TEXT,
