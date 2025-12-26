@@ -141,7 +141,10 @@ function quote(val: string | null): string | null {
 const ARRAY_OPENER = "<"
 const ARRAY_CLOSER = ">"
 
-function parseQuoted(val: string): [string, string, boolean] {
+function parseQuoted(val: string): [string | null, string, boolean] {
+	if (!val) {
+		return [null, "", false]
+	}
 	if (!val.startsWith(`"`)) {
 		const spaceIdx = val.indexOf(" ")
 		if (spaceIdx === -1) {
@@ -303,7 +306,10 @@ function literalEqual(expected: unknown, val: string): boolean {
 	}
 }
 
-function stringToArgument(spec: BotParameterSchema, val: string): SingleBotArgumentValue | null {
+function stringToArgument(spec: BotParameterSchema, val: string | null): SingleBotArgumentValue | null {
+	if (val === null) {
+		return null
+	}
 	switch (spec.schema_type) {
 	case "literal":
 		return literalEqual(spec.value, val) ? spec.value : null
@@ -391,8 +397,9 @@ export function stringToCommandArgs(
 	const args: Record<string, BotArgumentValue> = {}
 	for (const param of spec.parameters) {
 		const isLast = ++i === spec.parameters.length
-		let nextVal: string
+		let nextVal: string | null
 		let wasQuoted: boolean
+		const origInput = input
 		if (param.type.schema_type === "array") {
 			const hasOpener = input.startsWith(ARRAY_OPENER)
 			let arrayClosed = false
@@ -406,7 +413,7 @@ export function stringToCommandArgs(
 			const collector = []
 			while (input.length > 0 && !arrayClosed) {
 				[nextVal, input, wasQuoted] = parseQuoted(input)
-				if (!wasQuoted && hasOpener && nextVal.endsWith(ARRAY_CLOSER)) {
+				if (!wasQuoted && hasOpener && nextVal?.endsWith(ARRAY_CLOSER)) {
 					// The value wasn't quoted and has the array delimiter at the end, close the array
 					nextVal = nextVal.slice(0, -1)
 					arrayClosed = true
@@ -427,14 +434,18 @@ export function stringToCommandArgs(
 			args[param.key] = collector.length ? collector : param.default_value ?? getDefaultArgument(param)
 		} else {
 			[nextVal, input, wasQuoted] = parseQuoted(input)
-			if (isLast && !wasQuoted) {
+			if (isLast && !wasQuoted && input) {
 				// If the last argument is not quoted and not variadic, just treat the rest of the string
 				// as the argument without escapes (arguments with escapes should be quoted).
 				nextVal += " " + input
 				input = ""
 			}
-			args[param.key] = stringToArgument(param.type, nextVal)
-				?? param.default_value ?? getDefaultArgument(param)
+			const parsedVal = stringToArgument(param.type, nextVal)
+			args[param.key] = parsedVal ?? param.default_value ?? getDefaultArgument(param)
+			// For optional parameters that fail to parse, restore the input and try passing it as the next parameter
+			if (parsedVal === null && param.optional && !isLast) {
+				input = origInput
+			}
 		}
 	}
 	return args
