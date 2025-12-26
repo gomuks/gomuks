@@ -211,13 +211,11 @@ export const UserAutocompleter = ({ params, room, ...rest }: AutocompleterProps)
 }
 
 const roomFuncs = {
-	getText: (room: RoomStateStore, state: ComposerState) => state.command
-		? room.meta.current.canonical_alias || room.roomID
-		: makeRoomMentionMarkdown(
-			room.meta.current.canonical_alias || room.meta.current.name || room.roomID,
-			room.meta.current.canonical_alias || room.roomID,
-			room.getViaServers(),
-		),
+	getText: (room: RoomStateStore) => makeRoomMentionMarkdown(
+		room.meta.current.canonical_alias || room.meta.current.name || room.roomID,
+		room.meta.current.canonical_alias || room.roomID,
+		room.getViaServers(),
+	),
 	getKey: (room: RoomStateStore) => room.roomID,
 	render: (room: RoomStateStore) => <>
 		<img
