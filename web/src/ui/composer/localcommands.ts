@@ -20,6 +20,7 @@ import type { CommandName } from "@/api/types/stdcommands.d.ts"
 import { escapeHTML } from "@/util/markdown.ts"
 import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
 import { MainScreenContextFields } from "../MainScreenContext.ts"
+import { modals } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 
 const commandHandlers: { [K in CommandName]?: CommandCallback } = {
@@ -55,6 +56,9 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 		} else {
 			reply(escapedHTML`Invalid room reference <code>${room_reference}</code>`)
 		}
+	},
+	devtools: ({ roomCtx }) => {
+		window.openModal(modals.roomStateExplorer(roomCtx.store))
 	},
 }
 

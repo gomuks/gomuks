@@ -27,6 +27,7 @@ const (
 	UnencryptedRaw = "unencryptedraw"
 	RawState       = "rawstate"
 	DiscardSession = "discardsession"
+	Devtools       = "devtools"
 	Meow           = "meow"
 	AddAlias       = "alias add"
 	DelAlias       = "alias del"
@@ -190,6 +191,9 @@ var CommandDefinitions = []*event.MSC4391BotCommandEventContent{{
 }, {
 	Command:     DiscardSession,
 	Description: event.MakeExtensibleText("Discard the outbound Megolm session in the current room"),
+}, {
+	Command:     Devtools,
+	Description: event.MakeExtensibleText("Open the room state explorer"),
 }, {
 	Command:     AddAlias,
 	Description: event.MakeExtensibleText("Add a room alias to the current room. Does not update the canonical alias event."),

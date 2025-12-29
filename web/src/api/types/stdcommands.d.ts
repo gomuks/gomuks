@@ -20,6 +20,7 @@ export type CommandName =
 	| "unencryptedraw"
 	| "rawstate"
 	| "discardsession"
+	| "devtools"
 	| "alias add"
 	| "alias del"
 
