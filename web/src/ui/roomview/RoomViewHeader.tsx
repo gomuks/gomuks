@@ -19,9 +19,7 @@ import { RoomStateStore } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu/util.ts"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { LightboxContext, NestableModalContext } from "../modal"
-import RoomStateExplorer from "../settings/RoomStateExplorer.tsx"
-import SettingsView from "../settings/SettingsView.tsx"
+import { LightboxContext, NestableModalContext, modals } from "../modal"
 import BackIcon from "@/icons/back.svg?react"
 import CodeIcon from "@/icons/code.svg?react"
 import PeopleIcon from "@/icons/group.svg?react"
@@ -41,20 +39,10 @@ const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 	const mainScreen = use(MainScreenContext)
 	const openNestableModal = use(NestableModalContext)
 	const openSettings = () => {
-		openNestableModal({
-			dimmed: true,
-			boxed: true,
-			innerBoxClass: "settings-view",
-			content: <SettingsView room={room} />,
-		})
+		openNestableModal(modals.settings(room))
 	}
 	const openRoomStateExplorer = () => {
-		openNestableModal({
-			dimmed: true,
-			boxed: true,
-			innerBoxClass: "room-state-explorer-box",
-			content: <RoomStateExplorer room={room} />,
-		})
+		openNestableModal(modals.roomStateExplorer(room))
 	}
 	const buttonCount = 5
 	const makeButtons = (titles?: boolean)  => {

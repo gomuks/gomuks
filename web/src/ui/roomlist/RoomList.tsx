@@ -23,8 +23,7 @@ import toSearchableString from "@/util/searchablestring.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { keyToString } from "../keybindings.ts"
-import { ModalContext } from "../modal"
-import CreateRoomView from "../roomview/CreateRoomView.tsx"
+import { ModalContext, modals } from "../modal"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
 import Space from "./Space.tsx"
@@ -53,12 +52,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		directSetQuery(evt.target.value)
 	}
 	const openCreateRoom = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			boxClass: "create-room-view-modal",
-			content: <CreateRoomView />,
-		})
+		openModal(modals.createRoom())
 	}
 	const onClickSpace = useCallback((evt: React.MouseEvent<HTMLDivElement>) => {
 		const store = client.store.getSpaceStore(evt.currentTarget.getAttribute("data-target-space")!)

@@ -36,12 +36,22 @@ export interface ModalState {
 	noDismiss?: boolean
 }
 
-export type openModal = (state: ModalState) => void
+export interface NonNestableModalState extends ModalState {
+	nestable?: false
+}
 
-export const ModalContext = createContext<openModal>(() =>
+export interface NestableModalState extends ModalState {
+	nestable?: true
+}
+
+export type openModal = (state: ModalState) => void
+export type openNonNestableModal = (state: NonNestableModalState) => void
+export type openNestableModal = (state: NestableModalState) => void
+
+export const ModalContext = createContext<openNonNestableModal>(() =>
 	console.error("Tried to open modal without being inside context"))
 
-export const NestableModalContext = createContext<openModal>(() =>
+export const NestableModalContext = createContext<openNestableModal>(() =>
 	console.error("Tried to open nestable modal without being inside context"))
 
 export const ModalCloseContext = createContext<() => void>(() => {})

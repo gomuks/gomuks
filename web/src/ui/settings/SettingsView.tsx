@@ -30,10 +30,9 @@ import {
 import { NonNullCachedEventDispatcher, useEventAsState } from "@/util/eventdispatcher.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
-import { LightboxContext, ModalCloseContext, ModalContext } from "../modal"
+import { LightboxContext, ModalCloseContext, ModalContext, modals } from "../modal"
 import JSONView from "../util/JSONView.tsx"
 import Toggle from "../util/Toggle.tsx"
-import RoomStateExplorer from "./RoomStateExplorer.tsx"
 import CloseIcon from "@/icons/close.svg?react"
 import "./SettingsView.css"
 
@@ -492,12 +491,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		}
 	}
 	const openDevtools = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			innerBoxClass: "state-explorer-box",
-			content: <RoomStateExplorer room={room} />,
-		})
+		openModal(modals.roomStateExplorer(room))
 	}
 	const onClickOpenCSSApp = () => {
 		client.rpc.requestOpenIDToken().then(

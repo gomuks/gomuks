@@ -29,11 +29,10 @@ import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
-import { ModalContext, NestableModalContext } from "../modal"
+import { ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
-import EventEditHistory from "./EventEditHistory.tsx"
 import ReadReceipts from "./ReadReceipts.tsx"
 import { ReplyBody, ReplyIDBody } from "./ReplyBody.tsx"
 import { ContentErrorBoundary, HiddenEvent, getBodyType, getPerMessageProfile, isSmallEvent } from "./content"
@@ -169,13 +168,7 @@ const TimelineEvent = ({
 		}
 	}
 	const openEditHistory = () => {
-		openNestableModal({
-			content: <EventEditHistory evt={evt} roomCtx={roomCtx}/>,
-			dimmed: true,
-			boxed: true,
-			boxClass: "full-screen-mobile event-edit-history-wrapper",
-			innerBoxClass: "event-edit-history-modal",
-		})
+		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
 	const perMessageSender = getPerMessageProfile(evt)
 	const prevPerMessageSender = getPerMessageProfile(prevEvt)

@@ -19,10 +19,12 @@ import { ModalCloseContext } from "@/ui/modal"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import "./MediaUploadDialog.css"
 
+export type UploadFileFunc = (file: Blob, filename: string, encodingOpts?: MediaEncodingOptions) => void
+
 export interface MediaUploadDialogProps {
 	file: File
 	blobURL: string
-	doUploadFile: (file: Blob, filename: string, encodingOpts?: MediaEncodingOptions) => void
+	doUploadFile: UploadFileFunc
 	isEncrypted: boolean
 	isVoice?: boolean
 }

@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { EventID } from "@/api/types"
+import { modals } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
-import EventContextModal from "../timeline/EventContextModal.tsx"
 
 export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry: boolean = true) => {
 	if (jumpToVisibleEvent(evtID)) {
@@ -26,20 +26,8 @@ export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry
 		setTimeout(() => jumpToEvent(roomCtx, evtID, false), 500)
 	} else {
 		console.info("Using event context modal to jump to event", evtID)
-		openEventContextModal(roomCtx, evtID)
+		window.openNestableModal(modals.eventContext(roomCtx, evtID))
 	}
-}
-
-export const openEventContextModal = (roomCtx: RoomContextData, evtID: EventID) => {
-	if (roomCtx.threadParentRoom) {
-		roomCtx = roomCtx.threadParentRoom
-	}
-	window.openNestableModal({
-		dimmed: true,
-		boxed: true,
-		boxClass: "event-context-modal",
-		content: <EventContextModal roomCtx={roomCtx} eventID={evtID} key={evtID} />,
-	})
 }
 
 export const jumpToVisibleEvent = (evtID: EventID, parent?: Element | null): boolean => {
@@ -69,6 +57,6 @@ export const jumpToVisibleEvent = (evtID: EventID, parent?: Element | null): boo
 export const jumpToEventInView = (roomCtx: RoomContextData, evtID: EventID, parent?: Element | null) => {
 	if (!parent || !jumpToVisibleEvent(evtID, parent)) {
 		console.info("Using event context modal to jump to event", evtID)
-		openEventContextModal(roomCtx, evtID)
+		window.openNestableModal(modals.eventContext(roomCtx, evtID))
 	}
 }

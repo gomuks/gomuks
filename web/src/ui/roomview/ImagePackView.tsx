@@ -25,8 +25,7 @@ import {
 } from "@/api/types"
 import { ensureString, ensureStringArray } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
-import MediaUploadDialog from "../composer/MediaUploadDialog.tsx"
-import { LightboxContext, ModalCloseContext, ModalContext, NestableModalContext } from "../modal"
+import { LightboxContext, ModalCloseContext, ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "./roomcontext.ts"
 import FallbackPackIcon from "@/icons/category.svg?react"
 import StickerAddIcon from "@/icons/sticker-add.svg?react"
@@ -272,19 +271,7 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 		if (!file) {
 			return
 		}
-		const objectURL = URL.createObjectURL(file)
-		openModal({
-			dimmed: true,
-			boxed: true,
-			innerBoxClass: "media-upload-modal-wrapper",
-			onClose: () => URL.revokeObjectURL(objectURL),
-			content: <MediaUploadDialog
-				file={file}
-				blobURL={objectURL}
-				doUploadFile={doUploadFile}
-				isEncrypted={false}
-			/>,
-		})
+		openModal(modals.mediaUpload(file, doUploadFile))
 	}
 	const doSave = () => {
 		save(item, newItem)

@@ -565,9 +565,12 @@ export class StateStore {
 			const idx = this.roomList.current.findIndex(entry => entry.room_id === decrypted.room_id)
 			if (idx !== -1) {
 				const updatedRoomList = [...this.roomList.current]
+				const preview_event = room.eventsByRowID.get(decrypted.preview_event_rowid)
+				const preview_sender = preview_event && room.getStateEvent("m.room.member", preview_event.sender)
 				updatedRoomList[idx] = {
 					...updatedRoomList[idx],
-					preview_event: room.eventsByRowID.get(decrypted.preview_event_rowid),
+					preview_sender,
+					preview_event,
 				}
 				this.roomList.emit(updatedRoomList)
 			}

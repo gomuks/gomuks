@@ -19,7 +19,7 @@ import { useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
-import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, ShareModal } from "../modal"
+import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, modals } from "../modal"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import JSONView from "../util/JSONView.tsx"
 import { getPending, getPowerLevels } from "./util.ts"
@@ -116,13 +116,7 @@ export const useSecondaryItems = (
 	}
 
 	const onClickShareEvent = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			content: <RoomContext value={roomCtx}>
-				<ShareModal room={roomCtx.store} evt={evt} />
-			</RoomContext>,
-		})
+		openModal(modals.shareEvent(roomCtx, evt))
 	}
 
 	const [isPending, pendingTitle] = getPending(evt)

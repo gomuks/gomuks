@@ -52,7 +52,7 @@ import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
 import GIFPicker from "../emojipicker/GIFPicker.tsx"
 import StickerPicker from "../emojipicker/StickerPicker.tsx"
 import { keyToString } from "../keybindings.ts"
-import { ModalContext } from "../modal"
+import { ModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import { ReplyBody } from "../timeline/ReplyBody.tsx"
 import URLPreview from "../urlpreview/URLPreview.tsx"
@@ -60,8 +60,6 @@ import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import type { AutocompleteQuery } from "./Autocompleter.tsx"
 import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
-import MediaUploadDialog from "./MediaUploadDialog.tsx"
-import VoiceRecorder from "./VoiceRecorder.tsx"
 import {
 	canAutocompleteCommand,
 	charToAutocompleteType,
@@ -587,20 +585,7 @@ const MessageComposer = () => {
 			return
 		}
 		if (room.preferences.upload_dialog || (state.text.startsWith("/") && !isLegacyCommand(state.text))) {
-			const objectURL = URL.createObjectURL(file)
-			openModal({
-				dimmed: true,
-				boxed: true,
-				innerBoxClass: "media-upload-modal-wrapper",
-				onClose: () => URL.revokeObjectURL(objectURL),
-				content: <MediaUploadDialog
-					file={file}
-					blobURL={objectURL}
-					doUploadFile={doUploadFile}
-					isEncrypted={isEncrypted}
-					isVoice={isVoice}
-				/>,
-			})
+			openModal(modals.mediaUpload(file, doUploadFile, isEncrypted, isVoice))
 		} else {
 			window.closeModal()
 			const encTo = isVoice && file.type !== "audio/ogg; codecs=opus" ? "audio/ogg; codecs=opus" : undefined
@@ -817,14 +802,7 @@ const MessageComposer = () => {
 			})
 		}
 		const openVoiceRecorder = () => {
-			openModal({
-				dimmed: true,
-				boxed: true,
-				boxClass: "voice-recorder-box",
-				innerBoxClass: "voice-recorder",
-				content: <VoiceRecorder onFinish={openFileUploadModal} />,
-				onClose: () => !isMobileDevice && textInput.current?.focus(),
-			})
+			openModal(modals.voiceRecorder(openFileUploadModal, textInput))
 		}
 		const openLocationPicker = () => {
 			setState({ location: { lat: 0, long: 0, prec: 1 }, media: null })

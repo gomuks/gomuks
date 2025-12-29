@@ -20,8 +20,7 @@ import { RoomStateStore, SpaceEdgeStore } from "@/api/statestore"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { ModalCloseContext, ModalContext, ShareModal } from "../modal"
-import SettingsView from "../settings/SettingsView.tsx"
+import { ModalCloseContext, ModalContext, modals } from "../modal"
 import { getRightOpeningModalStyleFromButton } from "./util.ts"
 import ChatIcon from "@/icons/chat.svg?react"
 import SettingsIcon from "@/icons/settings.svg?react"
@@ -86,23 +85,14 @@ export const SpaceMenu = ({ room, space, style }: SpaceMenuProps) => {
 	const client = use(ClientContext)!
 	const openSettings = () => {
 		closeModal()
-		window.openNestableModal({
-			dimmed: true,
-			boxed: true,
-			innerBoxClass: "settings-view",
-			content: <SettingsView room={room} />,
-		})
+		window.openNestableModal(modals.settings(room))
 	}
 	const openTimeline = () => {
 		closeModal()
 		mainScreen.setActiveRoom(room.roomID)
 	}
 	const onClickShare = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			content: <ShareModal room={room}/>,
-		})
+		openModal(modals.shareRoom(room))
 	}
 
 	return <div className="context-menu space-list-menu" style={style}>

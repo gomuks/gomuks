@@ -2,8 +2,7 @@ import { use, useEffect, useState } from "react"
 import Client from "@/api/client.ts"
 import { PronounSet, UserProfile } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
-import { ModalContext } from "../modal"
-import JSONView from "../util/JSONView.tsx"
+import { ModalContext, modals } from "../modal"
 
 interface ExtendedProfileProps {
 	profile: UserProfile | null
@@ -104,11 +103,7 @@ const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: Extend
 	}
 
 	const viewExtensibleProfile = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			content: <JSONView data={profile}/>,
-		})
+		openModal(modals.jsonView(profile))
 	}
 	// Explicitly only return something if the profile has the keys we're looking for.
 	// otherwise there's an ugly and pointless <hr/> for no real reason.
