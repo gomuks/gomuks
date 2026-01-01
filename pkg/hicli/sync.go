@@ -1166,7 +1166,7 @@ func (h *HiClient) calculateRoomParticipantName(ctx context.Context, roomID id.R
 			primaryAvatarURL = id.ContentURI{}
 			dmUserID = ""
 		}
-		return fmt.Sprintf("Empty room (was %s)", joinMemberNames(leftMembers, memberCount)), primaryAvatarURL, "", nil
+		return fmt.Sprintf("Empty room (was %s)", joinMemberNames(leftMembers, memberCount)), primaryAvatarURL, dmUserID, nil
 	} else {
 		return "Empty room", primaryAvatarURL, "", nil
 	}

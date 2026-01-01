@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -105,6 +106,8 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 	currentStateEntries := make([]*database.CurrentStateEntry, len(evts))
 	mediaReferenceEntries := make([]*database.MediaReference, len(evts))
 	mediaCacheEntries := make([]*database.PlainMedia, 0, len(evts))
+	var joinedMembers, invitedMembers int
+	var joinedMemberIDs, invitedMemberIDs, leftMemberIDs []id.UserID
 	for i, evt := range evts {
 		if err := h.fillPrevContent(ctx, evt); err != nil {
 			return err
@@ -116,7 +119,22 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		}
 		var mediaURL string
 		if evt.Type == event.StateMember {
-			currentStateEntries[i].Membership = event.Membership(evt.Content.Raw["membership"].(string))
+			membership := event.Membership(evt.Content.Raw["membership"].(string))
+			userID := id.UserID(*evt.StateKey)
+			if userID != h.Account.UserID {
+				if membership == event.MembershipJoin {
+					joinedMemberIDs = append(joinedMemberIDs, userID)
+					joinedMembers++
+				} else if membership == event.MembershipInvite {
+					invitedMembers++
+					invitedMemberIDs = append(invitedMemberIDs, userID)
+				} else {
+					leftMemberIDs = append(leftMemberIDs, userID)
+				}
+			} else if membership == event.MembershipJoin {
+				joinedMembers++
+			}
+			currentStateEntries[i].Membership = membership
 			mediaURL, _ = evt.Content.Raw["avatar_url"].(string)
 		} else if evt.Type == event.StateRoomAvatar {
 			mediaURL, _ = evt.Content.Raw["url"].(string)
@@ -128,6 +146,22 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 			}
 		}
 	}
+	llSummary := &mautrix.LazyLoadSummary{
+		JoinedMemberCount:  &joinedMembers,
+		InvitedMemberCount: &invitedMembers,
+	}
+	if len(joinedMemberIDs) > 0 {
+		llSummary.Heroes = joinedMemberIDs
+		if len(joinedMemberIDs) < 5 {
+			llSummary.Heroes = append(llSummary.Heroes, invitedMemberIDs...)
+		}
+	} else {
+		llSummary.Heroes = leftMemberIDs
+	}
+	fullHeroes := llSummary.Heroes
+	if len(llSummary.Heroes) > 5 {
+		llSummary.Heroes = llSummary.Heroes[:5]
+	}
 	return h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 		room, err := h.DB.Room.Get(ctx, roomID)
 		if err != nil {
@@ -138,6 +172,19 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		updatedRoom := &database.Room{
 			ID:            room.ID,
 			HasMemberList: true,
+		}
+		if room.LazyLoadSummary != nil && room.LazyLoadSummary.Heroes != nil {
+			allFound := true
+			for _, hero := range room.LazyLoadSummary.Heroes {
+				if !slices.Contains(fullHeroes, hero) {
+					allFound = false
+					break
+				}
+			}
+			if allFound {
+				// Preserve original heroes if they are all still present
+				llSummary.Heroes = room.LazyLoadSummary.Heroes
+			}
 		}
 		err = h.DB.Event.MassUpsertState(ctx, dbEvts)
 		if err != nil {
@@ -168,6 +215,20 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		if err != nil {
 			return fmt.Errorf("failed to save current state entries: %w", err)
 		}
+		if room.NameQuality <= database.NameQualityParticipants {
+			name, dmAvatarURL, dmUserID, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary)
+			if err != nil {
+				return fmt.Errorf("failed to calculate room name: %w", err)
+			}
+			updatedRoom.DMUserID = &dmUserID
+			updatedRoom.Name = &name
+			updatedRoom.NameQuality = database.NameQualityParticipants
+			if !dmAvatarURL.IsEmpty() && !room.ExplicitAvatar && ptr.Val(updatedRoom.Avatar) != dmAvatarURL {
+				updatedRoom.Avatar = &dmAvatarURL
+			}
+		} else {
+			llSummary.Heroes = nil
+		}
 		roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
 		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
 		err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
@@ -175,6 +236,8 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 			return err
 		}
 		if roomChanged {
+			// Only set this here so it doesn't unconditionally flag the room as changed
+			updatedRoom.LazyLoadSummary = llSummary
 			err = h.DB.Room.Upsert(ctx, updatedRoom)
 			if err != nil {
 				return fmt.Errorf("failed to save room data: %w", err)

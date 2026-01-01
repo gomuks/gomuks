@@ -743,9 +743,7 @@ const MessageComposer = () => {
 		mediaDisabledTitle = "Uploading file..."
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	}
-	if (!isEncrypted && getUserLevel(pls, createEvent, client.userID) < getEventLevel(pls, "m.sticker")) {
-		stickerDisabledTitle = "You don't have permission to send stickers in this room"
-	} else if (state.media?.msgtype !== "m.sticker") {
+	if (state.media?.msgtype !== "m.sticker") {
 		stickerDisabledTitle = mediaDisabledTitle
 		if (!stickerDisabledTitle && editing) {
 			stickerDisabledTitle = "You can't edit a message into a sticker"
