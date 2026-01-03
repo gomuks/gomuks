@@ -85,9 +85,9 @@ func (h *HiClient) SendMessage(
 	mentions *event.Mentions,
 	urlPreviews []*event.BeeperLinkPreview,
 ) (*database.Event, error) {
-	hasCommand := base != nil && base.MSC4332BotCommand != nil
-	if hasCommand && mentions.Has(FakeGomuksSender) {
-		return h.ProcessCommand(ctx, roomID, base.MSC4332BotCommand, base, relatesTo)
+	hasCommand := base != nil && base.MSC4391BotCommand != nil
+	if hasCommand && mentions.Has(FakeGomuksSender) && len(mentions.UserIDs) == 1 {
+		return h.ProcessCommand(ctx, roomID, base.MSC4391BotCommand, base, relatesTo)
 	}
 	var unencrypted bool
 	if strings.HasPrefix(text, "/unencrypted ") {

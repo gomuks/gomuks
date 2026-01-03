@@ -33,6 +33,8 @@ export function validated<T>(value: T | undefined, validator: (value: T) => bool
 	return value !== undefined && validator(value)
 }
 
+export const isServerName = (serverName: unknown): serverName is string =>
+	typeof serverName === "string" && simpleHomeserverRegex.test(serverName)
 export const isEventID = (eventID: unknown) => isIdentifier<EventID>(eventID, "$", false)
 export const isUserID = (userID: unknown) => isIdentifier<UserID>(userID, "@", true)
 export const isRoomID = (roomID: unknown) => isIdentifier<RoomID>(roomID, "!", false)
@@ -52,22 +54,33 @@ export interface ParsedMatrixURI {
 	params: URLSearchParams
 }
 
+function urlSplitSigil(mxid?: string): [string, string] {
+	if (!mxid) {
+		return ["", ""]
+	}
+	mxid = decodeURIComponent(mxid)
+	return [mxid[0], lessNoisyEncodeURIComponent(mxid.slice(1))]
+}
+
 export function matrixToToMatrixURI(url: string): string | null {
 	if (!url.startsWith("https://matrix.to/")) {
 		return null
 	}
 	const parsedURL = new URL(url)
 	const parts = parsedURL.hash.split("/")
-	if (parts[1][0] === "#") {
-		return `matrix:r/${parts[1].slice(1)}`
-	} else if (parts[1][0] === "!") {
-		if (parts.length >= 4 && parts[3][0] === "$") {
-			return `matrix:roomid/${parts[1].slice(1)}/e/${parts[4].slice(1)}`
+	const [firstPartSigil, firstPartIdentifier] = urlSplitSigil(parts[1])
+	const [secondPartSigil, secondPartIdentifier] = urlSplitSigil(parts[2])
+	switch (firstPartSigil) {
+	case "#":
+		return `matrix:r/${firstPartIdentifier}`
+	case "!":
+		if (secondPartSigil === "$") {
+			return `matrix:roomid/${firstPartIdentifier}/e/${secondPartIdentifier}`
 		} else {
-			return `matrix:roomid/${parts[1].slice(1)}`
+			return `matrix:roomid/${firstPartIdentifier}`
 		}
-	} else if (parts[1][0] === "@") {
-		return `matrix:u/${parts[1].slice(1)}`
+	case "@":
+		return `matrix:u/${firstPartIdentifier}`
 	}
 	return null
 }
@@ -103,6 +116,8 @@ export function parseMatrixURI(uri: unknown): ParsedMatrixURI | undefined {
 	}
 	return output as ParsedMatrixURI
 }
+
+export const lessNoisyEncodeURIComponent = (str: string) => encodeURIComponent(str).replace("%3A", ":")
 
 export function getLocalpart(userID: UserID): string {
 	const idx = userID.indexOf(":")

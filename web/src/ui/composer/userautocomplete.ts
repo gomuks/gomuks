@@ -79,7 +79,7 @@ export function useFilteredMembers(
 export function useFilteredCommands(
 	room: RoomStateStore, query: string, sort = true, slice = true,
 ): WrappedBotCommand[] {
-	return useFiltered(useBotCommands(room), "syntax", query, sort ? filterAndSort : filter, slice)
+	return useFiltered(useBotCommands(room), "command", query, sort ? filterAndSort : filter, slice)
 }
 
 export function filterAndSortRooms(items: RoomStateStore[], _: "searchString", query: string): RoomStateStore[] {

@@ -38,8 +38,7 @@ import {
 	RoomID,
 	URLPreview as URLPreviewType,
 	WrappedBotCommand,
-	findArgumentNames,
-	parseArgumentValues,
+	stringToCommandArgs,
 } from "@/api/types"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -83,7 +82,6 @@ import "./MessageComposer.css"
 
 export interface CommandState {
 	spec: WrappedBotCommand
-	argNames: string[]
 	inputArgs: Record<string, BotArgumentValue>
 }
 
@@ -332,9 +330,9 @@ const MessageComposer = () => {
 		if (state.command) {
 			base_content = {
 				...(base_content ?? { msgtype: "m.text" }),
-				body: text.replace("/", state.command.spec.sigil),
-				"org.matrix.msc4332.command": {
-					syntax: state.command.spec.syntax,
+				body: text,
+				"org.matrix.msc4391.command": {
+					command: state.command.spec.command,
 					arguments: state.command.inputArgs as Record<string, BotArgumentValue>,
 				},
 			}
@@ -478,7 +476,7 @@ const MessageComposer = () => {
 		const newText = evt.target.value
 		const newState: Partial<ComposerState> = { text: newText }
 		if (state.command) {
-			const inputArgs = parseArgumentValues(state.command.spec, newText)
+			const inputArgs = stringToCommandArgs(state.command.spec, newText)
 			if (inputArgs === null) {
 				if (canAutocompleteCommand(newText)) {
 					setAutocomplete({
@@ -612,14 +610,13 @@ const MessageComposer = () => {
 			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
 		) {
 			for (const spec of room.getAllBotCommands()) {
-				const inputArgs = parseArgumentValues(spec, text)
+				const inputArgs = stringToCommandArgs(spec, text)
 				if (inputArgs !== null) {
 					setState({
 						text,
 						command: {
 							spec,
 							inputArgs,
-							argNames: findArgumentNames(spec.syntax),
 						},
 					})
 					evt.preventDefault()

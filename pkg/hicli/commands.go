@@ -49,14 +49,14 @@ func makeFakeEvent(roomID id.RoomID, html string) *database.Event {
 func (h *HiClient) ProcessCommand(
 	ctx context.Context,
 	roomID id.RoomID,
-	cmd *event.BotCommandInput,
+	cmd *event.MSC4391BotCommandInput,
 	content *event.MessageEventContent,
 	relatesTo *event.RelatesTo,
 ) (*database.Event, error) {
 	ctx = mautrix.WithMaxRetries(ctx, 0)
 	var responseHTML, responseText string
 	var retErr error
-	switch cmd.Syntax {
+	switch cmd.Command {
 	case cmdspec.DiscardSession:
 		responseText = h.handleCmdDiscardSession(ctx, roomID)
 	case cmdspec.Meow:
@@ -96,7 +96,7 @@ func (h *HiClient) ProcessCommand(
 	case cmdspec.DelAlias:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdDelAlias)
 	default:
-		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Syntax))
+		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Command))
 	}
 	if responseText != "" {
 		responseHTML = html.EscapeString(responseText)
