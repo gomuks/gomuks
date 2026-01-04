@@ -62,10 +62,12 @@ const (
 	upsertEventQuery = insertEventBaseQuery + `
 		ON CONFLICT (event_id) DO UPDATE
 			SET decrypted=COALESCE(event.decrypted, excluded.decrypted),
-			    decrypted_type=COALESCE(event.decrypted_type, excluded.decrypted_type),
-			    redacted_by=COALESCE(event.redacted_by, excluded.redacted_by),
-			    decryption_error=CASE WHEN COALESCE(event.decrypted, excluded.decrypted) IS NULL THEN COALESCE(excluded.decryption_error, event.decryption_error) END,
-			    send_error=excluded.send_error,
+				decrypted_type=COALESCE(event.decrypted_type, excluded.decrypted_type),
+				relates_to=COALESCE(excluded.relates_to, event.relates_to),
+				relation_type=COALESCE(excluded.relation_type, event.relation_type),
+				redacted_by=COALESCE(event.redacted_by, excluded.redacted_by),
+				decryption_error=CASE WHEN COALESCE(event.decrypted, excluded.decrypted) IS NULL THEN COALESCE(excluded.decryption_error, event.decryption_error) END,
+				send_error=excluded.send_error,
 				timestamp=excluded.timestamp,
 				unsigned=COALESCE(excluded.unsigned, event.unsigned),
 				local_content=COALESCE(excluded.local_content, event.local_content)
