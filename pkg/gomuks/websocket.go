@@ -17,6 +17,7 @@
 package gomuks
 
 import (
+	"bytes"
 	"compress/flate"
 	"context"
 	"encoding/json"
@@ -302,7 +303,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data, _ := io.ReadAll(reader)
-		if len(data) > 0 {
+		if len(data) > 0 && !bytes.Equal(data, newlineBytes) {
 			log.Warn().
 				Bytes("data", data).
 				Msg("Unexpected data in websocket reader")
@@ -310,6 +311,8 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		go submitCmd(&cmd)
 	}
 }
+
+var newlineBytes = []byte("\n")
 
 func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *websocket.Conn) {
 	log := zerolog.Ctx(ctx)

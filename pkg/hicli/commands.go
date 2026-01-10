@@ -12,13 +12,10 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"time"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"go.mau.fi/util/exstrings"
-	"go.mau.fi/util/jsontime"
-	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -27,36 +24,17 @@ import (
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
 
-const FakeGomuksSender id.UserID = "@gomuks"
-
-func makeFakeEvent(roomID id.RoomID, html string) *database.Event {
-	return &database.Event{
-		RowID:         -database.EventRowID(time.Now().UnixMilli()),
-		TimelineRowID: 0,
-		RoomID:        roomID,
-		ID:            id.EventID("$gomuks-internal-" + random.String(10)),
-		Sender:        FakeGomuksSender,
-		Type:          event.EventMessage.Type,
-		Timestamp:     jsontime.UnixMilliNow(),
-		Content:       json.RawMessage(`{"msgtype":"m.text"}`),
-		Unsigned:      json.RawMessage("{}"),
-		LocalContent: &database.LocalContent{
-			SanitizedHTML: html,
-		},
-	}
-}
-
 func (h *HiClient) ProcessCommand(
 	ctx context.Context,
 	roomID id.RoomID,
-	cmd *event.BotCommandInput,
+	cmd *event.MSC4391BotCommandInput,
 	content *event.MessageEventContent,
 	relatesTo *event.RelatesTo,
 ) (*database.Event, error) {
 	ctx = mautrix.WithMaxRetries(ctx, 0)
 	var responseHTML, responseText string
 	var retErr error
-	switch cmd.Syntax {
+	switch cmd.Command {
 	case cmdspec.DiscardSession:
 		responseText = h.handleCmdDiscardSession(ctx, roomID)
 	case cmdspec.Meow:
@@ -96,7 +74,7 @@ func (h *HiClient) ProcessCommand(
 	case cmdspec.DelAlias:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdDelAlias)
 	default:
-		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Syntax))
+		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Command))
 	}
 	if responseText != "" {
 		responseHTML = html.EscapeString(responseText)
@@ -106,7 +84,7 @@ func (h *HiClient) ProcessCommand(
 	} else if responseHTML == "" {
 		return nil, nil
 	}
-	return makeFakeEvent(roomID, responseHTML), nil
+	return database.MakeFakeEvent(roomID, responseHTML), nil
 }
 
 func callWithParsedArgs[T, R any](
@@ -327,18 +305,18 @@ func (h *HiClient) handleCmdUnencryptedRaw(ctx context.Context, roomID id.RoomID
 func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, args rawArguments, unencrypted bool) *database.Event {
 	jsonData := json.RawMessage(exstrings.UnsafeBytes(args.JSON))
 	if !json.Valid(jsonData) {
-		return makeFakeEvent(roomID, "Invalid JSON entered")
+		return database.MakeFakeEvent(roomID, "Invalid JSON entered")
 	}
 	if args.StateKey != nil {
 		_, err := h.SetState(ctx, roomID, event.Type{Type: args.EventType, Class: event.StateEventType}, *args.StateKey, jsonData)
 		if err != nil {
-			return makeFakeEvent(roomID, fmt.Sprintf("Failed to send state event: %s", html.EscapeString(err.Error())))
+			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send state event: %s", html.EscapeString(err.Error())))
 		}
 		return nil
 	} else {
 		evt, err := h.send(ctx, roomID, event.Type{Type: args.EventType}, jsonData, "", unencrypted, false, 0)
 		if err != nil {
-			return makeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
+			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
 		}
 		return evt
 	}

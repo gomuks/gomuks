@@ -38,9 +38,9 @@ import {
 	RoomID,
 	URLPreview as URLPreviewType,
 	WrappedBotCommand,
-	findArgumentNames,
-	parseArgumentValues,
+	stringToCommandArgs,
 } from "@/api/types"
+import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
@@ -66,7 +66,6 @@ import {
 	charToAutocompleteType,
 	emojiQueryRegex,
 	getAutocompleter,
-	isLegacyCommand,
 	startsWithSingleSlash,
 } from "./getAutocompleter.ts"
 import { interceptCommand } from "./localcommands.ts"
@@ -83,7 +82,6 @@ import "./MessageComposer.css"
 
 export interface CommandState {
 	spec: WrappedBotCommand
-	argNames: string[]
 	inputArgs: Record<string, BotArgumentValue>
 }
 
@@ -332,9 +330,9 @@ const MessageComposer = () => {
 		if (state.command) {
 			base_content = {
 				...(base_content ?? { msgtype: "m.text" }),
-				body: text.replace("/", state.command.spec.sigil),
-				"org.matrix.msc4332.command": {
-					syntax: state.command.spec.syntax,
+				body: text,
+				"org.matrix.msc4391.command": {
+					command: state.command.spec.command,
 					arguments: state.command.inputArgs as Record<string, BotArgumentValue>,
 				},
 			}
@@ -506,7 +504,7 @@ const MessageComposer = () => {
 		const newText = evt.target.value
 		const newState: Partial<ComposerState> = { text: newText }
 		if (state.command) {
-			const inputArgs = parseArgumentValues(state.command.spec, newText)
+			const inputArgs = stringToCommandArgs(state.command.spec, newText)
 			if (inputArgs === null) {
 				if (canAutocompleteCommand(newText)) {
 					setAutocomplete({
@@ -614,7 +612,7 @@ const MessageComposer = () => {
 		if (!file) {
 			return
 		}
-		if (room.preferences.upload_dialog || (state.text.startsWith("/") && !isLegacyCommand(state.text))) {
+		if (room.preferences.upload_dialog || (state.text.startsWith("/") && !isFakeCommand(state.text))) {
 			openModal(modals.mediaUpload(file, doUploadFile, isEncrypted, isVoice))
 		} else {
 			window.closeModal()
@@ -639,20 +637,25 @@ const MessageComposer = () => {
 		} else if (
 			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
 		) {
+			let matches: CommandState[] = []
+			let longestMatch = 0
 			for (const spec of room.getAllBotCommands()) {
-				const inputArgs = parseArgumentValues(spec, text)
+				const inputArgs = stringToCommandArgs(spec, text)
 				if (inputArgs !== null) {
-					setState({
-						text,
-						command: {
-							spec,
-							inputArgs,
-							argNames: findArgumentNames(spec.syntax),
-						},
-					})
-					evt.preventDefault()
-					break
+					if (spec.command.length > longestMatch) {
+						longestMatch = spec.command.length
+						matches = [{ spec, inputArgs }]
+					} else {
+						matches.push({ spec, inputArgs })
+					}
 				}
+			}
+			if (matches.length) {
+				setState({
+					text,
+					command: matches[0],
+				})
+				evt.preventDefault()
 			}
 			return
 		} else {

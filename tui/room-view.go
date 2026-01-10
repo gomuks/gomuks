@@ -18,7 +18,9 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"html"
 	"strings"
 	"time"
 
@@ -26,6 +28,7 @@ import (
 	"github.com/zyedidia/clipboard"
 	"go.mau.fi/mauview"
 	"go.mau.fi/util/ptr"
+	"go.mau.fi/util/variationselector"
 	"maunium.net/go/mautrix/crypto/attachment"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -685,8 +688,12 @@ func (view *RoomView) InputTabComplete(text string, cursorOffset int) {
 func (view *RoomView) InputSubmit(text string) {
 	if len(text) == 0 {
 		return
-		//} else if cmd := view.parent.cmdProcessor.ParseCommand(view, text); cmd != nil {
-		//	go view.parent.cmdProcessor.HandleCommand(cmd)
+	} else if cmd, err := view.ParseCommand(text); err != nil {
+		view.Room.ApplyPending(database.MakeFakeEvent(view.Room.ID,
+			fmt.Sprintf("Failed to parse command: <code>%v</code>", html.EscapeString(err.Error()))))
+		view.parent.parent.Render()
+	} else if cmd != nil {
+		go view.HandleCommand(cmd)
 	} else {
 		go view.SendMessage(event.MsgText, text)
 	}
@@ -736,27 +743,23 @@ func (view *RoomView) Redact(eventID id.EventID, reason string) {
 }
 
 func (view *RoomView) SendReaction(eventID id.EventID, reaction string) {
-	//defer debug.Recover()
-	//if !view.config.Preferences.DisableEmojis {
-	//	reaction = emoji.Sprint(reaction)
-	//}
-	//reaction = variationselector.Add(strings.TrimSpace(reaction))
-	//debug.Print("Reacting to", eventID, "in", view.Room.ID, "with", reaction)
-	//eventID, err := view.parent.matrix.SendEvent(&muksevt.Event{
-	//	Event: &event.Event{
-	//		Type:   event.EventReaction,
-	//		RoomID: view.Room.ID,
-	//		Content: event.Content{Parsed: &event.ReactionEventContent{RelatesTo: event.RelatesTo{
-	//			Type:    event.RelAnnotation,
-	//			EventID: eventID,
-	//			Key:     reaction,
-	//		}}},
-	//	},
-	//})
-	//if err != nil {
-	//	view.AddServiceMessage(fmt.Sprintf("Failed to send reaction: %v", err))
-	//	view.parent.parent.Render()
-	//}
+	defer debug.Recover()
+	reaction = variationselector.Add(strings.TrimSpace(reaction))
+	debug.Print("Reacting to", eventID, "in", view.Room.ID, "with", reaction)
+	contentJSON, _ := json.Marshal(&event.ReactionEventContent{RelatesTo: event.RelatesTo{
+		Type:    event.RelAnnotation,
+		EventID: eventID,
+		Key:     reaction,
+	}})
+	_, err := view.parent.matrix.SendEvent(context.TODO(), &jsoncmd.SendEventParams{
+		RoomID:    view.Room.ID,
+		EventType: event.EventReaction,
+		Content:   contentJSON,
+	})
+	if err != nil {
+		view.AddServiceMessage("Failed to send reaction: %v", err)
+		view.parent.parent.Render()
+	}
 }
 
 func (view *RoomView) SendMessage(msgtype event.MessageType, text string) {
@@ -772,8 +775,10 @@ func (view *RoomView) SendMessage(msgtype event.MessageType, text string) {
 	})
 	if err != nil {
 		debug.Print("Failed to send message:", err)
+		view.AddServiceMessage("Failed to send message: %v", err)
 	}
-	//view.SendMessageHTML(msgtype, text, "")
+	debug.Print("Rendering after sending message")
+	view.parent.parent.Render()
 }
 
 func (view *RoomView) SendMessageHTML(msgtype event.MessageType, text, html string) {
@@ -814,4 +819,11 @@ func (view *RoomView) Update(meta *database.Room) {
 func (view *RoomView) UpdateUserList() {
 	view.userList.Update(view.Room.GetMembers(), view.Room.GetPowerLevels())
 	view.userListLoaded = true
+}
+
+func (view *RoomView) AddServiceMessage(text string, args ...any) {
+	if len(args) > 0 {
+		text = fmt.Sprintf(text, args...)
+	}
+	view.Room.ApplyPending(database.MakeFakeEvent(view.Room.ID, html.EscapeString(text)))
 }

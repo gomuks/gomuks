@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
+import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import {
 	AutocompleteQuery,
 	AutocompleterProps,
@@ -44,17 +45,7 @@ export function startsWithSingleSlash(text: string): boolean {
 }
 
 export function canAutocompleteCommand(text: string): boolean {
-	return startsWithSingleSlash(text) && !isLegacyCommand(text)
-}
-
-export function isLegacyCommand(text: string): boolean {
-	return text.startsWith("/plain ")
-		|| text.startsWith("/me ")
-		|| text.startsWith("/notice ")
-		|| text.startsWith("/rainbow ")
-		|| text.startsWith("/html ")
-		|| text.startsWith("/timestamp ")
-		|| text.startsWith("/unencrypted ")
+	return startsWithSingleSlash(text) && !isFakeCommand(text)
 }
 
 export function getAutocompleter(

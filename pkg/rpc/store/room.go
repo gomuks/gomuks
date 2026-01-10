@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -19,8 +20,10 @@ import (
 	"github.com/tidwall/gjson"
 	"go.mau.fi/util/exmaps"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/id"
 
+	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
@@ -64,9 +67,15 @@ type RoomStore struct {
 	requestedMembers  exmaps.Set[id.UserID]
 	pendingEvents     []database.EventRowID
 	membersCache      []*AutocompleteMemberEntry
+	botCommandCache   []*WrappedCommand
 	Typing            EventDispatcher[[]id.UserID]
 	PreferenceCache   EventDispatcher[*Preferences]
 	lastMarkedRead    database.EventRowID
+}
+
+type WrappedCommand struct {
+	*cmdschema.EventContent
+	Source id.UserID
 }
 
 func NewRoomStore(parent *GomuksStore, meta *database.Room) *RoomStore {
@@ -179,7 +188,19 @@ func (rs *RoomStore) ApplyPending(evt *database.Event) {
 	if !slices.Contains(rs.pendingEvents, evt.RowID) {
 		rs.pendingEvents = append(rs.pendingEvents, evt.RowID)
 	}
-	rs.applyEvent(evt, true)
+	isFake := evt.Sender == cmdspec.FakeGomuksSender
+	rs.applyEvent(evt, !isFake)
+	if isFake {
+		content := evt.GetMautrixContent().AsMessage()
+		if content.FormattedBody == "" && evt.LocalContent.SanitizedHTML != "" && !evt.LocalContent.WasPlaintext {
+			content.FormattedBody = evt.LocalContent.SanitizedHTML
+			content.Format = event.FormatHTML
+		}
+		rs.timeline = append(rs.timeline, database.TimelineRowTuple{
+			Timeline: evt.TimelineRowID,
+			Event:    evt.RowID,
+		})
+	}
 	rs.notifyTimelineWatchers()
 }
 
@@ -259,6 +280,8 @@ func (rs *RoomStore) invalidateStateCaches(evtType event.Type, stateKeys ...stri
 		fallthrough
 	case event.StatePowerLevels:
 		rs.membersCache = nil
+	case event.StateMSC4391BotCommand:
+		rs.botCommandCache = nil
 	}
 	rs.StateSubs.Notify(evtType.Type)
 	for _, stateKey := range stateKeys {
@@ -283,6 +306,7 @@ func (rs *RoomStore) ApplyFullState(events []*database.Event, omitMembers bool) 
 	} else {
 		rs.membersCache = nil
 	}
+	rs.botCommandCache = nil
 	rs.state = newStateMap
 	rs.StateLoaded.Store(true)
 	if !omitMembers {
@@ -315,8 +339,10 @@ func (rs *RoomStore) applyEvent(evt *database.Event, pending bool) {
 	rs.eventsByRowID[evt.RowID] = evt
 	rs.eventsByID[evt.ID] = evt
 	rs.requestedEvents.Remove(evt.RowID)
-	if pendingIdx := slices.Index(rs.pendingEvents, evt.RowID); pendingIdx != -1 {
-		rs.pendingEvents = slices.Delete(rs.pendingEvents, pendingIdx, pendingIdx+1)
+	if !pending {
+		if pendingIdx := slices.Index(rs.pendingEvents, evt.RowID); pendingIdx != -1 {
+			rs.pendingEvents = slices.Delete(rs.pendingEvents, pendingIdx, pendingIdx+1)
+		}
 	}
 	rs.EventSubs.Notify(evt.ID)
 }
@@ -384,6 +410,45 @@ func (rs *RoomStore) GetMembers() []*AutocompleteMemberEntry {
 	return cache
 }
 
+func (rs *RoomStore) fillBotCommandCache() {
+	botCommandEvtIDs, ok := rs.state[event.StateMSC4391BotCommand]
+	if !ok {
+		return
+	}
+	commands := make([]*WrappedCommand, 0, len(botCommandEvtIDs))
+	for _, evtRowID := range botCommandEvtIDs {
+		evt, ok := rs.eventsByRowID[evtRowID]
+		if !ok || evt.RedactedBy != "" {
+			continue
+		}
+		// TODO check sender membership
+		cmdContent, ok := evt.GetMautrixContent().Parsed.(*cmdschema.EventContent)
+		if !ok || !cmdContent.IsValid() {
+			continue
+		}
+		commands = append(commands, &WrappedCommand{
+			EventContent: cmdContent,
+			Source:       evt.Sender,
+		})
+	}
+	rs.botCommandCache = commands
+}
+
+func (rs *RoomStore) GetBotCommands() []*WrappedCommand {
+	rs.lock.RLock()
+	cache := rs.botCommandCache
+	rs.lock.RUnlock()
+	if cache == nil {
+		rs.lock.Lock()
+		defer rs.lock.Unlock()
+		if rs.botCommandCache == nil {
+			rs.fillBotCommandCache()
+		}
+		cache = rs.botCommandCache
+	}
+	return cache
+}
+
 func (rs *RoomStore) GetEventByRowID(rowID database.EventRowID) *database.Event {
 	rs.lock.RLock()
 	defer rs.lock.RUnlock()
@@ -439,20 +504,27 @@ func (rs *RoomStore) GetMarkAsReadParams() *jsoncmd.MarkReadParams {
 	if len(rs.timeline) == 0 {
 		return nil
 	}
-	lastRowID := rs.timeline[len(rs.timeline)-1].Event
-	if lastRowID == rs.lastMarkedRead {
+	var readEvt *database.Event
+	for i := len(rs.timeline) - 1; i >= 0; i-- {
+		tuple := rs.timeline[i]
+		if tuple.Event == rs.lastMarkedRead {
+			break
+		}
+		evt, ok := rs.eventsByRowID[tuple.Event]
+		if ok && strings.HasPrefix(evt.ID.String(), "$") && evt.Sender != cmdspec.FakeGomuksSender {
+			readEvt = evt
+			rs.lastMarkedRead = tuple.Event
+			break
+		}
+	}
+	if readEvt == nil {
 		return nil
 	}
-	evt, ok := rs.eventsByRowID[lastRowID]
-	if !ok {
-		return nil
-	}
-	rs.lastMarkedRead = lastRowID
-	receiptType := event.ReceiptTypeReadPrivate
 	// TODO get receipt type from preferences
+	receiptType := event.ReceiptTypeReadPrivate
 	return &jsoncmd.MarkReadParams{
 		RoomID:      rs.ID,
-		EventID:     evt.ID,
+		EventID:     readEvt.ID,
 		ReceiptType: receiptType,
 	}
 }

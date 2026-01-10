@@ -8,176 +8,212 @@ package cmdspec
 
 import (
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/event/cmdschema"
+	"maunium.net/go/mautrix/id"
 )
+
+const FakeGomuksSender id.UserID = "@gomuks"
 
 const (
-	Join           = "join {room_reference} {reason}"
+	Join           = "join"
 	Leave          = "leave"
-	Invite         = "invite {user_id} {reason}"
-	Kick           = "kick {user_id} {reason}"
-	Ban            = "ban {user_id} {reason}"
-	MyRoomNick     = "myroomnick {name}"
+	Invite         = "invite"
+	Kick           = "kick"
+	Ban            = "ban"
+	MyRoomNick     = "myroomnick"
 	MyRoomAvatar   = "myroomavatar"
-	GlobalNick     = "globalnick {name}"
+	GlobalNick     = "globalnick"
 	GlobalAvatar   = "globalavatar"
-	RoomName       = "roomname {name}"
+	RoomName       = "roomname"
 	RoomAvatar     = "roomavatar"
-	Redact         = "redact {event_id} {reason}"
-	Raw            = "raw {event_type} {json}"
-	UnencryptedRaw = "unencryptedraw {event_type} {json}"
-	RawState       = "rawstate {event_type} {state_key} {json}"
+	Redact         = "redact"
+	Raw            = "raw"
+	UnencryptedRaw = "unencryptedraw"
+	RawState       = "rawstate"
 	DiscardSession = "discardsession"
-	Meow           = "meow {meow}"
-	AddAlias       = "alias add {name}"
-	DelAlias       = "alias del {name}"
+	Devtools       = "devtools"
+	Meow           = "meow"
+	AddAlias       = "alias add"
+	DelAlias       = "alias del"
 )
 
-var CommandDefinitions = []*event.BotCommand{{
-	Syntax:      Meow,
+var CommandDefinitions = []*cmdschema.EventContent{{
+	Command:     Meow,
 	Description: event.MakeExtensibleText("Meow"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "meow",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Meow"),
 	}},
 }, {
-	Syntax:      Join,
+	Command:     Join,
 	Description: event.MakeExtensibleText("Jump to the join room view by ID, alias or link"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "room_reference",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Room identifier"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "reason",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Reason for joining"),
+		Optional:    true,
 	}},
 }, {
-	Syntax:      Leave,
+	Command:     Leave,
 	Aliases:     []string{"part"},
 	Description: event.MakeExtensibleText("Leave the current room"),
 }, {
-	Syntax:      Invite,
+	Command:     Invite,
 	Description: event.MakeExtensibleText("Invite a user to the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeUserID,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "user_id",
+		Schema:      cmdschema.PrimitiveTypeUserID.Schema(),
 		Description: event.MakeExtensibleText("User ID"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "reason",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Reason for invite"),
+		Optional:    true,
 	}},
 }, {
-	Syntax:      Kick,
+	Command:     Kick,
 	Description: event.MakeExtensibleText("Kick a user from the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeUserID,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "user_id",
+		Schema:      cmdschema.PrimitiveTypeUserID.Schema(),
 		Description: event.MakeExtensibleText("User ID"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "reason",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Reason for kick"),
+		Optional:    true,
 	}},
 }, {
-	Syntax:      Ban,
+	Command:     Ban,
 	Description: event.MakeExtensibleText("Ban a user from the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeUserID,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "user_id",
+		Schema:      cmdschema.PrimitiveTypeUserID.Schema(),
 		Description: event.MakeExtensibleText("User ID"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "reason",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Reason for ban"),
+		Optional:    true,
 	}},
 }, {
-	Syntax:      MyRoomNick,
-	Aliases:     []string{"roomnick {name}"},
+	Command:     MyRoomNick,
+	Aliases:     []string{"roomnick"},
 	Description: event.MakeExtensibleText("Set your display name in the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "name",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("New display name"),
 	}},
 }, {
-	Syntax:      MyRoomAvatar,
+	Command:     MyRoomAvatar,
 	Description: event.MakeExtensibleText("Set your avatar in the current room"),
 }, {
-	Syntax:      GlobalNick,
-	Aliases:     []string{"globalname {name}"},
+	Command:     GlobalNick,
+	Aliases:     []string{"globalname"},
 	Description: event.MakeExtensibleText("Set your global display name"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "name",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("New display name"),
 	}},
 }, {
-	Syntax:      GlobalAvatar,
+	Command:     GlobalAvatar,
 	Description: event.MakeExtensibleText("Set your global avatar"),
 }, {
-	Syntax:      RoomName,
+	Command:     RoomName,
 	Description: event.MakeExtensibleText("Set the current room name"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "name",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("New display name"),
 	}},
 }, {
-	Syntax:      RoomAvatar,
+	Command:     RoomAvatar,
 	Description: event.MakeExtensibleText("Set the current room avatar"),
 }, {
-	Syntax:      Redact,
+	Command:     Redact,
 	Description: event.MakeExtensibleText("Redact an event"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeEventID,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "event_id",
+		Schema:      cmdschema.PrimitiveTypeEventID.Schema(),
 		Description: event.MakeExtensibleText("Event ID or link"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "reason",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Reason for redaction"),
+		Optional:    true,
 	}},
 }, {
-	Syntax:      Raw,
+	Command:     Raw,
 	Description: event.MakeExtensibleText("Send a raw timeline event to the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "event_type",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Event type"),
 	}, {
-		Type:         event.BotArgumentTypeString,
+		Key:          "json",
+		Schema:       cmdschema.PrimitiveTypeString.Schema(),
 		Description:  event.MakeExtensibleText("Event content as JSON"),
 		DefaultValue: "{}",
 	}},
 }, {
-	Syntax:      UnencryptedRaw,
+	Command:     UnencryptedRaw,
 	Description: event.MakeExtensibleText("Send an unencrypted raw timeline event to the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "event_type",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Event type"),
 	}, {
-		Type:         event.BotArgumentTypeString,
+		Key:          "json",
+		Schema:       cmdschema.PrimitiveTypeString.Schema(),
 		Description:  event.MakeExtensibleText("Event content as JSON"),
 		DefaultValue: "{}",
 	}},
 }, {
-	Syntax:      RawState,
+	Command:     RawState,
 	Description: event.MakeExtensibleText("Send a raw state event to the current room"),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "event_type",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Event type"),
 	}, {
-		Type:        event.BotArgumentTypeString,
+		Key:         "state_key",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("State key"),
 	}, {
-		Type:         event.BotArgumentTypeString,
+		Key:          "json",
+		Schema:       cmdschema.PrimitiveTypeString.Schema(),
 		Description:  event.MakeExtensibleText("Event content as JSON"),
 		DefaultValue: "{}",
 	}},
 }, {
-	Syntax:      DiscardSession,
+	Command:     DiscardSession,
 	Description: event.MakeExtensibleText("Discard the outbound Megolm session in the current room"),
 }, {
-	Syntax:      AddAlias,
+	Command:     Devtools,
+	Description: event.MakeExtensibleText("Open the room state explorer"),
+}, {
+	Command:     AddAlias,
 	Description: event.MakeExtensibleText("Add a room alias to the current room. Does not update the canonical alias event."),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "name",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Room alias name to add (without the # and domain)"),
 	}},
-	Aliases: []string{"alias create {name}"},
+	Aliases: []string{"alias create"},
 }, {
-	Syntax:      DelAlias,
+	Command:     DelAlias,
 	Description: event.MakeExtensibleText("Remove a room alias from the current room. Does not update the canonical alias event."),
-	Arguments: []*event.BotCommandArgument{{
-		Type:        event.BotArgumentTypeString,
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "name",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Room alias name to remove (without the # and domain)"),
 	}},
-	Aliases: []string{"alias remove {name}", "alias rm {name}", "alias delete {name}"},
+	Aliases: []string{"alias remove", "alias rm", "alias delete"},
 }}

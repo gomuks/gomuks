@@ -7,6 +7,7 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -300,13 +301,15 @@ func parseEvent(ctx context.Context, evt *jsoncmd.Container[json.RawMessage]) an
 	return data
 }
 
+var newlineBytes = []byte("\n")
+
 func (gr *GomuksRPC) readLoopItem(ctx context.Context, log *zerolog.Logger, ws *websocket.Conn, evtHandler chan<- wrappedEvent) bool {
 	var cmd *jsoncmd.Container[json.RawMessage]
 	msgType, reader, err := ws.Reader(ctx)
 	defer func() {
 		if reader != nil {
 			data, _ := io.ReadAll(reader)
-			if len(data) != 0 {
+			if len(data) != 0 && !bytes.Equal(data, newlineBytes) {
 				log.Warn().
 					Bytes("data", data).
 					Msg("Unexpected data in websocket reader")

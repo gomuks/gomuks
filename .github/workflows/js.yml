@@ -18,3 +18,9 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+      - name: Export Go data
+        run: ./export-go-data.sh
+
+      - name: Run vitest
+        run: npm test

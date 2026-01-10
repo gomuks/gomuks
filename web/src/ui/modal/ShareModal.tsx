@@ -17,6 +17,7 @@ import { useState } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
 import useEvent from "@/util/useEvent.ts"
+import { lessNoisyEncodeURIComponent } from "@/util/validation.ts"
 import Toggle from "../util/Toggle.tsx"
 import ConfirmModal from "./ConfirmModal.tsx"
 
@@ -26,8 +27,6 @@ export interface ShareModalProps {
 }
 
 const emptyArgs = [] as const
-
-const lessNoisyEncodeURIComponent = (str: string) => encodeURIComponent(str).replace("%3A", ":")
 
 export const ShareModal = ({ room, evt }: ShareModalProps) => {
 	const [useMatrixTo, setUseMatrixTo] = useState(false)

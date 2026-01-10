@@ -1,5 +1,5 @@
-// gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// gomuks - A terminal Matrix client written in Go.
+// Copyright (C) 2026 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -14,15 +14,4 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package web
-
-import (
-	"embed"
-)
-
-//go:generate ./export-go-data.sh
-//go:generate ./build-wasm.sh
-//go:generate npm install
-//go:generate npm run build
-//go:embed dist
-var Frontend embed.FS
+package tui

@@ -212,55 +212,76 @@ export interface ExtensibleTextContainer {
 	"m.text": ExtensibleText[]
 }
 
-export interface BotCommandsEventContent {
-	sigil: string
-	commands: BotCommand[]
-}
-
-export type BotArgumentType =
+export type BotParameterPrimitiveType =
 	"string" |
-	"enum" |
 	"integer" |
 	"boolean" |
+	"server_name" |
 	"user_id" |
 	"room_id" |
 	"room_alias" |
 	"event_id"
 
-export interface BaseBotArgument {
-	"fi.mau.default_value"?: SingleBotArgumentValue
+export type BotParameterSchemaType = "primitive" | "literal" | "union" | "array"
+
+export interface BotParameterSchemaPrimitive {
+	schema_type: "primitive"
+	type: BotParameterPrimitiveType
+}
+
+export interface BotParameterSchemaLiteral {
+	schema_type: "literal"
+	value: string | number | boolean | BotArgumentRoomIDValue | BotArgumentEventIDValue
+}
+
+export interface BotParameterSchemaUnion {
+	schema_type: "union"
+	variants: (BotParameterSchemaPrimitive | BotParameterSchemaLiteral)[]
+}
+
+export interface BotParameterSchemaArray {
+	schema_type: "array"
+	items: BotParameterSchemaPrimitive | BotParameterSchemaLiteral | BotParameterSchemaUnion
+}
+
+export type BotParameterSchema =
+	BotParameterSchemaArray | BotParameterSchemaUnion | BotParameterSchemaPrimitive | BotParameterSchemaLiteral
+
+export interface BotParameter {
+	key: string
+	schema: BotParameterSchema
+	optional?: boolean
 	description?: ExtensibleTextContainer
-	variadic?: boolean
+	"fi.mau.default_value"?: BotArgumentValue
 }
-
-export interface OtherBotArgument extends BaseBotArgument {
-	type: Exclude<BotArgumentType, "enum">
-}
-
-export interface BotArgumentEnum extends BaseBotArgument {
-	type: "enum"
-	enum: string[]
-}
-
-export type BotArgument = OtherBotArgument | BotArgumentEnum
 
 export interface BotCommand {
-	syntax: string
-	"fi.mau.aliases"?: string[]
-	arguments?: BotArgument[]
+	command: string
+	aliases?: string[]
+	parameters?: BotParameter[]
 	description?: ExtensibleTextContainer
+}
+
+export type BotCommandList = BotCommand[]
+
+export interface BotArgumentEventIDValue {
+	type: "event_id"
+	id: RoomID
+	event_id: EventID
+	via?: string[]
 }
 
 export interface BotArgumentRoomIDValue {
+	type: "room_id"
 	id: RoomID
 	via?: string[]
 }
 
-export type SingleBotArgumentValue = string | number | boolean | BotArgumentRoomIDValue
+export type SingleBotArgumentValue = null | string | number | boolean | BotArgumentRoomIDValue | BotArgumentEventIDValue
 export type BotArgumentValue = SingleBotArgumentValue | SingleBotArgumentValue[]
 
 export interface BotCommandInput {
-	syntax: string
+	command: string
 	arguments?: Record<string, BotArgumentValue>
 }
 
@@ -277,7 +298,7 @@ export interface BaseMessageEventContent {
 	"m.url_previews"?: URLPreview[]
 	"com.beeper.linkpreviews"?: URLPreview[]
 	"com.beeper.per_message_profile"?: BeeperPerMessageProfile
-	"org.matrix.msc4332.command"?: BotCommandInput
+	"org.matrix.msc4391.command"?: BotCommandInput
 	"org.matrix.msc1767.audio"?: MSC1767Audio
 	"org.matrix.msc3245.voice"?: Record<string, never>
 }

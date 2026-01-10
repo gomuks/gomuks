@@ -19,8 +19,11 @@ import (
 	"go.mau.fi/util/dbutil"
 	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/jsontime"
+	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+
+	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 )
 
 const (
@@ -677,4 +680,21 @@ func (e *Event) MarkReplyFallbackRemoved() {
 		e.LocalContent = &LocalContent{}
 	}
 	e.LocalContent.ReplyFallbackRemoved = true
+}
+
+func MakeFakeEvent(roomID id.RoomID, html string) *Event {
+	return &Event{
+		RowID:         -EventRowID(time.Now().UnixMilli()),
+		TimelineRowID: 0,
+		RoomID:        roomID,
+		ID:            id.EventID("$gomuks-internal-" + random.String(10)),
+		Sender:        cmdspec.FakeGomuksSender,
+		Type:          event.EventMessage.Type,
+		Timestamp:     jsontime.UnixMilliNow(),
+		Content:       json.RawMessage(`{"msgtype":"m.text"}`),
+		Unsigned:      json.RawMessage("{}"),
+		LocalContent: &LocalContent{
+			SanitizedHTML: html,
+		},
+	}
 }

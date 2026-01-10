@@ -42,9 +42,10 @@ import {
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
-	mapCommandContent,
 	roomStateGUIDToString,
+	sanitizeCommand,
 } from "../types"
+import FakeCommands from "../types/fakecommands.ts"
 import StandardCommands from "../types/stdcommands.json"
 import type { StateStore } from "./main.ts"
 
@@ -256,22 +257,29 @@ export class RoomStateStore {
 
 	getAllBotCommands(): WrappedBotCommand[] {
 		if (this.#allCommandsCache === null) {
-			const roomCommands = this.state.get("org.matrix.msc4332.commands")?.entries()
-				.flatMap(([stateKey, rowID]) => {
-					if (this.fullMembersLoaded) {
-						const ownerMember = this.getStateEvent("m.room.member", stateKey)?.content
-						if (ownerMember?.membership !== "join") {
-							return []
-						}
-					}
+			const roomCommands = this.state.get("org.matrix.msc4391.command_description")?.entries()
+				.map(([, rowID]) => {
 					const evt = this.eventsByRowID.get(rowID)
 					if (!evt || evt.redacted_by) {
-						return []
+						return null
 					}
-					return mapCommandContent(stateKey, evt.content)
+					if (this.fullMembersLoaded) {
+						const ownerMember = this.getStateEvent("m.room.member", evt.sender)?.content
+						if (ownerMember?.membership !== "join") {
+							return null
+						}
+					}
+					return sanitizeCommand(evt.sender, evt.content)
 				})
+				.filter(x => x !== null)
 				.toArray() ?? []
-			this.#allCommandsCache = roomCommands.concat(mapCommandContent(fakeGomuksSender, StandardCommands))
+			this.#allCommandsCache = StandardCommands.map(cmd => {
+				const wrapped = sanitizeCommand(fakeGomuksSender, cmd)
+				if (wrapped === null) {
+					throw new Error("Invalid standard command in JSON")
+				}
+				return wrapped
+			}).concat(FakeCommands, roomCommands)
 		}
 		return this.#allCommandsCache
 	}
@@ -521,7 +529,7 @@ export class RoomStateStore {
 			this.requestedMembers.delete(key as UserID)
 		} else if (evtType === "m.room.power_levels") {
 			this.#membersCache = null
-		} else if (evtType === "org.matrix.msc4332.commands") {
+		} else if (evtType === "org.matrix.msc4391.command_description") {
 			this.#allCommandsCache = null
 		}
 		this.stateSubs.notify(this.stateSubKey(evtType, key))

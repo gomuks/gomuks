@@ -25,19 +25,19 @@ import {
 import {
 	UserID,
 	WrappedBotCommand,
-	findArgumentNames,
+	commandArgsToString,
 	getDefaultArguments,
-	parseArgumentValues,
-	replaceArgumentValues,
+	stringToCommandArgs,
 	unpackExtensibleText,
 } from "@/api/types"
+import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import { Emoji, emojiToMarkdown, useSortedAndFilteredEmojis } from "@/util/emoji"
 import { makeMentionMarkdown, makeRoomMentionMarkdown } from "@/util/markdown.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import { RoomContext } from "../roomview/roomcontext.ts"
 import type { ComposerState } from "./MessageComposer.tsx"
-import { charToAutocompleteType, isLegacyCommand } from "./getAutocompleter.ts"
+import { charToAutocompleteType } from "./getAutocompleter.ts"
 import { useFilteredCommands, useFilteredMembers, useFilteredRooms } from "./userautocomplete.ts"
 import "./Autocompleter.css"
 
@@ -122,18 +122,17 @@ function useAutocompleter<T>({
 		if (params.type !== "command" || !state.text) {
 			return
 		}
-		if (isLegacyCommand(state.text)) {
+		if (isFakeCommand(state.text)) {
 			// Special case commands that don't use MSC4332
 			setAutocomplete(null)
 			return
 		} else if (items.length === 0 && prevItems.current?.length) {
 			for (const item of prevItems.current as WrappedBotCommand[]) {
-				const argVals = parseArgumentValues(item, state.text)
+				const argVals = stringToCommandArgs(item, state.text)
 				if (argVals !== null) {
 					setState({
 						command: {
 							spec: item,
-							argNames: findArgumentNames(item.syntax),
 							inputArgs: argVals,
 						},
 					})
@@ -213,13 +212,11 @@ export const UserAutocompleter = ({ params, room, ...rest }: AutocompleterProps)
 }
 
 const roomFuncs = {
-	getText: (room: RoomStateStore, state: ComposerState) => state.command
-		? room.meta.current.canonical_alias || room.roomID
-		: makeRoomMentionMarkdown(
-			room.meta.current.canonical_alias || room.meta.current.name || room.roomID,
-			room.meta.current.canonical_alias || room.roomID,
-			room.getViaServers(),
-		),
+	getText: (room: RoomStateStore) => makeRoomMentionMarkdown(
+		room.meta.current.canonical_alias || room.meta.current.name || room.roomID,
+		room.meta.current.canonical_alias || room.roomID,
+		room.getViaServers(),
+	),
 	getKey: (room: RoomStateStore) => room.roomID,
 	render: (room: RoomStateStore) => <>
 		<img
@@ -253,27 +250,30 @@ const BotSourceIcon = ({ source }: { source: UserID }) => {
 
 const commandFuncs = {
 	getText: () => "",
-	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.syntax,
+	getKey: (cmd: WrappedBotCommand) => cmd.source + cmd.command,
 	getNewState: (cmd: WrappedBotCommand) => {
-		const argNames = findArgumentNames(cmd.syntax)
+		if (cmd.fake) {
+			return [{ command: null, text: "/" + cmd.command + " " }, cmd.command.length + 2] as const
+		}
 		const state = {
 			command: {
 				spec: cmd,
-				argNames,
-				inputArgs: getDefaultArguments(cmd, argNames),
+				inputArgs: getDefaultArguments(cmd),
 			},
 			text: "",
 		}
-		state.text = "/" + replaceArgumentValues(cmd.syntax, state.command.inputArgs)
-		let firstArgPos = cmd.syntax.indexOf("{") + 1
-		if (state.text.charAt(firstArgPos) === `"`) {
+		state.text = commandArgsToString(cmd, state.command.inputArgs)
+		// TODO adding cmd.source might be disabled, make sure to sync with commandArgsToString
+		let firstArgPos = cmd.command.length + cmd.source.length + 2
+		if (state.text.charAt(firstArgPos) === `"` || state.text.charAt(firstArgPos) === `<`) {
 			firstArgPos++
 		}
 		return [state, firstArgPos || state.text.length] as const
 	},
 	render: (cmd: WrappedBotCommand) => <>
 		<BotSourceIcon source={cmd.source} />
-		<code>/{cmd.syntax}</code>
+		<code>/{cmd.command}{cmd.parameters.map(param =>
+			` {${param.key}${param.schema.schema_type === "array" ? "..." : ""}}`)}</code>
 		<span> - {unpackExtensibleText(cmd.description)}</span>
 	</>,
 }

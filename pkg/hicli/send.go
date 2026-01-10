@@ -28,6 +28,7 @@ import (
 	"maunium.net/go/mautrix/format/mdext"
 	"maunium.net/go/mautrix/id"
 
+	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 	"go.mau.fi/gomuks/pkg/rainbow"
@@ -85,9 +86,9 @@ func (h *HiClient) SendMessage(
 	mentions *event.Mentions,
 	urlPreviews []*event.BeeperLinkPreview,
 ) (*database.Event, error) {
-	hasCommand := base != nil && base.MSC4332BotCommand != nil
-	if hasCommand && mentions.Has(FakeGomuksSender) {
-		return h.ProcessCommand(ctx, roomID, base.MSC4332BotCommand, base, relatesTo)
+	hasCommand := base != nil && base.MSC4391BotCommand != nil
+	if hasCommand && mentions.Has(cmdspec.FakeGomuksSender) && len(mentions.UserIDs) == 1 {
+		return h.ProcessCommand(ctx, roomID, base.MSC4391BotCommand, base, relatesTo)
 	}
 	var unencrypted bool
 	if strings.HasPrefix(text, "/unencrypted ") {
@@ -130,12 +131,12 @@ func (h *HiClient) SendMessage(
 		text = strings.TrimPrefix(text, "/html ")
 		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
 	} else if text != "" {
-		hasUnstructedCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText
-		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructedCommand {
+		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText
+		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructuredCommand {
 			if strings.HasPrefix(text, "//") {
 				text = text[1:]
 			} else {
-				return makeFakeEvent(roomID, "Use two slashes to send a non-command message starting with a slash"), nil
+				return database.MakeFakeEvent(roomID, "Use two slashes to send a non-command message starting with a slash"), nil
 			}
 		}
 		content = format.RenderMarkdownCustom(text, defaultNoHTML)

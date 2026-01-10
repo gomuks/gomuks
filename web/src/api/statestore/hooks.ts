@@ -221,7 +221,7 @@ export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEm
 
 export function useBotCommands(room: RoomStateStore): WrappedBotCommand[] {
 	return useSyncExternalStore(
-		room.stateSubs.getSubscriber("org.matrix.msc4332.commands"),
+		room.stateSubs.getSubscriber("org.matrix.msc4391.command_description"),
 		() => room.getAllBotCommands(),
 	)
 }
