@@ -25,4 +25,7 @@ declare global {
 		gomuksWebWasm?: boolean
 		vapidPublicKey?: string
 	}
+	interface Element {
+		moveBefore?(newNode: ChildNode, referenceNode: ChildNode | null): ChildNode
+	}
 }

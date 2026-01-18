@@ -51,6 +51,7 @@
 
 	--dimmed-overlay-background-color: rgba(0, 0, 0, .75);
 	--modal-box-shadow-color: rgba(0, 0, 0, 0.1);
+	--popout-widget-box-shadow-color: rgba(0, 0, 0, 0.5);
 
 	--emoji-selected-border-color: #cec;
 	--image-pack-editor-selected-color: #cec;
@@ -145,6 +146,7 @@
 		--room-list-entry-selected-color: rgba(255, 255, 255, 0.125);
 
 		--modal-box-shadow-color: rgba(255, 255, 255, 0.04);
+		--popout-widget-box-shadow-color: rgba(255, 255, 255, 0.2);
 
 		--emoji-selected-border-color: #131;
 		--image-pack-editor-selected-color: #131;
