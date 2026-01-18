@@ -58,7 +58,8 @@ const ElementCall = ({ onClose }: { onClose?: () => void }) => {
 	const client = use(ClientContext)!
 	const customBaseURL = usePreference(client.store, room, "element_call_base_url")
 	const widgetInfo = useMemo(() => ({
-		id: `fi.mau.gomuks.call.${crypto.randomUUID().replaceAll("-", "")}`,
+		id: "app.gomuks.call",
+		name: `Call in ${room?.meta.current.name}`,
 		creatorUserId: client.userID,
 		type: "m.call",
 		url: makeElementCallURL(customBaseURL),

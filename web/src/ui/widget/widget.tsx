@@ -13,7 +13,13 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { ClientWidgetApi, IWidget, Widget as WrappedWidget } from "matrix-widget-api"
+import {
+	ClientWidgetApi,
+	IModalWidgetCloseRequest,
+	IStickyActionRequest,
+	IWidget,
+	Widget as WrappedWidget,
+} from "matrix-widget-api"
 import { memo } from "react"
 import type Client from "@/api/client"
 import type { RoomStateStore, WidgetListener } from "@/api/statestore"
@@ -83,7 +89,67 @@ const openPermissionPrompt = (requested: Set<string>): Promise<Set<string>> => {
 
 const noopPermissions = (requested: Set<string>): Promise<Set<string>> =>  Promise.resolve(requested)
 
-const ReactWidget = ({ room, info, client, onClose, noPermissionPrompt }: WidgetProps) => {
+interface ExistingWidget {
+	onMount: (into: HTMLDivElement, onClose?: () => void) => void
+	onUnmount: (from: HTMLDivElement) => void
+	onClose?: () => void
+}
+
+const existingWidgets = new Map<string, ExistingWidget>()
+
+const makeWidgetPopoutContainer = (name: string, onClose: () => void) => {
+	const popoutParent = document.createElement("div")
+	popoutParent.className = "widget-popout-iframe-container"
+	const widgetName = document.createElement("h3")
+	widgetName.textContent = name
+	widgetName.className = "widget-popout-title"
+	widgetName.onpointerdown = (evt: PointerEvent) => {
+		if (!evt.isPrimary || (evt.pointerType === "mouse" && evt.button !== 0)) {
+			return
+		}
+		const rect = popoutParent.getBoundingClientRect()
+		const documentRect = document.body.getBoundingClientRect()
+		const offsetX = evt.clientX - rect.left
+		const offsetY = evt.clientY - rect.top
+		const pointermove = (evt: PointerEvent) => {
+			// Let the popup go slightly outside the sides and bottom of the screen, but not the top
+			const halfWidth = rect.width / 2
+			const halfHeight = rect.height / 2
+			const newX = Math.min(Math.max(evt.clientX - offsetX, -halfWidth), documentRect.width - halfWidth)
+			const newY = Math.min(Math.max(evt.clientY - offsetY, 0), documentRect.height - halfHeight)
+			popoutParent.style.left = `${newX}px`
+			popoutParent.style.top = `${newY}px`
+		}
+		const pointerup = () => {
+			widgetName.removeEventListener("pointerup", pointerup)
+			widgetName.addEventListener("pointercancel", pointerup)
+			widgetName.removeEventListener("pointermove", pointermove)
+			widgetName.style.cursor = "grab"
+			widgetName.releasePointerCapture(evt.pointerId)
+		}
+		widgetName.addEventListener("pointerup", pointerup)
+		widgetName.addEventListener("pointercancel", pointerup)
+		widgetName.addEventListener("pointermove", pointermove)
+		widgetName.setPointerCapture(evt.pointerId)
+		widgetName.style.cursor = "grabbing"
+	}
+	const closeBtn = document.createElement("button")
+	closeBtn.className = "widget-popout-close-button"
+	closeBtn.title = "Close widget"
+	closeBtn.innerText = "✕"
+	closeBtn.onclick = onClose
+	popoutParent.appendChild(widgetName)
+	popoutParent.appendChild(closeBtn)
+	document.body.appendChild(popoutParent)
+	return popoutParent
+}
+
+const makeWidget = ({ room, info, client, noPermissionPrompt }: WidgetProps) => {
+	const fullWidgetID = `widget;${room.roomID};${info.id}`
+	let widgetContainer = existingWidgets.get(fullWidgetID)
+	if (widgetContainer) {
+		return widgetContainer
+	}
 	const wrappedWidget = new WrappedWidget(info)
 	const driver = new GomuksWidgetDriver(client, room, noPermissionPrompt ? noopPermissions : openPermissionPrompt)
 	const widgetURL = addLegacyParams(wrappedWidget.getCompleteUrl({
@@ -96,10 +162,39 @@ const ReactWidget = ({ room, info, client, onClose, noPermissionPrompt }: Widget
 		clientLanguage: navigator.language,
 	}), wrappedWidget.id)
 
-	const handleIframe = (iframe: HTMLIFrameElement) => {
-		console.info("Setting up widget API for", iframe)
-		const clientAPI = new ClientWidgetApi(wrappedWidget, iframe, driver)
+	const iframe = document.createElement("iframe")
+	iframe.src = widgetURL
+	iframe.className = "widget-iframe"
+	iframe.allow = "microphone; camera; fullscreen; encrypted-media; display-capture; screen-wake-lock;"
+	iframe.id = fullWidgetID
+
+	let deleted = false
+	let alwaysOnScreen = false
+	let popoutParent: HTMLDivElement | null = null
+	let clientAPI: ClientWidgetApi
+	let removeListener: (() => void)
+
+	const deleteWidget = () => {
+		if (deleted) {
+			return
+		}
+		existingWidgets.delete(fullWidgetID)
+		deleted = true
+		console.info("Deleting widget", fullWidgetID)
+		removeListener?.()
+		clientAPI?.stop()
+		clientAPI?.removeAllListeners()
+		iframe.remove()
+		if (popoutParent) {
+			popoutParent.remove()
+			popoutParent = null
+		}
+	}
+	const onSetup = () => {
+		console.info("Setting up widget API for", iframe, fullWidgetID)
+		clientAPI = new ClientWidgetApi(wrappedWidget, iframe, driver)
 		clientAPI.setViewedRoomId(room.roomID)
+		removeListener = client.addWidgetListener(new WidgetListenerImpl(clientAPI))
 
 		clientAPI.on("ready", () => console.info("Widget is ready"))
 		// Suppress unnecessary events to avoid errors
@@ -107,34 +202,73 @@ const ReactWidget = ({ room, info, client, onClose, noPermissionPrompt }: Widget
 			evt.preventDefault()
 			clientAPI.transport.reply(evt.detail, {})
 		}
-		const closeWidget = (evt: CustomEvent) => {
-			noopReply(evt)
-			onClose?.()
-		}
 		clientAPI.on("action:io.element.join", noopReply)
 		clientAPI.on("action:im.vector.hangup", noopReply)
 		clientAPI.on("action:io.element.device_mute", noopReply)
 		clientAPI.on("action:io.element.tile_layout", noopReply)
 		clientAPI.on("action:io.element.spotlight_layout", noopReply)
-		clientAPI.on("action:io.element.close", closeWidget)
-		clientAPI.on("action:set_always_on_screen", noopReply)
-		const removeListener = client.addWidgetListener(new WidgetListenerImpl(clientAPI))
-
-		return () => {
-			console.info("Removing widget API")
-			removeListener()
-			clientAPI.stop()
-			clientAPI.removeAllListeners()
+		clientAPI.on("action:io.element.close", (evt: CustomEvent<IModalWidgetCloseRequest>) => {
+			noopReply(evt)
+			if (widgetContainer?.onClose && !deleted) {
+				widgetContainer.onClose()
+			}
+			deleteWidget()
+		})
+		clientAPI.on("action:set_always_on_screen", (evt: CustomEvent<IStickyActionRequest>) => {
+			if (!HTMLDivElement.prototype.moveBefore) {
+				throw new Error("Browser does not support moving iframes without resetting")
+			}
+			alwaysOnScreen = evt.detail.data.value
+			noopReply(evt)
+		})
+	}
+	const onMount = (into: HTMLDivElement, onClose?: () => void) => {
+		if (deleted) {
+			return
+		}
+		console.info("Mounting widget", fullWidgetID, "into", into)
+		widgetContainer!.onClose = onClose
+		if (iframe.parentElement && into.moveBefore) {
+			into.moveBefore(iframe, null)
+		} else {
+			into.appendChild(iframe)
+		}
+		if (!clientAPI) {
+			onSetup()
+		}
+		if (popoutParent) {
+			popoutParent.remove()
+			popoutParent = null
+		}
+	}
+	const onUnmount = (from: HTMLDivElement) => {
+		if (iframe.parentElement !== from || deleted) {
+			return
+		} else if (!alwaysOnScreen || !HTMLDivElement.prototype.moveBefore) {
+			deleteWidget()
+		} else if (!popoutParent) {
+			console.info("Popping out widget", fullWidgetID)
+			popoutParent = makeWidgetPopoutContainer(info.name || "Unnamed widget", deleteWidget)
+			popoutParent.moveBefore!(iframe, null)
+		} else {
+			console.error("Unexpected widget onUnmount call for already popped-out widget")
 		}
 	}
 
-	return <iframe
-		key={crypto.randomUUID()}
-		ref={handleIframe}
-		src={widgetURL}
-		className="widget-iframe"
-		allow="microphone; camera; fullscreen; encrypted-media; display-capture; screen-wake-lock;"
-	/>
+	widgetContainer = { onMount, onUnmount }
+	existingWidgets.set(fullWidgetID, widgetContainer)
+	return widgetContainer!
+}
+
+const ReactWidget = (props: WidgetProps) => {
+	return <div className="widget-container" ref={(elem) => {
+		if (!elem) {
+			return
+		}
+		const { onMount, onUnmount } = makeWidget(props)
+		onMount(elem, props.onClose)
+		return () => onUnmount(elem)
+	}} />
 }
 
 export default memo(ReactWidget)

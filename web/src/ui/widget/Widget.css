@@ -1,12 +1,60 @@
 div.right-panel-content.widget, div.right-panel-content.element-call {
 	overflow: hidden !important;
-
 }
 
 iframe.widget-iframe {
 	width: 100%;
 	height: 100%;
 	border: none;
+}
+
+div.widget-container {
+	width: 100%;
+	height: 100%;
+
+	&.widget-loading {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+}
+
+div.widget-popout-iframe-container {
+	position: fixed;
+	top: 4rem;
+	left: calc(100% - 21rem);
+	border-radius: .5rem;
+	width: 20rem;
+	height: 15rem;
+	resize: both;
+	overflow: hidden;
+	box-shadow: 0 0 1rem var(--popout-widget-box-shadow-color);
+	background-color: var(--background-color);
+
+	display: grid;
+	grid-template:
+		"header close" 2rem
+		"iframe iframe" 1fr
+		/ 1fr 2rem;
+
+	> h3.widget-popout-title {
+		display: flex;
+		align-items: center;
+		margin: 0 .5rem;
+		grid-area: header;
+		user-select: none;
+		touch-action: none;
+		cursor: grab;
+	}
+
+	> button.widget-popout-close-button {
+		grid-area: close;
+		border-radius: 0;
+	}
+
+	> iframe.widget-iframe {
+		grid-area: iframe;
+	}
 }
 
 div.permission-prompt {
