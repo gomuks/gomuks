@@ -189,10 +189,27 @@ export default abstract class RPCClient {
 		room_id: RoomID,
 		type: EventType,
 		content: unknown,
-		disable_encryption: boolean = false,
-		synchronous: boolean = false,
+		extra: {
+			disable_encryption?: boolean,
+			synchronous?: boolean,
+			sticky_duration_ms?: number,
+		} = {},
 	): Promise<RawDBEvent> {
-		return this.request("send_event", { room_id, type, content, disable_encryption, synchronous })
+		return this.request("send_event", {
+			room_id, type, content, ...extra,
+		})
+	}
+
+	sendDelayedEvent(
+		room_id: RoomID,
+		type: EventType,
+		content: unknown,
+		delay_ms: number,
+		extra: { sticky_duration_ms?: number, state_key?: string } = {},
+	): Promise<string> {
+		return this.request("send_delayed_event", {
+			room_id, type, content, delay_ms, ...extra,
+		})
 	}
 
 	resendEvent(transaction_id: string): Promise<RawDBEvent> {
@@ -209,9 +226,8 @@ export default abstract class RPCClient {
 
 	setState(
 		room_id: RoomID, type: EventType, state_key: string, content: Record<string, unknown>,
-		extra: { delay_ms?: number } = {},
 	): Promise<EventID> {
-		return this.request("set_state", { room_id, type, state_key, content, ...extra })
+		return this.request("set_state", { room_id, type, state_key, content })
 	}
 
 	updateDelayedEvent(delay_id: string, action: string): Promise<void> {

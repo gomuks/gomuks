@@ -63,9 +63,25 @@ class GomuksWidgetDriver extends WidgetDriver {
 			const eventID = await this.client.rpc.setState(roomID, eventType, stateKey, content)
 			return { eventId: eventID, roomId: roomID }
 		} else {
-			const rawDBEvt = await this.client.rpc.sendEvent(roomID, eventType, content, false, true)
+			const rawDBEvt = await this.client.rpc.sendEvent(roomID, eventType, content, { synchronous: true })
 			return { eventId: rawDBEvt.event_id, roomId: rawDBEvt.room_id }
 		}
+	}
+
+	async sendStickyEvent(
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		}
+		roomID = roomID ?? this.room.roomID
+		const rawDBEvt = await this.client.rpc.sendEvent(
+			roomID, eventType, content, { synchronous: true, sticky_duration_ms: stickyDurationMS },
+		)
+		return { eventId: rawDBEvt.event_id, roomId: rawDBEvt.room_id }
 	}
 
 	async sendDelayedEvent(
@@ -86,7 +102,33 @@ class GomuksWidgetDriver extends WidgetDriver {
 			throw new Error("Delay must be a number")
 		}
 		roomID = roomID ?? this.room.roomID
-		const delayID = await this.client.rpc.setState(roomID, eventType, stateKey, content, { delay_ms: delay })
+		const delayID = await this.client.rpc.sendDelayedEvent(
+			roomID, eventType, content, delay, { state_key: stateKey },
+		)
+		return { delayId: delayID, roomId: roomID }
+	}
+
+	async sendDelayedStickyEvent(
+		delay: number | null,
+		parentDelayID: string | null,
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendDelayedEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		} else if (parentDelayID !== null) {
+			throw new Error("Parent delayed events are not supported")
+		} else if (!delay) {
+			throw new Error("Delay must be a number")
+		} else if (!stickyDurationMS) {
+			throw new Error("Sticky duration must be a number")
+		}
+		roomID = roomID ?? this.room.roomID
+		const delayID = await this.client.rpc.sendDelayedEvent(
+			roomID, eventType, content, delay, { sticky_duration_ms: stickyDurationMS },
+		)
 		return { delayId: delayID, roomId: roomID }
 	}
 

@@ -102,7 +102,7 @@ func main() {
 			resp, err := cli.Send(ctx, id.RoomID(fields[1]), event.EventMessage, &event.MessageEventContent{
 				Body:    strings.Join(fields[2:], " "),
 				MsgType: event.MsgText,
-			}, false, false)
+			}, false, false, 0)
 			_, _ = fmt.Fprintln(rl, err)
 			_, _ = fmt.Fprintf(rl, "%+v\n", resp)
 		}

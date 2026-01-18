@@ -31,6 +31,7 @@ const (
 	ReqCancel                   Name = "cancel"
 	ReqSendMessage              Name = "send_message"
 	ReqSendEvent                Name = "send_event"
+	ReqSendDelayedEvent         Name = "send_delayed_event"
 	ReqResendEvent              Name = "resend_event"
 	ReqReportEvent              Name = "report_event"
 	ReqRedactEvent              Name = "redact_event"
@@ -109,6 +110,8 @@ var (
 	// SendEvent sends an arbitrary event into a room. This should be used for non-message events like reactions.
 	// Note that state events must use `set_state` instead.
 	SendEvent = &CommandSpec[*SendEventParams, *database.Event]{Name: ReqSendEvent}
+	// SendDelayedEvent sends a delayed event into a room with MSC4140.
+	SendDelayedEvent = &CommandSpec[*SendDelayedEventParams, id.DelayID]{Name: ReqSendDelayedEvent}
 	// ResendEvent retries sending a previously failed outgoing event.
 	ResendEvent = &CommandSpec[*ResendEventParams, *database.Event]{Name: ReqResendEvent}
 	// ReportEvent reports an event to the homeserver.

@@ -51,7 +51,25 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		})
 	case jsoncmd.ReqSendEvent:
 		return jsoncmd.SendEvent.Run(req.Data, func(params *jsoncmd.SendEventParams) (*database.Event, error) {
-			return h.Send(ctx, params.RoomID, params.EventType, params.Content, params.DisableEncryption, params.Synchronous)
+			return h.Send(ctx, params.RoomID, params.EventType, params.Content, params.DisableEncryption, params.Synchronous, time.Duration(params.StickyDurationMS)*time.Millisecond)
+		})
+	case jsoncmd.ReqSendDelayedEvent:
+		return jsoncmd.SendDelayedEvent.Run(req.Data, func(params *jsoncmd.SendDelayedEventParams) (id.DelayID, error) {
+			extra := mautrix.ReqSendEvent{
+				UnstableDelay:          time.Duration(params.DelayMS) * time.Millisecond,
+				UnstableStickyDuration: time.Duration(params.StickyDurationMS) * time.Millisecond,
+			}
+			var resp *mautrix.RespSendEvent
+			var err error
+			if params.StateKey != nil {
+				resp, err = h.Client.SendStateEvent(ctx, params.RoomID, params.EventType, *params.StateKey, params.Content, extra)
+			} else {
+				resp, err = h.Client.SendMessageEvent(ctx, params.RoomID, params.EventType, params.Content, extra)
+			}
+			if err != nil {
+				return "", err
+			}
+			return resp.UnstableDelayID, nil
 		})
 	case jsoncmd.ReqResendEvent:
 		return jsoncmd.ResendEvent.Run(req.Data, func(params *jsoncmd.ResendEventParams) (*database.Event, error) {
@@ -69,9 +87,7 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		})
 	case jsoncmd.ReqSetState:
 		return jsoncmd.SetState.Run(req.Data, func(params *jsoncmd.SendStateEventParams) (id.EventID, error) {
-			return h.SetState(ctx, params.RoomID, params.EventType, params.StateKey, params.Content, mautrix.ReqSendEvent{
-				UnstableDelay: time.Duration(params.DelayMS) * time.Millisecond,
-			})
+			return h.SetState(ctx, params.RoomID, params.EventType, params.StateKey, params.Content)
 		})
 	case jsoncmd.ReqUpdateDelayedEvent:
 		return jsoncmd.UpdateDelayedEvent.Run(req.Data, func(params *jsoncmd.UpdateDelayedEventParams) (*mautrix.RespUpdateDelayedEvent, error) {

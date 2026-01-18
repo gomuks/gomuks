@@ -385,13 +385,13 @@ export default class Client {
 	}
 
 	async sendEvent(
-		roomID: RoomID, type: EventType, content: unknown, disableEncryption: boolean = false,
+		roomID: RoomID, type: EventType, content: unknown, disable_encryption: boolean = false,
 	): Promise<void> {
 		const room = this.store.rooms.get(roomID)
 		if (!room) {
 			throw new Error("Room not found")
 		}
-		const dbEvent = await this.rpc.sendEvent(roomID, type, content, disableEncryption)
+		const dbEvent = await this.rpc.sendEvent(roomID, type, content, { disable_encryption })
 		this.handleOutgoingEvent(dbEvent, room)
 	}
 

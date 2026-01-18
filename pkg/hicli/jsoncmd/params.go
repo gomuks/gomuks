@@ -49,6 +49,16 @@ type SendEventParams struct {
 	Content           json.RawMessage `json:"content"`
 	DisableEncryption bool            `json:"disable_encryption,omitempty"`
 	Synchronous       bool            `json:"synchronous,omitempty"`
+	StickyDurationMS  int             `json:"sticky_duration_ms,omitempty"`
+}
+
+type SendDelayedEventParams struct {
+	RoomID           id.RoomID       `json:"room_id"`
+	EventType        event.Type      `json:"type"`
+	StateKey         *string         `json:"state_key,omitempty"`
+	Content          json.RawMessage `json:"content"`
+	DelayMS          int             `json:"delay_ms"`
+	StickyDurationMS int             `json:"sticky_duration_ms,omitempty"`
 }
 
 type ResendEventParams struct {
@@ -72,7 +82,6 @@ type SendStateEventParams struct {
 	EventType event.Type      `json:"type"`
 	StateKey  string          `json:"state_key"`
 	Content   json.RawMessage `json:"content"`
-	DelayMS   int             `json:"delay_ms,omitempty"`
 }
 
 type UpdateDelayedEventParams struct {

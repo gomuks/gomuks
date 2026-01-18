@@ -203,7 +203,7 @@ func (h *HiClient) SendMessage(
 		content.MsgType = ""
 		evtType = event.EventSticker
 	}
-	return h.send(ctx, roomID, evtType, &event.Content{Parsed: content, Raw: extra}, origText, unencrypted, false, ts)
+	return h.send(ctx, roomID, evtType, &event.Content{Parsed: content, Raw: extra}, origText, unencrypted, false, ts, 0)
 }
 
 func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.EventID, receiptType event.ReceiptType) error {
@@ -247,7 +247,6 @@ func (h *HiClient) SetState(
 	evtType event.Type,
 	stateKey string,
 	content any,
-	extra ...mautrix.ReqSendEvent,
 ) (id.EventID, error) {
 	room, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
@@ -255,13 +254,9 @@ func (h *HiClient) SetState(
 	} else if room == nil {
 		return "", fmt.Errorf("unknown room")
 	}
-	resp, err := h.Client.SendStateEvent(ctx, room.ID, evtType, stateKey, content, extra...)
+	resp, err := h.Client.SendStateEvent(ctx, room.ID, evtType, stateKey, content)
 	if err != nil {
 		return "", err
-	}
-	if resp.UnstableDelayID != "" {
-		// Mildly hacky, but it's fine'
-		return id.EventID(resp.UnstableDelayID), nil
 	}
 	return resp.EventID, nil
 }
@@ -273,12 +268,13 @@ func (h *HiClient) Send(
 	content any,
 	disableEncryption bool,
 	synchronous bool,
+	stickyDuration time.Duration,
 ) (*database.Event, error) {
 	if evtType == event.EventRedaction {
 		// TODO implement
 		return nil, fmt.Errorf("redaction is not supported")
 	}
-	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, 0)
+	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, 0, stickyDuration)
 }
 
 func (h *HiClient) Resend(ctx context.Context, txnID string) (*database.Event, error) {
@@ -297,7 +293,8 @@ func (h *HiClient) Resend(ctx context.Context, txnID string) (*database.Event, e
 		return nil, fmt.Errorf("unknown room")
 	}
 	dbEvt.SendError = ""
-	go h.actuallySend(context.WithoutCancel(ctx), room, dbEvt, event.Type{Type: dbEvt.Type, Class: event.MessageEventType}, false, false)
+	// TODO resending sticky events?
+	go h.actuallySend(context.WithoutCancel(ctx), room, dbEvt, event.Type{Type: dbEvt.Type, Class: event.MessageEventType}, false, false, 0)
 	return dbEvt, nil
 }
 
@@ -310,6 +307,7 @@ func (h *HiClient) send(
 	disableEncryption bool,
 	synchronous bool,
 	ts int64,
+	stickyDuration time.Duration,
 ) (*database.Event, error) {
 	room, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
@@ -374,9 +372,9 @@ func (h *HiClient) send(
 		}
 	}()
 	if synchronous {
-		h.actuallySend(ctx, room, dbEvt, evtType, true, overrideTimestamp)
+		h.actuallySend(ctx, room, dbEvt, evtType, true, overrideTimestamp, stickyDuration)
 	} else {
-		go h.actuallySend(ctx, room, dbEvt, evtType, false, overrideTimestamp)
+		go h.actuallySend(ctx, room, dbEvt, evtType, false, overrideTimestamp, stickyDuration)
 	}
 	return dbEvt, nil
 }
@@ -399,6 +397,7 @@ func (h *HiClient) actuallySend(
 	evtType event.Type,
 	synchronous bool,
 	overrideTimestamp bool,
+	stickyDuration time.Duration,
 ) {
 	if !synchronous {
 		l := h.getSendLock(room.ID)
@@ -446,8 +445,9 @@ func (h *HiClient) actuallySend(
 	}
 	var resp *mautrix.RespSendEvent
 	req := mautrix.ReqSendEvent{
-		TransactionID: dbEvt.TransactionID,
-		DontEncrypt:   true,
+		TransactionID:          dbEvt.TransactionID,
+		DontEncrypt:            true,
+		UnstableStickyDuration: stickyDuration,
 	}
 	if overrideTimestamp {
 		req.Timestamp = dbEvt.Timestamp.UnixMilli()
