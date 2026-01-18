@@ -196,7 +196,7 @@ const makeWidget = ({ room, info, client, noPermissionPrompt }: WidgetProps) => 
 		clientAPI.setViewedRoomId(room.roomID)
 		removeListener = client.addWidgetListener(new WidgetListenerImpl(clientAPI))
 
-		clientAPI.on("ready", () => console.info("Widget is ready"))
+		clientAPI.on("ready", () => console.info("Widget is ready", fullWidgetID))
 		// Suppress unnecessary events to avoid errors
 		const noopReply = (evt: CustomEvent) => {
 			evt.preventDefault()
