@@ -74,7 +74,7 @@ export function renderTimelineList(
 	let receiptMergeIdx: number | null = null
 	const flattenedPrefs = {
 		small_replies: prefs.small_replies,
-		small_threads: prefs.small_threads,
+		small_threads: viewType !== "thread" && prefs.small_threads,
 		display_read_receipts: prefs.display_read_receipts,
 		show_membership_events: prefs.show_membership_events,
 		show_profile_changes: prefs.show_profile_changes,
