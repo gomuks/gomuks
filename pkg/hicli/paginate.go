@@ -219,7 +219,9 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		if err != nil {
 			return fmt.Errorf("failed to calculate room name: %w", err)
 		}
-		updatedRoom.DMUserID = &dmUserID
+		if dmUserID != "" {
+			updatedRoom.DMUserID = &dmUserID
+		}
 		if room.NameQuality <= database.NameQualityParticipants {
 			updatedRoom.Name = &dmRoomName
 			updatedRoom.NameQuality = database.NameQualityParticipants

@@ -445,6 +445,7 @@ func (h *HiClient) decryptEventInto(ctx context.Context, evt *event.Event, dbEvt
 		dbEvt.DecryptionError = err.Error()
 		return nil, err
 	}
+	dbEvt.DecryptionError = ""
 	dbEvt.Decrypted = rawContent
 	if fallbackRemoved {
 		dbEvt.MarkReplyFallbackRemoved()
@@ -1028,7 +1029,9 @@ func (h *HiClient) processStateAndTimeline(
 		if err != nil {
 			return fmt.Errorf("failed to calculate room name: %w", err)
 		}
-		updatedRoom.DMUserID = &dmUserID
+		if dmUserID != "" {
+			updatedRoom.DMUserID = &dmUserID
+		}
 		if updatedRoom.NameQuality <= database.NameQualityParticipants {
 			updatedRoom.Name = &dmRoomName
 			updatedRoom.NameQuality = database.NameQualityParticipants
