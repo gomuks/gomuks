@@ -28,6 +28,8 @@ import "C"
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"runtime"
 	"runtime/cgo"
 	"unsafe"
@@ -73,7 +75,7 @@ func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Contain
 }
 
 //export GomuksInit
-func GomuksInit(error **C.char) C.GomuksHandle {
+func GomuksInit() C.GomuksHandle {
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
 	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
@@ -82,8 +84,8 @@ func GomuksInit(error **C.char) C.GomuksHandle {
 	gmx.InitDirectories()
 	err := gmx.LoadConfig()
 	if err != nil {
-		*error = C.CString("Failed to load config: " + err.Error())
-		return 0
+		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)
+		os.Exit(9)
 	}
 	gmx.SetupLog()
 	gmx.Log.Info().
