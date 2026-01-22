@@ -1,0 +1,159 @@
+// Copyright (c) 2026 Tulir Asokan
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+package main
+
+/*
+#include <stdint.h>
+
+#define GomuksSubmitCommand_Success 0
+#define GomuksSubmitCommand_Failure 1
+
+typedef struct {
+	uint8_t *base;
+	size_t length;
+} GomuksBuffer;
+
+typedef uintptr_t GomuksHandle;
+typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBuffer data);
+
+static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBuffer data) {
+	cb(command, request_id, data);
+}
+*/
+import "C"
+import (
+	"context"
+	"encoding/json"
+	"runtime"
+	"runtime/cgo"
+	"unsafe"
+
+	"go.mau.fi/gomuks/pkg/gomuks"
+	"go.mau.fi/gomuks/pkg/hicli"
+	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
+	"go.mau.fi/gomuks/version"
+)
+
+var commandNames = map[jsoncmd.Name]*C.char{}
+
+func init() {
+	for _, name := range jsoncmd.AllNames {
+		commandNames[name] = C.CString(string(name))
+	}
+}
+
+func bytesToBuffer(b []byte) C.GomuksBuffer {
+	return C.GomuksBuffer{
+		base:   (*C.uint8_t)(unsafe.SliceData(b)),
+		length: C.size_t(len(b)),
+	}
+}
+
+func bufferToBytes(buf C.GomuksBuffer) []byte {
+	return unsafe.Slice((*byte)(buf.base), buf.length)
+}
+
+type gomuksHandle struct {
+	*gomuks.Gomuks
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Container[T]) {
+	data, _ := json.Marshal(command.Data)
+	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), C.GomuksBuffer{
+		base:   (*C.uint8_t)(unsafe.SliceData(data)),
+		length: C.size_t(len(data)),
+	})
+	runtime.KeepAlive(data)
+}
+
+//export GomuksInit
+func GomuksInit(error **C.char) C.GomuksHandle {
+	gmx := gomuks.NewGomuks()
+	gmx.DisableAuth = true
+	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
+
+	// TODO customizable storage directories
+	gmx.InitDirectories()
+	err := gmx.LoadConfig()
+	if err != nil {
+		*error = C.CString("Failed to load config: " + err.Error())
+		return 0
+	}
+	gmx.SetupLog()
+	gmx.Log.Info().
+		Str("version", version.Gomuks.FormattedVersion).
+		Str("go_version", runtime.Version()).
+		Time("built_at", version.Gomuks.BuildTime).
+		Msg("Initializing gomuks FFI")
+
+	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
+	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
+		Gomuks: gmx,
+		ctx:    cmdCtx,
+		cancel: cancelCmdCtx,
+	}))
+}
+
+//export GomuksStart
+func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	gmx.StartClient()
+	gmx.Log.Info().Msg("Initialization complete")
+
+	gmx.EventBuffer.Subscribe(0, nil, func(event *gomuks.BufferedEvent) {
+		sendBufferedEvent(callback, event)
+	})
+	gmx.Log.Info().Msg("Sending initial state to client")
+	sendBufferedEvent(callback, jsoncmd.SpecClientState.Format(gmx.Client.State()))
+	sendBufferedEvent(callback, jsoncmd.SpecSyncStatus.Format(gmx.Client.SyncStatus.Load()))
+	if gmx.Client.IsLoggedIn() {
+		go func() {
+			ctx := gmx.Log.WithContext(context.TODO())
+			var roomCount int
+			for payload := range gmx.Client.GetInitialSync(ctx, 100) {
+				roomCount += len(payload.Rooms)
+				sendBufferedEvent(callback, jsoncmd.SpecSyncComplete.Format(payload))
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			sendBufferedEvent(callback, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
+			gmx.Log.Info().Int("room_count", roomCount).Msg("Sent initial rooms to client")
+		}()
+	}
+}
+
+//export GomuksDestroy
+func GomuksDestroy(handle C.GomuksHandle) {
+	h := cgo.Handle(handle)
+	gmx := h.Value().(*gomuksHandle)
+	gmx.Log.Info().Msg("Shutting down gomuks FFI...")
+	gmx.cancel()
+	gmx.DirectStop()
+	gmx.Log.Info().Msg("Shutdown complete")
+	h.Delete()
+}
+
+//export GomuksSubmitCommand
+func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBuffer, response *C.GomuksBuffer) C.int {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	res := gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
+		Command: jsoncmd.Name(C.GoString(command)),
+		Data:    bufferToBytes(data),
+	})
+	*response = bytesToBuffer(res.Data)
+	if res.Command == jsoncmd.RespError {
+		return C.GomuksSubmitCommand_Failure
+	}
+	return C.GomuksSubmitCommand_Success
+}
+
+func main() {
+	// Required for some reason, not actually used
+}

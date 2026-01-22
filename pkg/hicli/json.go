@@ -42,14 +42,18 @@ func (h *HiClient) SubmitJSONCommand(ctx context.Context, req *JSONCommand) *JSO
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer func() {
 		cancel(nil)
-		h.jsonRequestsLock.Lock()
-		delete(h.jsonRequests, req.RequestID)
-		h.jsonRequestsLock.Unlock()
+		if req.RequestID != 0 {
+			h.jsonRequestsLock.Lock()
+			delete(h.jsonRequests, req.RequestID)
+			h.jsonRequestsLock.Unlock()
+		}
 	}()
 	ctx = log.WithContext(ctx)
-	h.jsonRequestsLock.Lock()
-	h.jsonRequests[req.RequestID] = cancel
-	h.jsonRequestsLock.Unlock()
+	if req.RequestID != 0 {
+		h.jsonRequestsLock.Lock()
+		h.jsonRequests[req.RequestID] = cancel
+		h.jsonRequestsLock.Unlock()
+	}
 	resp, err := h.handleJSONCommand(ctx, req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
