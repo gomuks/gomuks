@@ -91,8 +91,8 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 			src={mediaURL}
 			onClick={use(LightboxContext)!}
 			alt=""
-		/> : preview["beeper:image:blurhash"] ? <Blurhash
-			hash={preview["beeper:image:blurhash"]}
+		/> : preview["matrix:image:blurhash"] ? <Blurhash
+			hash={preview["matrix:image:blurhash"]}
 			width={style.container.width}
 			height={style.container.height}
 			resolutionX={48}
