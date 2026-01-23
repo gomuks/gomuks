@@ -8,19 +8,27 @@ package main
 
 /*
 #include <stdint.h>
+#include <stdlib.h>
 
-#define GomuksSubmitCommand_Success 0
-#define GomuksSubmitCommand_Failure 1
+typedef struct {
+	const uint8_t *base;
+	size_t length;
+} GomuksBorrowedBuffer;
 
 typedef struct {
 	uint8_t *base;
 	size_t length;
-} GomuksBuffer;
+} GomuksOwnedBuffer;
+
+typedef struct {
+	GomuksOwnedBuffer buf;
+	const char* command;
+} GomuksResponse;
 
 typedef uintptr_t GomuksHandle;
-typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBuffer data);
+typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBorrowedBuffer data);
 
-static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBuffer data) {
+static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBorrowedBuffer data) {
 	cb(command, request_id, data);
 }
 */
@@ -48,14 +56,21 @@ func init() {
 	}
 }
 
-func bytesToBuffer(b []byte) C.GomuksBuffer {
-	return C.GomuksBuffer{
+func bytesToBorrowedBuffer(b []byte) C.GomuksBorrowedBuffer {
+	return C.GomuksBorrowedBuffer{
 		base:   (*C.uint8_t)(unsafe.SliceData(b)),
 		length: C.size_t(len(b)),
 	}
 }
 
-func bufferToBytes(buf C.GomuksBuffer) []byte {
+func bytesToOwnedBuffer(b []byte) C.GomuksOwnedBuffer {
+	return C.GomuksOwnedBuffer{
+		base:   (*C.uint8_t)(C.CBytes(b)),
+		length: C.size_t(len(b)),
+	}
+}
+
+func borrowBufferBytes(buf C.GomuksBorrowedBuffer) []byte {
 	return unsafe.Slice((*byte)(buf.base), buf.length)
 }
 
@@ -67,10 +82,7 @@ type gomuksHandle struct {
 
 func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Container[T]) {
 	data, _ := json.Marshal(command.Data)
-	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), C.GomuksBuffer{
-		base:   (*C.uint8_t)(unsafe.SliceData(data)),
-		length: C.size_t(len(data)),
-	})
+	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), bytesToBorrowedBuffer(data))
 	runtime.KeepAlive(data)
 }
 
@@ -143,17 +155,21 @@ func GomuksDestroy(handle C.GomuksHandle) {
 }
 
 //export GomuksSubmitCommand
-func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBuffer, response *C.GomuksBuffer) C.int {
+func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBorrowedBuffer) C.GomuksResponse {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
 	res := gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
 		Command: jsoncmd.Name(C.GoString(command)),
-		Data:    bufferToBytes(data),
+		Data:    borrowBufferBytes(data),
 	})
-	*response = bytesToBuffer(res.Data)
-	if res.Command == jsoncmd.RespError {
-		return C.GomuksSubmitCommand_Failure
+	return C.GomuksResponse{
+		buf:     bytesToOwnedBuffer(res.Data),
+		command: commandNames[res.Command],
 	}
-	return C.GomuksSubmitCommand_Success
+}
+
+//export GomuksFreeBuffer
+func GomuksFreeBuffer(buf C.GomuksOwnedBuffer) {
+	C.free(unsafe.Pointer(buf.base))
 }
 
 func main() {
