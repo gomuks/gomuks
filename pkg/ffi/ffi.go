@@ -89,6 +89,7 @@ func GomuksInit() C.GomuksHandle {
 		Msg("Initializing gomuks FFI")
 
 	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
+	cmdCtx = gmx.Log.WithContext(cmdCtx)
 	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
 		Gomuks: gmx,
 		ctx:    cmdCtx,
@@ -110,13 +111,12 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) {
 	sendBufferedEvent(callback, jsoncmd.SpecSyncStatus.Format(gmx.Client.SyncStatus.Load()))
 	if gmx.Client.IsLoggedIn() {
 		go func() {
-			ctx := gmx.Log.WithContext(context.TODO())
 			var roomCount int
-			for payload := range gmx.Client.GetInitialSync(ctx, 100) {
+			for payload := range gmx.Client.GetInitialSync(gmx.ctx, 100) {
 				roomCount += len(payload.Rooms)
 				sendBufferedEvent(callback, jsoncmd.SpecSyncComplete.Format(payload))
 			}
-			if ctx.Err() != nil {
+			if gmx.ctx.Err() != nil {
 				return
 			}
 			sendBufferedEvent(callback, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
