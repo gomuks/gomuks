@@ -7,26 +7,8 @@
 package main
 
 /*
-#include <stdint.h>
+#include "ffi.h"
 #include <stdlib.h>
-
-typedef struct {
-	const uint8_t *base;
-	size_t length;
-} GomuksBorrowedBuffer;
-
-typedef struct {
-	uint8_t *base;
-	size_t length;
-} GomuksOwnedBuffer;
-
-typedef struct {
-	GomuksOwnedBuffer buf;
-	const char* command;
-} GomuksResponse;
-
-typedef uintptr_t GomuksHandle;
-typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBorrowedBuffer data);
 
 static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBorrowedBuffer data) {
 	cb(command, request_id, data);
