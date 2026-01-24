@@ -8,7 +8,7 @@ require github.com/wailsapp/wails/v3 v3.0.0-alpha.60
 
 require (
 	go.mau.fi/gomuks v0.2601.0
-	go.mau.fi/util v0.9.5
+	go.mau.fi/util v0.9.6-0.20260124144959-47fbccd7a8f4
 )
 
 require (

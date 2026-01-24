@@ -12,3 +12,7 @@ deb/usr
 *.prof
 *.db*
 *.log
+*.a
+*.dll
+*.dylib
+*.so
