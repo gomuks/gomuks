@@ -7,7 +7,7 @@
 package main
 
 /*
-#include "libgomuksffi.h"
+#include "gomuksffi.h"
 #include <stdlib.h>
 
 static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBorrowedBuffer data) {

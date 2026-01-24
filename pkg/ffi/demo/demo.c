@@ -1,4 +1,4 @@
-#include "../libgomuksffi.h"
+#include "../gomuksffi.h"
 #include <inttypes.h>
 #include <signal.h>
 #include <stdio.h>
