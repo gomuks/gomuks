@@ -69,6 +69,7 @@ blockquote.reply-body {
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		-webkit-box-orient: vertical;
+		max-height: 5rem;
 		overflow: hidden;
 		color: var(--semisecondary-text-color);
 		user-select: none;
