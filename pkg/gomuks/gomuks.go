@@ -173,15 +173,21 @@ func (gmx *Gomuks) SetupLog() {
 }
 
 func (gmx *Gomuks) StartClient() {
+	exitCode := gmx.StartClientWithoutExit(gmx.Log.WithContext(context.Background()))
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
+}
+
+func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 	hicli.HTMLSanitizerImgSrcTemplate = "_gomuks/media/%s/%s?encrypted=false"
 	rawDB, err := dbutil.NewFromConfig("gomuks", dbutil.Config{
 		PoolConfig: gmx.GetDBConfig(),
 	}, dbutil.ZeroLogger(gmx.Log.With().Str("component", "hicli").Str("db_section", "main").Logger()))
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to open database")
-		os.Exit(10)
+		return 10
 	}
-	ctx := gmx.Log.WithContext(context.Background())
 	gmx.Client = hicli.New(
 		rawDB,
 		nil,
@@ -208,14 +214,15 @@ func (gmx *Gomuks) StartClient() {
 	userID, err := gmx.Client.DB.Account.GetFirstUserID(ctx)
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to get first user ID")
-		os.Exit(11)
+		return 11
 	}
 	err = gmx.Client.Start(ctx, userID, nil)
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to start client")
-		os.Exit(12)
+		return 12
 	}
 	gmx.Log.Info().Stringer("user_id", userID).Msg("Client started")
+	return 0
 }
 
 func (gmx *Gomuks) HandleEvent(evt any) {
@@ -242,10 +249,14 @@ func (gmx *Gomuks) WaitForInterrupt() {
 }
 
 func (gmx *Gomuks) DirectStop() {
-	for _, closer := range gmx.EventBuffer.GetClosers() {
-		closer(websocket.StatusServiceRestart, "Server shutting down")
+	if gmx.EventBuffer != nil {
+		for _, closer := range gmx.EventBuffer.GetClosers() {
+			closer(websocket.StatusServiceRestart, "Server shutting down")
+		}
 	}
-	gmx.Client.Stop()
+	if gmx.Client != nil {
+		gmx.Client.Stop()
+	}
 	if gmx.Server != nil {
 		err := gmx.Server.Close()
 		if err != nil {

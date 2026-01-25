@@ -19,10 +19,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/cgo"
 	"unsafe"
+
+	"github.com/rs/zerolog"
+	"go.mau.fi/util/ptr"
+	"go.mau.fi/zeroconfig"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli"
@@ -70,26 +74,11 @@ func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Contain
 
 //export GomuksInit
 func GomuksInit() C.GomuksHandle {
+	gomuks.DisablePush = true
+	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
-	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
-
-	// TODO customizable storage directories
-	gmx.InitDirectories()
-	err := gmx.LoadConfig()
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)
-		os.Exit(9)
-	}
-	gmx.SetupLog()
-	gmx.Log.Info().
-		Str("version", version.Gomuks.FormattedVersion).
-		Str("go_version", runtime.Version()).
-		Time("built_at", version.Gomuks.BuildTime).
-		Msg("Initializing gomuks FFI")
-
 	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
-	cmdCtx = gmx.Log.WithContext(cmdCtx)
 	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
 		Gomuks: gmx,
 		ctx:    cmdCtx,
@@ -98,14 +87,47 @@ func GomuksInit() C.GomuksHandle {
 }
 
 //export GomuksStart
-func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) {
+func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	gmx.StartClient()
-	gmx.Log.Info().Msg("Initialization complete")
+
+	// TODO customizable storage directories and config
+	gmx.InitDirectories()
+	gmx.Config = gomuks.Config{
+		Logging: zeroconfig.Config{
+			MinLevel: ptr.Ptr(zerolog.DebugLevel),
+			Writers: []zeroconfig.WriterConfig{{
+				Type:   zeroconfig.WriterTypeStdout,
+				Format: zeroconfig.LogFormatPrettyColored,
+			}, {
+				Type:   zeroconfig.WriterTypeFile,
+				Format: "json",
+				FileConfig: zeroconfig.FileConfig{
+					Filename:   filepath.Join(gmx.LogDir, "gomuks.log"),
+					MaxSize:    100,
+					MaxBackups: 10,
+				},
+			}},
+		},
+	}
+	gmx.EventBuffer = gomuks.NewEventBuffer(0)
+	gmx.SetupLog()
+	gmx.ctx = gmx.Log.WithContext(gmx.ctx)
+	gmx.Log.Info().
+		Str("version", version.Gomuks.FormattedVersion).
+		Str("go_version", runtime.Version()).
+		Time("built_at", version.Gomuks.BuildTime).
+		Msg("Starting gomuks FFI")
 
 	gmx.EventBuffer.Subscribe(0, nil, func(event *gomuks.BufferedEvent) {
 		sendBufferedEvent(callback, event)
 	})
+
+	exitCode := gmx.StartClientWithoutExit(gmx.ctx)
+	if exitCode != 0 {
+		return C.int(exitCode)
+	}
+	gmx.Log.Info().Msg("Initialization complete")
+
 	gmx.Log.Info().Msg("Sending initial state to client")
 	sendBufferedEvent(callback, jsoncmd.SpecClientState.Format(gmx.Client.State()))
 	sendBufferedEvent(callback, jsoncmd.SpecSyncStatus.Format(gmx.Client.SyncStatus.Load()))
@@ -123,22 +145,30 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) {
 			gmx.Log.Info().Int("room_count", roomCount).Msg("Sent initial rooms to client")
 		}()
 	}
+	return 0
 }
 
 //export GomuksDestroy
 func GomuksDestroy(handle C.GomuksHandle) {
 	h := cgo.Handle(handle)
 	gmx := h.Value().(*gomuksHandle)
-	gmx.Log.Info().Msg("Shutting down gomuks FFI...")
+	h.Delete()
+	log := gmx.Log
+	if log == nil {
+		log = ptr.Ptr(zerolog.Nop())
+	}
+	log.Info().Msg("Shutting down gomuks FFI...")
 	gmx.cancel()
 	gmx.DirectStop()
-	gmx.Log.Info().Msg("Shutdown complete")
-	h.Delete()
+	log.Info().Msg("Shutdown complete")
 }
 
 //export GomuksSubmitCommand
 func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBorrowedBuffer) C.GomuksResponse {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	if gmx.Client == nil {
+		panic(fmt.Errorf("GomuksSubmitCommand called before GomuksStart"))
+	}
 	res := gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
 		Command: jsoncmd.Name(C.GoString(command)),
 		Data:    borrowBufferBytes(data),

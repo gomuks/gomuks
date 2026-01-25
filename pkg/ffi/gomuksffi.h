@@ -30,7 +30,7 @@ typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBorrowedBuffer data);
 
 GomuksHandle GomuksInit(void);
-void GomuksStart(GomuksHandle handle, EventCallback callback);
+int GomuksStart(GomuksHandle handle, EventCallback callback);
 void GomuksDestroy(GomuksHandle handle);
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
