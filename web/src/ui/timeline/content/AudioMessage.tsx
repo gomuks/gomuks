@@ -39,14 +39,14 @@ const AudioMessage = ({
 	const initialDurationSec = initialDurationMs ? initialDurationMs / 1000 : 0
 
 	const { revealGlobalPlayer } = audioPlayer
-	const isThisTrackRef = useRef(isThisTrack)
-	isThisTrackRef.current = isThisTrack
+	const isPlayingRef = useRef(isPlaying)
+	isPlayingRef.current = isPlaying
 
-	// Reveal global player only when this component unmounts while playing this track
+	// Reveal global player only when this component unmounts while actively playing
 	// (e.g., when scrolling away from the message)
 	useEffect(() => {
 		return () => {
-			if (isThisTrackRef.current) {
+			if (isPlayingRef.current) {
 				revealGlobalPlayer()
 			}
 		}
