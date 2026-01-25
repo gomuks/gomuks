@@ -25,6 +25,7 @@ import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validati
 import ClientContext from "./ClientContext.ts"
 import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
 import StylePreferences from "./StylePreferences.tsx"
+import { AudioPlayer } from "./audio"
 import Keybindings from "./keybindings.ts"
 import { ModalContext, ModalWrapper, NestableModalContext } from "./modal"
 import RightPanel, { RightPanelProps } from "./rightpanel/RightPanel.tsx"
@@ -465,13 +466,15 @@ const MainScreen = () => {
 			</>}
 	</main>
 	return <MainScreenContext value={context}>
-		<ModalWrapper ContextType={ModalContext} historyStateKey="modal">
-			<ModalWrapper ContextType={NestableModalContext} historyStateKey="nestable_modal">
-				<StylePreferences client={client} activeRoom={activeRealRoom}/>
-				{mainContent}
-				{syncLoader}
+		<AudioPlayer roomListWidth={roomListWidth} rightPanelWidth={rightPanel ? rightPanelWidth : undefined}>
+			<ModalWrapper ContextType={ModalContext} historyStateKey="modal">
+				<ModalWrapper ContextType={NestableModalContext} historyStateKey="nestable_modal">
+					<StylePreferences client={client} activeRoom={activeRealRoom}/>
+					{mainContent}
+					{syncLoader}
+				</ModalWrapper>
 			</ModalWrapper>
-		</ModalWrapper>
+		</AudioPlayer>
 	</MainScreenContext>
 }
 

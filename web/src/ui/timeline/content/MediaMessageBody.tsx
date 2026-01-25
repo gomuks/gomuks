@@ -65,7 +65,9 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 			|| !loaded)
 	const isLoadingOnlyCover = !loaded && !contentWarning && renderMediaElem
 
-	const [mediaContent, containerClass, containerStyle] = useMediaContent(content, event.type, undefined, onLoad)
+	const [mediaContent, containerClass, containerStyle] = useMediaContent(
+		content, event.type, undefined, onLoad, { event, room, senderMemberEvent: sender },
+	)
 
 	let placeholderElem: JSX.Element | null = null
 	if (renderPlaceholderElem) {
