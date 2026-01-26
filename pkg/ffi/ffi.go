@@ -25,6 +25,7 @@ import (
 	"unsafe"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/zeroconfig"
 
@@ -67,7 +68,7 @@ type gomuksHandle struct {
 }
 
 func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Container[T]) {
-	data, _ := json.Marshal(command.Data)
+	data := exerrors.Must(json.Marshal(command.Data))
 	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), bytesToBorrowedBuffer(data))
 	runtime.KeepAlive(data)
 }
@@ -118,8 +119,9 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 		Time("built_at", version.Gomuks.BuildTime).
 		Msg("Starting gomuks FFI")
 
+	eventChan := make(chan *gomuks.BufferedEvent, 1024)
 	gmx.EventBuffer.Subscribe(0, nil, func(event *gomuks.BufferedEvent) {
-		sendBufferedEvent(callback, event)
+		eventChan <- event
 	})
 
 	exitCode := gmx.StartClientWithoutExit(gmx.ctx)
@@ -143,9 +145,24 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 			}
 			sendBufferedEvent(callback, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
 			gmx.Log.Info().Int("room_count", roomCount).Msg("Sent initial rooms to client")
+			go gmx.runEventChan(eventChan, callback)
 		}()
+	} else {
+		go gmx.runEventChan(eventChan, callback)
 	}
 	return 0
+}
+
+func (gmx *gomuksHandle) runEventChan(ch chan *gomuks.BufferedEvent, callback C.EventCallback) {
+	doneChan := gmx.ctx.Done()
+	for {
+		select {
+		case evt := <-ch:
+			sendBufferedEvent(callback, evt)
+		case <-doneChan:
+			return
+		}
+	}
 }
 
 //export GomuksDestroy
