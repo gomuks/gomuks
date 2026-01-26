@@ -10,7 +10,7 @@ package main
 #include "gomuksffi.h"
 #include <stdlib.h>
 
-static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksBorrowedBuffer data) {
+static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksOwnedBuffer data) {
 	cb(command, request_id, data);
 }
 */
@@ -69,8 +69,7 @@ type gomuksHandle struct {
 
 func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Container[T]) {
 	data := exerrors.Must(json.Marshal(command.Data))
-	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), bytesToBorrowedBuffer(data))
-	runtime.KeepAlive(data)
+	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), bytesToOwnedBuffer(data))
 }
 
 //export GomuksInit

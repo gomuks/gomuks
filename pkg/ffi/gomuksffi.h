@@ -27,7 +27,7 @@ typedef struct {
 } GomuksResponse;
 
 typedef uintptr_t GomuksHandle;
-typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksBorrowedBuffer data);
+typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 
 GomuksHandle GomuksInit(void);
 int GomuksStart(GomuksHandle handle, EventCallback callback);
