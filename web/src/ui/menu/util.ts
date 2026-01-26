@@ -59,10 +59,25 @@ export function getModalStyleFromMouse(
 export function getModalStyleFromButton(button: HTMLElement, modalHeight: number): CSSProperties {
 	const rect = button.getBoundingClientRect()
 	const style: CSSProperties = { right: window.innerWidth - rect.right }
-	if (rect.bottom + modalHeight > window.innerHeight) {
+	if (rect.bottom + modalHeight < window.innerHeight) {
+		// Show modal below button
+		style.top = rect.bottom
+	} else if (rect.top > modalHeight) {
+		// Show modal above button
 		style.bottom = window.innerHeight - rect.top
 	} else {
-		style.top = rect.bottom
+		// Show modal to the left of button
+		style.right = window.innerWidth - rect.right + rect.width
+		if (modalHeight > window.innerHeight) {
+			// Modal is too big for window, top-align
+			style.top = "0.5rem"
+		} else if (rect.top + modalHeight < window.innerHeight) {
+			// Modal fits such that the top is aligned with the button's top
+			style.top = rect.top - 4
+		} else {
+			// Align to bottom of window
+			style.bottom = "0.5rem"
+		}
 	}
 	return style
 }
