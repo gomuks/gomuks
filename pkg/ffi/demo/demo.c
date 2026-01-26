@@ -12,13 +12,14 @@ static void handle_signal(int sig) {
     stop_requested = 1;
 }
 
-static void event_callback(const char *command, int64_t request_id, GomuksBorrowedBuffer data) {
+static void event_callback(const char *command, int64_t request_id, GomuksOwnedBuffer data) {
     printf("[event] command=%s request_id=%" PRId64 " data=", command ? command : "(null)", request_id);
     if (data.base && data.length > 0) {
         fwrite(data.base, 1, data.length, stdout);
     }
     putchar('\n');
     fflush(stdout);
+    GomuksFreeBuffer(data);
 }
 
 int main(void) {
