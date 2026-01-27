@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2026 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -15,17 +15,26 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { CSSProperties, JSX, use, useState } from "react"
 import { getEncryptedMediaURL, getMediaURL } from "@/api/media.ts"
-import type { EventType, MediaMessageEventContent } from "@/api/types"
+import type { RoomStateStore } from "@/api/statestore"
+import type { EventType, MediaMessageEventContent, MemDBEvent } from "@/api/types"
 import { ImageContainerSize, calculateMediaSize, defaultVideoContainerSize } from "@/util/mediasize.ts"
 import { ensureString } from "@/util/validation.ts"
 import { LightboxContext } from "../../modal"
+import AudioMessage from "./AudioMessage.tsx"
 import DownloadIcon from "@/icons/download.svg?react"
+
+export interface MediaContext {
+	event: MemDBEvent
+	room: RoomStateStore
+	senderMemberEvent: MemDBEvent | null
+}
 
 export const useMediaContent = (
 	content: MediaMessageEventContent,
 	evtType: EventType,
 	containerSize?: ImageContainerSize,
 	onLoad?: () => void,
+	mediaContext?: MediaContext,
 ): [JSX.Element | null, string, CSSProperties] => {
 	const mediaURL = content.file?.url ? getEncryptedMediaURL(content.file.url) : getMediaURL(content.url)
 	const thumbnailURL = content.info?.thumbnail_file?.url
@@ -77,7 +86,23 @@ export const useMediaContent = (
 			<source src={mediaURL} type={ensureString(content.info?.mimetype)}/>
 		</video>, "video-container", style.container]
 	} else if (content.msgtype === "m.audio") {
-		return [<audio controls src={mediaURL} preload="none"/>, "audio-container", {}]
+		if (!mediaURL) {
+			return [null, "audio-container", {}]
+		}
+		const roomName = mediaContext?.room.meta.current.dm_user_id
+			? null
+			: mediaContext?.room.meta.current.name ?? null
+		return [
+			<AudioMessage
+				src={mediaURL}
+				duration={content.info?.duration as number | undefined}
+				event={mediaContext?.event}
+				senderMemberEvent={mediaContext?.senderMemberEvent}
+				roomName={roomName}
+			/>,
+			"audio-container",
+			{},
+		]
 	} else if (content.msgtype === "m.file") {
 		return [<a
 			href={mediaURL}

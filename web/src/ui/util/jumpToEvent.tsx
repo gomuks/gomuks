@@ -20,6 +20,7 @@ import { RoomContextData } from "../roomview/roomcontext.ts"
 export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry: boolean = true) => {
 	if (jumpToVisibleEvent(evtID)) {
 		console.info("Jumped to event", evtID, "in visible timeline")
+		roomCtx.scrolledToBottom = false
 	} else if (roomCtx.store.timeline.length === 0 && allowRetry) {
 		// Hacky sleep to let the timeline load maybe?
 		console.info("Waiting for timeline to load before jumping to event", evtID)

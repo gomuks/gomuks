@@ -281,3 +281,76 @@ div.location-importer {
 	justify-content: center;
 	align-items: center;
 }
+
+div.audio-message-player {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	padding: .5rem;
+	background-color: var(--card-background-color);
+	border: 1px solid var(--border-color);
+	border-radius: .5rem;
+	min-width: 250px;
+	max-width: 350px;
+
+	> button.play-pause-btn {
+		width: 2.5rem;
+		height: 2.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: none;
+		background: var(--primary-color);
+		color: white;
+		cursor: pointer;
+		border-radius: 50%;
+		flex-shrink: 0;
+
+		&:hover {
+			opacity: 0.9;
+		}
+
+		> svg {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+	}
+
+	> span.time {
+		font-size: 0.75rem;
+		color: var(--secondary-text-color);
+		font-variant-numeric: tabular-nums;
+		min-width: 2.5rem;
+		flex-shrink: 0;
+
+		&:first-of-type {
+			text-align: right;
+		}
+
+		&:last-of-type {
+			text-align: left;
+		}
+	}
+
+	> div.progress-container {
+		flex: 1;
+		height: 0.5rem;
+		background-color: var(--light-hover-color);
+		border-radius: 0.25rem;
+		cursor: pointer;
+		overflow: hidden;
+		position: relative;
+
+		> div.progress-bar {
+			position: absolute;
+			height: 100%;
+			width: 100%;
+			background-color: var(--primary-color);
+			border-radius: 0.25rem;
+			left: 0;
+			top: 0;
+			transform: translateX(-100%);
+			will-change: transform;
+		}
+	}
+}
