@@ -195,6 +195,31 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	}
 }
 
+//export GomuksGetAccountInfo
+func GomuksGetAccountInfo(handle C.GomuksHandle) C.GomuksAccountInfo {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	if gmx.Client == nil || gmx.Client.Account == nil {
+		return C.GomuksAccountInfo{}
+	}
+	return C.GomuksAccountInfo{
+		user_id:        C.CString(string(gmx.Client.Account.UserID)),
+		device_id:      C.CString(string(gmx.Client.Account.DeviceID)),
+		access_token:   C.CString(gmx.Client.Account.AccessToken),
+		homeserver_url: C.CString(gmx.Client.Account.HomeserverURL),
+	}
+}
+
+//export GomuksFreeAccountInfo
+func GomuksFreeAccountInfo(info C.GomuksAccountInfo) {
+	if info.user_id == nil {
+		return
+	}
+	C.free(unsafe.Pointer(info.user_id))
+	C.free(unsafe.Pointer(info.device_id))
+	C.free(unsafe.Pointer(info.access_token))
+	C.free(unsafe.Pointer(info.homeserver_url))
+}
+
 //export GomuksFreeBuffer
 func GomuksFreeBuffer(buf C.GomuksOwnedBuffer) {
 	C.free(unsafe.Pointer(buf.base))
