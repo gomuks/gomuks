@@ -106,7 +106,8 @@ const knownUsages = ["emoticon", "sticker"]
 const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 	const [packName, setPackName] = useState(ensureString(pack.pack.display_name))
 	const [packAvatar, setPackAvatar] = useState(ensureString(pack.pack.avatar_url))
-	const [usages, setUsages] = useState<Set<string> | null>(() => new Set(ensureStringArray(pack.pack.usage)))
+	const [usages, setUsages] = useState<Set<string> | null>(() =>
+		pack.pack.usage ? new Set(ensureStringArray(pack.pack.usage)) : null)
 	const [images, setImages] = useState<ImagePackEntryWithID[]>(() =>
 		Object.entries(pack.images)
 			.map(([id, image]) => ({ id, ...image }))
@@ -352,31 +353,34 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 }
 
 const renderUsages = (
-	usages: Set<string> | null, setUsages: (newVal: Set<string> | null) => void, packDefault?: Set<string> | null,
+	usages: Set<string> | null,
+	setUsages: (newVal: Set<string> | null) => void,
+	packDefault?: Set<string> | null,
 ) => {
+	const realUsages = usages ?? packDefault
 	return <>
 		<div className="usage-label">Use as:</div>
 		<div className="usage-options">
-			{packDefault && <label>
+			{packDefault !== undefined ? <label>
 				<input
 					type="checkbox"
 					checked={usages === null}
 					onChange={e => {
-						setUsages(e.target.checked ? null : packDefault)
+						setUsages(e.target.checked ? null : (packDefault ?? new Set(knownUsages)))
 					}}
 				/>
 				pack default
-			</label>}
+			</label> : null}
 			{knownUsages.map(usage => <label key={usage}>
 				<input
 					type="checkbox"
-					checked={(usages ?? packDefault)?.has(usage) ?? false}
-					disabled={usages === null}
+					checked={realUsages ? realUsages.has(usage) : true}
+					disabled={usages === null && packDefault !== undefined}
 					onChange={e => {
 						if (e.target.checked) {
 							setUsages(new Set(usages ?? []).add(usage))
 						} else {
-							const newUsages = new Set(usages ?? [])
+							const newUsages = new Set(realUsages ?? knownUsages)
 							newUsages.delete(usage)
 							setUsages(newUsages)
 						}
