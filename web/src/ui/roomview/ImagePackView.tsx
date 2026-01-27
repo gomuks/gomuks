@@ -32,6 +32,7 @@ import StickerAddIcon from "@/icons/sticker-add.svg?react"
 import "./ImagePackView.css"
 
 const ImagePackView = () => {
+	const client = use(ClientContext)!
 	const roomCtx = useRoomContext()
 	const packs = useRoomImagePacks(roomCtx.store)
 	const [selectedPackID, setSelectedPackID] = useState<string | null>(null)
@@ -45,6 +46,23 @@ const ImagePackView = () => {
 		// noinspection JSSuspiciousNameCombination
 		chooser.scrollLeft += evt.deltaY
 	}
+	const createPack = () => {
+		const packID = window.prompt("Enter pack ID")
+		if (!packID) {
+			return
+		} else if (packs[packID]) {
+			window.alert("A pack with that ID already exists.")
+			return
+		}
+		const emptyPack: ImagePack = {
+			pack: {
+				usage: ["sticker", "emoticon"],
+				display_name: packID,
+			},
+			images: {},
+		}
+		client.rpc.setState(roomCtx.store.roomID, "im.ponies.room_emotes", packID, emptyPack)
+	}
 	return <div className="image-pack-view">
 		<div className="image-pack-chooser" onWheel={onWheel}>
 			{Object.values(packs).map(pack => <button
@@ -56,6 +74,10 @@ const ImagePackView = () => {
 				{pack.icon ? <img src={getMediaURL(pack.icon)} alt=""/> : <FallbackPackIcon/>}
 				<div className="name">{pack.name}</div>
 			</button>)}
+			<button className="new-pack" onClick={createPack}>
+				<StickerAddIcon />
+				<div className="name">Create pack</div>
+			</button>
 		</div>
 		{selectedPack && <ImagePackEditor key={selectedPackID} id={selectedPack.id} pack={selectedPack.source} />}
 	</div>
@@ -135,8 +157,8 @@ const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 			content: <ImagePackItemEditor item={item} save={saveImage} defaultUsages={usages} />,
 		})
 	}
+	const guid = stringToRoomStateGUID(id)
 	const savePack = () => {
-		const guid = stringToRoomStateGUID(id)
 		if (!guid || saving) {
 			return
 		}
@@ -157,6 +179,14 @@ const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 	}
 	return <div className="image-pack-editor">
 		<div className="input-fields">
+			<label htmlFor="image-pack-editor-id">Pack ID:</label>
+			<input
+				id="image-pack-editor-id"
+				className="id"
+				type="text"
+				value={guid?.state_key}
+				disabled
+			/>
 			<label htmlFor="image-pack-editor-name">Pack name:</label>
 			<input
 				id="image-pack-editor-name"

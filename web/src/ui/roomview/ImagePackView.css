@@ -23,6 +23,12 @@ div.image-pack-view > div.image-pack-chooser {
 			background-color: var(--image-pack-editor-selected-color);
 		}
 
+		&.new-pack > svg {
+			width: 100%;
+			height: 100%;
+			margin: auto;
+		}
+
 		> img {
 			max-width: 90%;
 			max-height: 90%;
@@ -46,6 +52,10 @@ div.image-pack-editor, div.image-pack-item-editor {
 		box-sizing: border-box;
 		border-radius: .5rem;
 		outline: none;
+
+		&:disabled {
+			background-color: var(--disabled-input-background-color);
+		}
 	}
 
 	div.usage-options {
