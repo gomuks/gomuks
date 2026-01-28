@@ -31,6 +31,7 @@ import (
 	"go.mau.fi/zeroconfig"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
+	"maunium.net/go/mautrix/event"
 )
 
 type Config struct {
@@ -42,7 +43,8 @@ type Config struct {
 }
 
 type MatrixConfig struct {
-	DisableHTTP2 bool `yaml:"disable_http2"`
+	DisableHTTP2 bool            `yaml:"disable_http2"`
+	SetPresence  *event.Presence `yaml:"set_presence"`
 }
 
 type PushConfig struct {
@@ -85,6 +87,7 @@ func makeDefaultConfig() Config {
 		},
 		Matrix: MatrixConfig{
 			DisableHTTP2: false,
+			SetPresence:  ptr.Ptr(event.PresenceOffline),
 		},
 		Media: MediaConfig{
 			ThumbnailSize: 120,
