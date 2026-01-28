@@ -136,7 +136,11 @@ func (h *HiClient) Verify(ctx context.Context, code string) error {
 	if errors.Is(err, ssss.ErrInvalidRecoveryKey) && keyData.Passphrase != nil {
 		key, err = keyData.VerifyPassphrase(keyID, code)
 	}
-	if err != nil {
+	if errors.Is(err, ssss.ErrUnverifiableKey) {
+		zerolog.Ctx(ctx).Warn().
+			Str("key_id", keyID).
+			Msg("SSSS key is unverifiable, trying to use without verifying")
+	} else if err != nil {
 		return err
 	}
 	err = h.Crypto.FetchCrossSigningKeysFromSSSS(ctx, key)
