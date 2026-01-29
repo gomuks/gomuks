@@ -111,6 +111,17 @@ export default class Client {
 				console.log("Successfully authenticated, connecting to websocket")
 				this.rpc.start()
 				return
+			case "share":
+				try {
+					window.mainScreenContext.setPendingShare(new File(
+						[Uint8Array.fromBase64(evtData.payload)],
+						evtData.name,
+						{ type: evtData.mime_type },
+					))
+					console.info("Received share from Android:", evtData.name, evtData.mime_type)
+				} catch (err) {
+					console.error("Failed to process shared file:", err)
+				}
 			}
 		}
 		const unsubscribeConnect = this.rpc.connect.listen(evt => {

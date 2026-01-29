@@ -702,6 +702,13 @@ const MessageComposer = () => {
 			}
 		}
 	}, [client, room, roomCtx])
+	useEffect(() => {
+		if (mainScreen.pendingShare) {
+			console.info("Processing pending share")
+			openModal(modals.mediaUpload(mainScreen.pendingShare, doUploadFile, isEncrypted))
+			mainScreen.setPendingShare(null)
+		}
+	}, [mainScreen, roomCtx, doUploadFile, isEncrypted, openModal])
 	useLayoutEffect(() => {
 		if (!textInput.current) {
 			return

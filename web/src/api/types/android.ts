@@ -27,4 +27,12 @@ export interface AndroidAuthEvent {
 	authorization: `Bearer ${string}`
 }
 
-export type GomuksAndroidMessageToWeb = AndroidRegisterPushEvent | AndroidAuthEvent
+export interface AndroidShareEvent {
+	type: "share"
+	payload: string
+	name: string
+	size: number
+	mime_type: string
+}
+
+export type GomuksAndroidMessageToWeb = AndroidRegisterPushEvent | AndroidAuthEvent | AndroidShareEvent

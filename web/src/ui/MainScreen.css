@@ -47,6 +47,20 @@ main.matrix-main {
 		grid-area: rh2;
 		z-index: 1;
 	}
+
+	> div.choose-share-target {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		font-weight: bold;
+		height: calc(5rem + env(safe-area-inset-bottom, 0));
+		padding-top: .5rem;
+		padding-bottom: env(safe-area-inset-bottom, 0);
+		background-color: var(--primary-color);
+		text-align: center;
+		text-wrap: nowrap;
+	}
 }
 
 div.sync-status {

@@ -28,4 +28,14 @@ declare global {
 	interface Element {
 		moveBefore?(newNode: ChildNode, referenceNode: ChildNode | null): ChildNode
 	}
+	// TODO remove after typescript 5.10/6.0
+	interface Uint8ArrayConstructor {
+		fromBase64(
+			string: string,
+			options?: {
+				alphabet?: "base64" | "base64url" | undefined;
+				lastChunkHandling?: "loose" | "strict" | "stop-before-partial" | undefined;
+			},
+		): Uint8Array<ArrayBuffer>
+	}
 }

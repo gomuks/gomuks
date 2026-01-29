@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import equal from "fast-deep-equal"
-import { JSX, use, useEffect, useMemo, useReducer, useRef, useState } from "react"
+import { JSX, RefObject, use, useEffect, useMemo, useReducer, useRef, useState } from "react"
 import { SyncLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomListFilter, RoomStateStore } from "@/api/statestore"
@@ -43,6 +43,8 @@ class ContextFields implements MainScreenContextFields {
 		private directSetRightPanel: (props: RightPanelProps | null) => void,
 		private directSetActiveRoom: (room: RoomStateStore | RoomPreviewProps | null) => void,
 		private directSetSpace: (space: RoomListFilter | null) => void,
+		private pendingShareRef: RefObject<File | null>,
+		private markPendingShareChanged: () => void,
 		private client: Client,
 	) {
 		this.keybindings = new Keybindings(client.store, this)
@@ -84,6 +86,18 @@ class ContextFields implements MainScreenContextFields {
 				history.pushState({ ...(history.state ?? {}), right_panel: props }, "")
 			}
 		}
+	}
+
+	setPendingShare = (share: File | null) => {
+		if (share !== null) {
+			this.setActiveRoom(null)
+		}
+		this.pendingShareRef.current = share
+		this.markPendingShareChanged()
+	}
+
+	get pendingShare(): File | null {
+		return this.pendingShareRef.current
 	}
 
 	setActiveRoom = (
@@ -337,17 +351,20 @@ const activeRoomReducer = (
 	}
 }
 
+const incrementReducer = (prev: number): number => prev + 1
+
 const MainScreen = () => {
 	const [[prevActiveRoom, activeRoom], directSetActiveRoom] = useReducer(activeRoomReducer, [null, null])
 	const [space, directSetSpace] = useState<RoomListFilter | null>(null)
 	const skipNextTransitionRef = useRef(false)
 	const [rightPanel, directSetRightPanel] = useState<RightPanelProps | null>(null)
+	const pendingShareRef = useRef<File | null>(null)
+	const [, markPendingShareChanged] = useReducer(incrementReducer, 0)
 	const client = use(ClientContext)!
 	const syncStatus = useEventAsState(client.syncStatus)
-	const context = useMemo(
-		() => new ContextFields(directSetRightPanel, directSetActiveRoom, directSetSpace, client),
-		[client],
-	)
+	const context = useMemo(() => new ContextFields(
+		directSetRightPanel, directSetActiveRoom, directSetSpace, pendingShareRef, markPendingShareChanged, client,
+	), [client])
 	useEffect(() => {
 		window.mainScreenContext = context
 		const listener = (evt: Pick<PopStateEvent, "state" | "hasUAVisualTransition">) => {
@@ -379,6 +396,13 @@ const MainScreen = () => {
 		window.addEventListener("hashchange", hashListener)
 		window.addEventListener("popstate", listener)
 		const initHandle = () => {
+			if (context.pendingShare) {
+				const newURL = new URL(location.href)
+				newURL.hash = ""
+				newURL.search = ""
+				history.replaceState({}, "", newURL.toString())
+				return
+			}
 			const state = handleURLHash(client, context)
 			listener({ state } as PopStateEvent)
 		}
@@ -463,6 +487,11 @@ const MainScreen = () => {
 				{resizeHandle2}
 				{rightPanel && <RightPanel {...rightPanel}/>}
 			</>}
+		{context.pendingShare ? <div className="choose-share-target">
+			Select room to share:
+			<br/>
+			<code>{context.pendingShare.name}</code>
+		</div> : null}
 	</main>
 	return <MainScreenContext value={context}>
 		<ModalWrapper ContextType={ModalContext} historyStateKey="modal">

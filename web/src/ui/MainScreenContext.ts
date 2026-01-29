@@ -35,6 +35,9 @@ export interface MainScreenContextFields {
 	setRightPanel: (props: RightPanelProps) => void
 	closeRightPanel: () => void
 	clickRightPanelOpener: (evt: React.MouseEvent) => void
+
+	setPendingShare: (file: File | null) => void
+	pendingShare: File | null
 }
 
 const stubContext = {
@@ -57,6 +60,12 @@ const stubContext = {
 		throw new Error("MainScreenContext used outside main screen")
 	},
 	get clickRightPanelOpener(): never {
+		throw new Error("MainScreenContext used outside main screen")
+	},
+	get setPendingShare(): never {
+		throw new Error("MainScreenContext used outside main screen")
+	},
+	get pendingShare(): never {
 		throw new Error("MainScreenContext used outside main screen")
 	},
 }
