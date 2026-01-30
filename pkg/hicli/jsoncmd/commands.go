@@ -77,6 +77,8 @@ const (
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 
+	ReqGetAccountInfo Name = "get_account_info"
+
 	RespError   Name = "error"
 	RespSuccess Name = "response"
 
@@ -235,6 +237,11 @@ var (
 	CalculateRoomID = &CommandSpec[*CalculateRoomIDParams, id.RoomID]{Name: ReqCalculateRoomID}
 )
 
+// FFI-specific command specs
+var (
+	SpecGetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
+)
+
 // Backend -> frontend event specs
 var (
 	SpecSyncComplete    = &EventSpec[*SyncComplete]{Name: EventSyncComplete}
@@ -302,6 +309,7 @@ var AllNames = []Name{
 	ReqGetTurnServers,
 	ReqGetMediaConfig,
 	ReqCalculateRoomID,
+	ReqGetAccountInfo,
 	RespError,
 	RespSuccess,
 	ReqPing,

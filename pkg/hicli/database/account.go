@@ -57,11 +57,11 @@ func (aq *AccountQuery) Put(ctx context.Context, account *Account) error {
 }
 
 type Account struct {
-	UserID        id.UserID
-	DeviceID      id.DeviceID
-	AccessToken   string
-	HomeserverURL string
-	NextBatch     string
+	UserID        id.UserID   `json:"user_id,omitempty"`
+	DeviceID      id.DeviceID `json:"device_id,omitempty"`
+	AccessToken   string      `json:"access_token,omitempty"`
+	HomeserverURL string      `json:"homeserver_url,omitempty"`
+	NextBatch     string      `json:"-"`
 }
 
 func (a *Account) Scan(row dbutil.Scannable) (*Account, error) {

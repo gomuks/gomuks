@@ -26,13 +26,6 @@ typedef struct {
 	const char* command;
 } GomuksResponse;
 
-typedef struct {
-	const char* user_id;
-	const char* device_id;
-	const char* access_token;
-	const char* homeserver_url;
-} GomuksAccountInfo;
-
 typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 
@@ -40,9 +33,7 @@ GomuksHandle GomuksInit(void);
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 void GomuksDestroy(GomuksHandle handle);
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
-GomuksAccountInfo GomuksGetAccountInfo(GomuksHandle handle);
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
-void GomuksFreeAccountInfo(GomuksAccountInfo info);
 
 #ifdef __cplusplus
 }

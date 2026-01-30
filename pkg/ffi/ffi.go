@@ -185,39 +185,41 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	if gmx.Client == nil {
 		panic(fmt.Errorf("GomuksSubmitCommand called before GomuksStart"))
 	}
-	res := gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
-		Command: jsoncmd.Name(C.GoString(command)),
-		Data:    borrowBufferBytes(data),
-	})
+	var res *jsoncmd.Container[json.RawMessage]
+	cmd := jsoncmd.Name(C.GoString(command))
+	reqData := borrowBufferBytes(data)
+	switch cmd {
+	case jsoncmd.ReqGetAccountInfo:
+		res = gmx.handleFFICommand(cmd, reqData)
+	default:
+		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
+			Command: jsoncmd.Name(C.GoString(command)),
+			Data:    reqData,
+		})
+	}
 	return C.GomuksResponse{
 		buf:     bytesToOwnedBuffer(res.Data),
 		command: commandNames[res.Command],
 	}
 }
 
-//export GomuksGetAccountInfo
-func GomuksGetAccountInfo(handle C.GomuksHandle) C.GomuksAccountInfo {
-	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	if gmx.Client == nil || gmx.Client.Account == nil {
-		return C.GomuksAccountInfo{}
+func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jsoncmd.Container[json.RawMessage] {
+	var err error
+	var res any
+	switch cmd {
+	case jsoncmd.ReqGetAccountInfo:
+		res = gmx.Client.Account
 	}
-	return C.GomuksAccountInfo{
-		user_id:        C.CString(string(gmx.Client.Account.UserID)),
-		device_id:      C.CString(string(gmx.Client.Account.DeviceID)),
-		access_token:   C.CString(gmx.Client.Account.AccessToken),
-		homeserver_url: C.CString(gmx.Client.Account.HomeserverURL),
+	if err != nil {
+		return &jsoncmd.Container[json.RawMessage]{
+			Command: jsoncmd.RespError,
+			Data:    exerrors.Must(json.Marshal(err.Error())),
+		}
 	}
-}
-
-//export GomuksFreeAccountInfo
-func GomuksFreeAccountInfo(info C.GomuksAccountInfo) {
-	if info.user_id == nil {
-		return
+	return &jsoncmd.Container[json.RawMessage]{
+		Command: jsoncmd.RespSuccess,
+		Data:    exerrors.Must(json.Marshal(res)),
 	}
-	C.free(unsafe.Pointer(info.user_id))
-	C.free(unsafe.Pointer(info.device_id))
-	C.free(unsafe.Pointer(info.access_token))
-	C.free(unsafe.Pointer(info.homeserver_url))
 }
 
 //export GomuksFreeBuffer
