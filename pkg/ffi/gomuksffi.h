@@ -28,11 +28,13 @@ typedef struct {
 
 typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
+typedef void (*ProgressCallback)(double progress);
 
 GomuksHandle GomuksInit(void);
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 void GomuksDestroy(GomuksHandle handle);
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
+GomuksResponse GomuksUploadMedia(GomuksHandle handle, GomuksBorrowedBuffer data, ProgressCallback cb);
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
 
 #ifdef __cplusplus

@@ -33,7 +33,6 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,6 +61,7 @@ import (
 	"maunium.net/go/mautrix/id"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
+	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 	"go.mau.fi/gomuks/pkg/orientation"
 )
 
@@ -529,61 +529,32 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile *os.File) ([]byte, error) {
+func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMediaParams, tempFile *os.File) ([]byte, error) {
 	defer func() {
 		_ = tempFile.Close()
 	}()
-	encTo := query.Get("encode_to")
-	if encTo == "" {
+	if params.EncodeTo == "" {
 		return nil, nil
 	}
-	resizeWidthVal := query.Get("resize_width")
-	resizeHeightVal := query.Get("resize_height")
-	resizePercentVal := query.Get("resize_percent")
-	var resizeWidth, resizeHeight, resizePercent int
-	if resizeWidthVal != "" && resizeHeightVal != "" {
-		var err error
-		resizeWidth, err = strconv.Atoi(resizeWidthVal)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse resize width: %w", err)
-		}
-		resizeHeight, err = strconv.Atoi(resizeHeightVal)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse resize height: %w", err)
-		}
-	} else if resizePercentVal != "" {
-		var err error
-		resizePercent, err = strconv.Atoi(resizePercentVal)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse resize percent: %w", err)
-		} else if resizePercent < 1 || resizePercent > 100 {
-			return nil, fmt.Errorf("resize percent must be between 1 and 100")
-		}
-	}
-	switch encTo {
+	switch params.EncodeTo {
 	case "image/webp", "image/jpeg", "image/png", "image/gif":
 		_, err := tempFile.Seek(0, io.SeekStart)
 		if err != nil {
 			return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
 		}
-		qualityVal := query.Get("quality")
-		quality := 80
-		if qualityVal != "" {
-			quality, err = strconv.Atoi(qualityVal)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse quality: %w", err)
-			}
+		if params.Quality == 0 {
+			params.Quality = 80
 		}
 		decoded, err := decodeImageWithOrientationFix(tempFile)
 		if err != nil {
 			return nil, err
 		}
-		if resizeWidth > 0 && resizeHeight > 0 {
-			decoded = imaging.Resize(decoded, resizeWidth, resizeHeight, imaging.Lanczos)
-		} else if resizePercent != 0 {
-			resizeWidth = int(float64(decoded.Bounds().Dx()) * float64(resizePercent) / 100)
-			resizeHeight = int(float64(decoded.Bounds().Dy()) * float64(resizePercent) / 100)
-			decoded = imaging.Resize(decoded, resizeWidth, resizeHeight, imaging.Lanczos)
+		if params.ResizeWidth > 0 && params.ResizeHeight > 0 {
+			decoded = imaging.Resize(decoded, params.ResizeWidth, params.ResizeHeight, imaging.Lanczos)
+		} else if params.ResizePercent != 0 {
+			params.ResizeWidth = int(float64(decoded.Bounds().Dx()) * float64(params.ResizePercent) / 100)
+			params.ResizeHeight = int(float64(decoded.Bounds().Dy()) * float64(params.ResizePercent) / 100)
+			decoded = imaging.Resize(decoded, params.ResizeWidth, params.ResizeHeight, imaging.Lanczos)
 		}
 		_, err = tempFile.Seek(0, io.SeekStart)
 		if err != nil {
@@ -593,11 +564,11 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 		if err != nil {
 			return nil, fmt.Errorf("failed to truncate temp file: %w", err)
 		}
-		switch encTo {
+		switch params.EncodeTo {
 		case "image/webp":
-			err = encodeWebp(tempFile, decoded, float32(quality), quality >= 100)
+			err = encodeWebp(tempFile, decoded, float32(params.Quality), params.Quality >= 100)
 		case "image/jpeg":
-			err = jpeg.Encode(tempFile, decoded, &jpeg.Options{Quality: quality})
+			err = jpeg.Encode(tempFile, decoded, &jpeg.Options{Quality: params.Quality})
 		case "image/png":
 			err = png.Encode(tempFile, decoded)
 		case "image/gif":
@@ -616,7 +587,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 		_ = tempFile.Close()
 		var encToExtension string
 		var inputArgs, outputArgs []string
-		switch encTo {
+		switch params.EncodeTo {
 		case "video/webm":
 			encToExtension = ".webm"
 			outputArgs = []string{"-c:v", "libvpx-vp9", "-c:a", "libopus", "-pix_fmt", "yuva420p"}
@@ -629,8 +600,8 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 		default:
 			panic("unreachable")
 		}
-		if resizeWidth > 0 && resizeHeight > 0 {
-			outputArgs = append(outputArgs, "-vf", fmt.Sprintf("scale=%d:%d,setsar=1:1", resizeWidth, resizeHeight))
+		if params.ResizeWidth > 0 && params.ResizeHeight > 0 {
+			outputArgs = append(outputArgs, "-vf", fmt.Sprintf("scale=%d:%d,setsar=1:1", params.ResizeWidth, params.ResizeHeight))
 		}
 		outputPath, err := ffmpeg.ConvertPath(ctx, tempFile.Name(), encToExtension, inputArgs, outputArgs, true)
 		if err != nil {
@@ -647,7 +618,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 	case "audio/ogg; codecs=opus", "audio/mp4", "audio/mpeg":
 		_ = tempFile.Close()
 		var encToExtension, encToCodec string
-		switch encTo {
+		switch params.EncodeTo {
 		case "audio/ogg; codecs=opus":
 			encToExtension = ".ogg"
 			encToCodec = "libopus"
@@ -674,7 +645,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 			return nil, fmt.Errorf("failed to reopen converted audio: %w", err)
 		}
 	default:
-		return nil, fmt.Errorf("unsupported encoding target %q", encTo)
+		return nil, fmt.Errorf("unsupported encoding target %q", params.EncodeTo)
 	}
 	hasher := sha256.New()
 	_, err := io.Copy(hasher, tempFile)
@@ -687,7 +658,6 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, query url.Values, tempFile
 
 func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	log := hlog.FromRequest(r)
-	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
 	progress, _ := strconv.ParseBool(r.URL.Query().Get("progress"))
 	var respEnc *json.Encoder
 	var progressCallback func(progress float64)
@@ -715,7 +685,46 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	content, err := gmx.cacheAndUploadMedia(r.Context(), r.Body, encrypt, r.URL.Query(), progressCallback)
+	query := r.URL.Query()
+	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
+	voiceMessage, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
+	params := jsoncmd.UploadMediaParams{
+		Filename:     query.Get("filename"),
+		Encrypt:      encrypt,
+		VoiceMessage: voiceMessage,
+		EncodeTo:     query.Get("encode_to"),
+	}
+	resizeWidthVal := query.Get("resize_width")
+	resizeHeightVal := query.Get("resize_height")
+	resizePercentVal := query.Get("resize_percent")
+	var err error
+	if resizeWidthVal != "" && resizeHeightVal != "" {
+		params.ResizeWidth, err = strconv.Atoi(resizeWidthVal)
+		if err != nil {
+			mautrix.MInvalidParam.WithMessage("Invalid resize width").Write(w)
+			return
+		}
+		params.ResizeHeight, err = strconv.Atoi(resizeHeightVal)
+		if err != nil {
+			mautrix.MInvalidParam.WithMessage("Invalid resize height").Write(w)
+			return
+		}
+	} else if resizePercentVal != "" {
+		params.ResizePercent, err = strconv.Atoi(resizePercentVal)
+		if err != nil || (params.ResizePercent < 1 || params.ResizePercent > 100) {
+			mautrix.MInvalidParam.WithMessage("Invalid resize percent").Write(w)
+			return
+		}
+	}
+	if qualityVal := query.Get("quality"); qualityVal != "" {
+		params.Quality, err = strconv.Atoi(qualityVal)
+		if err != nil {
+			mautrix.MInvalidParam.WithMessage("Invalid quality value").Write(w)
+			return
+		}
+	}
+
+	content, err := gmx.CacheAndUploadMedia(r.Context(), r.Body, params, progressCallback)
 	if err != nil {
 		log.Err(err).Msg("Failed to upload media")
 		if respEnc != nil {
@@ -778,7 +787,7 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 			}
 			defer resp.Body.Close()
 
-			content, err = gmx.cacheAndUploadMedia(r.Context(), resp.Body, encrypt, nil, nil)
+			content, err = gmx.CacheAndUploadMedia(r.Context(), resp.Body, jsoncmd.UploadMediaParams{Encrypt: encrypt}, nil)
 			if err != nil {
 				log.Err(err).Msg("Failed to upload URL preview image")
 				writeMaybeRespError(err, w)
@@ -805,13 +814,20 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 	exhttp.WriteJSONResponse(w, http.StatusOK, preview)
 }
 
-func (gmx *Gomuks) cacheAndUploadMedia(
+func (gmx *Gomuks) CacheAndUploadMedia(
 	ctx context.Context,
 	reader io.Reader,
-	encrypt bool,
-	query url.Values,
+	params jsoncmd.UploadMediaParams,
 	progressCallback func(float64),
 ) (*event.MessageEventContent, error) {
+	if reader == nil && params.Path != "" {
+		file, err := os.Open(params.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open file: %w", err)
+		}
+		defer file.Close()
+		reader = file
+	}
 	if progressCallback == nil {
 		progressCallback = func(_ float64) {}
 	}
@@ -830,7 +846,7 @@ func (gmx *Gomuks) cacheAndUploadMedia(
 		return nil, fmt.Errorf("failed to copy upload media to temp file: %w", err)
 	}
 	checksum := hasher.Sum(nil)
-	if newHash, err := gmx.reencodeMedia(ctx, query, tempFile); err != nil {
+	if newHash, err := gmx.reencodeMedia(ctx, params, tempFile); err != nil {
 		return nil, fmt.Errorf("failed to reencode media: %w", err)
 	} else if newHash != nil {
 		checksum = newHash
@@ -860,22 +876,21 @@ func (gmx *Gomuks) cacheAndUploadMedia(
 		return nil, fmt.Errorf("failed to generate file info: %w", err)
 	}
 	if msgType == event.MsgVideo {
-		err = gmx.generateVideoThumbnail(ctx, cacheFile.Name(), encrypt, info)
+		err = gmx.generateVideoThumbnail(ctx, cacheFile.Name(), params.Encrypt, info)
 		if err != nil {
 			log.Warn().Err(err).Msg("Failed to generate video thumbnail")
 		}
 	}
-	fileName := query.Get("filename")
-	if fileName == "" {
-		fileName = defaultFileName
+	if params.Filename == "" {
+		params.Filename = defaultFileName
 	}
 	content := &event.MessageEventContent{
 		MsgType:  msgType,
-		Body:     fileName,
+		Body:     params.Filename,
 		Info:     info,
-		FileName: fileName,
+		FileName: params.Filename,
 	}
-	if query.Get("voice_message") == "true" {
+	if params.VoiceMessage {
 		samples := 80
 		if info.Duration != 0 {
 			samples = min(max(info.Duration/125, 30), 120)
@@ -891,7 +906,7 @@ func (gmx *Gomuks) cacheAndUploadMedia(
 		content.MSC3245Voice = &event.MSC3245Voice{}
 	}
 	content.File, content.URL, err = gmx.UploadFile(
-		ctx, checksum, cacheFile, encrypt, int64(info.Size), info.MimeType, fileName, progressCallback,
+		ctx, checksum, cacheFile, params.Encrypt, int64(info.Size), info.MimeType, params.Filename, progressCallback,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload media: %w", err)

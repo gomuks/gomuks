@@ -267,3 +267,23 @@ type CalculateRoomIDParams struct {
 	Timestamp       int64           `json:"timestamp"`
 	CreationContent json.RawMessage `json:"content"`
 }
+
+type UploadMediaParams struct {
+	Path string `json:"path"`
+	// The file name for the upload. If empty, the base name of Path will be used.
+	Filename string `json:"filename,omitempty"`
+	// Whether the upload should be encrypted.
+	Encrypt bool `json:"encrypt,omitempty"`
+	// Whether the upload is a voice message. If true, a waveform will be generated.
+	VoiceMessage bool `json:"voice_message,omitempty"`
+
+	// Mime type to re-encode media to. Options below only apply if this is set.
+	EncodeTo string `json:"encode_to,omitempty"`
+	// Absolute width and height to resize to.
+	ResizeWidth  int `json:"resize_width,omitempty"`
+	ResizeHeight int `json:"resize_height,omitempty"`
+	// Percentage to resize by. Must be between 1 and 100.
+	ResizePercent int `json:"resize_percent,omitempty"`
+	// For jpeg and webp files, the quality to encode as. Defaults to 80.
+	Quality int `json:"quality,omitempty"`
+}

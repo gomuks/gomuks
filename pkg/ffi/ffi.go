@@ -13,6 +13,10 @@ package main
 static inline void _gomuks_callEventCallback(EventCallback cb, const char *command, int64_t request_id, GomuksOwnedBuffer data) {
 	cb(command, request_id, data);
 }
+
+static inline void _gomuks_callProgressCallback(ProgressCallback cb, double progress) {
+	cb(progress);
+}
 */
 import "C"
 import (
@@ -28,6 +32,7 @@ import (
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/zeroconfig"
+	"maunium.net/go/mautrix/event"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli"
@@ -189,7 +194,7 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	cmd := jsoncmd.Name(C.GoString(command))
 	reqData := borrowBufferBytes(data)
 	switch cmd {
-	case jsoncmd.ReqGetAccountInfo:
+	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
@@ -203,12 +208,40 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	}
 }
 
+//export GomuksUploadMedia
+func GomuksUploadMedia(handle C.GomuksHandle, data C.GomuksBorrowedBuffer, cb C.ProgressCallback) C.GomuksResponse {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	if gmx.Client == nil {
+		panic(fmt.Errorf("GomuksSubmitCommand called before GomuksStart"))
+	}
+	reqData := borrowBufferBytes(data)
+	resp, err := jsoncmd.SpecUploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
+		return gmx.CacheAndUploadMedia(gmx.ctx, nil, *params, func(progress float64) {
+			C._gomuks_callProgressCallback(cb, C.double(progress))
+		})
+	})
+	if err != nil {
+		return C.GomuksResponse{
+			buf:     bytesToOwnedBuffer(exerrors.Must(json.Marshal(err.Error()))),
+			command: commandNames[jsoncmd.RespError],
+		}
+	}
+	return C.GomuksResponse{
+		buf:     bytesToOwnedBuffer(exerrors.Must(json.Marshal(resp))),
+		command: commandNames[jsoncmd.RespSuccess],
+	}
+}
+
 func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jsoncmd.Container[json.RawMessage] {
 	var err error
 	var res any
 	switch cmd {
 	case jsoncmd.ReqGetAccountInfo:
 		res = gmx.Client.Account
+	case jsoncmd.ReqUploadMedia:
+		res, err = jsoncmd.SpecUploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
+			return gmx.CacheAndUploadMedia(gmx.ctx, nil, *params, nil)
+		})
 	}
 	if err != nil {
 		return &jsoncmd.Container[json.RawMessage]{
