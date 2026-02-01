@@ -34,7 +34,8 @@ GomuksHandle GomuksInit(void);
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 void GomuksDestroy(GomuksHandle handle);
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
-GomuksResponse GomuksUploadMedia(GomuksHandle handle, GomuksBorrowedBuffer data, ProgressCallback cb);
+GomuksResponse GomuksUploadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, ProgressCallback cb);
+GomuksResponse GomuksUploadMediaBytes(GomuksHandle handle, GomuksBorrowedBuffer params, GomuksBorrowedBuffer mediaBytes, ProgressCallback cb);
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
 
 #ifdef __cplusplus
