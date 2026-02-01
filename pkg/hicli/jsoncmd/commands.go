@@ -80,6 +80,7 @@ const (
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
+	ReqExportKeys     Name = "export_keys"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"
@@ -243,6 +244,7 @@ var (
 var (
 	SpecGetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
 	SpecUploadMedia    = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
+	SpecExportKeys     = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
 )
 
 // Backend -> frontend event specs

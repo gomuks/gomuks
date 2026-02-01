@@ -22,6 +22,7 @@ import "C"
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -29,9 +30,12 @@ import (
 	"unsafe"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/dbutil"
+	"go.mau.fi/util/exbytes"
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/zeroconfig"
+	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/event"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
@@ -194,7 +198,7 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	cmd := jsoncmd.Name(C.GoString(command))
 	reqData := borrowBufferBytes(data)
 	switch cmd {
-	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia:
+	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqExportKeys:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
@@ -242,6 +246,24 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 		res, err = jsoncmd.SpecUploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
 			return gmx.CacheAndUploadMedia(gmx.ctx, nil, *params, nil)
 		})
+	case jsoncmd.ReqExportKeys:
+		res, err = jsoncmd.SpecExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {
+			var sessions dbutil.RowIter[*crypto.InboundGroupSession]
+			if params.RoomID == "" {
+				sessions = gmx.Client.CryptoStore.GetAllGroupSessions(gmx.ctx)
+			} else {
+				sessions = gmx.Client.CryptoStore.GetGroupSessionsForRoom(gmx.ctx, params.RoomID)
+			}
+			export, err := crypto.ExportKeysIter(params.Passphrase, sessions)
+			if errors.Is(err, crypto.ErrNoSessionsForExport) {
+				return "", nil
+			} else if err != nil {
+				return "", err
+			}
+			return exbytes.UnsafeString(export), nil
+		})
+	default:
+		panic(fmt.Errorf("invalid call to handleFFICommand(%s)", cmd))
 	}
 	if err != nil {
 		return &jsoncmd.Container[json.RawMessage]{

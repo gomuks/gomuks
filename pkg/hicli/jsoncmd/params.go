@@ -287,3 +287,8 @@ type UploadMediaParams struct {
 	// For jpeg and webp files, the quality to encode as. Defaults to 80.
 	Quality int `json:"quality,omitempty"`
 }
+
+type ExportKeysParams struct {
+	Passphrase string    `json:"passphrase"`
+	RoomID     id.RoomID `json:"room_id,omitempty"`
+}
