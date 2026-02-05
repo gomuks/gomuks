@@ -38,9 +38,9 @@ function mapGiphyResults(results: unknown[]): GIF[] {
 		alt_text: entry.alt_text,
 		proxied_mxc: `mxc://giphy.mau.dev/${entry.id}`,
 		https_url: entry.images.original.webp,
-		size: entry.images.original.webp_size,
-		width: entry.images.original.width,
-		height: entry.images.original.height,
+		size: +entry.images.original.webp_size,
+		width: +entry.images.original.width,
+		height: +entry.images.original.height,
 	}))
 }
 
