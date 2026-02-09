@@ -287,10 +287,18 @@ func (gmx *Gomuks) doBasicAuth(r *http.Request) (found, correct bool) {
 	return
 }
 
+func getImageAuthToken(r *http.Request) string {
+	hdr := r.Header.Get("Authorization")
+	if strings.HasPrefix(hdr, "Image ") {
+		return strings.TrimPrefix(hdr, "Image ")
+	}
+	return r.URL.Query().Get("image_auth")
+}
+
 func (gmx *Gomuks) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/media") &&
-			gmx.validateAuth(r.URL.Query().Get("image_auth"), true) {
+			gmx.validateAuth(getImageAuthToken(r), true) {
 			next.ServeHTTP(w, r)
 			return
 		}
