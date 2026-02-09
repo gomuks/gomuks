@@ -114,6 +114,9 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 			Msg("Failed to unmarshal message content to format push notification")
 		return nil
 	}
+	if evtType == event.EventSticker.Type {
+		content.MsgType = event.CapMsgSticker
+	}
 	var roomAvatar, image string
 	if notif.Room.Avatar != nil {
 		avatarIdent := notif.Room.ID.String()
@@ -133,6 +136,27 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 	if len(text) > 400 {
 		text = text[:350] + "[…]"
 	}
+	if content.MsgType.IsMedia() && (text == "" || content.FileName == "" || content.FileName == content.Body) {
+		switch content.MsgType {
+		case event.MsgImage:
+			text = "Sent an image"
+		case event.CapMsgSticker:
+			text = "Sent a sticker"
+		case event.MsgAudio:
+			if content.MSC3245Voice != nil {
+				text = "Sent a voice message"
+			} else {
+				text = "Sent an audio file"
+			}
+		case event.MsgVideo:
+			text = "Sent a video"
+		case event.MsgFile:
+			text = "Sent a file"
+			if content.GetFileName() != "" {
+				text += ": " + content.GetFileName()
+			}
+		}
+	}
 	if content.MsgType == event.MsgImage || evtType == event.EventSticker.Type {
 		if content.File != nil && content.File.URL != "" {
 			parsed := content.File.URL.ParseOrIgnore()
@@ -144,13 +168,6 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 			if len(content.URL) < 255 && parsed.IsValid() {
 				image = fmt.Sprintf("_gomuks/media/%s/%s?encrypted=false", parsed.Homeserver, parsed.FileID)
 			}
-		}
-		if content.FileName == "" || content.FileName == content.Body {
-			text = "Sent a photo"
-		}
-	} else if content.MsgType.IsMedia() {
-		if content.FileName == "" || content.FileName == content.Body {
-			text = "Sent a file: " + text
 		}
 	}
 	return &PushNewMessage{
