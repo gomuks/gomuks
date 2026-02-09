@@ -207,6 +207,8 @@ export function usePreference<T extends keyof Preferences>(
 	return val
 }
 
+const emptyObject = {} as const
+
 export function useCustomEmojis(
 	ss: StateStore, room: RoomStateStore, usage: "stickers" | "emojis" = "emojis",
 ): CustomEmojiPack[] {
@@ -220,7 +222,7 @@ export function useCustomEmojis(
 	)
 	const specialRoomPacks = useSyncExternalStore<Record<string, CustomEmojiPack>>(
 		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
-		() => room.preferences.show_room_emoji_packs ? room.getAllEmojiPacks() : {},
+		() => room.preferences.show_room_emoji_packs ? room.getAllEmojiPacks() : emptyObject,
 	)
 	return useMemo(() => {
 		const allPacksObject = { ...watchedRoomPacks, ...specialRoomPacks }
