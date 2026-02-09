@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"unsafe"
 
 	"go.mau.fi/util/dbutil"
@@ -31,6 +32,12 @@ const (
 	`
 	getRoomAccountDataQuery = `
 		SELECT user_id, room_id, type, content FROM room_account_data WHERE user_id = $1 AND room_id = $2
+	`
+	getPreferenceQuery = `
+		SELECT COALESCE(
+			(SELECT content->>$3 FROM room_account_data WHERE user_id=$1 AND room_id = $2 AND type='fi.mau.gomuks.preferences'),
+			(SELECT content->>$3 FROM account_data WHERE user_id=$1 AND type='fi.mau.gomuks.preferences')
+		)
 	`
 )
 
@@ -71,6 +78,14 @@ func (adq *AccountDataQuery) GetAllGlobal(ctx context.Context, userID id.UserID)
 
 func (adq *AccountDataQuery) GetAllRoom(ctx context.Context, userID id.UserID, roomID id.RoomID) ([]*AccountData, error) {
 	return adq.QueryMany(ctx, getRoomAccountDataQuery, userID, roomID)
+}
+
+func (adq *AccountDataQuery) GetPreference(ctx context.Context, userID id.UserID, roomID id.RoomID, key string, into any) error {
+	err := adq.GetDB().QueryRow(ctx, getPreferenceQuery, userID, roomID, key).Scan(&into)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return err
 }
 
 type AccountData struct {

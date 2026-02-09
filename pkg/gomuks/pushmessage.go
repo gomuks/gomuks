@@ -169,6 +169,16 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 				image = fmt.Sprintf("_gomuks/media/%s/%s?encrypted=false", parsed.Homeserver, parsed.FileID)
 			}
 		}
+		if image != "" {
+			var showMedia bool
+			err = gmx.Client.GetPreference(ctx, "show_media_previews", notif.Room.ID, &showMedia)
+			if err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to get show_media_previews preference for push notification")
+			}
+			if !showMedia {
+				image = ""
+			}
+		}
 	}
 	return &PushNewMessage{
 		Timestamp:  notif.Event.Timestamp,

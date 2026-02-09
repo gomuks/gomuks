@@ -306,3 +306,7 @@ func (h *HiClient) Stop() {
 		}
 	}
 }
+
+func (h *HiClient) GetPreference(ctx context.Context, key string, roomID id.RoomID, into any) error {
+	return h.DB.AccountData.GetPreference(ctx, h.Account.UserID, roomID, key, into)
+}
