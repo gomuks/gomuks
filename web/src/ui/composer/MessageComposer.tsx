@@ -894,7 +894,7 @@ const MessageComposer = () => {
 	const inlineButtons = state.text === "" || !collapseButtons
 	const showSendButton = canSend || !collapseButtons
 	const disableClearMedia = editing && state.media?.msgtype === "m.sticker"
-	if (tombstoneEvent !== null) {
+	if (tombstoneEvent !== null && !ignorePermissions) {
 		const content = tombstoneEvent.content
 		const hasReplacement = content.replacement_room?.startsWith("!")
 		let link: JSX.Element | null = null
@@ -921,7 +921,10 @@ const MessageComposer = () => {
 			body += "."
 		}
 		return <div className="message-composer tombstoned" ref={composerRef}>
-			{body} {link}
+			{body} {link} or <a
+				href="javascript:"
+				onClick={() => setIgnorePermissions(true)}
+			>show composer anyway</a>
 		</div>
 	} else if (
 		!ignorePermissions
