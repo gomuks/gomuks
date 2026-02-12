@@ -48,8 +48,8 @@ func (gr *GomuksRPC) UpdateDelayedEvent(ctx context.Context, params *jsoncmd.Upd
 	return executeRequest(gr, ctx, jsoncmd.UpdateDelayedEvent, params)
 }
 
-func (gr *GomuksRPC) SetMembership(ctx context.Context, params *jsoncmd.SetMembershipParams) (any, error) {
-	return executeRequest(gr, ctx, jsoncmd.SetMembership, params)
+func (gr *GomuksRPC) SetMembership(ctx context.Context, params *jsoncmd.SetMembershipParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.SetMembership, params)
 }
 
 func (gr *GomuksRPC) SetAccountData(ctx context.Context, params *jsoncmd.SetAccountDataParams) error {
@@ -90,6 +90,10 @@ func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParam
 
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetRelatedEvents, params)
+}
+
+func (gr *GomuksRPC) GetEventContext(ctx context.Context, params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetEventContext, params)
 }
 
 func (gr *GomuksRPC) GetRoomState(ctx context.Context, params *jsoncmd.GetRoomStateParams) ([]*database.Event, error) {
