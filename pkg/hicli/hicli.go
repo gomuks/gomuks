@@ -76,6 +76,8 @@ type HiClient struct {
 
 	sendLock     map[id.RoomID]*sync.Mutex
 	sendLockLock sync.Mutex
+
+	API *JSONAPI
 }
 
 var (
@@ -109,6 +111,7 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 
 		EventHandler: evtHandler,
 	}
+	c.API = &JSONAPI{HiClient: c}
 	if cryptoDB != rawDB {
 		c.CryptoDB = cryptoDB
 	}
