@@ -124,7 +124,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 			<input
 				type="text"
 				id="mxlogin-username"
-				placeholder="User ID"
+				placeholder="User ID (@user:example.com)"
 				value={username}
 				onChange={evt => setUsername(evt.target.value)}
 			/>
