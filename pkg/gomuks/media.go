@@ -687,7 +687,7 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	query := r.URL.Query()
 	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
-	voiceMessage, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
+	voiceMessage, _ := strconv.ParseBool(r.URL.Query().Get("voice_message"))
 	params := jsoncmd.UploadMediaParams{
 		Filename:     query.Get("filename"),
 		Encrypt:      encrypt,
