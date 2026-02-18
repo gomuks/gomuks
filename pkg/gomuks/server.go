@@ -302,7 +302,7 @@ func (gmx *Gomuks) AuthMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if r.URL.Path != "/auth" {
+		if r.URL.Path != "/auth" && !gmx.Config.Web.DisableAuthBecauseIWantMyAccountToBeHacked {
 			authCookie, err := r.Cookie("gomuks_auth")
 			if err != nil {
 				ErrMissingCookie.Write(w)
