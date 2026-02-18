@@ -100,6 +100,9 @@ const GIFPicker = ({ style, onSelect, room }: MediaPickerProps) => {
 		poweredBySrc = "images/powered-by-giphy.png"
 	} else if (provider === "tenor") {
 		poweredBySrc = "images/powered-by-tenor.svg"
+	} else if (provider === "klipy") {
+		const klipyLogoTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+		poweredBySrc = `images/powered-by-klipy-${klipyLogoTheme}.svg`
 	}
 	return <div className="gif-picker" style={style}>
 		<div className="gif-search">

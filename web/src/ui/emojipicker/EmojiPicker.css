@@ -66,6 +66,8 @@ div.gif-picker {
 	div.powered-by-footer {
 		margin-top: auto;
 		margin-bottom: .5rem;
+		width: 100%;
+
 		> img {
 			max-width: 100%;
 		}

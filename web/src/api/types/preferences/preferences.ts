@@ -27,7 +27,7 @@ export const codeBlockStyles = [
 	"tokyonight-storm", "trac", "vim", "vs", "vulcan", "witchhazel", "xcode-dark", "xcode",
 ] as const
 export const mapProviders = ["leaflet", "google", "none"] as const
-export const gifProviders = ["giphy", "tenor"] as const
+export const gifProviders = ["giphy", "tenor", "klipy"] as const
 
 export type CodeBlockStyle = typeof codeBlockStyles[number]
 export type MapProvider = typeof mapProviders[number]
@@ -186,7 +186,7 @@ export const preferences = {
 		description: "The service to use to search for GIFs",
 		allowedValues: gifProviders,
 		allowedContexts: anyContext,
-		defaultValue: "giphy",
+		defaultValue: "klipy",
 	}),
 	// TODO implement
 	// reupload_gifs: new Preference<boolean>({

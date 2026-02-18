@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { ContentURI } from "@/api/types"
 import { GIFProvider } from "@/api/types/preferences"
-import { GIPHY_API_KEY, TENOR_API_KEY } from "@/util/keys.ts"
+import { GIPHY_API_KEY, KLIPY_API_KEY, TENOR_API_KEY } from "@/util/keys.ts"
 
 export interface GIF {
 	key: string
@@ -45,6 +45,8 @@ function mapGiphyResults(results: unknown[]): GIF[] {
 }
 
 const tenorMediaURLRegex = /https:\/\/media\.tenor\.com\/([A-Za-z0-9_-]+)\/.+/
+const klipyMediaURLRegex =
+	/https:\/\/static.klipy.com\/ii\/([a-f0-9]{32})\/([a-f0-9]{2})\/([a-f0-9]{2})\/([A-Za-z0-9]+)\.webp/
 
 function mapTenorResults(results: unknown[]): GIF[] {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,6 +61,27 @@ function mapTenorResults(results: unknown[]): GIF[] {
 			title: entry.title,
 			alt_text: entry.alt_text,
 			proxied_mxc: `mxc://tenor.mau.dev/${id}`,
+			https_url: entry.media_formats.webp.url,
+			size: entry.media_formats.webp.size,
+			width: entry.media_formats.webp.dims[0],
+			height: entry.media_formats.webp.dims[1],
+		}
+	}).filter((entry: GIF | undefined): entry is GIF => !!entry)
+}
+
+function mapKlipyResults(results: unknown[]): GIF[] {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return results.map((entry: any): GIF | undefined => {
+		const id = klipyMediaURLRegex.exec(entry.media_formats.webp.url)
+		if (!id) {
+			return
+		}
+		return {
+			key: entry.id,
+			filename: `${entry.id}.webp`,
+			title: entry.title,
+			alt_text: entry.alt_text,
+			proxied_mxc: `mxc://klipy.mau.dev/${id[1]}${id[2]}${id[3]}${id[4]}`,
 			https_url: entry.media_formats.webp.url,
 			size: entry.media_formats.webp.size,
 			width: entry.media_formats.webp.dims[0],
@@ -93,6 +116,15 @@ async function searchTenor(signal: AbortSignal, query: string): Promise<GIF[]> {
 	return mapTenorResults((await doRequest(url, signal)).results)
 }
 
+async function searchKlipy(signal: AbortSignal, query: string): Promise<GIF[]> {
+	const url = new URL("https://api.klipy.com/v2/search")
+	url.searchParams.set("key", KLIPY_API_KEY)
+	url.searchParams.set("media_filter", "webp")
+	url.searchParams.set("q", query)
+	url.searchParams.set("limit", "50")
+	return mapKlipyResults((await doRequest(url, signal)).results)
+}
+
 async function getGiphyTrending(): Promise<GIF[]> {
 	const url = new URL("https://api.giphy.com/v1/gifs/trending")
 	url.searchParams.set("api_key", GIPHY_API_KEY)
@@ -108,14 +140,24 @@ async function getTenorTrending(): Promise<GIF[]> {
 	return mapTenorResults((await doRequest(url)).results)
 }
 
+async function getKlipyTrending(): Promise<GIF[]> {
+	const url = new URL("https://api.klipy.com/v2/featured")
+	url.searchParams.set("key", KLIPY_API_KEY)
+	url.searchParams.set("media_filter", "webp")
+	url.searchParams.set("limit", "50")
+	return mapKlipyResults((await doRequest(url)).results)
+}
+
 const searchFuncs = {
 	giphy: searchGiphy,
 	tenor: searchTenor,
+	klipy: searchKlipy,
 }
 
 const trendingFuncs = {
 	giphy: getGiphyTrending,
 	tenor: getTenorTrending,
+	klipy: getKlipyTrending,
 }
 
 export async function searchGIF(provider: GIFProvider, query: string, signal: AbortSignal): Promise<GIF[]> {
