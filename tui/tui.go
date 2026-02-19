@@ -18,23 +18,33 @@ package tui
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rs/zerolog"
 	"github.com/zyedidia/clipboard"
 	"go.mau.fi/mauview"
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/exzerolog"
+	"golang.org/x/crypto/bcrypt"
 
+	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 	"go.mau.fi/gomuks/pkg/rpc/client"
 	"go.mau.fi/gomuks/pkg/rpc/store"
 	"go.mau.fi/gomuks/tui/config"
 	"go.mau.fi/gomuks/tui/debug"
+	"go.mau.fi/gomuks/version"
 )
+
+const Username = "local"
 
 type View string
 
@@ -79,16 +89,50 @@ func NewGomuksTUI() *GomuksTUI {
 	return ui
 }
 
+func (ui *GomuksTUI) runServer(logger *zerolog.Logger, listener net.Listener, passwd string) {
+	gmx := gomuks.NewGomuks()
+	gmx.DisableAuth = true
+	gmx.InitDirectories()
+	err := gmx.LoadConfig()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)
+		os.Exit(9)
+	}
+	gmx.DisableAuth = false
+	hash, err := bcrypt.GenerateFromPassword([]byte(passwd), 12)
+	if err != nil {
+		panic(err)
+	}
+	gmx.Config.Web = gomuks.WebConfig{
+		Username:     Username,
+		PasswordHash: string(hash),
+	}
+	gmx.Log = logger
+	gmx.Log.Info().
+		Str("version", version.Gomuks.FormattedVersion).
+		Str("go_version", runtime.Version()).
+		Time("built_at", version.Gomuks.BuildTime).
+		Msg("Initializing gomuks")
+	gmx.StartServerListener(listener)
+	gmx.StartClient()
+	gmx.Log.Info().Msg("Initialization complete")
+}
+
 func (ui *GomuksTUI) Run() {
+	passwd := rand.Text()
 	ui.Config.LoadAll()
 	log := exerrors.Must(ui.Config.LogConfig.Compile())
 	exzerolog.SetupDefaults(log)
-	loggedIn := false
-	if ui.Config.Server != "" && ui.Config.Username != "" && ui.Config.Password != "" {
-		ui.gmx = exerrors.Must(client.NewGomuksClient(ui.Config.Server))
-		exerrors.PanicIfNotNil(ui.gmx.Authenticate(context.TODO(), ui.Config.Username, ui.Config.Password))
-		loggedIn = true
+
+	listener, err := net.Listen("tcp", "127.0.0.1:")
+	if err != nil {
+		panic(err)
 	}
+	go ui.runServer(log, listener, passwd)
+
+	baseURL := "http://" + listener.Addr().String()
+	ui.gmx = exerrors.Must(client.NewGomuksClient(baseURL))
+	exerrors.PanicIfNotNil(ui.gmx.Authenticate(context.TODO(), Username, passwd))
 
 	mauview.Backspace2RemovesWord = ui.Config.Backspace2RemovesWord
 	mauview.Backspace1RemovesWord = ui.Config.Backspace1RemovesWord
@@ -98,11 +142,7 @@ func (ui *GomuksTUI) Run() {
 		ViewLogin: ui.NewLoginView(),
 		ViewMain:  ui.NewMainView(),
 	}
-	if loggedIn {
-		ui.SetView(ViewMain)
-	} else {
-		ui.SetView(ViewLogin)
-	}
+	ui.SetView(ViewMain)
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
