@@ -31,6 +31,8 @@ func EventTypeName(evt any) Name {
 		return EventSendComplete
 	case *ClientState:
 		return EventClientState
+	case *InitComplete:
+		return EventInitComplete
 	default:
 		panic(fmt.Errorf("unknown event type %T", evt))
 	}

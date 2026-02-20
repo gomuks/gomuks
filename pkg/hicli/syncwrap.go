@@ -36,12 +36,14 @@ var isDatabaseBusyError = func(error) bool {
 func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, since string) error {
 	c := (*HiClient)(h)
 	c.lastSync = time.Now()
-	ctx = context.WithValue(ctx, syncContextKey, &syncContext{evt: &jsoncmd.SyncComplete{
-		Since:        &since,
-		Rooms:        make(map[id.RoomID]*jsoncmd.SyncRoom, len(resp.Rooms.Join)),
-		InvitedRooms: make([]*database.InvitedRoom, 0, len(resp.Rooms.Invite)),
-		LeftRooms:    make([]id.RoomID, 0, len(resp.Rooms.Leave)),
-	}})
+	if since != "" {
+		ctx = context.WithValue(ctx, syncContextKey, &syncContext{evt: &jsoncmd.SyncComplete{
+			Since:        &since,
+			Rooms:        make(map[id.RoomID]*jsoncmd.SyncRoom, len(resp.Rooms.Join)),
+			InvitedRooms: make([]*database.InvitedRoom, 0, len(resp.Rooms.Invite)),
+			LeftRooms:    make([]id.RoomID, 0, len(resp.Rooms.Leave)),
+		}})
+	}
 	err := c.preProcessSyncResponse(ctx, resp, since)
 	if err != nil {
 		return err

@@ -172,7 +172,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 				Msg("Sent resume data to client")
 		}
 		if resumeData != nil {
-			err := writeCmd(ctx, conn, fp, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
+			err := writeCmd(ctx, conn, fp, jsoncmd.SpecInitComplete.Format(jsoncmd.InitComplete{}))
 			if err != nil {
 				log.Err(err).Msg("Failed to send init done event to client")
 				return
@@ -330,7 +330,7 @@ func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *we
 	if ctx.Err() != nil {
 		return
 	}
-	err := writeCmd(ctx, conn, fp, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
+	err := writeCmd(ctx, conn, fp, jsoncmd.SpecInitComplete.Format(jsoncmd.InitComplete{}))
 	if err != nil {
 		log.Err(err).Msg("Failed to send initial rooms done event to client")
 		return

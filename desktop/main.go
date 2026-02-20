@@ -70,7 +70,7 @@ func (c *CommandHandler) Init() {
 			if ctx.Err() != nil {
 				return
 			}
-			c.App.Event.Emit("hicli_event", jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
+			c.App.Event.Emit("hicli_event", jsoncmd.SpecInitComplete.Format(jsoncmd.InitComplete{}))
 			log.Info().Int("room_count", roomCount).Msg("Sent initial rooms to client")
 		}()
 	}

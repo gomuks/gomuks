@@ -153,7 +153,7 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 			if gmx.ctx.Err() != nil {
 				return
 			}
-			sendBufferedEvent(callback, jsoncmd.SpecInitComplete.Format(jsoncmd.Empty{}))
+			sendBufferedEvent(callback, jsoncmd.SpecInitComplete.Format(jsoncmd.InitComplete{}))
 			gmx.Log.Info().Int("room_count", roomCount).Msg("Sent initial rooms to client")
 			go gmx.runEventChan(eventChan, callback)
 		}()

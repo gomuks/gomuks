@@ -260,7 +260,7 @@ var (
 // Websocket-specific backend -> frontend event specs
 var (
 	SpecImageAuthToken = &EventSpec[ImageAuthToken]{Name: EventImageAuthToken}
-	SpecInitComplete   = &EventSpec[Empty]{Name: EventInitComplete}
+	SpecInitComplete   = &EventSpec[InitComplete]{Name: EventInitComplete}
 	SpecRunID          = &EventSpec[*RunData]{Name: EventRunID}
 )
 

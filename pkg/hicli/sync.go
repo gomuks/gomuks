@@ -117,7 +117,10 @@ func (h *HiClient) preProcessSyncResponse(ctx context.Context, resp *mautrix.Res
 	}
 	resp.ToDevice.Events = postponedToDevices
 	if len(syncTD) > 0 {
-		ctx.Value(syncContextKey).(*syncContext).evt.ToDevice = syncTD
+		syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+		if ok {
+			syncCtx.evt.ToDevice = syncTD
+		}
 	}
 	h.Crypto.MarkOlmHashSavePoint(ctx)
 
@@ -165,8 +168,8 @@ func (h *HiClient) maybeDiscardOutboundSession(ctx context.Context, newMembershi
 func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) {
 	h.Crypto.HandleOTKCounts(ctx, &resp.DeviceOTKCount)
 	go h.asyncPostProcessSyncResponse(ctx, resp, since)
-	syncCtx := ctx.Value(syncContextKey).(*syncContext)
-	if syncCtx.shouldWakeupRequestQueue {
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if !ok || syncCtx.shouldWakeupRequestQueue {
 		h.WakeupRequestQueue()
 	}
 	if !h.firstSyncReceived {
@@ -176,6 +179,19 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
+	if since == "" {
+		zerolog.Ctx(ctx).Info().Msg("Init sync complete, dispatching chunked room list to clients")
+		for payload := range h.GetInitialSync(ctx, 100) {
+			payload.Since = &since
+			h.EventHandler(payload)
+		}
+		zerolog.Ctx(ctx).Debug().Msg("Finished sending chunked room list to clients after init sync")
+		h.EventHandler(&jsoncmd.InitComplete{})
+
+		// Don't dispatch the normal sync event
+		return
+	}
+
 	for _, space := range syncCtx.changedSpaces {
 		edges, err := h.DB.SpaceEdge.GetAll(ctx, space)
 		if err != nil {
@@ -208,6 +224,7 @@ func (h *HiClient) asyncPostProcessSyncResponse(ctx context.Context, resp *mautr
 }
 
 func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) error {
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	if len(resp.DeviceLists.Changed) > 0 {
 		zerolog.Ctx(ctx).Debug().
 			Array("users", exzerolog.ArrayOfStringers(resp.DeviceLists.Changed)).
@@ -216,7 +233,9 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 		if err != nil {
 			return fmt.Errorf("failed to mark changed device lists as outdated: %w", err)
 		}
-		ctx.Value(syncContextKey).(*syncContext).shouldWakeupRequestQueue = true
+		if syncCtx != nil {
+			syncCtx.shouldWakeupRequestQueue = true
+		}
 	}
 
 	accountData := make(map[event.Type]*database.AccountData, len(resp.AccountData.Events))
@@ -237,7 +256,9 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 			}
 		}
 	}
-	ctx.Value(syncContextKey).(*syncContext).evt.AccountData = accountData
+	if syncCtx != nil {
+		syncCtx.evt.AccountData = accountData
+	}
 	for roomID, room := range resp.Rooms.Invite {
 		err = h.processSyncInvitedRoom(ctx, roomID, room)
 		if err != nil {
@@ -309,8 +330,10 @@ func (h *HiClient) processSyncInvitedRoom(ctx context.Context, roomID id.RoomID,
 	if err != nil {
 		return fmt.Errorf("failed to save invited room: %w", err)
 	}
-	syncEvt := ctx.Value(syncContextKey).(*syncContext).evt
-	syncEvt.InvitedRooms = append(syncEvt.InvitedRooms, ir)
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if ok {
+		syncCtx.evt.InvitedRooms = append(syncCtx.evt.InvitedRooms, ir)
+	}
 	return nil
 }
 
@@ -391,8 +414,10 @@ func (h *HiClient) processSyncLeftRoom(ctx context.Context, roomID id.RoomID, ro
 	if err != nil {
 		return fmt.Errorf("failed to remove outbound group session: %w", err)
 	}
-	payload := ctx.Value(syncContextKey).(*syncContext).evt
-	payload.LeftRooms = append(payload.LeftRooms, roomID)
+	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
+	if ok {
+		syncCtx.evt.LeftRooms = append(syncCtx.evt.LeftRooms, roomID)
+	}
 	return nil
 }
 
@@ -772,6 +797,7 @@ func (h *HiClient) processStateAndTimeline(
 	newOwnReceipts []id.EventID,
 	accountData map[event.Type]*database.AccountData,
 ) error {
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	updatedRoom := &database.Room{
 		ID: room.ID,
 
@@ -991,8 +1017,8 @@ func (h *HiClient) processStateAndTimeline(
 				return fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
 			}
 		}
-		if len(decryptionQueue) > 0 {
-			ctx.Value(syncContextKey).(*syncContext).shouldWakeupRequestQueue = true
+		if len(decryptionQueue) > 0 && syncCtx != nil {
+			syncCtx.shouldWakeupRequestQueue = true
 		}
 		if timeline.Limited {
 			err = h.DB.Timeline.Clear(ctx, room.ID)
@@ -1075,11 +1101,11 @@ func (h *HiClient) processStateAndTimeline(
 		return err
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
-	if roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 {
+	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0) {
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
 		}
-		ctx.Value(syncContextKey).(*syncContext).evt.Rooms[room.ID] = &jsoncmd.SyncRoom{
+		syncCtx.evt.Rooms[room.ID] = &jsoncmd.SyncRoom{
 			Meta:        room,
 			Timeline:    timelineRowTuples,
 			AccountData: accountData,
