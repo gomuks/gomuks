@@ -24,6 +24,7 @@ import (
 	"github.com/mattn/go-runewidth"
 	"go.mau.fi/mauview"
 
+	"go.mau.fi/gomuks/pkg/rpc"
 	"go.mau.fi/gomuks/pkg/rpc/client"
 	"go.mau.fi/gomuks/tui/debug"
 )
@@ -133,7 +134,7 @@ func (view *LoginView) actuallyLogin(server, username, password string) {
 	if err != nil {
 		view.Error(err.Error())
 		debug.Print("Init error:", err)
-	} else if err = view.parent.gmx.Authenticate(context.TODO(), username, password); err != nil {
+	} else if err = view.parent.gmx.GomuksAPI.(*rpc.GomuksRPC).Authenticate(context.TODO(), username, password); err != nil {
 		view.Error(err.Error())
 		debug.Print("Auth error:", err)
 	} else {

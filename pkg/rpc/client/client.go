@@ -25,7 +25,7 @@ import (
 )
 
 type GomuksClient struct {
-	*rpc.GomuksRPC
+	jsoncmd.GomuksAPI
 	*store.GomuksStore
 
 	InitComplete *exsync.Event
@@ -43,7 +43,7 @@ func NewGomuksClient(baseURL string) (*GomuksClient, error) {
 		return nil, err
 	}
 	gc := &GomuksClient{
-		GomuksRPC:    rpcClient,
+		GomuksAPI:    rpcClient,
 		GomuksStore:  store.NewStore(),
 		InitComplete: exsync.NewEvent(),
 	}
@@ -106,7 +106,7 @@ func (gc *GomuksClient) SendMessage(ctx context.Context, params *jsoncmd.SendMes
 	if room == nil {
 		return fmt.Errorf("room not found in store")
 	}
-	dbEvt, err := gc.GomuksRPC.SendMessage(ctx, params)
+	dbEvt, err := gc.GomuksAPI.SendMessage(ctx, params)
 	if err != nil {
 		return err
 	} else if dbEvt != nil {
@@ -140,7 +140,7 @@ func (gc *GomuksClient) LoadSpecificRoomState(ctx context.Context, keys []databa
 	if len(keys) == 0 {
 		return nil
 	}
-	resp, err := gc.GomuksRPC.GetSpecificRoomState(ctx, &jsoncmd.GetSpecificRoomStateParams{Keys: keys})
+	resp, err := gc.GomuksAPI.GetSpecificRoomState(ctx, &jsoncmd.GetSpecificRoomStateParams{Keys: keys})
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (gc *GomuksClient) LoadRoomState(ctx context.Context, roomID id.RoomID, inc
 	if !refetch && (room.FullMembersLoaded.Load() || (!includeMembers && room.StateLoaded.Load())) {
 		return nil
 	}
-	resp, err := gc.GomuksRPC.GetRoomState(ctx, &jsoncmd.GetRoomStateParams{
+	resp, err := gc.GomuksAPI.GetRoomState(ctx, &jsoncmd.GetRoomStateParams{
 		RoomID:         roomID,
 		Refetch:        refetch,
 		FetchMembers:   !room.Meta.Current().HasMemberList,
@@ -187,7 +187,7 @@ func (gc *GomuksClient) LoadMoreHistory(ctx context.Context, roomID id.RoomID) e
 	}
 	defer room.Paginating.Store(false)
 	oldestRowID, count := room.GetPaginationParams()
-	resp, err := gc.GomuksRPC.Paginate(ctx, &jsoncmd.PaginateParams{
+	resp, err := gc.GomuksAPI.Paginate(ctx, &jsoncmd.PaginateParams{
 		RoomID:        room.ID,
 		MaxTimelineID: oldestRowID,
 		Limit:         count,
@@ -207,11 +207,13 @@ func (gc *GomuksClient) GetDownloadURL(mxc id.ContentURI, encrypted, preauthed b
 	if preauthed {
 		query.Set("image_auth", gc.GomuksStore.ImageAuthToken)
 	}
-	return gc.BuildURLWithQuery(rpc.GomuksURLPath{"media", mxc.Homeserver, mxc.FileID}, query)
+	// TODO fix downloads with non-remote backend
+	return gc.GomuksAPI.(*rpc.GomuksRPC).BuildURLWithQuery(rpc.GomuksURLPath{"media", mxc.Homeserver, mxc.FileID}, query)
 }
 
 func (gc *GomuksClient) Download(mxc id.ContentURI, encrypted bool) ([]byte, error) {
-	resp, err := gc.GomuksRPC.DownloadMedia(context.TODO(), rpc.DownloadMediaParams{
+	// TODO fix downloads with non-remote backend
+	resp, err := gc.GomuksAPI.(*rpc.GomuksRPC).DownloadMedia(context.TODO(), rpc.DownloadMediaParams{
 		MXC:       mxc,
 		Encrypted: encrypted,
 	})
