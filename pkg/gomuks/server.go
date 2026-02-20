@@ -27,6 +27,7 @@ import (
 	"html"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -76,6 +77,14 @@ const metaTagsTemplate = `
 `
 
 func (gmx *Gomuks) StartServer() {
+	listener, err := net.Listen("tcp", gmx.Config.Web.ListenAddress)
+	if err != nil {
+		gmx.Log.Fatal().Err(err).Msg("Failed to listen TCP socket")
+	}
+	gmx.StartServerListener(listener)
+}
+
+func (gmx *Gomuks) StartServerListener(listener net.Listener) {
 	api := gmx.CreateAPIRouter()
 	router := http.NewServeMux()
 	if gmx.Config.Web.DebugEndpoints {
@@ -112,11 +121,10 @@ func (gmx *Gomuks) StartServer() {
 		)
 	}
 	gmx.Server = &http.Server{
-		Addr:    gmx.Config.Web.ListenAddress,
 		Handler: router,
 	}
 	go func() {
-		err := gmx.Server.ListenAndServe()
+		err := gmx.Server.Serve(listener)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
