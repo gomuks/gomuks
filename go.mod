@@ -22,6 +22,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/rivo/uniseg v0.4.7
 	github.com/rs/zerolog v1.34.0
+	github.com/strukturag/libheif v1.21.2
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/yuin/goldmark v1.7.16

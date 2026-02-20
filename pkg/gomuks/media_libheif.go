@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2026 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -14,21 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build cgo && !(arm || noheic || libheif)
+//go:build libheif
 
 package gomuks
 
 import (
-	"runtime"
-
-	"go.mau.fi/goheif"
-	"golang.org/x/sys/cpu"
+	_ "github.com/strukturag/libheif/go/heif"
 )
-
-func init() {
-	if runtime.GOARCH != "amd64" || cpu.X86.HasSSE41 {
-		goheif.Init()
-		// why is there an unsafe mode??
-		goheif.SafeEncoding = true
-	}
-}
