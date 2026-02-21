@@ -8,6 +8,7 @@ package hicli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -70,6 +71,9 @@ func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, 
 
 func (h *hiSyncer) OnFailedSync(_ *mautrix.RespSync, err error) (time.Duration, error) {
 	c := (*HiClient)(h)
+	if errors.Is(err, mautrix.MUnknownToken) {
+		return 0, err
+	}
 	c.syncErrors++
 	delay := 1 * time.Second
 	if c.syncErrors > 5 {

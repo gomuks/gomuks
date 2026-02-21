@@ -281,6 +281,14 @@ func (h *HiClient) Sync() {
 	if err != nil && ctx.Err() == nil {
 		h.markSyncErrored(err, true)
 		log.Err(err).Msg("Fatal error in syncer")
+		if errors.Is(err, mautrix.MUnknownToken) && h.LogoutFunc != nil {
+			go func() {
+				err = h.LogoutFunc(h.Log.WithContext(context.Background()))
+				if err != nil {
+					log.Err(err).Msg("Failed to logout after unknown token error")
+				}
+			}()
+		}
 	} else {
 		h.SyncStatus.Store(syncWaiting)
 		log.Info().Msg("Syncing stopped")
