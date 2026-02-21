@@ -14,7 +14,7 @@
 	"dependencies": {
 		"@dnd-kit/sortable": "^10.0.0",
 		"@element-hq/element-call-embedded": "^0.16.0",
-		"@sqlite.org/sqlite-wasm": "^3.50.4-build1",
+		"@sqlite.org/sqlite-wasm": "3.50.4-build1",
 		"@streamparser/json-whatwg": "^0.0.22",
 		"@types/golang-wasm-exec": "^1.15.2",
 		"@wailsio/runtime": "^3.0.0-alpha.29",
