@@ -207,3 +207,7 @@ func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConf
 func (gr *GomuksRPC) CalculateRoomID(ctx context.Context, params *jsoncmd.CalculateRoomIDParams) (id.RoomID, error) {
 	return executeRequest(gr, ctx, jsoncmd.CalculateRoomID, params)
 }
+
+func (gr *GomuksRPC) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.RerequestSession, params)
+}

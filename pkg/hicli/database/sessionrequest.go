@@ -22,6 +22,14 @@ const (
 			    backup_checked = excluded.backup_checked OR session_request.backup_checked,
 			    request_sent = excluded.request_sent OR session_request.request_sent
 	`
+	overwriteSessionRequestQueueEntry = `
+		INSERT INTO session_request (room_id, session_id, sender, min_index, backup_checked, request_sent)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (session_id) DO UPDATE
+			SET min_index = MIN(excluded.min_index, session_request.min_index),
+			    backup_checked = excluded.backup_checked,
+			    request_sent = excluded.request_sent
+	`
 	removeSessionRequestQuery = `
 		DELETE FROM session_request WHERE session_id = $1 AND min_index >= $2
 	`
@@ -48,6 +56,10 @@ func (srq *SessionRequestQuery) Remove(ctx context.Context, sessionID id.Session
 
 func (srq *SessionRequestQuery) Put(ctx context.Context, sr *SessionRequest) error {
 	return srq.Exec(ctx, putSessionRequestQueueEntry, sr.sqlVariables()...)
+}
+
+func (srq *SessionRequestQuery) Overwrite(ctx context.Context, sr *SessionRequest) error {
+	return srq.Exec(ctx, overwriteSessionRequestQueueEntry, sr.sqlVariables()...)
 }
 
 type SessionRequest struct {

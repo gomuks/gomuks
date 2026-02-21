@@ -292,3 +292,9 @@ type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`
 }
+
+type RerequestSessionParams struct {
+	RoomID    id.RoomID    `json:"room_id"`
+	SessionID id.SessionID `json:"session_id"`
+	Sender    id.UserID    `json:"sender"`
+}

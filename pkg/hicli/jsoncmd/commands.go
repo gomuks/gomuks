@@ -77,6 +77,7 @@ const (
 	ReqGetTurnServers           Name = "get_turn_servers"
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
+	ReqRerequestSession         Name = "rerequest_session"
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
@@ -238,6 +239,8 @@ var (
 	// only relevant when creating v12+ rooms with the `fi.mau.origin_server_ts` extension that
 	// allows the client to pre-calculate the room ID.
 	CalculateRoomID = &CommandSpec[*CalculateRoomIDParams, id.RoomID]{Name: ReqCalculateRoomID}
+	// RerequestSession re-requests a given Megolm session from the key backup and from other devices.
+	RerequestSession = &CommandSpecWithoutResponse[*RerequestSessionParams]{Name: ReqRerequestSession}
 )
 
 // FFI-specific command specs
@@ -314,6 +317,7 @@ var AllNames = []Name{
 	ReqGetTurnServers,
 	ReqGetMediaConfig,
 	ReqCalculateRoomID,
+	ReqRerequestSession,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
 	RespError,

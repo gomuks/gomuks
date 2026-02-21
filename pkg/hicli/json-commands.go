@@ -8,6 +8,7 @@ package hicli
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
@@ -137,6 +138,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetMediaConfig.RunCtx(ctx, req.Data, h.API.GetMediaConfig)
 	case jsoncmd.ReqCalculateRoomID:
 		return jsoncmd.CalculateRoomID.RunCtx(ctx, req.Data, h.API.CalculateRoomID)
+	case jsoncmd.ReqRerequestSession:
+		return jsoncmd.RerequestSession.RunCtx(ctx, req.Data, h.API.RerequestSession)
 	default:
 		return nil, fmt.Errorf("unknown command %q", req.Command)
 	}
@@ -430,6 +433,26 @@ func (h *JSONAPI) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig,
 
 func (h *JSONAPI) CalculateRoomID(ctx context.Context, params *jsoncmd.CalculateRoomIDParams) (id.RoomID, error) {
 	return h.HiClient.CalculateRoomID(params.Timestamp, params.CreationContent)
+}
+
+func (h *JSONAPI) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {
+	decoded, _ := base64.RawStdEncoding.DecodeString(string(params.SessionID))
+	if len(decoded) != 32 {
+		return fmt.Errorf("invalid session ID")
+	}
+	err := h.DB.SessionRequest.Overwrite(ctx, &database.SessionRequest{
+		RoomID:        params.RoomID,
+		SessionID:     params.SessionID,
+		Sender:        params.Sender,
+		MinIndex:      10000,
+		BackupChecked: false,
+		RequestSent:   false,
+	})
+	if err != nil {
+		return err
+	}
+	h.WakeupRequestQueue()
+	return nil
 }
 
 func nonNilArray[T any](arr []T, err error) ([]T, error) {

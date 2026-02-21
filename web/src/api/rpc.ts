@@ -399,4 +399,8 @@ export default abstract class RPCClient {
 	calculateRoomID(timestamp: number, content: Record<string, unknown>): Promise<RoomID> {
 		return this.request("calculate_room_id", { timestamp, content })
 	}
+
+	rerequestSession(room_id: RoomID, session_id: string, sender: UserID): Promise<void> {
+		return this.request("rerequest_session", { room_id, session_id, sender })
+	}
 }
