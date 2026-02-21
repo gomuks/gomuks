@@ -247,7 +247,7 @@ func (gmx *Gomuks) writeTokenCookie(w http.ResponseWriter, created, jsonOutput, 
 
 func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 	if gmx.DisableAuth || gmx.Config.Web.DisableAuthBecauseIWantMyAccountToBeHacked {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	jsonOutput := r.URL.Query().Get("output") == "json"
