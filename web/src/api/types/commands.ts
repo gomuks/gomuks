@@ -126,9 +126,9 @@ export function sanitizeCommand(stateKey: UserID, content?: UnknownEventContent)
 	}
 }
 
-function quote(val: string): string
-function quote(val: string | null): string | null
-function quote(val: string | null): string | null {
+export function quote(val: string): string
+export function quote(val: string | null): string | null
+export function quote(val: string | null): string | null {
 	if (val === null) {
 		return null
 	}

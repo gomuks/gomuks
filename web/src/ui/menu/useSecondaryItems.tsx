@@ -17,6 +17,7 @@ import { use } from "react"
 import Client from "@/api/client.ts"
 import { useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
+import { quote } from "@/api/types/commands.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
 import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, modals } from "../modal"
@@ -44,7 +45,7 @@ export const useSecondaryItems = (
 		const copyRawCommand = () => {
 			const contentJSON = JSON.stringify(evt.content, null, "  ")
 			if (evt.state_key !== undefined) {
-				navigator.clipboard.writeText(`/rawstate ${evt.type} ${evt.state_key || "\"\""} ${contentJSON}`)
+				navigator.clipboard.writeText(`/rawstate ${evt.type} ${quote(evt.state_key)} ${contentJSON}`)
 			} else {
 				navigator.clipboard.writeText(`/raw ${evt.type} ${contentJSON}`)
 			}
