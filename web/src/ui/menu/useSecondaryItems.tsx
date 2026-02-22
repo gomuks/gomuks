@@ -44,7 +44,7 @@ export const useSecondaryItems = (
 		const copyRawCommand = () => {
 			const contentJSON = JSON.stringify(evt.content, null, "  ")
 			if (evt.state_key !== undefined) {
-				navigator.clipboard.writeText(`/rawstate ${evt.type} ${evt.state_key} ${contentJSON}`)
+				navigator.clipboard.writeText(`/rawstate ${evt.type} ${evt.state_key || "\"\""} ${contentJSON}`)
 			} else {
 				navigator.clipboard.writeText(`/raw ${evt.type} ${contentJSON}`)
 			}
