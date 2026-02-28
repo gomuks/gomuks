@@ -27,8 +27,10 @@ import (
 	"html"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -115,8 +117,31 @@ func (gmx *Gomuks) StartServer() {
 		Addr:    gmx.Config.Web.ListenAddress,
 		Handler: router,
 	}
+	sockPath := ""
+	if strings.HasPrefix(gmx.Config.Web.ListenAddress, "unix:") {
+		sockPath = strings.TrimPrefix(gmx.Config.Web.ListenAddress, "unix:")
+		gmx.Server.Addr = ""
+		gmx.Log.Debug().Str("socket", sockPath).Msg("Using UNIX socket instead of TCP")
+	}
 	go func() {
-		err := gmx.Server.ListenAndServe()
+		var err error
+		if sockPath == "" {
+			err = gmx.Server.ListenAndServe()
+		} else {
+			if _, se := os.Stat(sockPath); se == nil {
+				gmx.Log.Warn().Msg("Removing stale socket file")
+				_ = os.Remove(sockPath)
+			}
+			listener, err2 := net.Listen("unix", sockPath)
+			if err2 != nil {
+				panic(err2)
+			}
+			if chmodErr := os.Chmod(sockPath, 0666); chmodErr != nil {
+				panic(fmt.Errorf("failed to chmod socket file: %w", chmodErr))
+			}
+			defer func() { _ = listener.Close() }()
+			err = gmx.Server.Serve(listener)
+		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
