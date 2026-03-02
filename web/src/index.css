@@ -113,7 +113,7 @@
 		color-scheme: dark;
 		--background-color: #000;
 		--login-background-color: #111;
-		--text-color: #fff;
+		--text-color: #ebeef2;
 		--inverted-text-color: var(--background-color);
 		--secondary-text-color: #888;
 		--semisecondary-text-color: #bbb;
@@ -142,8 +142,9 @@
 		--timeline-jump-bg-color: rgba(0, 255, 0, .2);
 		--timeline-jump-hover-bg-color: #131;
 
-		--room-list-background-overlay: hsla(0, 0%, 4%, .8);
-		--space-list-background-overlay: hsla(0, 0%, 4%, .7);
+		--room-list-background: #171717;
+		--room-list-background-overlay: transparent;
+		--space-list-background-overlay: #222;
 		--room-list-scrollbar-color: rgba(255, 255, 255, .4) rgba(255, 255, 255, .1);
 		--room-list-entry-hover-color: rgba(255, 255, 255, 0.075);
 		--room-list-entry-selected-color: rgba(255, 255, 255, 0.125);
