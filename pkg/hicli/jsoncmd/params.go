@@ -227,6 +227,9 @@ type JoinRoomParams struct {
 	// This is required when using a room ID to join a server that the homeserver isn't participating in.
 	Via    []string `json:"via,omitempty"`
 	Reason string   `json:"reason,omitempty"`
+	// FromInvite indicates whether this join was initiated from accepting an invite.
+	// RoomIDOrAlias must be a room ID when using this flag.
+	FromInvite bool `json:"from_invite,omitempty"`
 }
 
 type GetRoomSummaryParams struct {

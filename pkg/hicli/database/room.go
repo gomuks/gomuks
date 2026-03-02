@@ -44,7 +44,7 @@ const (
 			name_quality = CASE WHEN $4 IS NOT NULL THEN $5 ELSE room.name_quality END,
 			avatar = COALESCE($6, room.avatar),
 			explicit_avatar = CASE WHEN $6 IS NOT NULL THEN $7 ELSE room.explicit_avatar END,
-			dm_user_id = COALESCE($8, room.dm_user_id),
+			dm_user_id = CASE WHEN $8='' THEN NULL ELSE COALESCE($8, room.dm_user_id) END,
 			topic = COALESCE($9, room.topic),
 			canonical_alias = COALESCE($10, room.canonical_alias),
 			lazy_load_summary = COALESCE($11, room.lazy_load_summary),

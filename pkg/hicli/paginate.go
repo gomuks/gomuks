@@ -215,21 +215,16 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		if err != nil {
 			return fmt.Errorf("failed to save current state entries: %w", err)
 		}
-		dmRoomName, dmAvatarURL, dmUserID, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary, room.NameQuality)
-		if err != nil {
-			return fmt.Errorf("failed to calculate room name: %w", err)
-		}
-		if dmUserID != "" {
-			updatedRoom.DMUserID = &dmUserID
-		}
 		if room.NameQuality <= database.NameQualityParticipants {
+			dmRoomName, dmAvatarURL, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary)
+			if err != nil {
+				return fmt.Errorf("failed to calculate room name: %w", err)
+			}
 			updatedRoom.Name = &dmRoomName
 			updatedRoom.NameQuality = database.NameQualityParticipants
-		} else if dmUserID == "" {
-			llSummary.Heroes = nil
-		}
-		if !dmAvatarURL.IsEmpty() && !room.ExplicitAvatar && ptr.Val(updatedRoom.Avatar) != dmAvatarURL {
-			updatedRoom.Avatar = &dmAvatarURL
+			if !room.ExplicitAvatar && ptr.Val(updatedRoom.Avatar) != dmAvatarURL {
+				updatedRoom.Avatar = &dmAvatarURL
+			}
 		}
 		roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
 		// TODO dispatch space edge changes if something changed? (fairly unlikely though)

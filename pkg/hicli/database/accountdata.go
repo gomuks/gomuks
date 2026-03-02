@@ -29,8 +29,14 @@ const (
 	getGlobalAccountDataQuery = `
 		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1
 	`
+	getOneGlobalAccountDataQuery = `
+		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1 AND type = $2
+	`
 	getRoomAccountDataQuery = `
 		SELECT user_id, room_id, type, content FROM room_account_data WHERE user_id = $1 AND room_id = $2
+	`
+	getOneRoomAccountDataQuery = `
+		SELECT user_id, room_id, type, content FROM room_account_data WHERE user_id = $1 AND room_id = $2 AND type = $3
 	`
 )
 
@@ -69,8 +75,16 @@ func (adq *AccountDataQuery) GetAllGlobal(ctx context.Context, userID id.UserID)
 	return adq.QueryMany(ctx, getGlobalAccountDataQuery, userID)
 }
 
+func (adq *AccountDataQuery) GetGlobal(ctx context.Context, userID id.UserID, eventType event.Type) (*AccountData, error) {
+	return adq.QueryOne(ctx, getOneGlobalAccountDataQuery, userID, eventType.Type)
+}
+
 func (adq *AccountDataQuery) GetAllRoom(ctx context.Context, userID id.UserID, roomID id.RoomID) ([]*AccountData, error) {
 	return adq.QueryMany(ctx, getRoomAccountDataQuery, userID, roomID)
+}
+
+func (adq *AccountDataQuery) GetRoom(ctx context.Context, userID id.UserID, roomID id.RoomID, eventType event.Type) (*AccountData, error) {
+	return adq.QueryOne(ctx, getOneRoomAccountDataQuery, userID, roomID, eventType.Type)
 }
 
 type AccountData struct {

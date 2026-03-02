@@ -332,8 +332,13 @@ export default abstract class RPCClient {
 		return this.request("get_space_hierarchy", { room_id, ...params })
 	}
 
-	joinRoom(room_id_or_alias: RoomID | RoomAlias, via?: string[], reason?: string): Promise<RespRoomJoin> {
-		return this.request("join_room", { room_id_or_alias, via, reason })
+	joinRoom(
+		room_id_or_alias: RoomID | RoomAlias,
+		via?: string[],
+		reason?: string,
+		from_invite?: boolean,
+	): Promise<RespRoomJoin> {
+		return this.request("join_room", { room_id_or_alias, via, reason, from_invite })
 	}
 
 	knockRoom(room_id_or_alias: RoomID | RoomAlias, via?: string[], reason?: string): Promise<RespRoomJoin> {

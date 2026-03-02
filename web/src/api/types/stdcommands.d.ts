@@ -23,5 +23,7 @@ export type CommandName =
 	| "devtools"
 	| "alias add"
 	| "alias del"
+	| "converttodm"
+	| "converttoroom"
 
 export default BotCommandList

@@ -212,6 +212,7 @@ export class StateStore {
 			entry.meta.preview_event_rowid !== oldEntry.meta.current.preview_event_rowid ||
 			entry.meta.name !== oldEntry.meta.current.name ||
 			entry.meta.avatar !== oldEntry.meta.current.avatar ||
+			entry.meta.dm_user_id !== oldEntry.meta.current.dm_user_id ||
 			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta.preview_event_rowid) !== -1
 	}
 
@@ -253,12 +254,16 @@ export class StateStore {
 		if (!someMeta) {
 			return
 		}
+		if (this.directChatsSpace.include(someMeta)) {
+			this.directChatsSpace.applyUnreads(meta, oldMeta)
+		} else if (oldMeta && this.directChatsSpace.include(oldMeta)) {
+			this.directChatsSpace.applyUnreads(null, oldMeta)
+		}
 		if (this.spaceOrphans.include(someMeta)) {
 			this.spaceOrphans.applyUnreads(meta, oldMeta)
 			return
-		}
-		if (this.directChatsSpace.include(someMeta)) {
-			this.directChatsSpace.applyUnreads(meta, oldMeta)
+		} else if (oldMeta && this.spaceOrphans.include(oldMeta)) {
+			this.spaceOrphans.applyUnreads(null, oldMeta)
 		}
 		for (const space of this.spaceEdges.values()) {
 			if (space.include(someMeta)) {

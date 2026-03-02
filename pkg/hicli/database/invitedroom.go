@@ -21,6 +21,11 @@ const (
 		FROM invited_room
 		ORDER BY received_at DESC
 	`
+	getInvitedRoomQuery = `
+		SELECT room_id, received_at, invite_state
+		FROM invited_room
+		WHERE room_id = $1
+	`
 	deleteInvitedRoomQuery = `
 		DELETE FROM invited_room WHERE room_id = $1
 	`
@@ -38,6 +43,10 @@ type InvitedRoomQuery struct {
 
 func (irq *InvitedRoomQuery) GetAll(ctx context.Context) ([]*InvitedRoom, error) {
 	return irq.QueryMany(ctx, getInvitedRoomsQuery)
+}
+
+func (irq *InvitedRoomQuery) Get(ctx context.Context, roomID id.RoomID) (*InvitedRoom, error) {
+	return irq.QueryOne(ctx, getInvitedRoomQuery, roomID)
 }
 
 func (irq *InvitedRoomQuery) Upsert(ctx context.Context, room *InvitedRoom) error {
@@ -73,4 +82,33 @@ func (r *InvitedRoom) Scan(row dbutil.Scannable) (*InvitedRoom, error) {
 	}
 	r.CreatedAt = jsontime.UMInt(createdAt)
 	return r, nil
+}
+
+func (r *InvitedRoom) GetDMUserID(self id.UserID) (target id.UserID) {
+	if r == nil {
+		return
+	}
+	for _, ev := range r.InviteState {
+		switch ev.Type {
+		case event.StateMember:
+			userID := id.UserID(ev.GetStateKey())
+			if userID == self {
+				isDirect, _ := ev.Content.Raw["is_direct"].(bool)
+				if !isDirect {
+					return ""
+				}
+			} else if target != "" {
+				return ""
+			} else {
+				target = userID
+			}
+		case event.StateJoinRules:
+			if ev.Content.Raw["join_rule"] != string(event.JoinRuleInvite) {
+				return ""
+			}
+		case event.StateRoomName, event.StateTopic, event.StateRoomAvatar, event.StateCanonicalAlias:
+			return ""
+		}
+	}
+	return
 }

@@ -77,6 +77,11 @@ type HiClient struct {
 	sendLock     map[id.RoomID]*sync.Mutex
 	sendLockLock sync.Mutex
 
+	directChatLock      sync.RWMutex
+	directChatMalformed bool
+	directChatUsers     event.DirectChatsEventContent
+	directChatRooms     map[id.RoomID]id.UserID
+
 	API *JSONAPI
 }
 

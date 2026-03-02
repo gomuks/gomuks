@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Tulir Asokan
+// Copyright (c) 2026 Tulir Asokan
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,8 +9,10 @@ package hicli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -73,6 +75,10 @@ func (h *HiClient) ProcessCommand(
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdAddAlias)
 	case cmdspec.DelAlias:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdDelAlias)
+	case cmdspec.ConvertToDM:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdConvertToDM)
+	case cmdspec.ConvertToRoom:
+		responseText = h.handleCmdConvertToRoom(ctx, roomID)
 	default:
 		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Command))
 	}
@@ -338,4 +344,55 @@ func (h *HiClient) handleCmdDelAlias(ctx context.Context, _ id.RoomID, args myRo
 		return fmt.Sprintf("Failed to delete alias: %v", err)
 	}
 	return fmt.Sprintf("Deleted alias %s", fullAlias)
+}
+
+type convertToDMParams struct {
+	OtherUserID id.UserID `json:"other_user"`
+}
+
+func (h *HiClient) handleCmdConvertToDM(ctx context.Context, roomID id.RoomID, args convertToDMParams, _ *event.RelatesTo) string {
+	if args.OtherUserID == "" {
+		roomInfo, err := h.DB.Room.Get(ctx, roomID)
+		if err != nil {
+			return fmt.Sprintf("Failed to get room info: %v", err)
+		} else if roomInfo == nil || roomInfo.LazyLoadSummary == nil || len(roomInfo.LazyLoadSummary.Heroes) == 0 {
+			return "Lazy load summary not available, cannot determine other user ID. Please specify it explicitly."
+		}
+		var functionalMembers []id.UserID
+		functionalMembersEvt, _ := h.DB.CurrentState.Get(ctx, roomID, event.StateElementFunctionalMembers, "")
+		if functionalMembersEvt != nil {
+			mautrixEvt := functionalMembersEvt.AsRawMautrix()
+			_ = mautrixEvt.Content.ParseRaw(mautrixEvt.Type)
+			content, ok := mautrixEvt.Content.Parsed.(*event.ElementFunctionalMembersContent)
+			if ok {
+				functionalMembers = content.ServiceMembers
+			}
+		}
+		for _, hero := range roomInfo.LazyLoadSummary.Heroes {
+			if slices.Contains(functionalMembers, hero) || hero == h.Account.UserID {
+				continue
+			} else if args.OtherUserID == "" {
+				args.OtherUserID = hero
+			} else {
+				return "Multiple other users found, please specify user to mark as DM with explicitly"
+			}
+		}
+	}
+	err := h.ConvertToDM(ctx, roomID, args.OtherUserID)
+	if errors.Is(err, ErrMDirectNoOp) {
+		return fmt.Sprintf("Room is already marked as a DM with %s", args.OtherUserID)
+	} else if err != nil {
+		return fmt.Sprintf("Failed to mark room as a DM: %v", err)
+	}
+	return fmt.Sprintf("Marked room as a DM with %s", args.OtherUserID)
+}
+
+func (h *HiClient) handleCmdConvertToRoom(ctx context.Context, roomID id.RoomID) string {
+	err := h.ConvertToDM(ctx, roomID, "")
+	if errors.Is(err, ErrMDirectNoOp) {
+		return "Room is already not marked as a DM"
+	} else if err != nil {
+		return fmt.Sprintf("Failed to unmark room as a DM: %v", err)
+	}
+	return "Unmarked room as a DM"
 }

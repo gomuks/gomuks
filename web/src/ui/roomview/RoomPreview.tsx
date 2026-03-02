@@ -63,7 +63,7 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 			realVia = [getServerName(invite.invited_by)]
 		}
 		setButtonClicked(true)
-		client.rpc.joinRoom(alias || roomID, alias ? undefined : realVia).then(
+		client.rpc.joinRoom(alias || roomID, alias ? undefined : realVia, undefined, !!invite).then(
 			() => console.info("Successfully joined", roomID),
 			err => {
 				setError(`Failed to join room: ${err}`)

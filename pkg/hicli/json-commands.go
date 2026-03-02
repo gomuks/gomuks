@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Tulir Asokan
+// Copyright (c) 2026 Tulir Asokan
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -298,6 +298,19 @@ func (h *JSONAPI) GetSpaceHierarchy(ctx context.Context, params *jsoncmd.GetHier
 }
 
 func (h *JSONAPI) JoinRoom(ctx context.Context, params *jsoncmd.JoinRoomParams) (*mautrix.RespJoinRoom, error) {
+	if params.FromInvite {
+		invite, err := h.DB.InvitedRoom.Get(ctx, id.RoomID(params.RoomIDOrAlias))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get invite room state: %w", err)
+		} else if invite == nil {
+			zerolog.Ctx(ctx).Warn().Msg("Invited room metadata not found for from_invite join request")
+		} else if dmUserID := invite.GetDMUserID(h.Account.UserID); dmUserID != "" {
+			err = h.ConvertToDM(ctx, invite.ID, dmUserID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to mark room as DM: %w", err)
+			}
+		}
+	}
 	return h.Client.JoinRoom(mautrix.WithMaxRetries(ctx, 2), params.RoomIDOrAlias, &mautrix.ReqJoinRoom{
 		Via:    params.Via,
 		Reason: params.Reason,

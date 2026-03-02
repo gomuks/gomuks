@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Tulir Asokan
+// Copyright (c) 2026 Tulir Asokan
 //
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -35,6 +35,8 @@ const (
 	Meow           = "meow"
 	AddAlias       = "alias add"
 	DelAlias       = "alias del"
+	ConvertToDM    = "converttodm"
+	ConvertToRoom  = "converttoroom"
 )
 
 var CommandDefinitions = []*cmdschema.EventContent{{
@@ -221,4 +223,17 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 		Description: event.MakeExtensibleText("Room alias name to remove (without the # and domain)"),
 	}},
 	Aliases: []string{"alias remove", "alias rm", "alias delete"},
+}, {
+	Command:     ConvertToDM,
+	Description: event.MakeExtensibleText("Mark the current room as a DM"),
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "other_user",
+		Schema:      cmdschema.PrimitiveTypeUserID.Schema(),
+		Description: event.MakeExtensibleText("The other user in the DM"),
+		Optional:    true,
+	}},
+	TailParam: "other_user",
+}, {
+	Command:     ConvertToRoom,
+	Description: event.MakeExtensibleText("Remove marking the current room as a DM"),
 }}

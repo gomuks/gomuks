@@ -118,7 +118,7 @@ export const getRoomAvatarURL = (
 	thumbnail = false,
 	forceFallback = false,
 ): string | undefined => {
-	return getAvatarURL(room.dm_user_id ?? room.room_id, {
+	return getAvatarURL(room.dm_user_id || room.room_id, {
 		displayname: room.name,
 		avatar_url: avatarOverride ?? room.avatar ?? room.avatar_url,
 	}, thumbnail, forceFallback)

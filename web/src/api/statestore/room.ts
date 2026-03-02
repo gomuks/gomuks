@@ -545,6 +545,9 @@ export class RoomStateStore {
 	}
 
 	applySync(sync: SyncRoom) {
+		if (sync.meta.dm_user_id === "") {
+			sync.meta.dm_user_id = undefined
+		}
 		if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
 			this.meta.current = sync.meta
 		} else {
