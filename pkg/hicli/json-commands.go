@@ -347,7 +347,17 @@ func (h *JSONAPI) LeaveRoom(ctx context.Context, params *jsoncmd.LeaveRoomParams
 }
 
 func (h *JSONAPI) CreateRoom(ctx context.Context, params *mautrix.ReqCreateRoom) (*mautrix.RespCreateRoom, error) {
-	return h.Client.CreateRoom(mautrix.WithMaxRetries(ctx, 0), params)
+	resp, err := h.Client.CreateRoom(mautrix.WithMaxRetries(ctx, 0), params)
+	if err != nil {
+		return nil, err
+	}
+	if params.IsDirect && len(params.Invite) == 1 {
+		err = h.ConvertToDM(ctx, resp.RoomID, params.Invite[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to mark new room as DM: %w", err)
+		}
+	}
+	return resp, nil
 }
 
 func (h *JSONAPI) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParams) (bool, error) {
