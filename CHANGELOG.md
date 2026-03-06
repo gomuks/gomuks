@@ -1,3 +1,20 @@
+# v26.03 (unreleased)
+
+### Backend
+* Added option to build with dynamic libheif.
+* Added automatic logout on unknown token errors.
+* Switched to `m.direct` event for classifying direct chats.
+* Fixed weirdness after login by sending the normal init payloads instead of
+  the Matrix init sync payload to frontends.
+* Fixed option to disable auth not working correctly.
+* Fixed voice message metadata incorrectly being added to all attachments.
+
+### Web
+* Added support for klipy in gif picker.
+* Added button to re-request megolm sessions from key backup and other devices.
+* Removed rainbow background on dark theme (can be restored using the
+  [make dark gay again theme](https://css.gomuks.app/theme/restore-dark-rainbow)).
+
 # v26.02
 
 ### Backend
