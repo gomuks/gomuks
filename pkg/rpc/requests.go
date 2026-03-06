@@ -72,7 +72,7 @@ func (gr *GomuksRPC) SetProfileField(ctx context.Context, params *jsoncmd.SetPro
 	return executeRequestNoResponse(gr, ctx, jsoncmd.SetProfileField, params)
 }
 
-func (gr *GomuksRPC) GetMutualRooms(ctx context.Context, params *jsoncmd.GetProfileParams) ([]id.RoomID, error) {
+func (gr *GomuksRPC) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutualRoomsParams) (*mautrix.RespMutualRooms, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMutualRooms, params)
 }
 

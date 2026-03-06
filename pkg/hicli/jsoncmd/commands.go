@@ -140,7 +140,7 @@ var (
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user
 	// from the homeserver.
-	GetMutualRooms = &CommandSpec[*GetProfileParams, []id.RoomID]{Name: ReqGetMutualRooms}
+	GetMutualRooms = &CommandSpec[*GetMutualRoomsParams, *mautrix.RespMutualRooms]{Name: ReqGetMutualRooms}
 	// TrackUserDevices start tracking a user’s e2ee device list if it's not already tracked, then returns
 	// encryption info (same result as `get_profile_encryption_info`).
 	TrackUserDevices = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqTrackUserDevices}

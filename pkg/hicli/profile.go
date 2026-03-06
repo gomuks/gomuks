@@ -22,22 +22,27 @@ import (
 
 const MutualRoomsBatchLimit = 5
 
-func (h *HiClient) GetMutualRooms(ctx context.Context, userID id.UserID) (output []id.RoomID, err error) {
-	var nextBatch string
-	for i := 0; i < MutualRoomsBatchLimit; i++ {
+func (h *HiClient) GetMutualRooms(ctx context.Context, userID id.UserID, nextBatch string) (output *mautrix.RespMutualRooms, err error) {
+	output = &mautrix.RespMutualRooms{}
+	for i := 0; i < MutualRoomsBatchLimit && len(output.Joined) < 500; i++ {
 		mutualRooms, err := h.Client.GetMutualRooms(ctx, userID, mautrix.ReqMutualRooms{From: nextBatch})
 		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Str("from_batch_token", nextBatch).Msg("Failed to get mutual rooms")
 			return nil, err
 		}
-		output = append(output, mutualRooms.Joined...)
+		if i == 0 {
+			output = mutualRooms
+		} else {
+			output.Joined = append(output.Joined, mutualRooms.Joined...)
+			output.NextBatch = mutualRooms.NextBatch
+		}
 		nextBatch = mutualRooms.NextBatch
 		if nextBatch == "" {
 			break
 		}
 	}
-	slices.Sort(output)
-	output = slices.Compact(output)
+	slices.Sort(output.Joined)
+	output.Joined = slices.Compact(output.Joined)
 	return
 }
 

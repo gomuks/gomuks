@@ -111,6 +111,11 @@ type GetProfileParams struct {
 	UserID id.UserID `json:"user_id"`
 }
 
+type GetMutualRoomsParams struct {
+	UserID    id.UserID `json:"user_id"`
+	NextBatch string    `json:"next_batch,omitempty"`
+}
+
 type SetProfileFieldParams struct {
 	Field string `json:"field"`
 	Value any    `json:"value"`

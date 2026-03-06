@@ -30,6 +30,7 @@ import {
 	MembershipAction,
 	Mentions,
 	MessageEventContent,
+	MutualRoomsResponse,
 	PaginationResponse,
 	ProfileEncryptionInfo,
 	RPCCommand,
@@ -248,7 +249,7 @@ export default abstract class RPCClient {
 		return this.request("set_profile_field", { field, value })
 	}
 
-	getMutualRooms(user_id: UserID): Promise<RoomID[]> {
+	getMutualRooms(user_id: UserID): Promise<MutualRoomsResponse> {
 		return this.request("get_mutual_rooms", { user_id })
 	}
 

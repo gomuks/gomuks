@@ -24,7 +24,7 @@ type GomuksAPI interface {
 	SetTyping(ctx context.Context, params *SetTypingParams) error
 	GetProfile(ctx context.Context, params *GetProfileParams) (*mautrix.RespUserProfile, error)
 	SetProfileField(ctx context.Context, params *SetProfileFieldParams) error
-	GetMutualRooms(ctx context.Context, params *GetProfileParams) ([]id.RoomID, error)
+	GetMutualRooms(ctx context.Context, params *GetMutualRoomsParams) (*mautrix.RespMutualRooms, error)
 	TrackUserDevices(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
 	GetProfileEncryptionInfo(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)
 	GetEvent(ctx context.Context, params *GetEventParams) (*database.Event, error)

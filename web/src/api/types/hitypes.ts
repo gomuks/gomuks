@@ -195,6 +195,12 @@ export interface EventContextResponse {
 	event: RawDBEvent
 }
 
+export interface MutualRoomsResponse {
+	joined: RoomID[]
+	count: number
+	next_batch?: string
+}
+
 export interface ManualPaginationResponse {
 	events: RawDBEvent[]
 	next_batch: string

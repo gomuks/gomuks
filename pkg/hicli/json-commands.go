@@ -229,8 +229,8 @@ func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfil
 	return h.Client.SetProfileField(ctx, params.Field, params.Value)
 }
 
-func (h *JSONAPI) GetMutualRooms(ctx context.Context, params *jsoncmd.GetProfileParams) ([]id.RoomID, error) {
-	return h.HiClient.GetMutualRooms(mautrix.WithMaxRetries(ctx, 0), params.UserID)
+func (h *JSONAPI) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutualRoomsParams) (*mautrix.RespMutualRooms, error) {
+	return h.HiClient.GetMutualRooms(mautrix.WithMaxRetries(ctx, 0), params.UserID, params.NextBatch)
 }
 
 func (h *JSONAPI) TrackUserDevices(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
