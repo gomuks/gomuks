@@ -215,7 +215,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		if err != nil {
 			return fmt.Errorf("failed to save current state entries: %w", err)
 		}
-		if room.NameQuality <= database.NameQualityParticipants {
+		if updatedRoom.NameQuality <= database.NameQualityParticipants {
 			dmRoomName, dmAvatarURL, err := h.calculateRoomParticipantName(ctx, room.ID, llSummary)
 			if err != nil {
 				return fmt.Errorf("failed to calculate room name: %w", err)
@@ -263,7 +263,7 @@ func (h *HiClient) GetRoomState(ctx context.Context, roomID id.RoomID, includeMe
 				}
 			}(context.WithoutCancel(ctx))
 		} else {
-			err := h.processGetRoomState(ctx, roomID, fetchMembers, refetch, false)
+			err := h.processGetRoomState(ctx, roomID, fetchMembers, refetch, true)
 			if err != nil {
 				return nil, err
 			}
