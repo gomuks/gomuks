@@ -172,6 +172,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		updatedRoom := &database.Room{
 			ID:            room.ID,
 			HasMemberList: true,
+			NameQuality:   room.NameQuality,
 		}
 		if room.LazyLoadSummary != nil && room.LazyLoadSummary.Heroes != nil {
 			allFound := true
