@@ -91,6 +91,9 @@ export class InvitedRoomStore implements RoomListEntry, RoomSummary {
 			this.name = getDisplayname(this.invited_by, this.inviter_profile)
 			this.avatar = this.inviter_profile?.avatar_url
 		}
+		if (!this.name) {
+			this.name = "Unnamed room"
+		}
 		this.search_name = toSearchableString(this.name ?? "")
 	}
 
