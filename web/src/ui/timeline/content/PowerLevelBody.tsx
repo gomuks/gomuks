@@ -29,14 +29,14 @@ function intDiff(messageParts: TemplateStringsArray, oldVal: number, newVal: num
 function renderPowerLevels(content: PowerLevelEventContent, prevContent?: PowerLevelEventContent): string[] {
 	/* eslint-disable max-len */
 	const output = [
-		intDiff`the default user power level from ${prevContent?.users_default ?? 0} to ${content.users_default ?? 0}`,
-		intDiff`the default event power level from ${prevContent?.events_default ?? 0} to ${content.events_default ?? 0}`,
-		intDiff`the default state event power level from ${prevContent?.state_default ?? 50} to ${content.state_default ?? 50}`,
-		intDiff`the ban power level from ${prevContent?.ban ?? 50} to ${content.ban ?? 50}`,
-		intDiff`the kick power level from ${prevContent?.kick ?? 50} to ${content.kick ?? 50}`,
-		intDiff`the redact power level from ${prevContent?.redact ?? 50} to ${content.redact ?? 50}`,
-		intDiff`the invite power level from ${prevContent?.invite ?? 0} to ${content.invite ?? 0}`,
-		intDiff`the @room notification power level from ${prevContent?.notifications?.room ?? 50} to ${content.notifications?.room ?? 50}`,
+		intDiff`changed the default user power level from ${prevContent?.users_default ?? 0} to ${content.users_default ?? 0}`,
+		intDiff`changed the default event power level from ${prevContent?.events_default ?? 0} to ${content.events_default ?? 0}`,
+		intDiff`changed the default state event power level from ${prevContent?.state_default ?? 50} to ${content.state_default ?? 50}`,
+		intDiff`changed the ban power level from ${prevContent?.ban ?? 50} to ${content.ban ?? 50}`,
+		intDiff`changed the kick power level from ${prevContent?.kick ?? 50} to ${content.kick ?? 50}`,
+		intDiff`changed the redact power level from ${prevContent?.redact ?? 50} to ${content.redact ?? 50}`,
+		intDiff`changed the invite power level from ${prevContent?.invite ?? 0} to ${content.invite ?? 0}`,
+		intDiff`changed the @room notification power level from ${prevContent?.notifications?.room ?? 50} to ${content.notifications?.room ?? 50}`,
 	]
 	/* eslint-enable max-len */
 	const userDiffs = objectDiff(
