@@ -107,7 +107,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 	mediaReferenceEntries := make([]*database.MediaReference, len(evts))
 	mediaCacheEntries := make([]*database.PlainMedia, 0, len(evts))
 	var joinedMembers, invitedMembers int
-	var joinedMemberIDs, invitedMemberIDs, leftMemberIDs []id.UserID
+	var joinedOrInvitedMemberIDs, leftMemberIDs []id.UserID
 	for i, evt := range evts {
 		if err := h.fillPrevContent(ctx, evt); err != nil {
 			return err
@@ -123,11 +123,11 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 			userID := id.UserID(*evt.StateKey)
 			if userID != h.Account.UserID {
 				if membership == event.MembershipJoin {
-					joinedMemberIDs = append(joinedMemberIDs, userID)
+					joinedOrInvitedMemberIDs = append(joinedOrInvitedMemberIDs, userID)
 					joinedMembers++
 				} else if membership == event.MembershipInvite {
 					invitedMembers++
-					invitedMemberIDs = append(invitedMemberIDs, userID)
+					joinedOrInvitedMemberIDs = append(joinedOrInvitedMemberIDs, userID)
 				} else {
 					leftMemberIDs = append(leftMemberIDs, userID)
 				}
@@ -150,11 +150,8 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		JoinedMemberCount:  &joinedMembers,
 		InvitedMemberCount: &invitedMembers,
 	}
-	if len(joinedMemberIDs) > 0 {
-		llSummary.Heroes = joinedMemberIDs
-		if len(joinedMemberIDs) < 5 {
-			llSummary.Heroes = append(llSummary.Heroes, invitedMemberIDs...)
-		}
+	if len(joinedOrInvitedMemberIDs) > 0 {
+		llSummary.Heroes = joinedOrInvitedMemberIDs
 	} else {
 		llSummary.Heroes = leftMemberIDs
 	}
