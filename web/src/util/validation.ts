@@ -132,7 +132,7 @@ export function getServerName(userID: UserID): string {
 }
 
 export function getDisplayname(userID: UserID, profile?: UserProfile | null): string {
-	return ensureString(profile?.displayname) || getLocalpart(userID)
+	return ensureString(profile?.displayname).trim() || getLocalpart(userID) || userID
 }
 
 export function parseMXC(mxc: unknown): [string, string] | [] {
