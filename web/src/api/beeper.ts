@@ -27,10 +27,13 @@ async function tryJSON(resp: Response): Promise<unknown> {
 	}
 }
 
+const appType = "gomuks"
+const onlyExistingAccounts = true
+
 export async function doSubmitCode(domain: string, request: string, response: string): Promise<string> {
 	const resp = await fetch(`https://api.${domain}/user/login/response`, {
 		method: "POST",
-		body: JSON.stringify({ response, request }),
+		body: JSON.stringify({ response, request, appType, onlyExistingAccounts }),
 		headers,
 	})
 	const data = await tryJSON(resp) as { token?: string, error?: string }
@@ -46,7 +49,7 @@ export async function doSubmitCode(domain: string, request: string, response: st
 export async function doRequestCode(domain: string, request: string, email: string) {
 	const resp = await fetch(`https://api.${domain}/user/login/email`, {
 		method: "POST",
-		body: JSON.stringify({ email, request }),
+		body: JSON.stringify({ email, request, appType, onlyExistingAccounts }),
 		headers,
 	})
 	const data = await tryJSON(resp) as { error?: string }
