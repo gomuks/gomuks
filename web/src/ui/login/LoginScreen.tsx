@@ -127,6 +127,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				placeholder="User ID (@user:example.com)"
 				value={username}
 				onChange={evt => setUsername(evt.target.value)}
+				autoComplete="username"
 			/>
 			<input
 				type="text"
@@ -134,6 +135,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				placeholder="Homeserver URL (will autofill)"
 				value={homeserverURL}
 				onChange={onChangeHomeserverURL}
+				autoComplete="url"
 			/>
 			{supportsPassword && <input
 				type="password"
@@ -141,6 +143,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				placeholder="Password"
 				value={password}
 				onChange={evt => setPassword(evt.target.value)}
+				autoComplete="current-password"
 			/>}
 			<div className="buttons">
 				{supportsSSO && <button

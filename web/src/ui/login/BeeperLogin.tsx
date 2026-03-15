@@ -74,6 +74,7 @@ const BeeperLogin = ({ domain, client }: BeeperLoginProps) => {
 			value={email}
 			onChange={onChangeEmail}
 			disabled={!!requestID}
+			autoComplete="email"
 		/>
 		{requestID && <input
 			type="text"
