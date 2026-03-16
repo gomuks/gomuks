@@ -48,6 +48,7 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 	const supportsLoadingPlaceholder = event.type === "m.sticker" || content.msgtype === "m.image"
 	const supportsClickToShow = supportsLoadingPlaceholder || content.msgtype === "m.video"
 	const showPreviewsByDefault = usePreference(client.store, room, "show_media_previews")
+	const imageWidth = usePreference(client.store, room, "max_image_width")
 	const [loaded, onLoad] = useReducer(switchToTrue, !supportsLoadingPlaceholder)
 	const [clickedShow, setClickedShow] = useState(false)
 
@@ -65,7 +66,8 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 			|| !loaded)
 	const isLoadingOnlyCover = !loaded && !contentWarning && renderMediaElem
 
-	const [mediaContent, containerClass, containerStyle] = useMediaContent(content, event.type, undefined, onLoad)
+	const containerSize = imageWidth === 320 ? undefined : { width: imageWidth, height: imageWidth / 4 * 3 }
+	const [mediaContent, containerClass, containerStyle] = useMediaContent(content, event.type, containerSize, onLoad)
 
 	let placeholderElem: JSX.Element | null = null
 	if (renderPlaceholderElem) {

@@ -195,6 +195,14 @@ export const preferences = {
 	// 	allowedContexts: anyContext,
 	// 	defaultValue: false,
 	// }),
+	max_image_width: new Preference<number>({
+		displayName: "Max image width",
+		description: "Maximum width of images in the timeline.",
+		allowedContexts: anyContext,
+		defaultValue: 320,
+		minValue: 80,
+		maxValue: 1920,
+	}),
 	message_context_menu: new Preference<boolean>({
 		displayName: "Right-click menu on messages",
 		description: "Show a context menu when right-clicking on messages.",

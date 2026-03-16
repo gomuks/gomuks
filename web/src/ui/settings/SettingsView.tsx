@@ -68,6 +68,19 @@ const TextPreferenceCell = ({ context, name, setPref, value, inheritedValue }: P
 	</div>
 }
 
+const NumberPreferenceCell = ({ context, name, pref, setPref, value, inheritedValue }: PreferenceCellProps<number>) => {
+	return <div className="preference number-preference">
+		<input
+			type="number"
+			min={pref.minValue}
+			max={pref.maxValue}
+			value={value ?? inheritedValue}
+			onChange={evt => setPref(context, name, evt.target.value)}
+		/>
+		{makeRemover(context, setPref, name, value)}
+	</div>
+}
+
 const SelectPreferenceCell = ({ context, name, pref, setPref, value, inheritedValue }: PreferenceCellProps<string>) => {
 	if (!pref.allowedValues) {
 		return null
@@ -140,8 +153,17 @@ const PreferenceRow = ({
 				value={val as string | undefined}
 				inheritedValue={inheritedVal as string}
 			/>
+		} else if (prefType === "number") {
+			return <NumberPreferenceCell
+				name={name}
+				setPref={setPref}
+				context={context}
+				pref={pref as Preference<number>}
+				value={val as number | undefined}
+				inheritedValue={inheritedVal as number}
+			/>
 		} else {
-			return null
+			return <div className="empty-cell" />
 		}
 	}
 	let inherit: PreferenceValueType
