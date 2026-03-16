@@ -213,6 +213,18 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	pin_favorites: new Preference<boolean>({
+		displayName: "Pin favorites to top",
+		description: "Always keep favorited rooms at the top of the room list, ignoring recent activity.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
+	alphabetical_order: new Preference<boolean>({
+		displayName: "Alphabetical room list",
+		description: "Sort rooms by name instead of recent activity.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
 	custom_notification_sound: new Preference<ContentURI>({
 		displayName: "Custom notification sound",
 		description: "The mxc:// URI to a custom notification sound.",

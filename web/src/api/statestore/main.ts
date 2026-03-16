@@ -57,6 +57,39 @@ export interface RoomListEntry {
 	unread_highlights: number
 	marked_unread: boolean
 	is_invite?: boolean
+	favorite_order?: number
+}
+
+function alphabeticalSort(r1: RoomListEntry, r2: RoomListEntry): number {
+	return r2.name.localeCompare(r1.name)
+}
+
+function timestampSort(r1: RoomListEntry, r2: RoomListEntry): number {
+	return r1.sorting_timestamp - r2.sorting_timestamp
+}
+
+function favoriteSort(r1: RoomListEntry, r2: RoomListEntry): number {
+	if (r1.favorite_order !== undefined && r2.favorite_order !== undefined) {
+		return r2.favorite_order - r1.favorite_order
+	} else if (r1.favorite_order !== undefined) {
+		return 1
+	} else if (r2.favorite_order !== undefined) {
+		return -1
+	} else {
+		return 0
+	}
+}
+
+type SortFunc = (r1: RoomListEntry, r2: RoomListEntry) => number
+
+function chainedSort(f1: SortFunc, f2: SortFunc): SortFunc {
+	return (r1, r2) => {
+		const res = f1(r1, r2)
+		if (res !== 0) {
+			return res
+		}
+		return f2(r1, r2)
+	}
 }
 
 export interface GCSettings {
@@ -213,7 +246,8 @@ export class StateStore {
 			entry.meta.name !== oldEntry.meta.current.name ||
 			entry.meta.avatar !== oldEntry.meta.current.avatar ||
 			entry.meta.dm_user_id !== oldEntry.meta.current.dm_user_id ||
-			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta.preview_event_rowid) !== -1
+			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta.preview_event_rowid) !== -1 ||
+			(!!entry.account_data && "m.tag" in entry.account_data)
 	}
 
 	#makeRoomListEntry(entry: SyncRoom, room?: RoomStateStore): RoomListEntry | null {
@@ -233,6 +267,7 @@ export class StateStore {
 		const preview_event = room?.eventsByRowID.get(entry.meta.preview_event_rowid)
 		const preview_sender = preview_event && room?.getStateEvent("m.room.member", preview_event.sender)
 		const name = entry.meta.name ?? "Unnamed room"
+		const favoriteTag = room?.accountData.get("m.tag")?.tags?.["m.favourite"]
 		return {
 			room_id: entry.meta.room_id,
 			dm_user_id: entry.meta.dm_user_id,
@@ -246,6 +281,7 @@ export class StateStore {
 			unread_notifications: entry.meta.unread_notifications,
 			unread_highlights: entry.meta.unread_highlights,
 			marked_unread: entry.meta.marked_unread,
+			favorite_order: favoriteTag ? (+favoriteTag.order || 0) : undefined,
 		}
 	}
 
@@ -368,13 +404,21 @@ export class StateStore {
 			this.#applyUnreadModification(null, this.roomListEntries.get(roomID))
 		}
 
+		let sortFunc: SortFunc = timestampSort
+		if (this.preferences.alphabetical_order) {
+			sortFunc = alphabeticalSort
+		}
+		if (this.preferences.pin_favorites) {
+			sortFunc = chainedSort(favoriteSort, sortFunc)
+		}
+
 		let updatedRoomList: RoomListEntry[] | undefined
 		if (resyncRoomList) {
 			updatedRoomList = this.inviteRooms.values().toArray()
 			updatedRoomList = updatedRoomList.concat(Object.values(sync.rooms ?? {})
 				.map(entry => this.#makeRoomListEntry(entry))
 				.filter(entry => entry !== null))
-			updatedRoomList.sort((r1, r2) => r1.sorting_timestamp - r2.sorting_timestamp)
+			updatedRoomList.sort(sortFunc)
 			for (const entry of updatedRoomList) {
 				this.#applyUnreadModification(entry, undefined)
 				this.roomListEntries.set(entry.room_id, entry)
@@ -385,15 +429,20 @@ export class StateStore {
 				if (!entry) {
 					continue
 				}
-				if (updatedRoomList.length === 0 || entry.sorting_timestamp >=
-					updatedRoomList[updatedRoomList.length - 1].sorting_timestamp) {
-					updatedRoomList.push(entry)
-				} else if (entry.sorting_timestamp <= 0 ||
-					entry.sorting_timestamp < updatedRoomList[0]?.sorting_timestamp) {
-					updatedRoomList.unshift(entry)
+				if (sortFunc === timestampSort) {
+					if (updatedRoomList.length === 0 || entry.sorting_timestamp >=
+						updatedRoomList[updatedRoomList.length - 1].sorting_timestamp) {
+						updatedRoomList.push(entry)
+					} else if (entry.sorting_timestamp <= 0 ||
+						entry.sorting_timestamp < updatedRoomList[0]?.sorting_timestamp) {
+						updatedRoomList.unshift(entry)
+					} else {
+						const indexToPushAt = updatedRoomList.findLastIndex(val =>
+							val.sorting_timestamp <= entry.sorting_timestamp)
+						updatedRoomList.splice(indexToPushAt + 1, 0, entry)
+					}
 				} else {
-					const indexToPushAt = updatedRoomList.findLastIndex(val =>
-						val.sorting_timestamp <= entry.sorting_timestamp)
+					const indexToPushAt = updatedRoomList.findLastIndex(val => sortFunc(val, entry) <= 0)
 					updatedRoomList.splice(indexToPushAt + 1, 0, entry)
 				}
 			}
