@@ -19,6 +19,7 @@ package gomuks
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,6 +37,7 @@ import (
 	"go.mau.fi/util/exzerolog"
 	"go.mau.fi/util/ptr"
 	"golang.org/x/net/http2"
+	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
@@ -218,7 +220,15 @@ func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 		return 11
 	}
 	err = gmx.Client.Start(ctx, userID, nil)
-	if err != nil {
+	if errors.Is(err, mautrix.MUnknownToken) {
+		gmx.Log.Err(err).Msg("Failed to start client, logging out")
+		err = gmx.Logout(ctx)
+		if err != nil {
+			gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to logout after unknown token error")
+			return 12
+		}
+		return 0
+	} else if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to start client")
 		return 12
 	}
