@@ -1,4 +1,4 @@
-# v26.03 (unreleased)
+# v26.03
 
 ### Backend
 * Added option to build with dynamic libheif.
@@ -12,6 +12,7 @@
 ### Web
 * Added support for klipy in gif picker.
 * Added button to re-request megolm sessions from key backup and other devices.
+* Added fallback name for invites with no name information included.
 * Removed rainbow background on dark theme (can be restored using the
   [make dark gay again theme](https://css.gomuks.app/theme/restore-dark-rainbow)).
 

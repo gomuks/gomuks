@@ -32,7 +32,7 @@ var (
 var Gomuks = progver.ProgramVersion{
 	Name:        "gomuks",
 	URL:         "https://github.com/gomuks/gomuks",
-	BaseVersion: "26.02",
+	BaseVersion: "26.03",
 	SemCalVer:   true,
 }.Init(Tag, Commit, BuildTime)
 
