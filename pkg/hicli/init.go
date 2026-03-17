@@ -64,31 +64,29 @@ func (h *HiClient) getInitialSyncRoom(ctx context.Context, room *database.Room) 
 	return syncRoom
 }
 
-func isPostponedAccountData(evtType string) bool {
-	switch evtType {
-	case "im.ponies.emote_rooms":
-		return true
-	default:
-		return false
-	}
-}
-
-func (h *HiClient) addInitialSyncAccountData(ctx context.Context, payload *jsoncmd.SyncComplete, last bool) {
+func (h *HiClient) getInitialSyncAccountData(ctx context.Context) (first, last map[event.Type]*database.AccountData) {
 	ad, err := h.DB.AccountData.GetAllGlobal(ctx, h.Account.UserID)
 	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Msg("Failed to get global account data")
 		return
 	}
+	first = make(map[event.Type]*database.AccountData, len(ad))
+	last = make(map[event.Type]*database.AccountData, 1)
 	for _, data := range ad {
-		if isPostponedAccountData(data.Type) == last {
-			payload.AccountData[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
+		switch data.Type {
+		case "im.ponies.emote_rooms":
+			last[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
+		default:
+			first[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
 		}
 	}
+	return
 }
 
 func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*jsoncmd.SyncComplete] {
 	return func(yield func(*jsoncmd.SyncComplete) bool) {
 		maxTS := time.Now().Add(1 * time.Hour)
+		firstAccountData, lastAccountData := h.getInitialSyncAccountData(ctx)
 		{
 			spaces, err := h.DB.Room.GetAllSpaces(ctx)
 			if err != nil {
@@ -99,7 +97,7 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 			}
 			payload := jsoncmd.SyncComplete{
 				Rooms:       make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
-				AccountData: make(map[event.Type]*database.AccountData),
+				AccountData: firstAccountData,
 			}
 			for _, room := range spaces {
 				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
@@ -128,7 +126,6 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				}
 				return
 			}
-			h.addInitialSyncAccountData(ctx, &payload, false)
 			payload.ClearState = true
 			if !yield(&payload) {
 				return
@@ -165,8 +162,6 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 			}
 		}
 		// This is last so that the frontend would know about all rooms before trying to fetch custom emoji packs
-		payload := jsoncmd.SyncComplete{AccountData: make(map[event.Type]*database.AccountData)}
-		h.addInitialSyncAccountData(ctx, &payload, true)
-		yield(&payload)
+		yield(&jsoncmd.SyncComplete{AccountData: lastAccountData})
 	}
 }
