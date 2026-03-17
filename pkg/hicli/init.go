@@ -64,6 +64,28 @@ func (h *HiClient) getInitialSyncRoom(ctx context.Context, room *database.Room) 
 	return syncRoom
 }
 
+func isPostponedAccountData(evtType string) bool {
+	switch evtType {
+	case "im.ponies.emote_rooms":
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *HiClient) addInitialSyncAccountData(ctx context.Context, payload *jsoncmd.SyncComplete, last bool) {
+	ad, err := h.DB.AccountData.GetAllGlobal(ctx, h.Account.UserID)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to get global account data")
+		return
+	}
+	for _, data := range ad {
+		if isPostponedAccountData(data.Type) == last {
+			payload.AccountData[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
+		}
+	}
+}
+
 func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*jsoncmd.SyncComplete] {
 	return func(yield func(*jsoncmd.SyncComplete) bool) {
 		maxTS := time.Now().Add(1 * time.Hour)
@@ -76,7 +98,8 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				return
 			}
 			payload := jsoncmd.SyncComplete{
-				Rooms: make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
+				Rooms:       make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
+				AccountData: make(map[event.Type]*database.AccountData),
 			}
 			for _, room := range spaces {
 				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
@@ -105,6 +128,7 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				}
 				return
 			}
+			h.addInitialSyncAccountData(ctx, &payload, false)
 			payload.ClearState = true
 			if !yield(&payload) {
 				return
@@ -141,17 +165,8 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 			}
 		}
 		// This is last so that the frontend would know about all rooms before trying to fetch custom emoji packs
-		ad, err := h.DB.AccountData.GetAllGlobal(ctx, h.Account.UserID)
-		if err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("Failed to get global account data")
-			return
-		}
-		payload := jsoncmd.SyncComplete{
-			AccountData: make(map[event.Type]*database.AccountData, len(ad)),
-		}
-		for _, data := range ad {
-			payload.AccountData[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
-		}
+		payload := jsoncmd.SyncComplete{AccountData: make(map[event.Type]*database.AccountData)}
+		h.addInitialSyncAccountData(ctx, &payload, true)
 		yield(&payload)
 	}
 }
