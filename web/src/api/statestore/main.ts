@@ -316,6 +316,8 @@ export class StateStore {
 			this.clear()
 		}
 		const resyncRoomList = this.roomList.current.length === 0
+		const prevPinFavorites = this.preferences.pin_favorites
+		const prevAlphabetical = this.preferences.alphabetical_order
 		const changedRoomListEntries = new Map<RoomID, RoomListEntry | null>()
 		if (sync.to_device?.length && this.widgetListeners.size > 0) {
 			for (const listener of this.widgetListeners) {
@@ -446,6 +448,15 @@ export class StateStore {
 					updatedRoomList.splice(indexToPushAt + 1, 0, entry)
 				}
 			}
+		}
+		// When sorting preferences change mid-sync (e.g. account_data with pin_favorites
+		// arrives in a later batch than the rooms), re-sort the existing room list.
+		if (!updatedRoomList
+			&& (this.preferences.pin_favorites !== prevPinFavorites
+				|| this.preferences.alphabetical_order !== prevAlphabetical)
+			&& this.roomList.current.length > 0) {
+			updatedRoomList = [...this.roomList.current]
+			updatedRoomList.sort(sortFunc)
 		}
 		if (updatedRoomList) {
 			this.roomList.emit(updatedRoomList)
