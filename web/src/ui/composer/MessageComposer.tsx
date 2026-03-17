@@ -448,6 +448,7 @@ const MessageComposer = () => {
 			if (autocompleteUpdate !== undefined) {
 				setAutocomplete(autocompleteUpdate && { ...autocomplete, ...autocompleteUpdate })
 				evt.preventDefault()
+				evt.stopPropagation()
 			}
 		} else if (fullKey === "ArrowUp" && inp.selectionStart === 0 && inp.selectionEnd === 0) {
 			const currentlyEditing = editing
