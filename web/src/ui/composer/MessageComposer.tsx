@@ -251,6 +251,9 @@ const MessageComposer = () => {
 			return
 		}
 		doSendMessage(state)
+		if (room.preferences.refocus_input_after_send) {
+			textInput.current?.focus()
+		}
 	}
 	const doSendMessage = (state: ComposerState) => {
 		if (editing) {

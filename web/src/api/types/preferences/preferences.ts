@@ -215,6 +215,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: false,
 	}),
+	refocus_input_after_send: new Preference<boolean>({
+		displayName: "Re-focus composer after send",
+		description: "Should the composer text area be immediately focused again after the send button is clicked?",
+		allowedContexts: anyContext,
+		defaultValue: true,
+	}),
 	ctrl_arrow_reply: new Preference<boolean>({
 		displayName: "Use Ctrl+Arrow to reply",
 		description: "Should Ctrl+Arrow Up/Down change the message you're replying to?",
