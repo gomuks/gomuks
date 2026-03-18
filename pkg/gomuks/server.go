@@ -252,7 +252,17 @@ func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonOutput := r.URL.Query().Get("output") == "json"
 	allowPrompt := r.URL.Query().Get("no_prompt") != "true"
-	insecureCookie := r.URL.Query().Get("insecure_cookie") == "true" || gmx.Config.Web.InsecureCookies
+	// Non-web clients are allowed to opt into insecure cookies, web clients will only get them if the config says so
+	insecureCookie := (r.URL.Query().Get("insecure_cookie") == "true" && r.Header.Get("Sec-Fetch-Site") == "") ||
+		gmx.Config.Web.InsecureCookies
+	secureContext := r.URL.Query().Get("secure") != "false"
+	if !secureContext && !insecureCookie {
+		// If the user is trying to connect from an insecure context without allowing insecure cookies,
+		// fail the request immediately to avoid confusion about why the cookie isn't working.
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("Backend is not configured to allow insecure cookies"))
+		return
+	}
 	authCookie, err := r.Cookie("gomuks_auth")
 	if err == nil && gmx.validateAuth(authCookie.Value, false) {
 		hlog.FromRequest(r).Debug().Msg("Authentication successful with existing cookie")
@@ -261,15 +271,17 @@ func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 		hlog.FromRequest(r).Debug().Msg("Authentication successful with username and password")
 		gmx.writeTokenCookie(w, true, jsonOutput, insecureCookie)
 	} else {
-		if !found {
-			hlog.FromRequest(r).Debug().Msg("Requesting credentials for auth request")
-		} else {
-			hlog.FromRequest(r).Debug().Msg("Authentication failed with username and password, re-requesting credentials")
-		}
 		if allowPrompt {
 			w.Header().Set("WWW-Authenticate", `Basic realm="gomuks web" charset="UTF-8"`)
 		}
 		w.WriteHeader(http.StatusUnauthorized)
+		if !found {
+			hlog.FromRequest(r).Debug().Msg("Requesting credentials for auth request")
+			_, _ = w.Write([]byte("Missing basic auth credentials"))
+		} else {
+			hlog.FromRequest(r).Debug().Msg("Authentication failed with username and password, re-requesting credentials")
+			_, _ = w.Write([]byte("Incorrect basic auth credentials"))
+		}
 	}
 }
 

@@ -137,15 +137,20 @@ export default abstract class RPCClient {
 
 	async doAuth(signal: AbortSignal): Promise<boolean> {
 		try {
-			const resp = await fetch("_gomuks/auth", {
+			const resp = await fetch(`_gomuks/auth?secure=${window.isSecureContext}`, {
 				method: "POST",
 				signal,
 			})
+			let body = ""
+			try {
+				body = (await resp.text()).trim()
+			} catch {}
+			const authFailPrefix = `Authentication failed: ${resp.status} ${resp.statusText}`
 			if (!resp.ok && !signal.aborted) {
 				this.connect.emit({
 					connected: false,
 					reconnecting: false,
-					error: `Authentication failed: ${resp.statusText}`,
+					error: [authFailPrefix, body].filter(x => !!x).join(" - "),
 				})
 				return false
 			}
