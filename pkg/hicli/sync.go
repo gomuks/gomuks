@@ -860,6 +860,7 @@ func (h *HiClient) processStateAndTimeline(
 	addedEvents := make(map[database.EventRowID]struct{})
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
+	var previewSender id.UserID
 	var newUnreadCounts database.UnreadCounts
 	addOldEvent := func(rowID database.EventRowID, evtID id.EventID) (dbEvt *database.Event, err error) {
 		if rowID != 0 {
@@ -924,6 +925,7 @@ func (h *HiClient) processStateAndTimeline(
 		if isTimeline {
 			if dbEvt.CanUseForPreview() {
 				updatedRoom.PreviewEventRowID = dbEvt.RowID
+				previewSender = evt.Sender
 				recalculatePreviewEvent = false
 			}
 			updatedRoom.BumpSortingTimestamp(dbEvt)
@@ -1083,9 +1085,35 @@ func (h *HiClient) processStateAndTimeline(
 		if err != nil {
 			return fmt.Errorf("failed to recalculate preview event: %w", err)
 		} else if updatedRoom.PreviewEventRowID != 0 {
-			_, err = addOldEvent(updatedRoom.PreviewEventRowID, "")
+			recalcEvt, err := addOldEvent(updatedRoom.PreviewEventRowID, "")
 			if err != nil {
 				return fmt.Errorf("failed to get preview event: %w", err)
+			}
+			if recalcEvt != nil {
+				previewSender = recalcEvt.Sender
+			}
+		}
+	}
+	// Ensure the preview sender's member event is included in the sync payload when
+	// the preview event changes. The initial sync does this explicitly (init.go), but
+	// incremental syncs may not include the member if the homeserver already lazy-loaded
+	// it in a previous sync session before the frontend connected.
+	if previewSender != "" && updatedRoom.PreviewEventRowID != room.PreviewEventRowID {
+		senderStr := previewSender.String()
+		memberMap := changedState[event.StateMember]
+		if memberMap == nil || memberMap[senderStr] == 0 {
+			memberEvt, err := h.DB.CurrentState.Get(ctx, room.ID, event.StateMember, senderStr)
+			if err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).
+					Stringer("room_id", room.ID).
+					Stringer("sender", previewSender).
+					Msg("Failed to get preview sender member event")
+			} else if memberEvt != nil {
+				if _, alreadyAdded := addedEvents[memberEvt.RowID]; !alreadyAdded {
+					allNewEvents = append(allNewEvents, memberEvt)
+					addedEvents[memberEvt.RowID] = struct{}{}
+				}
+				setNewState(event.StateMember, *memberEvt.StateKey, memberEvt.RowID)
 			}
 		}
 	}
