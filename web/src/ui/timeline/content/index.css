@@ -208,6 +208,10 @@ div.media-container {
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%);
+
+			text-align: center;
+			max-width: 90%;
+			min-width: min(90%, 5rem);
 		}
 
 		> div.placeholder-reason {

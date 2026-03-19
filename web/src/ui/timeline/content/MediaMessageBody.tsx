@@ -56,7 +56,7 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 	if (content["page.codeberg.everypizza.msc4193.spoiler"]) {
 		contentWarning = {
 			type: ContentWarningType.Spoiler,
-			description: content["page.codeberg.everypizza.msc4193.spoiler.reason"],
+			description: content["page.codeberg.everypizza.msc4193.spoiler.reason"] || "Show spoiler",
 		}
 	}
 	const renderMediaElem = !supportsClickToShow || showPreviewsByDefault || clickedShow
