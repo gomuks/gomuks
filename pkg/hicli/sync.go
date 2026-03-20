@@ -20,6 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"go.mau.fi/util/emojirunes"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/exzerolog"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
@@ -452,7 +453,7 @@ func isDecryptionErrorRetryable(err error) bool {
 	return errors.Is(err, crypto.ErrNoSessionFound) || errors.Is(err, olm.ErrUnknownMessageIndex) || errors.Is(err, crypto.ErrGroupSessionWithheld)
 }
 
-func removeReplyFallback(evt *event.Event) []byte {
+func removeReplyFallback(ctx context.Context, evt *event.Event) []byte {
 	if evt.Type != event.EventMessage && evt.Type != event.EventSticker {
 		return nil
 	}
@@ -461,15 +462,23 @@ func removeReplyFallback(evt *event.Event) []byte {
 	if ok {
 		prevFormattedBody := content.FormattedBody
 		content.RemovePerMessageProfileFallback()
+		perMessageProfileRemoved := prevFormattedBody != content.FormattedBody
 		if content.RelatesTo.GetReplyTo() != "" {
 			content.RemoveReplyFallback()
 		}
 		if content.FormattedBody != prevFormattedBody {
 			bytes, err := sjson.SetBytes(evt.Content.VeryRaw, "formatted_body", content.FormattedBody)
 			bytes, err2 := sjson.SetBytes(bytes, "body", content.Body)
-			if err == nil && err2 == nil {
+			var err3 error
+			if perMessageProfileRemoved {
+				bytes, err3 = sjson.DeleteBytes(bytes, exgjson.Path("com.beeper.per_message_profile", "has_fallback"))
+			}
+			if err == nil && err2 == nil && err3 == nil {
 				return bytes
 			}
+			zerolog.Ctx(ctx).Warn().
+				AnErr("err1", err).AnErr("err2", err2).AnErr("err3", err3).
+				Msg("Failed to remove reply fallback, returning original content")
 		}
 	}
 	return nil
@@ -484,7 +493,7 @@ func (h *HiClient) decryptEvent(ctx context.Context, evt *event.Event) (*event.E
 	if err != nil {
 		return nil, nil, false, "", err
 	}
-	withoutFallback := removeReplyFallback(decrypted)
+	withoutFallback := removeReplyFallback(ctx, decrypted)
 	if withoutFallback != nil {
 		return decrypted, withoutFallback, true, decrypted.Type.Type, nil
 	}
@@ -746,7 +755,7 @@ func (h *HiClient) processEvent(
 		return nil, err
 	}
 	dbEvt := database.MautrixToEvent(evt)
-	contentWithoutFallback := removeReplyFallback(evt)
+	contentWithoutFallback := removeReplyFallback(ctx, evt)
 	if contentWithoutFallback != nil {
 		dbEvt.Content = contentWithoutFallback
 		dbEvt.MarkReplyFallbackRemoved()
