@@ -552,6 +552,8 @@ Loop:
 			if codeBlock != nil {
 				if token.DataAtom == atom.Code {
 					codeBlockLanguage = getCodeBlockLanguage(token)
+				} else if token.DataAtom == atom.Br {
+					codeBlock.WriteByte('\n')
 				}
 				// Don't allow any tags inside code blocks
 				continue
