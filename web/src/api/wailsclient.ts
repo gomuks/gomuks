@@ -36,7 +36,11 @@ export default class WailsClient extends RPCClient {
 	async start() {
 		this.#wails = await import("@wailsio/runtime")
 		this.#wails.Events.On("hicli_event", (evt: Wails.Events.WailsEvent) => {
-			this.event.emit(evt.data[0])
+			if (typeof evt !== "object" || !evt || !evt.data) {
+				console.error("Unexpected event data from Wails", evt)
+				return
+			}
+			this.event.emit(evt.data)
 		})
 		this.#wails.Call.ByName("main.CommandHandler.Init")
 		this.connect.emit({ connected: true, reconnecting: false, error: null })
