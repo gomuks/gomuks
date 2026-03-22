@@ -261,6 +261,10 @@ div.media-container {
 			background-color: var(--media-placeholder-default-background);
 		}
 	}
+
+	> video {
+		width: 100%;
+	}
 }
 
 iframe.location-container.google {
