@@ -81,10 +81,10 @@ export function useRoomState(
 }
 
 export function useRoomMember(
-	client: Client | undefined | null, room: RoomStateStore | undefined, userID: UserID,
+	client: Client | undefined | null, room: RoomStateStore | undefined, userID: UserID | undefined,
 ): MemDBEvent | null {
 	const evt = useRoomState(room, "m.room.member", userID)
-	if (!evt && client && room) {
+	if (!evt && client && room && userID) {
 		client.requestMemberEvent(room, userID)
 	}
 	return evt

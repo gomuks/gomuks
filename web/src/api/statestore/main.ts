@@ -48,7 +48,6 @@ export interface RoomListEntry {
 	dm_user_id?: UserID
 	sorting_timestamp: number
 	preview_event?: MemDBEvent
-	preview_sender?: MemDBEvent
 	name: string
 	search_name: string
 	avatar?: ContentURI
@@ -265,7 +264,6 @@ export class StateStore {
 			return null
 		}
 		const preview_event = room?.eventsByRowID.get(entry.meta.preview_event_rowid)
-		const preview_sender = preview_event && room?.getStateEvent("m.room.member", preview_event.sender)
 		const name = entry.meta.name ?? "Unnamed room"
 		const favoriteTag = room?.accountData.get("m.tag")?.tags?.["m.favourite"]
 		return {
@@ -273,7 +271,6 @@ export class StateStore {
 			dm_user_id: entry.meta.dm_user_id,
 			sorting_timestamp: entry.meta.sorting_timestamp,
 			preview_event,
-			preview_sender,
 			name,
 			search_name: toSearchableString(name),
 			avatar: entry.meta.avatar,
@@ -619,12 +616,9 @@ export class StateStore {
 			const idx = this.roomList.current.findIndex(entry => entry.room_id === decrypted.room_id)
 			if (idx !== -1) {
 				const updatedRoomList = [...this.roomList.current]
-				const preview_event = room.eventsByRowID.get(decrypted.preview_event_rowid)
-				const preview_sender = preview_event && room.getStateEvent("m.room.member", preview_event.sender)
 				updatedRoomList[idx] = {
 					...updatedRoomList[idx],
-					preview_sender,
-					preview_event,
+					preview_event: room.eventsByRowID.get(decrypted.preview_event_rowid),
 				}
 				this.roomList.emit(updatedRoomList)
 			}

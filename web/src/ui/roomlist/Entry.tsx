@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
 import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
-import type { RoomListEntry } from "@/api/statestore"
+import { RoomListEntry, useRoomMember } from "@/api/statestore"
 import type { MemDBEvent, MemberEventContent } from "@/api/types"
 import useContentVisibility from "@/util/contentvisibility.ts"
 import { getDisplayname } from "@/util/validation.ts"
@@ -58,8 +58,8 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 	return ["", null]
 }
 
-function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined) {
-	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, room.preview_sender)
+function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
+	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
 
 	return <>
 		<div className="room-entry-left">
@@ -83,8 +83,10 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
 	const client = use(ClientContext)!
+	const realRoom = client.store.rooms.get(room.room_id)
+	const previewSender = useRoomMember(client, realRoom, room.preview_event?.sender)
+
 	const onContextMenu = (evt: React.MouseEvent<HTMLDivElement>) => {
-		const realRoom = client.store.rooms.get(room.room_id)
 		if (!realRoom) {
 			// TODO implement separate menu for invite rooms
 			console.error("Room state store not found for", room.room_id)
@@ -106,7 +108,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
 	>
-		{isVisible ? renderEntry(room, hideAvatar) : null}
+		{isVisible ? renderEntry(room, hideAvatar, previewSender) : null}
 	</div>
 }
 
