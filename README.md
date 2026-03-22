@@ -15,8 +15,8 @@ which acts more like a bouncer.
   There's also a version with an embedded backend in wasm.
 * gomuks terminal is a port of legacy gomuks, but it's still experimental and
   doesn't have many features beyond basic chatting. For legacy gomuks terminal,
-  see the [master branch](https://github.com/gomuks/gomuks/tree/master) and
-  <https://github.com/gomuks/gomuks/issues/476>.
+  see the [v0.3.1 tag](https://github.com/gomuks/gomuks/releases/tag/v0.3.1)
+  and <https://github.com/gomuks/gomuks/issues/476>.
 * [Nexus](https://git.federated.nexus/Henry-Hiles/nexus) is a Flutter frontend
   that embeds the gomuks backend using the C FFI interface. It is currently in
   early development.
