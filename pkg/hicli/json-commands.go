@@ -226,6 +226,10 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {
+	// Value is a raw JSON field, so nil means it was omitted
+	if params.Value == nil {
+		return h.Client.DeleteProfileField(ctx, params.Field)
+	}
 	return h.Client.SetProfileField(ctx, params.Field, params.Value)
 }
 

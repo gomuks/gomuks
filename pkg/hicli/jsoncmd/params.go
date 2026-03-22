@@ -117,8 +117,8 @@ type GetMutualRoomsParams struct {
 }
 
 type SetProfileFieldParams struct {
-	Field string `json:"field"`
-	Value any    `json:"value"`
+	Field string          `json:"field"`
+	Value json.RawMessage `json:"value,omitempty"`
 }
 
 type GetEventParams struct {

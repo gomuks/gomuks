@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, use, useCallback, useState } from "react"
+import { JSX, use, useCallback, useEffect, useState } from "react"
 import { RoomStateStore, StateStore, useAccountData, useRoomAccountData, useRoomState } from "@/api/statestore"
 import { MemDBEvent, UnknownEventContent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
@@ -30,6 +30,7 @@ enum EventKind {
 	State,
 	AccountData,
 	RoomAccountData,
+	Profile,
 }
 
 function kindName(kind: EventKind): string {
@@ -44,14 +45,18 @@ function kindName(kind: EventKind): string {
 		return "Account Data"
 	case EventKind.RoomAccountData:
 		return "Room Account Data"
+	case EventKind.Profile:
+		return "Profile"
 	}
 }
+
+type DoneCallback = (kind: EventKind, type: string, stateKey: string | undefined, content: unknown | undefined) => void
 
 interface BaseEventViewProps {
 	type?: string
 	stateKey?: string
 	onBack: () => void
-	onDone?: (type: string, stateKey: string) => void
+	onDone?: DoneCallback
 }
 
 interface EventViewProps extends BaseEventViewProps {
@@ -120,7 +125,11 @@ const EventView = ({
 	room, kind, event, nestedContent, type, stateKey, onBack, onDone,
 }: EventViewProps) => {
 	const isNewEvent = type === undefined
-	const [editingContent, setEditingContent] = useState<string | null>(isNewEvent ? "{\n\n}" : null)
+	const [editingContent, setEditingContent] = useState<string | null>(
+		isNewEvent
+			? kind === EventKind.Profile ? "" : "{\n\n}"
+			: null,
+	)
 	const [newType, setNewType] = useState<string>(type || "")
 	const [newStateKey, setNewStateKey] = useState<string>(stateKey || "")
 	const [disableEncryption, setDisableEncryption] = useState<boolean>(false)
@@ -129,7 +138,7 @@ const EventView = ({
 	const sendEdit = () => {
 		let parsedContent
 		try {
-			parsedContent = JSON.parse(editingContent || "{}")
+			parsedContent = JSON.parse(editingContent!)
 		} catch (err) {
 			window.alert(`Failed to parse JSON: ${err}`)
 			return
@@ -150,23 +159,40 @@ const EventView = ({
 				parsedContent,
 				kind === EventKind.RoomAccountData ? room!.roomID : undefined,
 			)
+		} else if (kind === EventKind.Profile) {
+			resp = client.rpc.setProfileField(newType, parsedContent)
 		} else {
 			throw new Error("Invalid event kind for editing")
 		}
 		resp.then(() => {
 			console.log("Sent updated event", kind, room?.roomID, type, stateKey)
 			setEditingContent(null)
-			if (isNewEvent) {
-				onDone?.(newType, newStateKey)
+			if (isNewEvent || kind === EventKind.Profile) {
+				onDone?.(kind, newType, newStateKey, parsedContent)
 			}
 		}, err => {
 			console.error("Failed to send updated event", err)
 			window.alert(`Failed to send updated event: ${err}`)
 		})
 	}
+	const doDelete = () => {
+		client.rpc.setProfileField(newType, undefined).then(
+			() => {
+				console.log("Deleted profile field", newType)
+				onDone?.(kind, newType, newStateKey, undefined)
+				onBack()
+			},
+			err => {
+				console.error("Failed to delete profile field", err)
+				window.alert(`Failed to delete profile field: ${err}`)
+			},
+		)
+	}
 	const stopEdit = () => setEditingContent(null)
 	const startEdit = () => setEditingContent(
-		JSON.stringify((nestedContent ? event?.content : event) || {}, null, 4),
+		kind === EventKind.Profile
+			? JSON.stringify(event, null, 4)
+			: JSON.stringify((nestedContent ? event?.content : event) || {}, null, 4),
 	)
 
 	return (
@@ -179,7 +205,7 @@ const EventView = ({
 							({stateKey ? <code>{stateKey}</code> : "no state key"})
 						</> : null}
 					</h3>}
-				{editingContent ? <div className="new-event-type">
+				{editingContent !== null ? <div className="new-event-type">
 					<input
 						autoFocus
 						type="text"
@@ -217,6 +243,7 @@ const EventView = ({
 				</> : <>
 					<button onClick={onBack}>Back</button>
 					<div className="spacer"/>
+					{kind === EventKind.Profile ? <button onClick={doDelete}>Delete</button> : null}
 					<button onClick={startEdit}>Edit</button>
 				</>}
 			</div>
@@ -261,7 +288,20 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 	const [selectedStateKey, setSelectedStateKey] = useState<string | null>(null)
 	const [loadingState, setLoadingState] = useState(false)
 	const [resettingTimeline, setResettingTimeline] = useState(false)
+	const [profile, setProfile] = useState<UnknownEventContent | null>(null)
 	const client = use(ClientContext)!
+
+	useEffect(() => {
+		if (!profile && viewKind == EventKind.Profile) {
+			client.rpc.getProfile(client.userID).then(
+				setProfile,
+				err => {
+					console.error("Failed to load profile", err)
+					window.alert(`Failed to load profile: ${err}`)
+				},
+			)
+		}
+	}, [viewKind, client, profile])
 
 	const handleTypeSelect = (type: string) => {
 		if (viewKind !== EventKind.State) {
@@ -303,10 +343,22 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 			setSelectedType(null)
 		}
 	}, [viewKind, selectedType, selectedStateKey, creatingNew, room])
-	const handleNewEventDone = useCallback((type: string, stateKey?: string) => {
+	const handleNewEventDone: DoneCallback = useCallback((kind, type, stateKey, content) => {
 		setCreatingNew(null)
 		setSelectedType(type)
 		setSelectedStateKey(stateKey ?? null)
+		if (kind === EventKind.Profile) {
+			setProfile(prev => {
+				const upd = {
+					...prev,
+					[type]: content,
+				}
+				if (content === undefined) {
+					delete upd[type]
+				}
+				return upd
+			})
+		}
 	}, [])
 
 	switch (creatingNew) {
@@ -318,6 +370,8 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 		return <GlobalAccountDataEventView store={client.store} onBack={handleBack} onDone={handleNewEventDone} />
 	case EventKind.RoomAccountData:
 		return <RoomAccountDataEventView room={room} onBack={handleBack} onDone={handleNewEventDone} />
+	case EventKind.Profile:
+		return <EventView kind={EventKind.Profile} event={null} onBack={handleBack} onDone={handleNewEventDone} />
 	}
 	if (selectedType !== null) {
 		switch (viewKind) {
@@ -332,6 +386,11 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 			return <GlobalAccountDataEventView store={client.store} type={selectedType} onBack={handleBack} />
 		case EventKind.RoomAccountData:
 			return <RoomAccountDataEventView room={room} type={selectedType} onBack={handleBack} />
+		case EventKind.Profile:
+			return <EventView
+				kind={EventKind.Profile} type={selectedType} event={profile![selectedType]} onBack={handleBack}
+				onDone={handleNewEventDone}
+			/>
 		default:
 			return <div>Invalid view kind</div>
 		}
@@ -356,7 +415,7 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 		client.resetTimeline(room.roomID)
 			.finally(() => setResettingTimeline(false))
 	}
-	let stateKeys: MapIterator<string>
+	let stateKeys: MapIterator<string> | string[]
 	let navButtons: JSX.Element
 	switch (viewKind) {
 	case EventKind.State:
@@ -391,10 +450,18 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 			<button onClick={() => setCreatingNew(EventKind.RoomAccountData)}>Send new room account data event</button>
 		</>
 		break
+	case EventKind.Profile:
+		// TODO loading indicator when null
+		stateKeys = profile ? Object.keys(profile) : []
+		navButtons = <>
+			<div className="spacer"/>
+			<button onClick={() => setCreatingNew(EventKind.Profile)}>Add new profile field</button>
+		</>
+		break
 	default:
 		return <div className="state-explorer">Invalid view kind</div>
 	}
-	const kinds = [EventKind.State, EventKind.AccountData, EventKind.RoomAccountData]
+	const kinds = [EventKind.State, EventKind.AccountData, EventKind.RoomAccountData, EventKind.Profile]
 	return <div className="state-explorer">
 		<div className="title-bar">
 			{kinds.map(kind =>
