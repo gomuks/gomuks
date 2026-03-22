@@ -26,7 +26,7 @@ const (
 	`
 	getTopLevelSpaces = `
 		SELECT space_id
-		FROM (SELECT DISTINCT(space_id) FROM space_edge) outeredge
+		FROM (SELECT room_id AS space_id FROM room WHERE room_type='m.space') outeredge
 		LEFT JOIN room_account_data ON
 			room_account_data.user_id = $1
 			AND room_account_data.room_id = outeredge.space_id

@@ -177,6 +177,13 @@ type Room struct {
 	PrevBatch string `json:"prev_batch"`
 }
 
+func (r *Room) GetType() event.RoomType {
+	if r != nil && r.CreationContent != nil {
+		return r.CreationContent.Type
+	}
+	return ""
+}
+
 func (r *Room) EnsureNotNil() {
 	if r.CreationContent == nil {
 		r.CreationContent = &event.CreateEventContent{}

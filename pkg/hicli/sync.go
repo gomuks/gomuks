@@ -205,6 +205,13 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 			maps.Copy(syncCtx.evt.SpaceEdges, edges)
 		}
 	}
+	if len(syncCtx.changedSpaces) > 0 {
+		var err error
+		syncCtx.evt.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to get top-level space IDs for sync after space edge changes")
+		}
+	}
 	if !syncCtx.evt.IsEmpty() {
 		h.EventHandler(syncCtx.evt)
 	}
@@ -366,10 +373,12 @@ func (h *HiClient) processSyncInvitedRoom(ctx context.Context, roomID id.RoomID,
 }
 
 func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, room *mautrix.SyncJoinedRoom) error {
+	var isNewRoom bool
 	existingRoomData, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to get room data: %w", err)
 	} else if existingRoomData == nil {
+		isNewRoom = true
 		err = h.DB.Room.CreateRow(ctx, roomID)
 		if err != nil {
 			return fmt.Errorf("failed to ensure room row exists: %w", err)
@@ -421,6 +430,7 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		receiptsList,
 		newOwnReceipts,
 		accountData,
+		isNewRoom,
 	)
 	if err != nil {
 		return err
@@ -832,6 +842,7 @@ func (h *HiClient) processStateAndTimeline(
 	receipts []*database.Receipt,
 	newOwnReceipts []id.EventID,
 	accountData map[event.Type]*database.AccountData,
+	isNewRoom bool,
 ) error {
 	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	updatedRoom := &database.Room{
@@ -863,7 +874,11 @@ func (h *HiClient) processStateAndTimeline(
 			}
 		}
 	}
-	sdc := &spaceDataCollector{}
+	_, spaceOrderChanged := accountData[event.AccountDataSpaceOrder]
+	sdc := &spaceDataCollector{
+		OrderChanged: spaceOrderChanged,
+		IsNewRoom:    isNewRoom,
+	}
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
 	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(timeline.Events))
 	addedEvents := make(map[database.EventRowID]struct{})
@@ -1262,6 +1277,9 @@ type spaceDataCollector struct {
 	Parents           map[id.RoomID]*database.SpaceParentEntry
 	PowerLevelChanged bool
 	IsFullState       bool
+
+	OrderChanged bool
+	IsNewRoom    bool
 }
 
 func (sdc *spaceDataCollector) Collect(evt *event.Event, rowID database.EventRowID) {
@@ -1320,10 +1338,13 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 		sdc.Children = nil
 		sdc.PowerLevelChanged = false
 	}
+	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	if len(sdc.Children) == 0 && len(sdc.Parents) == 0 && !sdc.PowerLevelChanged {
+		if (sdc.IsNewRoom || sdc.OrderChanged) && syncCtx != nil && room.GetType() == event.RoomTypeSpace {
+			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
+		}
 		return nil
 	}
-	syncCtx, _ := ctx.Value(syncContextKey).(*syncContext)
 	return seq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
 		if len(sdc.Children) > 0 {
 			children, removedChildren := splitMapValues(sdc.Children)
@@ -1334,6 +1355,8 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 			if syncCtx != nil {
 				syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 			}
+		} else if (sdc.IsNewRoom || sdc.OrderChanged) && syncCtx != nil && room.GetType() == event.RoomTypeSpace {
+			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 		}
 		if len(sdc.Parents) > 0 {
 			parents, removedParents := splitMapValues(sdc.Parents)

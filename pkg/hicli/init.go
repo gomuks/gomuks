@@ -99,12 +99,6 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 				Rooms:       make(map[id.RoomID]*jsoncmd.SyncRoom, len(spaces)),
 				AccountData: firstAccountData,
 			}
-			for _, room := range spaces {
-				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
-				if ctx.Err() != nil {
-					return
-				}
-			}
 			payload.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
 			if err != nil {
 				if ctx.Err() == nil {
@@ -118,6 +112,16 @@ func (h *HiClient) GetInitialSync(ctx context.Context, batchSize int) iter.Seq[*
 					zerolog.Ctx(ctx).Err(err).Msg("Failed to get space edges to send to client")
 				}
 				return
+			}
+			for _, room := range spaces {
+				payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
+				if ctx.Err() != nil {
+					return
+				}
+				_, hasEdges := payload.SpaceEdges[room.ID]
+				if !hasEdges {
+					payload.SpaceEdges[room.ID] = []*database.SpaceEdge{}
+				}
 			}
 			payload.InvitedRooms, err = h.DB.InvitedRoom.GetAll(ctx)
 			if err != nil {
