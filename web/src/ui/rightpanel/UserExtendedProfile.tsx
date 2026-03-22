@@ -1,6 +1,6 @@
 import { use, useEffect, useState } from "react"
 import Client from "@/api/client.ts"
-import { PronounSet, UserProfile } from "@/api/types"
+import { JSONValue, PronounSet, UserID, UserProfile } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
 
@@ -90,6 +90,60 @@ const SetTimeZoneElement = ({ tz, client, refreshProfile }: SetTimezoneProps) =>
 	</>
 }
 
+interface PronounInputProps {
+	pronouns: PronounSet[]
+	client: Client
+	refreshProfile: () => void
+	userID: UserID
+}
+
+const simplePronounOptions: PronounSet[] = [
+	{ grammatical_gender: "", summary: "unset", language: "" },
+	{ grammatical_gender: "masculine", summary: "he/him", language: "en" },
+	{ grammatical_gender: "feminine", summary: "she/her", language: "en" },
+	{ grammatical_gender: "neuter", summary: "they/them", language: "en" },
+	{ grammatical_gender: "inanimate", summary: "it/its", language: "en" },
+]
+
+function simplePronounID(pronouns: PronounSet[]): string | null {
+	if (pronouns.length === 0) {
+		return ""
+	} else if (pronouns.length === 1) {
+		const p = pronouns[0]
+		return simplePronounOptions.find(option =>
+			option.grammatical_gender === p.grammatical_gender
+			&& option.language === p.language
+			&& option.summary === p.summary)?.grammatical_gender ?? null
+	} else {
+		return null
+	}
+}
+
+const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInputProps) => {
+	const id = simplePronounID(pronouns)
+	if (userID !== client.userID || id === null) {
+		return <div>
+			{pronouns.map(pronounSet => ensureString(pronounSet.summary)).join(", ")}
+		</div>
+	}
+	const savePronouns = (evt: React.ChangeEvent<HTMLSelectElement>) => {
+		const set = simplePronounOptions.find(option => option.grammatical_gender === evt.currentTarget.value)
+		if (!set) {
+			return
+		}
+		const val = set.summary === "unset" ? undefined : [set] as unknown as JSONValue
+		client.rpc.setProfileField("io.fsky.nyx.pronouns", val).then(
+			() => refreshProfile(),
+			err => {
+				console.error("Failed to set pronouns:", err)
+				window.alert(`Failed to set pronouns: ${err}`)
+			},
+		)
+	}
+	return <select value={id} onChange={savePronouns}>
+		{simplePronounOptions.map(item => <option value={item.grammatical_gender}>{item.summary}</option>)}
+	</select>
+}
 
 const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: ExtendedProfileProps)=>  {
 	const openModal = use(ModalContext)!
@@ -114,9 +168,9 @@ const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: Extend
 		{userTimeZone && <ClockElement tz={userTimeZone} />}
 		{userID === client.userID &&
 			<SetTimeZoneElement tz={userTimeZone} client={client} refreshProfile={refreshProfile} />}
-		{pronouns.length > 0 && <>
+		{(pronouns.length > 0 || userID === client.userID) && <>
 			<div>Pronouns:</div>
-			<div>{pronouns.map(pronounSet => ensureString(pronounSet.summary)).join(", ")}</div>
+			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
 		<button onClick={viewExtensibleProfile}>View raw profile</button>
 	</div>
