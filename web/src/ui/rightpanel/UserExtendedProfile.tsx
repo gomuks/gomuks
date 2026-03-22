@@ -99,9 +99,9 @@ interface PronounInputProps {
 
 const simplePronounOptions: PronounSet[] = [
 	{ grammatical_gender: "", summary: "unset", language: "" },
-	{ grammatical_gender: "masculine", summary: "he/him", language: "en" },
-	{ grammatical_gender: "feminine", summary: "she/her", language: "en" },
 	{ grammatical_gender: "neuter", summary: "they/them", language: "en" },
+	{ grammatical_gender: "feminine", summary: "she/her", language: "en" },
+	{ grammatical_gender: "masculine", summary: "he/him", language: "en" },
 	{ grammatical_gender: "inanimate", summary: "it/its", language: "en" },
 ]
 
