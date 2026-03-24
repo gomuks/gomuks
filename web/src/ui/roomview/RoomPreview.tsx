@@ -104,8 +104,8 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 	const noAvatarPreview = invite && !showInviteAvatars
 	const joinRule = summary?.join_rule ?? invite?.join_rule ?? "invite"
 	const allowKnock = ["knock", "knock_restricted"].includes(joinRule) && !invite
-	const requiresKnock = joinRule === "knock_restricted" && !invite
-		&& (summary?.allowed_room_ids ?? []).findIndex(roomID => client.store.rooms.has(roomID)) !== -1
+	const requiresKnock = joinRule === "knock_restricted" && summary?.allowed_room_ids && !invite
+		&& summary.allowed_room_ids.findIndex(roomID => client.store.rooms.has(roomID)) === -1
 	const acceptAction = invite ? "Accept" : "Join room"
 
 	return <div className="room-view preview">
