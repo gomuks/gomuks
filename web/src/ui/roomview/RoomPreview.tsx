@@ -177,6 +177,16 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 								<td>Join rule</td>
 								<td>{invite?.join_rule ?? summary?.join_rule}</td>
 							</tr>
+							<tr>
+								<td>Room version</td>
+								<td>{
+									invite?.room_version
+									?? summary?.room_version
+									?? summary?.["im.nheko.summary.room_version"]
+									?? summary?.["im.nheko.summary.version"]
+									?? "Unknown"
+								}</td>
+							</tr>
 						</> : null}
 						{summary && <>
 							<tr>
