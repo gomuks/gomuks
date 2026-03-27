@@ -212,10 +212,6 @@ const emptyObject = {} as const
 export function useCustomEmojis(
 	ss: StateStore, room: RoomStateStore, usage: "stickers" | "emojis" = "emojis",
 ): CustomEmojiPack[] {
-	const personalPack = useSyncExternalStore(
-		ss.accountDataSubs.getSubscriber("im.ponies.user_emotes"),
-		() => ss.getPersonalEmojiPack(),
-	)
 	const watchedRoomPacks = useSyncExternalStore(
 		ss.emojiRoomsSub.subscribe,
 		() => ss.getRoomEmojiPacks(),
@@ -226,11 +222,8 @@ export function useCustomEmojis(
 	)
 	return useMemo(() => {
 		const allPacksObject = { ...watchedRoomPacks, ...specialRoomPacks }
-		if (personalPack) {
-			allPacksObject.personal = personalPack
-		}
 		return Object.values(allPacksObject).filter(pack => pack[usage].length > 0)
-	}, [personalPack, watchedRoomPacks, specialRoomPacks, usage])
+	}, [watchedRoomPacks, specialRoomPacks, usage])
 }
 
 export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEmojiPack> {

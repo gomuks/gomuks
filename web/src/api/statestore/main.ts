@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { getAvatarThumbnailURL } from "@/api/media.ts"
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
-import { CustomEmojiPack, parseCustomEmojiPack } from "@/util/emoji"
+import { CustomEmojiPack } from "@/util/emoji"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { focused } from "@/util/focus.ts"
 import toSearchableString from "@/util/searchablestring.ts"
@@ -25,7 +25,6 @@ import {
 	ContentURI,
 	EventRowID,
 	EventsDecryptedData,
-	ImagePack,
 	ImagePackRooms,
 	MemDBEvent,
 	RoomID,
@@ -135,7 +134,6 @@ export class StateStore {
 	#frequentlyUsedEmoji: Map<string, number> | null = null
 	#emojiPackKeys: RoomStateGUID[] | null = null
 	#watchedRoomEmojiPacks: Record<string, CustomEmojiPack> | null = null
-	#personalEmojiPack: CustomEmojiPack | null = null
 	readonly preferenceSub = new NoDataSubscribable()
 	readonly localPreferenceCache: Preferences = getLocalStoragePreferences("global_prefs", this.preferenceSub.notify)
 	serverPreferenceCache: Preferences = {}
@@ -476,17 +474,6 @@ export class StateStore {
 		this.emojiRoomsSub.notify()
 	}
 
-	getPersonalEmojiPack(): CustomEmojiPack | null {
-		if (this.#personalEmojiPack === null) {
-			const pack = this.accountData.get("im.ponies.user_emotes")
-			if (!pack || !pack.images) {
-				return null
-			}
-			this.#personalEmojiPack = parseCustomEmojiPack(pack as ImagePack, "personal", "Personal pack")
-		}
-		return this.#personalEmojiPack
-	}
-
 	getEmojiPackKeys(): RoomStateGUID[] {
 		if (this.#emojiPackKeys === null) {
 			const emoteRooms = this.accountData.get("im.ponies.emote_rooms") as ImagePackRooms | undefined
@@ -662,7 +649,6 @@ export class StateStore {
 		this.#frequentlyUsedEmoji = null
 		this.#emojiPackKeys = null
 		this.#watchedRoomEmojiPacks = null
-		this.#personalEmojiPack = null
 		this.serverPreferenceCache = {}
 		this.activeRoomID = null
 	}
