@@ -84,11 +84,16 @@ func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Contain
 }
 
 //export GomuksInit
-func GomuksInit() C.GomuksHandle {
+func GomuksInit(root *C.char) C.GomuksHandle {
 	gomuks.DisablePush = true
 	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
+	if root != nil {
+		gmx.InitDirectories(C.GoString(root))
+	} else {
+		gmx.InitDirectories()
+	}
 	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
 	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
 		Gomuks: gmx,
@@ -101,8 +106,6 @@ func GomuksInit() C.GomuksHandle {
 func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
 
-	// TODO customizable storage directories and config
-	gmx.InitDirectories()
 	gmx.Config = gomuks.Config{
 		Logging: zeroconfig.Config{
 			MinLevel: ptr.Ptr(zerolog.DebugLevel),
