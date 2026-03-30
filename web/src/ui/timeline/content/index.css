@@ -138,6 +138,7 @@ div.html-body {
 		overflow: auto;
 		/* Ensure floating scroll bars have their own space */
 		padding-bottom: .5rem;
+		tab-size: 4;
 
 		&.chroma {
 			span.line > span.ln {
