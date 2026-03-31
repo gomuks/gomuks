@@ -18,7 +18,7 @@ import { modals } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 
 export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry: boolean = true) => {
-	if (jumpToVisibleEvent(evtID)) {
+	if (jumpToVisibleEvent(evtID, null, roomCtx)) {
 		console.info("Jumped to event", evtID, "in visible timeline")
 	} else if (roomCtx.store.timeline.length === 0 && allowRetry) {
 		// Hacky sleep to let the timeline load maybe?
@@ -30,7 +30,7 @@ export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry
 	}
 }
 
-export const jumpToVisibleEvent = (evtID: EventID, parent?: Element | null): boolean => {
+export const jumpToVisibleEvent = (evtID: EventID, parent?: Element | null, roomCtx?: RoomContextData): boolean => {
 	if (!evtID) {
 		return false
 	}
@@ -51,11 +51,15 @@ export const jumpToVisibleEvent = (evtID: EventID, parent?: Element | null): boo
 			targetEvt.classList.remove("jump-highlight-fadeout")
 		}, 1500)
 	}, 3000)
+	if (roomCtx) {
+		const timeline = parent ?? document.querySelector("div.timeline-view")
+		roomCtx.scrolledToBottom = !timeline || timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 5
+	}
 	return true
 }
 
 export const jumpToEventInView = (roomCtx: RoomContextData, evtID: EventID, parent?: Element | null) => {
-	if (!parent || !jumpToVisibleEvent(evtID, parent)) {
+	if (!parent || !jumpToVisibleEvent(evtID, parent, roomCtx)) {
 		console.info("Using event context modal to jump to event", evtID)
 		window.openNestableModal(modals.eventContext(roomCtx, evtID))
 	}
