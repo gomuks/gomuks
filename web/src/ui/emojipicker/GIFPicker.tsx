@@ -37,7 +37,10 @@ const GIFPicker = ({ style, onSelect, room }: MediaPickerProps) => {
 	const [error, setError] = useState<unknown>()
 	const close = use(ModalCloseContext)
 	const client = use(ClientContext)!
-	const provider = usePreference(client.store, room, "gif_provider")
+	let provider = usePreference(client.store, room, "gif_provider")
+	if (provider === "tenor" && Date.now() > 1782820800000) {
+		provider = "klipy"
+	}
 	const providerName = provider.slice(0, 1).toUpperCase() + provider.slice(1)
 	// const reuploadGIFs = room.preferences.reupload_gifs
 	const onSelectGIF = (evt: React.MouseEvent<HTMLDivElement>) => {
