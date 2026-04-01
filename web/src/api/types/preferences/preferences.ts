@@ -65,6 +65,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: false,
 	}),
+	autoplay_gifs: new Preference<boolean>({
+		displayName: "Autoplay video GIFs",
+		description: "Whether GIF-like videos (animated stickers) should autoplay in a loop instead of requiring hover.",
+		allowedContexts: anyContext,
+		defaultValue: false,
+	}),
 	show_inline_images: new Preference<boolean>({
 		displayName: "Show inline images",
 		description: "If disabled, custom emojis and other inline images will not be rendered and the alt attribute will be shown instead.",

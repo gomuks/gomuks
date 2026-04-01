@@ -26,6 +26,7 @@ export const useMediaContent = (
 	evtType: EventType,
 	containerSize?: ImageContainerSize,
 	onLoad?: () => void,
+	autoplayGifs?: boolean,
 ): [JSX.Element | null, string, CSSProperties] => {
 	const mediaURL = content.file?.url ? getEncryptedMediaURL(content.file.url) : getMediaURL(content.url)
 	const thumbnailURL = content.info?.thumbnail_file?.url
@@ -49,11 +50,10 @@ export const useMediaContent = (
 		/>, "image-container", style.container]
 	} else if (content.msgtype === "m.video") {
 		const style = calculateMediaSize(content.info?.w, content.info?.h, containerSize ?? defaultVideoContainerSize)
-		// TODO optionally allow autoplaying gifs
-		const autoplay = false // !!content.info?.["fi.mau.autoplay"]
 		const controls = !content.info?.["fi.mau.hide_controls"]
 		const loop = !!content.info?.["fi.mau.loop"]
 		const muted = !!content.info?.["fi.mau.no_audio"]
+		const autoplay = autoplayGifs && !!content.info?.["fi.mau.autoplay"]
 		let onMouseOver: React.MouseEventHandler<HTMLVideoElement> | undefined
 		let onMouseOut: React.MouseEventHandler<HTMLVideoElement> | undefined
 		if (!autoplay && !controls && muted) {
@@ -72,7 +72,7 @@ export const useMediaContent = (
 			poster={thumbnailURL}
 			onMouseOver={onMouseOver}
 			onMouseOut={onMouseOut}
-			preload="none"
+			preload={autoplay ? "auto" : "none"}
 		>
 			<source src={mediaURL} type={ensureString(content.info?.mimetype)}/>
 		</video>, "video-container", style.container]
