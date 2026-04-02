@@ -370,10 +370,14 @@ const MessageComposer = () => {
 			return
 		}
 		if (autocomplete?.frozenQuery) {
-			// For commands, don't close on caret mismatch during navigation —
-			// onSelect manages the text and caret, but keyUp may fire with a
-			// stale caret position.
-			if (autocomplete.type !== "command" && area.selectionEnd !== autocomplete.endPos) {
+			if (autocomplete.type === "command") {
+				// For commands, don't close on caret mismatch during arrow navigation.
+				// But if the user is typing (newText from onChange), clear frozenQuery
+				// so the normal command detection flow resumes.
+				if (newText !== undefined) {
+					setAutocomplete({ ...autocomplete, frozenQuery: undefined, endPos: newText.length })
+				}
+			} else if (area.selectionEnd !== autocomplete.endPos) {
 				setAutocomplete(null)
 			}
 		} else if (autocomplete) {
