@@ -370,7 +370,10 @@ const MessageComposer = () => {
 			return
 		}
 		if (autocomplete?.frozenQuery) {
-			if (area.selectionEnd !== autocomplete.endPos) {
+			// For commands, don't close on caret mismatch during navigation —
+			// onSelect manages the text and caret, but keyUp may fire with a
+			// stale caret position.
+			if (autocomplete.type !== "command" && area.selectionEnd !== autocomplete.endPos) {
 				setAutocomplete(null)
 			}
 		} else if (autocomplete) {

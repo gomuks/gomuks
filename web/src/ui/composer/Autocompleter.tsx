@@ -122,11 +122,11 @@ function useAutocompleter<T>({
 		if (params.type !== "command" || !state.text) {
 			return
 		}
-		if (isFakeCommand(state.text)) {
+		if (isFakeCommand(state.text) && !params.frozenQuery) {
 			// Special case commands that don't use MSC4332
 			setAutocomplete(null)
 			return
-		} else if (items.length === 0 && prevItems.current?.length) {
+		} else if (items.length === 0 && prevItems.current?.length && !params.frozenQuery) {
 			for (const item of prevItems.current as WrappedBotCommand[]) {
 				const argVals = stringToCommandArgs(item, state.text)
 				if (argVals !== null) {
@@ -155,7 +155,7 @@ function useAutocompleter<T>({
 			}
 		}
 		prevItems.current = items
-	}, [params.type, items, state.text, setAutocomplete, setState])
+	}, [params.type, params.frozenQuery, items, state.text, setAutocomplete, setState])
 	const selected = params.selected !== undefined ? positiveMod(params.selected, items.length) : -1
 	return <div
 		className={`autocompletions ac-${params.type} ${items.length === 0 ? "empty" : "has-items"}`}
@@ -268,7 +268,7 @@ const commandFuncs = {
 		if (state.text.charAt(firstArgPos) === `"` || state.text.charAt(firstArgPos) === `<`) {
 			firstArgPos++
 		}
-		return [state, firstArgPos || state.text.length] as const
+		return [state, Math.min(firstArgPos, state.text.length)] as const
 	},
 	render: (cmd: WrappedBotCommand) => <>
 		<BotSourceIcon source={cmd.source} />
