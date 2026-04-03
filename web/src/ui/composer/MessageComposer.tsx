@@ -446,13 +446,17 @@ const MessageComposer = () => {
 				autocompleteUpdate = { selected: autocomplete.selected ?? 0, close: true }
 			} else if (fullKey === "Escape") {
 				autocompleteUpdate = null
-				if (autocomplete.frozenQuery && autocomplete.type !== "command") {
-					setState({
-						text: state.text.slice(0, autocomplete.startPos)
-							+ autocomplete.frozenQuery
-							+ state.text.slice(autocomplete.endPos),
-						command: null,
-					})
+				if (autocomplete.frozenQuery) {
+					if (autocomplete.type === "command") {
+						setState({ text: autocomplete.frozenQuery, command: null })
+					} else {
+						setState({
+							text: state.text.slice(0, autocomplete.startPos)
+								+ autocomplete.frozenQuery
+								+ state.text.slice(autocomplete.endPos),
+							command: null,
+						})
+					}
 				}
 			}
 			if (autocompleteUpdate !== undefined) {
