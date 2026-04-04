@@ -17,15 +17,15 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gdamore/tcell/v2 v2.9.0
 	github.com/lithammer/fuzzysearch v1.1.8
-	github.com/lucasb-eyer/go-colorful v1.3.0
-	github.com/mattn/go-runewidth v0.0.19
-	github.com/mattn/go-sqlite3 v1.14.34
+	github.com/lucasb-eyer/go-colorful v1.4.0
+	github.com/mattn/go-runewidth v0.0.21
+	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/rivo/uniseg v0.4.7
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.0
 	github.com/strukturag/libheif v1.21.2
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
-	github.com/yuin/goldmark v1.7.16
+	github.com/yuin/goldmark v1.8.2
 	github.com/zyedidia/clipboard v1.0.4
 	go.mau.fi/goheif v0.0.0-20251226222328-02af05634b82
 	go.mau.fi/mauview v0.3.0
@@ -33,21 +33,21 @@ require (
 	go.mau.fi/webp v0.2.0
 	go.mau.fi/zeroconfig v0.2.0
 	golang.org/x/crypto v0.49.0
-	golang.org/x/image v0.37.0
+	golang.org/x/image v0.38.0
 	golang.org/x/net v0.52.0
 	golang.org/x/sys v0.42.0
 	golang.org/x/text v0.35.0
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.26.5-0.20260322220343-261f1770e16b
+	maunium.net/go/mautrix v0.26.5-0.20260403114334-e77e5c097542
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
+	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
