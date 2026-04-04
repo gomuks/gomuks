@@ -48,7 +48,7 @@ var runID = time.Now().UnixNano()
 func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	var conn *websocket.Conn
 	log := zerolog.Ctx(r.Context())
-	recoverPanic := func(context string) bool {
+	recoverPanic := func(context string, callback func()) {
 		err := recover()
 		if err != nil {
 			logEvt := log.Error().
@@ -60,11 +60,10 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 				logEvt = logEvt.Any(zerolog.ErrorFieldName, err)
 			}
 			logEvt.Msg("Panic in websocket handler")
-			return true
+			callback()
 		}
-		return false
 	}
-	defer recoverPanic("read loop")
+	defer recoverPanic("read loop", nil)
 
 	conn, acceptErr := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: gmx.Config.Web.OriginPatterns,
@@ -133,7 +132,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 			log.Warn().Msg("Event queue full, closing connection")
 			cancel()
 			go func() {
-				defer recoverPanic("closing connection after error in event handler")
+				defer recoverPanic("closing connection after error in event handler", nil)
 				_ = conn.Close(StatusEventsStuck, "Event queue full")
 				closeOnce.Do(forceClose)
 			}()
@@ -153,7 +152,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	go func() {
-		defer recoverPanic("event loop")
+		defer recoverPanic("event loop", nil)
 		defer closeOnce.Do(forceClose)
 		resumeDataChan := sliceToChan(resumeData)
 		var totalResumeSize int
@@ -208,12 +207,10 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	submitCmd := func(cmd *hicli.JSONCommand) {
-		defer func() {
-			if recoverPanic("command handler") {
-				_ = conn.Close(websocket.StatusInternalError, "Command handler panicked")
-				closeOnce.Do(forceClose)
-			}
-		}()
+		defer recoverPanic("command handler", func() {
+			_ = conn.Close(websocket.StatusInternalError, "Command handler panicked")
+			closeOnce.Do(forceClose)
+		})
 		if cmd.Data == nil {
 			cmd.Data = emptyObject
 		}
