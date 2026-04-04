@@ -98,6 +98,9 @@ func (h *HiClient) SendMessage(
 	var ts int64
 	if strings.HasPrefix(text, "/timestamp ") {
 		parts := strings.SplitN(text, " ", 3)
+		if len(parts) != 3 {
+			return nil, fmt.Errorf("missing parameters for /timestamp")
+		}
 		var err error
 		ts, err = strconv.ParseInt(parts[1], 10, 64)
 		if err != nil {
