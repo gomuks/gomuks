@@ -97,9 +97,10 @@ func NewGomuks() *Gomuks {
 	return gmx
 }
 
-func (gmx *Gomuks) InitDirectories() {
+func (gmx *Gomuks) InitDirectories(root ...string) {
 	// We need 4 directories: config, data, cache, logs
 	//
+	// 0. If root is provided as a parameter, all directories are created under that.
 	// 1. If GOMUKS_ROOT is set, all directories are created under that.
 	// 2. If GOMUKS_*_HOME is set, that value is used as the directory.
 	// 3. Use system-specific defaults as below
@@ -119,7 +120,13 @@ func (gmx *Gomuks) InitDirectories() {
 	// - Config and Data: $HOME/Library/Application Support/gomuks
 	// - Cache: $HOME/Library/Caches/gomuks
 	// - Logs: $HOME/Library/Logs/gomuks
-	if gomuksRoot := os.Getenv("GOMUKS_ROOT"); gomuksRoot != "" {
+	gomuksRoot := ""
+	if len(root) > 0 && root[0] != "" {
+		gomuksRoot = root[0]
+	} else {
+		gomuksRoot = os.Getenv("GOMUKS_ROOT")
+	}
+	if gomuksRoot != "" {
 		exerrors.PanicIfNotNil(os.MkdirAll(gomuksRoot, 0700))
 		gmx.CacheDir = filepath.Join(gomuksRoot, "cache")
 		gmx.ConfigDir = filepath.Join(gomuksRoot, "config")
