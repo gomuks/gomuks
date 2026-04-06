@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+/// <reference types="golang-wasm-exec" />
 import initGomuksWasm from "./_gomuks.wasm?init"
 import "./go_wasm_exec.js"
 import initSqlite from "./sqlite_bridge.ts"
