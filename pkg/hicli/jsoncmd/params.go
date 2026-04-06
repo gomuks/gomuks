@@ -51,6 +51,14 @@ type SendEventParams struct {
 	Synchronous       bool            `json:"synchronous,omitempty"`
 }
 
+type SendStickyEventParams struct {
+	RoomID         id.RoomID             `json:"room_id"`
+	EventType      event.Type            `json:"type"`
+	Content        json.RawMessage       `json:"content"`
+	StickyDuration jsontime.Milliseconds `json:"sticky_duration_ms"`
+	Delay          jsontime.Milliseconds `json:"delay_ms,omitzero"`
+}
+
 type ResendEventParams struct {
 	TransactionID string `json:"transaction_id"`
 }
@@ -68,11 +76,11 @@ type RedactEventParams struct {
 }
 
 type SendStateEventParams struct {
-	RoomID    id.RoomID       `json:"room_id"`
-	EventType event.Type      `json:"type"`
-	StateKey  string          `json:"state_key"`
-	Content   json.RawMessage `json:"content"`
-	DelayMS   int             `json:"delay_ms,omitempty"`
+	RoomID    id.RoomID             `json:"room_id"`
+	EventType event.Type            `json:"type"`
+	StateKey  string                `json:"state_key"`
+	Content   json.RawMessage       `json:"content"`
+	DelayMS   jsontime.Milliseconds `json:"delay_ms,omitzero"`
 }
 
 type UpdateDelayedEventParams struct {
@@ -149,6 +157,10 @@ type GetRelatedEventsParams struct {
 	EventID id.EventID `json:"event_id"`
 
 	RelationType event.RelationType `json:"relation_type"`
+}
+
+type GetStickyEventsParams struct {
+	RoomID id.RoomID `json:"room_id"`
 }
 
 type GetRoomStateParams struct {

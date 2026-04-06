@@ -57,6 +57,8 @@ type SyncRoom struct {
 	Events []*database.Event `json:"events"`
 	// New read receipts. The frontend should only keep the latest receipt per user.
 	Receipts map[id.EventID][]*database.Receipt `json:"receipts"`
+	// New MSC4354 sticky events that aren't included in timeline.
+	Sticky []database.EventRowID `json:"sticky,omitempty"`
 
 	DismissNotifications bool               `json:"dismiss_notifications"`
 	Notifications        []SyncNotification `json:"notifications"`

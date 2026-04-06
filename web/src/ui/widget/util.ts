@@ -35,6 +35,9 @@ export function memDBEventToIRoomEvent(evt: MemDBEvent): IRoomEvent {
 		origin_server_ts: evt.timestamp,
 		content: evt.content,
 		unsigned: evt.unsigned as Record<string, unknown>,
+		msc4354_sticky: evt.sticky_duration_ms ? {
+			duration_ms: evt.sticky_duration_ms,
+		} : undefined,
 	}
 }
 

@@ -1,4 +1,4 @@
--- v0 -> v17 (compatible with v10+): Latest revision
+-- v0 -> v18 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT NOT NULL PRIMARY KEY,
 	device_id      TEXT NOT NULL,
@@ -104,6 +104,7 @@ CREATE TABLE event (
 	reactions         TEXT,
 	last_edit_rowid   INTEGER,
 	unread_type       INTEGER NOT NULL DEFAULT 0,
+	sticky_duration   INTEGER,
 
 	CONSTRAINT event_id_unique_key UNIQUE (event_id),
 	CONSTRAINT transaction_id_unique_key UNIQUE (transaction_id),
@@ -114,6 +115,7 @@ CREATE INDEX event_redacted_by_idx ON event (room_id, redacted_by);
 CREATE INDEX event_relates_to_idx ON event (room_id, relates_to);
 CREATE INDEX event_megolm_session_id_idx ON event (room_id, megolm_session_id);
 CREATE INDEX event_mention_idx ON event (timestamp DESC) WHERE unread_type > 0;
+CREATE INDEX event_sticky_idx ON event (room_id, timestamp) WHERE sticky_duration IS NOT NULL;
 
 CREATE TRIGGER event_update_redacted_by
 	AFTER INSERT

@@ -201,6 +201,16 @@ export default abstract class RPCClient {
 		return this.request("send_event", { room_id, type, content, disable_encryption, synchronous })
 	}
 
+	sendStickyEvent(
+		room_id: RoomID,
+		type: EventType,
+		content: unknown,
+		sticky_duration_ms: number,
+		delay_ms?: number,
+	): Promise<EventID> {
+		return this.request("send_sticky_event", { room_id, type, content, sticky_duration_ms, delay_ms })
+	}
+
 	resendEvent(transaction_id: string): Promise<RawDBEvent> {
 		return this.request("resend_event", { transaction_id })
 	}
@@ -294,6 +304,10 @@ export default abstract class RPCClient {
 
 	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
 		return this.request("get_related_events", { room_id, event_id, relation_type })
+	}
+
+	getStickyEvents(room_id: RoomID): Promise<RawDBEvent[]> {
+		return this.request("get_sticky_events", { room_id })
 	}
 
 	getMentions(

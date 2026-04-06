@@ -32,6 +32,7 @@ const (
 	ReqCancel                   Name = "cancel"
 	ReqSendMessage              Name = "send_message"
 	ReqSendEvent                Name = "send_event"
+	ReqSendStickyEvent          Name = "send_sticky_event"
 	ReqResendEvent              Name = "resend_event"
 	ReqReportEvent              Name = "report_event"
 	ReqRedactEvent              Name = "redact_event"
@@ -51,6 +52,7 @@ const (
 	ReqPaginateManual           Name = "paginate_manual"
 	ReqGetMentions              Name = "get_mentions"
 	ReqGetRelatedEvents         Name = "get_related_events"
+	ReqGetStickyEvents          Name = "get_sticky_events"
 	ReqGetRoomState             Name = "get_room_state"
 	ReqGetSpecificRoomState     Name = "get_specific_room_state"
 	ReqGetReceipts              Name = "get_receipts"
@@ -115,6 +117,9 @@ var (
 	// SendEvent sends an arbitrary event into a room. This should be used for non-message events like reactions.
 	// Note that state events must use `set_state` instead.
 	SendEvent = &CommandSpec[*SendEventParams, *database.Event]{Name: ReqSendEvent}
+	// SendStickyEvent sends an arbitrary sticky (and optionally delayed) event into a room.
+	// This is mostly used by Element Call.
+	SendStickyEvent = &CommandSpec[*SendStickyEventParams, id.EventID]{Name: ReqSendStickyEvent}
 	// ResendEvent retries sending a previously failed outgoing event.
 	ResendEvent = &CommandSpec[*ResendEventParams, *database.Event]{Name: ReqResendEvent}
 	// ReportEvent reports an event to the homeserver.
@@ -165,6 +170,8 @@ var (
 	// GetRelatedEvents returns events related to a given event from the database (e.g. reactions,
 	// edits, replies depending on relation type). This will not call the homeserver.
 	GetRelatedEvents = &CommandSpec[*GetRelatedEventsParams, []*database.Event]{Name: ReqGetRelatedEvents}
+	// GetStickyEvents returns active sticky events in the given room. This will not call the homeserver.
+	GetStickyEvents = &CommandSpec[*GetStickyEventsParams, []*database.Event]{Name: ReqGetStickyEvents}
 	// GetRoomState returns full room state, optionally after fetching it from the homeserver.
 	GetRoomState = &CommandSpec[*GetRoomStateParams, []*database.Event]{Name: ReqGetRoomState}
 	// GetSpecificRoomState returns the requested individual state events.

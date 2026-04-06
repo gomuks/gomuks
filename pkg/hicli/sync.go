@@ -425,6 +425,7 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		ctx,
 		existingRoomData,
 		&room.State,
+		&room.Sticky,
 		&room.Timeline,
 		&room.Summary,
 		receiptsList,
@@ -837,6 +838,7 @@ func (h *HiClient) processStateAndTimeline(
 	ctx context.Context,
 	room *database.Room,
 	state *mautrix.SyncEventsList,
+	sticky *mautrix.SyncEventsList,
 	timeline *mautrix.SyncTimeline,
 	summary *mautrix.LazyLoadSummary,
 	receipts []*database.Receipt,
@@ -880,7 +882,7 @@ func (h *HiClient) processStateAndTimeline(
 		IsNewRoom:    isNewRoom,
 	}
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
-	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(timeline.Events))
+	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(sticky.Events)+len(timeline.Events))
 	addedEvents := make(map[database.EventRowID]struct{})
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
@@ -1007,6 +1009,15 @@ func (h *HiClient) processStateAndTimeline(
 		if !evt.Unsigned.ElementSoftFailed {
 			setNewState(evt.Type, *evt.StateKey, rowID)
 		}
+	}
+	newStickyRows := make([]database.EventRowID, len(sticky.Events))
+	for i, evt := range sticky.Events {
+		evt.Type.Class = event.MessageEventType
+		rowID, err := processNewEvent(evt, false, false)
+		if err != nil {
+			return err
+		}
+		newStickyRows[i] = rowID
 	}
 	var timelineRowTuples []database.TimelineRowTuple
 	receiptMap := make(map[id.EventID][]*database.Receipt)
@@ -1159,7 +1170,7 @@ func (h *HiClient) processStateAndTimeline(
 		return err
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
-	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0) {
+	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 || len(newStickyRows) > 0) {
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
 		}
@@ -1171,6 +1182,7 @@ func (h *HiClient) processStateAndTimeline(
 			Reset:       timeline.Limited,
 			Events:      allNewEvents,
 			Receipts:    receiptMap,
+			Sticky:      newStickyRows,
 
 			Notifications:        newNotifications,
 			DismissNotifications: dismissNotifications,

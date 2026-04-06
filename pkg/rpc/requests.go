@@ -28,6 +28,10 @@ func (gr *GomuksRPC) SendEvent(ctx context.Context, params *jsoncmd.SendEventPar
 	return executeRequest(gr, ctx, jsoncmd.SendEvent, params)
 }
 
+func (gr *GomuksRPC) SendStickyEvent(ctx context.Context, params *jsoncmd.SendStickyEventParams) (id.EventID, error) {
+	return executeRequest(gr, ctx, jsoncmd.SendStickyEvent, params)
+}
+
 func (gr *GomuksRPC) ResendEvent(ctx context.Context, params *jsoncmd.ResendEventParams) (*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.ResendEvent, params)
 }
@@ -90,6 +94,10 @@ func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParam
 
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetRelatedEvents, params)
+}
+
+func (gr *GomuksRPC) GetStickyEvents(ctx context.Context, params *jsoncmd.GetStickyEventsParams) ([]*database.Event, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetStickyEvents, params)
 }
 
 func (gr *GomuksRPC) GetEventContext(ctx context.Context, params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {

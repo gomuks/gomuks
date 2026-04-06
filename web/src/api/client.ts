@@ -342,6 +342,17 @@ export default class Client {
 		return events.map(evt => room.getOrApplyEvent(evt))
 	}
 
+	async getStickyEvents(room: RoomStateStore | RoomID | undefined) {
+		if (typeof room === "string") {
+			room = this.store.rooms.get(room)
+		}
+		if (!room) {
+			return []
+		}
+		const events = await this.rpc.getStickyEvents(room.roomID)
+		return events.map(evt => room.getOrApplyEvent(evt))
+	}
+
 	async getMentions({ maxTS, type, roomID, limit }: {
 		maxTS?: number, type?: UnreadType, roomID?: RoomID, limit?: number
 	} = {}) {

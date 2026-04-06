@@ -31,15 +31,20 @@ const (
 		SELECT rowid, -1,
 		       room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 		       unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
-		       megolm_session_id, decryption_error, send_error, reactions, last_edit_rowid, unread_type
+		       megolm_session_id, decryption_error, send_error, reactions, last_edit_rowid, unread_type, sticky_duration
 		FROM event
 	`
 	getEventByRowID                  = getEventBaseQuery + `WHERE rowid = $1`
 	getManyEventsByRowID             = getEventBaseQuery + `WHERE rowid IN (%s)`
 	getEventByID                     = getEventBaseQuery + `WHERE event_id = $1`
 	getEventByTransactionID          = getEventBaseQuery + `WHERE transaction_id = $1`
-	getFailedEventsByMegolmSessionID = getEventBaseQuery + `WHERE room_id = $1 AND megolm_session_id = $2 AND decryption_error IS NOT NULL`
-	getRelatedEventsQuery            = getEventBaseQuery + `
+	getFailedEventsByMegolmSessionID = getEventBaseQuery + `
+		WHERE room_id = $1 AND megolm_session_id = $2 AND decryption_error IS NOT NULL
+	`
+	getActiveStickyEvents = getEventBaseQuery + `
+		WHERE room_id = $1 AND timestamp > $2 AND sticky_duration IS NOT NULL AND timestamp + sticky_duration > $3
+	`
+	getRelatedEventsQuery = getEventBaseQuery + `
 		WHERE room_id = $1 AND relates_to = $2 AND ($3 = '' OR relation_type = $3)
 		ORDER BY timestamp ASC
 	`
@@ -57,9 +62,9 @@ const (
 		INSERT INTO event (
 			room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 			unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
-			megolm_session_id, decryption_error, send_error, reactions, last_edit_rowid, unread_type
+			megolm_session_id, decryption_error, send_error, reactions, last_edit_rowid, unread_type, sticky_duration
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 	`
 	insertEventQuery = insertEventBaseQuery + `RETURNING rowid`
 	upsertEventQuery = insertEventBaseQuery + `
@@ -117,6 +122,10 @@ func (eq *EventQuery) GetFailedByMegolmSessionID(ctx context.Context, roomID id.
 	return eq.QueryMany(ctx, getFailedEventsByMegolmSessionID, roomID, sessionID)
 }
 
+func (eq *EventQuery) GetActiveSticky(ctx context.Context, roomID id.RoomID) ([]*Event, error) {
+	return eq.QueryMany(ctx, getActiveStickyEvents, roomID, time.Now().Add(-event.MaxStickyDuration).UnixMilli(), time.Now().UnixMilli())
+}
+
 func (eq *EventQuery) GetByID(ctx context.Context, eventID id.EventID) (*Event, error) {
 	return eq.QueryOne(ctx, getEventByID, eventID)
 }
@@ -162,8 +171,8 @@ func (eq *EventQuery) Insert(ctx context.Context, evt *Event) (rowID EventRowID,
 }
 
 var stateEventMassInserter = dbutil.NewMassInsertBuilder[*Event, [1]any](
-	strings.ReplaceAll(upsertEventQuery, "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)", "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"),
-	"($1, $%d, $%d, $%d, $%d, $%d, $%d, NULL, NULL, $%d, NULL, $%d, $%d, NULL, NULL, NULL, NULL, NULL, '{}', 0, 0)",
+	strings.ReplaceAll(upsertEventQuery, "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)", "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"),
+	"($1, $%d, $%d, $%d, $%d, $%d, $%d, NULL, NULL, $%d, NULL, $%d, $%d, NULL, NULL, NULL, NULL, NULL, '{}', 0, 0, NULL)",
 )
 
 var massInsertConverter = dbutil.ConvertRowFn[EventRowID](dbutil.ScanSingleColumn[EventRowID])
@@ -430,6 +439,8 @@ type Event struct {
 	LastEditRowID *EventRowID    `json:"last_edit_rowid,omitempty"`
 	UnreadType    UnreadType     `json:"unread_type,omitempty"`
 
+	StickyDuration jsontime.Milliseconds `json:"sticky_duration_ms,omitzero"`
+
 	parsedContent *event.Content
 	LastEditRef   *Event `json:"-"`
 	Pending       bool   `json:"-"`
@@ -448,6 +459,7 @@ func MautrixToEvent(evt *event.Event) *Event {
 		MegolmSessionID: getMegolmSessionID(evt),
 		TransactionID:   evt.Unsigned.TransactionID,
 		Reactions:       make(map[string]int),
+		StickyDuration:  jsontime.MS(evt.Sticky.GetDuration()),
 	}
 	if !strings.HasPrefix(dbEvt.TransactionID, "hicli-mautrix-go_") {
 		dbEvt.TransactionID = ""
@@ -522,6 +534,9 @@ func (e *Event) AsRawMautrix() *event.Event {
 		Content:   event.Content{VeryRaw: e.GetContent()},
 		Mautrix:   event.MautrixInfo{WasEncrypted: e.Decrypted != nil},
 	}
+	if e.StickyDuration.Duration > 0 {
+		evt.Sticky = &event.Sticky{Duration: e.StickyDuration}
+	}
 	_ = json.Unmarshal(e.Unsigned, &evt.Unsigned)
 	return evt
 }
@@ -544,6 +559,7 @@ func (e *Event) GetMautrixContent() *event.Content {
 func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	var timestamp int64
 	var transactionID, redactedBy, relatesTo, relationType, megolmSessionID, decryptionError, sendError, decryptedType sql.NullString
+	var stickyDuration sql.NullInt64
 	err := row.Scan(
 		&e.RowID,
 		&e.TimelineRowID,
@@ -568,6 +584,7 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 		dbutil.JSON{Data: &e.Reactions},
 		&e.LastEditRowID,
 		&e.UnreadType,
+		&stickyDuration,
 	)
 	if err != nil {
 		return nil, err
@@ -581,6 +598,7 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	e.DecryptedType = decryptedType.String
 	e.DecryptionError = decryptionError.String
 	e.SendError = sendError.String
+	e.StickyDuration = jsontime.MS(time.Duration(stickyDuration.Int64) * time.Millisecond)
 	return e, nil
 }
 
@@ -653,6 +671,7 @@ func (e *Event) sqlVariables() []any {
 		dbutil.JSON{Data: reactions},
 		e.LastEditRowID,
 		e.UnreadType,
+		dbutil.NumPtr(e.StickyDuration.Milliseconds()),
 	}
 }
 

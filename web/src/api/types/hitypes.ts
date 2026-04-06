@@ -136,6 +136,8 @@ export interface BaseDBEvent {
 	reactions?: Record<string, number>
 	last_edit_rowid?: EventRowID
 	unread_type: UnreadType
+
+	sticky_duration_ms?: number
 }
 
 export interface RawDBEvent extends BaseDBEvent {

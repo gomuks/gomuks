@@ -69,6 +69,40 @@ class GomuksWidgetDriver extends WidgetDriver {
 		}
 	}
 
+	async sendStickyEvent(
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		}
+		roomID = roomID ?? this.room.roomID
+		const eventID = await this.client.rpc.sendStickyEvent(roomID, eventType, content, stickyDurationMS)
+		return { eventId: eventID, roomId: roomID }
+	}
+
+	async sendDelayedStickyEvent(
+		delay: number | null,
+		parentDelayID: string | null,
+		stickyDurationMS: number,
+		eventType: string,
+		content: unknown,
+		roomID: string | null = null,
+	): Promise<ISendDelayedEventDetails> {
+		if (!isRecord(content)) {
+			throw new Error("Content must be an object")
+		} else if (parentDelayID !== null) {
+			throw new Error("Parent delayed events are not supported")
+		} else if (!delay) {
+			throw new Error("Delay must be a number")
+		}
+		roomID = roomID ?? this.room.roomID
+		const delayID = await this.client.rpc.sendStickyEvent(roomID, eventType, content, stickyDurationMS, delay)
+		return { delayId: delayID, roomId: roomID }
+	}
+
 	async sendDelayedEvent(
 		delay: number | null,
 		parentDelayID: string | null,
@@ -202,6 +236,10 @@ class GomuksWidgetDriver extends WidgetDriver {
 		return (await Promise.all(
 			this.readRoomData(roomIDs, room => this.readRoomState(room.roomID, eventType, stateKey)),
 		)).flatMap(evts => evts)
+	}
+
+	async readStickyEvents(roomID: RoomID): Promise<IRoomEvent[]> {
+		return (await this.client.getStickyEvents(roomID)).map(memDBEventToIRoomEvent)
 	}
 
 	async readRoomAccountData(type: string, roomIDs: string[] | null = null): Promise<IRoomAccountData[]> {

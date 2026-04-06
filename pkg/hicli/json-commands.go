@@ -48,6 +48,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.SendMessage.RunCtx(ctx, req.Data, h.API.SendMessage)
 	case jsoncmd.ReqSendEvent:
 		return jsoncmd.SendEvent.RunCtx(ctx, req.Data, h.API.SendEvent)
+	case jsoncmd.ReqSendStickyEvent:
+		return jsoncmd.SendStickyEvent.RunCtx(ctx, req.Data, h.API.SendStickyEvent)
 	case jsoncmd.ReqResendEvent:
 		return jsoncmd.ResendEvent.RunCtx(ctx, req.Data, h.API.ResendEvent)
 	case jsoncmd.ReqReportEvent:
@@ -80,6 +82,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetEvent.RunCtx(ctx, req.Data, h.API.GetEvent)
 	case jsoncmd.ReqGetRelatedEvents:
 		return jsoncmd.GetRelatedEvents.RunCtx(ctx, req.Data, h.API.GetRelatedEvents)
+	case jsoncmd.ReqGetStickyEvents:
+		return jsoncmd.GetStickyEvents.RunCtx(ctx, req.Data, h.API.GetStickyEvents)
 	case jsoncmd.ReqGetEventContext:
 		return jsoncmd.GetEventContext.RunCtx(ctx, req.Data, h.API.GetEventContext)
 	case jsoncmd.ReqPaginateManual:
@@ -163,6 +167,19 @@ func (h *JSONAPI) SendEvent(ctx context.Context, params *jsoncmd.SendEventParams
 	return h.Send(ctx, params.RoomID, params.EventType, params.Content, params.DisableEncryption, params.Synchronous)
 }
 
+func (h *JSONAPI) SendStickyEvent(ctx context.Context, params *jsoncmd.SendStickyEventParams) (id.EventID, error) {
+	resp, err := h.HiClient.Client.SendMessageEvent(ctx, params.RoomID, params.EventType, params.Content, mautrix.ReqSendEvent{
+		UnstableDelay:          params.Delay.Duration,
+		UnstableStickyDuration: params.StickyDuration.Duration,
+	})
+	if err != nil {
+		return "", err
+	} else if resp.UnstableDelayID != "" {
+		return id.EventID(resp.UnstableDelayID), nil
+	}
+	return resp.EventID, nil
+}
+
 func (h *JSONAPI) ResendEvent(ctx context.Context, params *jsoncmd.ResendEventParams) (*database.Event, error) {
 	return h.Resend(ctx, params.TransactionID)
 }
@@ -179,7 +196,7 @@ func (h *JSONAPI) RedactEvent(ctx context.Context, params *jsoncmd.RedactEventPa
 
 func (h *JSONAPI) SetState(ctx context.Context, params *jsoncmd.SendStateEventParams) (id.EventID, error) {
 	return h.HiClient.SetState(ctx, params.RoomID, params.EventType, params.StateKey, params.Content, mautrix.ReqSendEvent{
-		UnstableDelay: time.Duration(params.DelayMS) * time.Millisecond,
+		UnstableDelay: params.DelayMS.Duration,
 	})
 }
 
@@ -258,6 +275,10 @@ func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) 
 
 func (h *JSONAPI) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return nonNilArray(h.DB.Event.GetRelatedEvents(ctx, params.RoomID, params.EventID, params.RelationType))
+}
+
+func (h *JSONAPI) GetStickyEvents(ctx context.Context, params *jsoncmd.GetStickyEventsParams) ([]*database.Event, error) {
+	return nonNilArray(h.DB.Event.GetActiveSticky(ctx, params.RoomID))
 }
 
 func (h *JSONAPI) GetEventContext(ctx context.Context, params *jsoncmd.GetEventContextParams) (*jsoncmd.EventContextResponse, error) {

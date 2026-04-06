@@ -603,13 +603,15 @@ export class RoomStateStore {
 		}
 		if (
 			(hasWidgets || this.#threadListener)
-			&& ((sync.timeline && sync.timeline.length > 0) || newState.length > 0)
+			&& ((sync.timeline && sync.timeline.length > 0) || newState.length > 0 || (sync.sticky?.length ?? 0) > 0)
 		) {
+			const stickyEvts = sync.sticky?.map(rowID => this.eventsByRowID.get(rowID)).filter(evt => !!evt)
 			const evts = sync.timeline?.map(evt => this.eventsByRowID.get(evt.event_rowid)).filter(evt => !!evt)
 			if (this.#threadListener && this.#threadListenerRoot && evts) {
 				this.#threadListener(evts.filter(evt => isInThread(evt, this.#threadListenerRoot)))
 			}
 			this.parent.widgetListeners.forEach(listener => {
+				stickyEvts?.forEach(listener.onTimelineEvent)
 				evts?.forEach(listener.onTimelineEvent)
 				newState.forEach(listener.onStateEvent)
 			})
