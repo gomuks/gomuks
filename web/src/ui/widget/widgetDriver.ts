@@ -28,8 +28,9 @@ import {
 	WidgetDriver,
 } from "matrix-widget-api"
 import Client from "@/api/client.ts"
+import { getMediaURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { EventRowID, RoomID } from "@/api/types"
+import { ContentURI, EventRowID, RoomID } from "@/api/types"
 import { matrixToToMatrixURI } from "@/util/validation.ts"
 import { filterEvent, isRecord, iterRoomTimeline, memDBEventToIRoomEvent, notNull } from "./util"
 
@@ -244,8 +245,8 @@ class GomuksWidgetDriver extends WidgetDriver {
 		return { contentUri: json.url }
 	}
 
-	async downloadFile(url: string): Promise<{ file: XMLHttpRequestBodyInit }> {
-		const res = await fetch(url)
+	async downloadFile(mxc: ContentURI): Promise<{ file: XMLHttpRequestBodyInit }> {
+		const res = await fetch(getMediaURL(mxc)!)
 		if (!res.ok) {
 			throw new Error(res.statusText)
 		}
