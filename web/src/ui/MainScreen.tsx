@@ -171,7 +171,6 @@ class ContextFields implements MainScreenContextFields {
 				room.hackyPendingJumpToEventID = openEventID
 			}
 		}
-		window.activeRoom = room
 		this.directSetActiveRoom(room)
 		this.directSetRightPanel(null)
 		if (!space && this.client.store.currentRoomListFilter) {
@@ -207,7 +206,6 @@ class ContextFields implements MainScreenContextFields {
 	}
 
 	#closeActiveRoom(pushState: boolean) {
-		window.activeRoom = null
 		this.directSetActiveRoom(null)
 		this.directSetRightPanel(null)
 		this.rightPanelStack = []
