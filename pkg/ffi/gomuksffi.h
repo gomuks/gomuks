@@ -40,7 +40,7 @@ typedef void (*ProgressCallback)(double progress);
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
 // If root is non-NULL, it is used as the root directory for all gomuks data
 // (config, cache, data, logs), bypassing environment variable lookups.
-// Pass NULL to use the default directory resolution (requires $HOME or $GOMUKS_ROOT).
+// Pass NULL to use the default directory resolution.
 GomuksHandle GomuksInit(char* root);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
