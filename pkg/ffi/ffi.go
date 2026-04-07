@@ -92,7 +92,7 @@ func GomuksInit(root *C.char) C.GomuksHandle {
 	if root != nil {
 		gmx.InitDirectories(C.GoString(root))
 	} else {
-		gmx.InitDirectories()
+		gmx.InitDirectories("")
 	}
 	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
 	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
