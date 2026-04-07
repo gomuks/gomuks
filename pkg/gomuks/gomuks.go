@@ -100,10 +100,10 @@ func NewGomuks() *Gomuks {
 func (gmx *Gomuks) InitDirectories(root *string) {
 	// We need 4 directories: config, data, cache, logs
 	//
-	// 0. If root is provided as a parameter, all directories are created under that.
-	// 1. If GOMUKS_ROOT is set, all directories are created under that.
-	// 2. If GOMUKS_*_HOME is set, that value is used as the directory.
-	// 3. Use system-specific defaults as below
+	// 1. If root is provided as a parameter, all directories are created under that.
+	// 2. If GOMUKS_ROOT is set, all directories are created under that.
+	// 3. If GOMUKS_*_HOME is set, that value is used as the directory.
+	// 4. Use system-specific defaults as below
 	//
 	// *nix:
 	// - Config: $XDG_CONFIG_HOME/gomuks or $HOME/.config/gomuks
