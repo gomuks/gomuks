@@ -54,7 +54,7 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 		}
 	}
 	log.Info().Msg("Re-initializing directories")
-	gmx.InitDirectories()
+	gmx.InitDirectories("")
 	log.Info().Msg("Restarting client")
 	gmx.StartClient()
 	gmx.Client.EventHandler(gmx.Client.State())

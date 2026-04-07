@@ -82,7 +82,7 @@ func main() {
 	exhttp.AutoAllowCORS = false
 	hicli.InitialDeviceDisplayName = "gomuks desktop"
 
-	gmx.InitDirectories()
+	gmx.InitDirectories("")
 	err := gmx.LoadConfig()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)
