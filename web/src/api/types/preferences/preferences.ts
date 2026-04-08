@@ -291,6 +291,27 @@ export const preferences = {
 		defaultValue: false,
 		hidden: window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm,
 	}),
+	ntfy_push: new Preference<boolean>({
+		displayName: "ntfy notifications",
+		description: "Enable ntfy push notifications for this device. Requires ntfy topic URL to be set below.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: false,
+		hidden: window.gomuksAndroid,
+	}),
+	ntfy_url: new Preference<string>({
+		displayName: "ntfy topic URL",
+		description: "Full URL of your ntfy topic, e.g. https://ntfy.sh/my-secret-topic. Enable ntfy notifications above after setting.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: "",
+		hidden: window.gomuksAndroid,
+	}),
+	ntfy_token: new Preference<string>({
+		displayName: "ntfy access token",
+		description: "Optional Bearer token (tk_...) for private/auth-protected ntfy servers. Leave empty for public topics.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: "",
+		hidden: window.gomuksAndroid,
+	}),
 } as const
 
 export const existingPreferenceKeys = new Set(Object.keys(preferences))

@@ -306,7 +306,7 @@ export interface ProfileEncryptionInfo {
 
 export interface DBPushRegistration {
 	device_id: string
-	type: "fcm" | "web"
+	type: "fcm" | "web" | "ntfy"
 	data: unknown
 	encryption?: { key: string }
 	expiration?: number

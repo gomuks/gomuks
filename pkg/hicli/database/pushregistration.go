@@ -47,8 +47,9 @@ func (seq *PushRegistrationQuery) GetAll(ctx context.Context) ([]*PushRegistrati
 type PushType string
 
 const (
-	PushTypeFCM PushType = "fcm"
-	PushTypeWeb PushType = "web"
+	PushTypeFCM  PushType = "fcm"
+	PushTypeWeb  PushType = "web"
+	PushTypeNtfy PushType = "ntfy"
 )
 
 type EncryptionKey struct {

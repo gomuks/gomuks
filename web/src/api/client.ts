@@ -215,6 +215,44 @@ export default class Client {
 		})
 	}
 
+	registerNtfyPush = async () => {
+		const prefs = this.store.localPreferenceCache
+		const enabled = prefs.ntfy_push && prefs.ntfy_url
+		if (!enabled) {
+			if (localStorage.ntfy_device_id) {
+				try {
+					await this.rpc.registerPush({
+						type: "ntfy",
+						device_id: localStorage.ntfy_device_id,
+						data: {},
+						expiration: 1,
+					})
+					console.info("ntfy push unregistered")
+				} catch (err) {
+					console.error("Failed to unregister ntfy push", err)
+				}
+			}
+			return
+		}
+		if (!localStorage.ntfy_device_id) {
+			localStorage.ntfy_device_id = crypto.randomUUID()
+		}
+		try {
+			await this.rpc.registerPush({
+				type: "ntfy",
+				device_id: localStorage.ntfy_device_id,
+				data: {
+					url: prefs.ntfy_url,
+					token: prefs.ntfy_token || undefined,
+					base_url: window.location.origin,
+				},
+			})
+			console.info("ntfy push registered")
+		} catch (err) {
+			console.error("Failed to register ntfy push", err)
+		}
+	}
+
 	registerURIHandler = () => {
 		navigator.registerProtocolHandler("matrix", "#/uri/%s")
 	}

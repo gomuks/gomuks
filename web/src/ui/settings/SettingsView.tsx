@@ -479,6 +479,8 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			}
 			if (key === "web_push") {
 				client.registerWebPush()
+			} else if (key === "ntfy_push" || key === "ntfy_url" || key === "ntfy_token") {
+				client.registerNtfyPush()
 			}
 		} else if (context === PreferenceContext.RoomAccount) {
 			client.rpc.setAccountData("fi.mau.gomuks.preferences", {

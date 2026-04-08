@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
@@ -143,6 +145,7 @@ func (pn *PushNotification) Split(yield func(*PushNotification) bool) {
 			yield(&PushNotification{
 				Dismiss:      pn.Dismiss,
 				RawMessages:  pn.RawMessages[offset:i],
+				OrigMessages: pn.OrigMessages[offset:i],
 				ImageAuth:    pn.ImageAuth,
 				HasImportant: hasSound,
 			})
@@ -156,6 +159,7 @@ func (pn *PushNotification) Split(yield func(*PushNotification) bool) {
 	yield(&PushNotification{
 		Dismiss:      pn.Dismiss,
 		RawMessages:  pn.RawMessages[offset:],
+		OrigMessages: pn.OrigMessages[offset:],
 		ImageAuth:    pn.ImageAuth,
 		HasImportant: hasSound,
 	})
@@ -177,24 +181,18 @@ func (gmx *Gomuks) SendPushNotification(ctx context.Context, pushRegs []*databas
 		return
 	}
 	for _, reg := range pushRegs {
-		devicePayload := rawPayload
-		encrypted := false
-		if reg.Encryption.Key != nil {
-			var err error
-			devicePayload, err = encryptPush(rawPayload, reg.Encryption.Key)
-			if err != nil {
-				log.Err(err).Str("device_id", reg.DeviceID).Msg("Failed to encrypt push payload")
-				continue
-			}
-			encrypted = true
-		}
 		var shouldDelete bool
 		switch reg.Type {
 		case database.PushTypeFCM:
-			if !encrypted {
+			if reg.Encryption.Key == nil {
 				log.Warn().
 					Str("device_id", reg.DeviceID).
 					Msg("FCM push registration doesn't have encryption key")
+				continue
+			}
+			devicePayload, err := encryptPush(rawPayload, reg.Encryption.Key)
+			if err != nil {
+				log.Err(err).Str("device_id", reg.DeviceID).Msg("Failed to encrypt push payload")
 				continue
 			}
 			var token string
@@ -205,6 +203,15 @@ func (gmx *Gomuks) SendPushNotification(ctx context.Context, pushRegs []*databas
 			}
 			shouldDelete = gmx.SendFCMPush(ctx, token, devicePayload, notif.HasImportant)
 		case database.PushTypeWeb:
+			devicePayload := rawPayload
+			if reg.Encryption.Key != nil {
+				var err error
+				devicePayload, err = encryptPush(rawPayload, reg.Encryption.Key)
+				if err != nil {
+					log.Err(err).Str("device_id", reg.DeviceID).Msg("Failed to encrypt push payload")
+					continue
+				}
+			}
 			var sub webpush.Subscription
 			err = json.Unmarshal(reg.Data, &sub)
 			if err != nil {
@@ -212,6 +219,18 @@ func (gmx *Gomuks) SendPushNotification(ctx context.Context, pushRegs []*databas
 				continue
 			}
 			shouldDelete = gmx.SendWebPush(ctx, &sub, devicePayload, notif.HasImportant)
+		case database.PushTypeNtfy:
+			var target ntfyTarget
+			err = json.Unmarshal(reg.Data, &target)
+			if err != nil {
+				log.Err(err).Str("device_id", reg.DeviceID).Msg("Failed to unmarshal ntfy target")
+				continue
+			}
+			if target.URL == "" {
+				log.Warn().Str("device_id", reg.DeviceID).Msg("ntfy registration has empty URL")
+				continue
+			}
+			shouldDelete = gmx.SendNtfyPush(ctx, &target, notif)
 		}
 		if shouldDelete {
 			log.Debug().Str("device_id", reg.DeviceID).Msg("Expiring push registration as gateway returned 404")
@@ -311,6 +330,100 @@ func (gmx *Gomuks) SendWebPush(ctx context.Context, sub *webpush.Subscription, p
 			Msg("Sent push request")
 	}
 	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	return
+}
+
+type ntfyTarget struct {
+	URL     string `json:"url"`
+	Token   string `json:"token,omitempty"`
+	BaseURL string `json:"base_url,omitempty"`
+}
+
+type ntfyMessage struct {
+	Title    string   `json:"title,omitempty"`
+	Message  string   `json:"message"`
+	Tags     []string `json:"tags,omitempty"`
+	Priority int      `json:"priority,omitempty"`
+	Click    string   `json:"click,omitempty"`
+	Markdown bool     `json:"markdown,omitempty"`
+}
+
+// SendNtfyPush publishes each message in notif.OrigMessages as a separate
+// structured ntfy notification. ntfy clients display the title/body natively,
+// so unlike FCM/Web push we do not send the encrypted payload — we build a
+// human-readable message per event instead.
+func (gmx *Gomuks) SendNtfyPush(ctx context.Context, target *ntfyTarget, notif *PushNotification) (shouldDelete bool) {
+	log := zerolog.Ctx(ctx)
+	for _, msg := range notif.OrigMessages {
+		title := msg.Sender.Name
+		if msg.RoomName != "" && msg.RoomName != msg.Sender.Name {
+			title = fmt.Sprintf("%s (%s)", msg.Sender.Name, msg.RoomName)
+		}
+		priority := 3
+		if msg.Mention || msg.Sound {
+			priority = 4
+		}
+		var tags []string
+		if msg.Mention {
+			tags = append(tags, "loudspeaker")
+		} else if msg.Reply {
+			tags = append(tags, "speech_balloon")
+		}
+		var click string
+		if target.BaseURL != "" {
+			// Same URI format as pushmuks-sw.js: matrix:roomid/<room_id without !>/e/<event_id without $>
+			matrixURI := fmt.Sprintf("matrix:roomid/%s/e/%s",
+				strings.TrimPrefix(string(msg.RoomID), "!"),
+				strings.TrimPrefix(string(msg.EventID), "$"))
+			click = fmt.Sprintf("%s/#/uri/%s",
+				strings.TrimRight(target.BaseURL, "/"),
+				url.QueryEscape(matrixURI))
+		}
+		body, err := json.Marshal(&ntfyMessage{
+			Title:    title,
+			Message:  msg.Text,
+			Tags:     tags,
+			Priority: priority,
+			Click:    click,
+		})
+		if err != nil {
+			log.Err(err).Msg("Failed to marshal ntfy message")
+			continue
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, target.URL, bytes.NewReader(body))
+		if err != nil {
+			log.Err(err).Msg("Failed to create ntfy request")
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if target.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+target.Token)
+		}
+		resp, err := pushClient.Do(req)
+		if err != nil {
+			log.Err(err).Str("ntfy_url", target.URL).Msg("Failed to send ntfy push")
+			continue
+		}
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+			shouldDelete = true
+			log.Error().
+				Int("status", resp.StatusCode).
+				Str("ntfy_url", target.URL).
+				Msg("ntfy returned 404/410, marking registration as expired")
+		} else if resp.StatusCode >= 300 {
+			log.Error().
+				Int("status", resp.StatusCode).
+				Str("ntfy_url", target.URL).
+				Msg("Non-2xx status from ntfy")
+		} else {
+			log.Trace().
+				Int("status", resp.StatusCode).
+				Str("ntfy_url", target.URL).
+				Stringer("event_id", msg.EventID).
+				Msg("Sent ntfy push")
+		}
 		_ = resp.Body.Close()
 	}
 	return
