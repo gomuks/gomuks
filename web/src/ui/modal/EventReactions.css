@@ -1,0 +1,53 @@
+div.event-reactions-modal {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: .25rem .75rem;
+
+	> div.emoji {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		> img.custom-emoji {
+			height: 2rem;
+			max-width: 5rem;
+		}
+
+		> span.unicode-emoji {
+			font-size: 1.5rem;
+			max-width: 10rem;
+			text-wrap: nowrap;
+			overflow: hidden;
+
+			&.long {
+				font-size: .75rem;
+			}
+		}
+	}
+
+	> div.senders {
+		display: flex;
+		gap: 0 .25rem;
+		align-items: center;
+		max-width: 40rem;
+		flex-wrap: wrap;
+
+		> div.reaction-sender {
+			display: flex;
+			align-items: center;
+
+			> img.avatar {
+				margin-right: .25rem;
+				margin-left: .125rem;
+			}
+
+			> button.delete-button {
+				color: var(--secondary-text-color);
+				height: 1.25rem;
+				width: 1.25rem;
+				padding: .125rem;
+				margin: -.125rem;
+			}
+		}
+	}
+}

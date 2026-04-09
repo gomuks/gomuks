@@ -26,6 +26,7 @@ import JSONView from "../util/JSONView.tsx"
 import { getPending, getPowerLevels } from "./util.ts"
 import ViewSourceIcon from "@/icons/code.svg?react"
 import DeleteIcon from "@/icons/delete.svg?react"
+import EmojiIcon from "@/icons/emoji-categories/smileys-emotion.svg?react"
 import PinIcon from "@/icons/pin.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
 import ReportIcon from "@/icons/report.svg?react"
@@ -60,6 +61,9 @@ export const useSecondaryItems = (
 				<button style={{ padding: ".5rem" }} onClick={copyRawCommand}>Copy /raw command</button>
 			</div>,
 		})
+	}
+	const onClickViewReactions = () => {
+		openModal(modals.eventReactions(roomCtx, evt))
 	}
 	const onClickReport = () => {
 		openModal({
@@ -141,6 +145,10 @@ export const useSecondaryItems = (
 
 	return <>
 		<button onClick={onClickViewSource}><ViewSourceIcon/>{names && "View source"}</button>
+		{evt.reactions &&
+			<button onClick={onClickViewReactions}>
+				<EmojiIcon/>{names && "Reactions"}
+			</button>}
 		{evt.decryption_error && evt.content.session_id &&
 			<button onClick={onClickRerequestSession}><RefreshIcon/>{names && "Request key"}</button>}
 		<button onClick={onClickShareEvent}><ShareIcon/>{names && "Share"}</button>

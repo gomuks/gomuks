@@ -16,6 +16,7 @@
 import { RefObject } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
+import EventReactions from "@/ui/modal/EventReactions.tsx"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import MediaUploadDialog, { UploadFileFunc } from "../composer/MediaUploadDialog.tsx"
 import VoiceRecorder from "../composer/VoiceRecorder.tsx"
@@ -139,5 +140,15 @@ export function eventEditHistory(roomCtx: RoomContextData, evt: MemDBEvent): Nes
 		boxed: true,
 		boxClass: "full-screen-mobile event-edit-history-wrapper",
 		innerBoxClass: "event-edit-history-modal",
+	}
+}
+
+export function eventReactions(roomCtx: RoomContextData, evt: MemDBEvent): NonNestableModalState {
+	return {
+		content: <EventReactions evt={evt} roomCtx={roomCtx}/>,
+		dimmed: true,
+		boxed: true,
+		boxClass: "full-screen-mobile event-reactions-wrapper",
+		innerBoxClass: "event-reactions-modal",
 	}
 }
