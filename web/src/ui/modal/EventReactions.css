@@ -1,7 +1,7 @@
 div.event-reactions-modal {
 	display: grid;
 	grid-template-columns: auto 1fr;
-	gap: .25rem .75rem;
+	gap: .5rem;
 
 	> div.emoji {
 		display: flex;
