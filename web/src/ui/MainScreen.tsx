@@ -119,7 +119,7 @@ class ContextFields implements MainScreenContextFields {
 
 	setSpace = (space: RoomListFilter | null, pushState = true) => {
 		if (space === this.client.store.currentRoomListFilter) {
-			if (space && pushState && !this.client.store.activeRoomID) {
+			if (space && space.id.startsWith("!") && pushState && !this.client.store.activeRoomID) {
 				this.setActiveRoom(space.id)
 			}
 			return
