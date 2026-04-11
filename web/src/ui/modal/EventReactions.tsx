@@ -79,7 +79,7 @@ const mapReactionEvents = (reactions: MemDBEvent[]) => {
 			info.emoji = key
 		}
 		if (info.mxc && !info.shortcode && evt.content["com.beeper.reaction.shortcode"]) {
-			info.shortcode = ensureString(evt.content["com.beeper.reaction.shortcode"]).replace(":", "")
+			info.shortcode = ensureString(evt.content["com.beeper.reaction.shortcode"]).replaceAll(":", "")
 		}
 		if (!info.firstTimestamp || info.firstTimestamp > evt.timestamp) {
 			info.firstTimestamp = evt.timestamp
