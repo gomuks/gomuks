@@ -160,7 +160,7 @@ macos/arm64:
   before_script:
   - export PATH=/opt/homebrew/bin:$PATH
   script:
-  - BINARY_NAME=gomuks go tool maubuild
+  - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" BINARY_NAME=gomuks go tool maubuild
   - BINARY_NAME=gomuks-terminal go tool maubuild
   - install_name_tool -change $(brew --prefix)/opt/libolm/lib/libolm.3.dylib @rpath/libolm.3.dylib gomuks
   - install_name_tool -add_rpath @executable_path gomuks
