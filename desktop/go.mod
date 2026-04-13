@@ -66,7 +66,7 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.23 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yuin/goldmark v1.8.2 // indirect
-	go.mau.fi/goheif v0.0.0-20251226222328-02af05634b82 // indirect
+	go.mau.fi/goheif v0.0.0-20260413100809-7ec7087b8d7d // indirect
 	go.mau.fi/webp v0.2.0 // indirect
 	go.mau.fi/zeroconfig v0.2.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
