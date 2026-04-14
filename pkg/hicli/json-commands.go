@@ -331,7 +331,7 @@ func (h *JSONAPI) JoinRoom(ctx context.Context, params *jsoncmd.JoinRoomParams) 
 			zerolog.Ctx(ctx).Warn().Msg("Invited room metadata not found for from_invite join request")
 		} else if dmUserID := invite.GetDMUserID(h.Account.UserID); dmUserID != "" {
 			err = h.ConvertToDM(ctx, invite.ID, dmUserID)
-			if err != nil {
+			if err != nil && !errors.Is(err, ErrMDirectNoOp) {
 				return nil, fmt.Errorf("failed to mark room as DM: %w", err)
 			}
 		}
