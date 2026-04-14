@@ -18,18 +18,43 @@ import (
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+
+	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
 
-func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (bool, error) {
-	keys := h.Crypto.GetOwnCrossSigningPublicKeys(ctx)
-	if keys == nil {
-		return false, fmt.Errorf("own cross-signing keys not found")
-	}
-	isVerified, err := h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, keys.SelfSigningKey)
+func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state jsoncmd.VerificationState, err error) {
+	var keys *crypto.CrossSigningPublicKeysCache
+	keys, err = h.Crypto.GetOwnCrossSigningPublicKeys(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
+		err = fmt.Errorf("failed to get own cross-signing public keys: %w", err)
+		return
+	} else if keys == nil {
+		// No point in checking verification status if we don't even have cross-signing keys
+		return
 	}
-	return isVerified, nil
+	state.HasCrossSigning = true
+	state.IsVerified, err = h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, keys.SelfSigningKey)
+	if err != nil {
+		err = fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
+		return
+	}
+	if !state.IsVerified {
+		var defaultKeyID string
+		defaultKeyID, err = h.Crypto.SSSS.GetDefaultKeyID(ctx)
+		if err != nil && !errors.Is(err, ssss.ErrNoDefaultKeyAccountDataEvent) && !errors.Is(err, ssss.ErrNoKeyFieldInAccountDataEvent) {
+			err = fmt.Errorf("failed to get default SSSS key ID: %w", err)
+			return
+		}
+		state.HasSSSS = defaultKeyID != ""
+	} else {
+		err = h.loadPrivateKeys(ctx)
+		if err != nil {
+			return
+		}
+		// Assume SSSS is there if we found all keys in the local DB
+		state.HasSSSS = true
+	}
+	return
 }
 
 func (h *HiClient) fetchKeyBackupKey(ctx context.Context, ssssKey *ssss.Key) error {
@@ -132,6 +157,7 @@ func (h *HiClient) Verify(ctx context.Context, code string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get default SSSS key data: %w", err)
 	}
+	h.VerificationState.HasSSSS = true
 	key, err := keyData.VerifyRecoveryKey(keyID, code)
 	if errors.Is(err, ssss.ErrInvalidRecoveryKey) && keyData.Passphrase != nil {
 		key, err = keyData.VerifyPassphrase(keyID, code)
@@ -163,7 +189,8 @@ func (h *HiClient) Verify(ctx context.Context, code string) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch key backup key: %w", err)
 	}
-	h.Verified = true
+	h.VerificationState.IsVerified = true
+	h.VerificationState.StateChecked = true
 	if !h.IsSyncing() {
 		go h.Sync()
 	}

@@ -153,13 +153,21 @@ type SendComplete struct {
 	Error error           `json:"error"`
 }
 
+type VerificationState struct {
+	IsVerified      bool `json:"is_verified"`
+	StateChecked    bool `json:"state_checked"`
+	HasCrossSigning bool `json:"has_cross_signing"`
+	HasSSSS         bool `json:"has_ssss"`
+}
+
 type ClientState struct {
-	Initialized   bool        `json:"is_initialized"`
-	IsLoggedIn    bool        `json:"is_logged_in"`
-	IsVerified    bool        `json:"is_verified"`
-	UserID        id.UserID   `json:"user_id,omitempty"`
-	DeviceID      id.DeviceID `json:"device_id,omitempty"`
-	HomeserverURL string      `json:"homeserver_url,omitempty"`
+	Initialized       bool              `json:"is_initialized"`
+	IsLoggedIn        bool              `json:"is_logged_in"`
+	IsVerified        bool              `json:"is_verified"`
+	VerificationState VerificationState `json:"verification_state"`
+	UserID            id.UserID         `json:"user_id,omitempty"`
+	DeviceID          id.DeviceID       `json:"device_id,omitempty"`
+	HomeserverURL     string            `json:"homeserver_url,omitempty"`
 }
 
 type ImageAuthToken string

@@ -28,7 +28,8 @@ func (h *HiClient) State() *jsoncmd.ClientState {
 		state.UserID = acc.UserID
 		state.DeviceID = acc.DeviceID
 		state.HomeserverURL = acc.HomeserverURL
-		state.IsVerified = h.Verified
+		state.IsVerified = h.VerificationState.IsVerified
+		state.VerificationState = h.VerificationState
 	}
 	return state
 }

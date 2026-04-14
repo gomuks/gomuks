@@ -85,7 +85,7 @@ func (h *hiSyncer) OnFailedSync(_ *mautrix.RespSync, err error) (time.Duration, 
 }
 
 func (h *hiSyncer) GetFilterJSON(_ id.UserID) *mautrix.Filter {
-	if !h.Verified {
+	if !h.VerificationState.IsVerified {
 		return &mautrix.Filter{
 			Presence: &mautrix.FilterPart{
 				NotRooms: []id.RoomID{"*"},

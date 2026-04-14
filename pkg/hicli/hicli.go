@@ -43,8 +43,8 @@ type HiClient struct {
 	ClientStore *database.ClientStateStore
 	Log         zerolog.Logger
 
-	Initialized bool
-	Verified    bool
+	Initialized       bool
+	VerificationState jsoncmd.VerificationState
 
 	KeyBackupVersion id.KeyBackupVersion
 	KeyBackupKey     *backup.MegolmBackupKey
@@ -225,16 +225,15 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 			return fmt.Errorf("failed to load olm machine: %w", err)
 		}
 
-		h.Verified, err = h.checkIsCurrentDeviceVerified(ctx)
+		h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx)
 		if err != nil {
 			return err
 		}
-		zerolog.Ctx(ctx).Debug().Bool("verified", h.Verified).Msg("Checked current device verification status")
-		if h.Verified {
-			err = h.loadPrivateKeys(ctx)
-			if err != nil {
-				return err
-			}
+		h.VerificationState.StateChecked = true
+		zerolog.Ctx(ctx).Debug().
+			Any("verification_state", h.VerificationState).
+			Msg("Checked current device verification status")
+		if h.VerificationState.IsVerified {
 			go h.Sync()
 		}
 	}

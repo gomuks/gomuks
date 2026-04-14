@@ -85,6 +85,10 @@ func (h *HiClient) Login(ctx context.Context, req *mautrix.ReqLogin) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch own devices: %w", err)
 	}
+	h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
