@@ -208,6 +208,15 @@ type VerifyParams struct {
 	RecoveryKey string `json:"recovery_key"`
 }
 
+type GenerateRecoveryKeyParams struct {
+	Passphrase string `json:"passphrase"`
+}
+
+type ResetEncryptionParams struct {
+	RecoveryKeyResponse
+	AccountPassword string `json:"account_password,omitempty"`
+}
+
 type DiscoverHomeserverParams struct {
 	UserID id.UserID `json:"user_id"`
 }

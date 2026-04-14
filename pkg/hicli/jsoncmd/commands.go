@@ -72,6 +72,8 @@ const (
 	ReqLogin                    Name = "login"
 	ReqLoginCustom              Name = "login_custom"
 	ReqVerify                   Name = "verify"
+	ReqGenerateRecoveryKey      Name = "generate_recovery_key"
+	ReqResetEncryption          Name = "reset_encryption"
 	ReqDiscoverHomeserver       Name = "discover_homeserver"
 	ReqGetLoginFlows            Name = "get_login_flows"
 	ReqRegisterPush             Name = "register_push"
@@ -226,6 +228,11 @@ var (
 	// Verify verifies the session using a recovery key or recovery phrase. Like the `login`
 	// request, this will also dispatch a `client_state` event after successfully verifying.
 	Verify = &CommandSpecWithoutResponse[*VerifyParams]{Name: ReqVerify}
+	// GenerateRecoveryKey generates a new recovery key, optionally from a given recovery phrase.
+	// This will not actually use the generated key for anything, `reset_encryption` has to be called separately.
+	GenerateRecoveryKey = &CommandSpec[*GenerateRecoveryKeyParams, *RecoveryKeyResponse]{Name: ReqGenerateRecoveryKey}
+	// ResetEncryption resets the account's cross-signing keys and key backup/SSSS to use the given recovery key.
+	ResetEncryption = &CommandSpecWithoutResponse[*ResetEncryptionParams]{Name: ReqResetEncryption}
 	// DiscoverHomeserver performs `.well-known` lookup on the server name of the given user ID and
 	// returns the results.
 	DiscoverHomeserver = &CommandSpec[*DiscoverHomeserverParams, *mautrix.ClientWellKnown]{Name: ReqDiscoverHomeserver}
@@ -279,6 +286,7 @@ var AllNames = []Name{
 	ReqCancel,
 	ReqSendMessage,
 	ReqSendEvent,
+	ReqSendStickyEvent,
 	ReqResendEvent,
 	ReqReportEvent,
 	ReqRedactEvent,
@@ -317,6 +325,8 @@ var AllNames = []Name{
 	ReqLogin,
 	ReqLoginCustom,
 	ReqVerify,
+	ReqGenerateRecoveryKey,
+	ReqResetEncryption,
 	ReqDiscoverHomeserver,
 	ReqGetLoginFlows,
 	ReqRegisterPush,

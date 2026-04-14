@@ -7,6 +7,7 @@
 package jsoncmd
 
 import (
+	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/id"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
@@ -49,4 +50,9 @@ type EventContextResponse struct {
 type ManualPaginationResponse struct {
 	Events    []*database.Event `json:"events"`
 	NextBatch string            `json:"next_batch"`
+}
+
+type RecoveryKeyResponse struct {
+	RecoveryKey    string                   `json:"recovery_key"`
+	PassphraseMeta *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
 }

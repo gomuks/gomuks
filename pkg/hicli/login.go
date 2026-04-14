@@ -89,6 +89,7 @@ func (h *HiClient) Login(ctx context.Context, req *mautrix.ReqLogin) error {
 	if err != nil {
 		return err
 	}
+	h.VerificationState.StateChecked = true
 	return nil
 }
 
