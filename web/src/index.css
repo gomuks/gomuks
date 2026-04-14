@@ -248,6 +248,19 @@ button, a.button, span.button {
 			background-color: var(--primary-color-dark);
 		}
 	}
+
+	&.thin-button {
+		padding: .5rem 1rem;
+	}
+
+	&.reset-button:not(:disabled) {
+		color: var(--error-color);
+
+		&:hover, &:focus {
+			background-color: var(--error-color);
+			color: var(--inverted-text-color);
+		}
+	}
 }
 
 div.connection-error-wrapper {

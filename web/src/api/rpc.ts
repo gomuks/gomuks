@@ -37,6 +37,7 @@ import {
 	RPCEvent,
 	RawDBEvent,
 	ReceiptType,
+	RecoveryKeyResponse,
 	RelatesTo,
 	RelationType,
 	ReqCreateRoom,
@@ -399,6 +400,14 @@ export default abstract class RPCClient {
 
 	verify(recovery_key: string): Promise<void> {
 		return this.request("verify", { recovery_key })
+	}
+
+	generateRecoveryKey(passphrase?: string): Promise<RecoveryKeyResponse> {
+		return this.request("generate_recovery_key", { passphrase })
+	}
+
+	resetEncryption(key: RecoveryKeyResponse, account_password?: string): Promise<void> {
+		return this.request("reset_encryption", { ...key, account_password })
 	}
 
 	requestOpenIDToken(): Promise<RespOpenIDToken> {

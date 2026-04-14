@@ -334,3 +334,15 @@ export interface KeyRestoreProgress  {
 	post_processed: number
 	total: number
 }
+
+export interface PassphraseMetadata {
+	algorithm: string
+	iterations: number
+	salt: string
+	bits: number
+}
+
+export interface RecoveryKeyResponse {
+	recovery_key: string
+	passphrase_meta?: PassphraseMetadata
+}

@@ -43,6 +43,7 @@ export default class Client {
 	#stateRequestPromise: Promise<void> | null = null
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
+	passwordCache?: string
 
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.event.listen(this.#handleEvent)

@@ -48,6 +48,7 @@ class ContextFields implements MainScreenContextFields {
 		private client: Client,
 	) {
 		this.keybindings = new Keybindings(client.store, this)
+		client.passwordCache = undefined
 		client.store.switchRoom = this.setActiveRoom
 	}
 
