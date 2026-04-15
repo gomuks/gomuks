@@ -370,7 +370,14 @@ const MessageComposer = () => {
 			return
 		}
 		if (autocomplete?.frozenQuery) {
-			if (area.selectionEnd !== autocomplete.endPos) {
+			if (autocomplete.type === "command") {
+				// For commands, don't close on caret mismatch during arrow navigation.
+				// But if the user is typing (newText from onChange), clear frozenQuery
+				// so the normal command detection flow resumes.
+				if (newText !== undefined) {
+					setAutocomplete({ ...autocomplete, frozenQuery: undefined, endPos: newText.length })
+				}
+			} else if (area.selectionEnd !== autocomplete.endPos) {
 				setAutocomplete(null)
 			}
 		} else if (autocomplete) {
@@ -440,12 +447,16 @@ const MessageComposer = () => {
 			} else if (fullKey === "Escape") {
 				autocompleteUpdate = null
 				if (autocomplete.frozenQuery) {
-					setState({
-						text: state.text.slice(0, autocomplete.startPos)
-							+ autocomplete.frozenQuery
-							+ state.text.slice(autocomplete.endPos),
-						command: null,
-					})
+					if (autocomplete.type === "command") {
+						setState({ text: autocomplete.frozenQuery, command: null })
+					} else {
+						setState({
+							text: state.text.slice(0, autocomplete.startPos)
+								+ autocomplete.frozenQuery
+								+ state.text.slice(autocomplete.endPos),
+							command: null,
+						})
+					}
 				}
 			}
 			if (autocompleteUpdate !== undefined) {
