@@ -1,3 +1,44 @@
+# v26.04
+
+### Backend
+* Added automatic logout when receiving `M_UNKNOWN_TOKEN` error from server.
+* Added support for receiving sticky events and forwarding them to the frontend.
+  The frontend can also query all active sticky events in a given room.
+* Added support for resetting cross-signing and key backup.
+* Changed the auth endpoint to explicitly refuse insecure requests from web
+  clients to make the error message clearer.
+* Fixed empty spaces not being sent to frontend.
+* Fixed panic if `/timestamp` command is missing parameters.
+* Fixed websocket request handling panics not being caught properly.
+
+### Web
+* Added option to reset encryption when logging in.
+* Added profile field editor to devtools.
+* Added full reaction list modal in event menu.
+* Added simple pronoun input to own profile view. Note that the input disables
+  itself if you have non-standard or non-english pronouns in your profile. You
+  can delete or modify such values using the profile editor in devtools.
+* Added options for sorting room list (alphabetical and favorites first).
+* Added option to change max image width in timeline.
+* Added escape keybinding to close active room
+  (thanks to [@kittyandrew] in [#698]).
+* Added preference to autoplay video gifs (thanks to [@kittyandrew] in [#705]).
+* Added support for sending sticky events to widgets.
+* Added shortcut to open space home by clicking on space icon again.
+* Removed support for account image packs as they were removed from MSC2545.
+* Changed tab size in code blocks to 4 spaces instead of the default 8.
+* Fixed `knock_restricted` rooms not showing join button correctly.
+* Fixed handling code blocks that use `<br>` instead of `\n`.
+* Fixed incorrect video size when thumbnail resolution is different than video
+  (thanks to [@kittyandrew] in [#699]).
+* Fixed displayname of room preview message sender not being fetched
+  automatically.
+* Fixed copying `/rawstate` commands with empty state key from view source
+  (thanks to [@nexy7574] in [#689]).
+* Fixed timeline not staying scrolled up when jumping to an old event from
+  another room.
+* Fixed downloading media in widget API.
+
 # v26.03
 
 ### Backend
