@@ -49,8 +49,13 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				redirectURL.pathname += "_gomuks/sso"
 				redirectURL.search = `?gomuksSession=${resp.session_id}`
 				redirectURL.hash = ""
-				const redir = encodeURIComponent(redirectURL.toString())
-				window.location.href = `${homeserverURL}/_matrix/client/v3/login/sso/redirect?redirectUrl=${redir}`
+				const openURL = new URL(homeserverURL)
+				if (!openURL.pathname.endsWith("/")) {
+					openURL.pathname += "/"
+				}
+				openURL.pathname += "_matrix/client/v3/login/sso/redirect"
+				openURL.searchParams.set("redirectUrl", redirectURL.toString())
+				window.location.href = openURL.toString()
 			},
 			err => setError(`Failed to start SSO login: ${err}`),
 		).finally(() => setLoading(false))
