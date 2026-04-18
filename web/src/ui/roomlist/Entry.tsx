@@ -49,7 +49,7 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 		return [
 			`${displayname}: ${evt.content.body}`,
 			<>
-				<span style={{ unicodeBidi: "isolate" }}>
+				<span className="bidi-isolate">
 					{displayname.length > 16 ? displayname.slice(0, 12) + "…" : displayname}
 				</span>: {previewText}
 			</>,

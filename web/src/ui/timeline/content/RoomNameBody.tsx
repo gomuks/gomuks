@@ -19,7 +19,7 @@ import { ensureString, getDisplayname } from "@/util/validation.ts"
 import EventContentProps from "./props.ts"
 
 function bidiIsolate(str: string): JSX.Element {
-	return <span style={{ unicodeBidi: "isolate" }}>{str}</span>
+	return <span className="bidi-isolate">{str}</span>
 }
 
 const RoomNameBody = ({ event, sender }: EventContentProps) => {
