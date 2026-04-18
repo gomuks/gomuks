@@ -13,12 +13,12 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { use, useCallback, useEffect, useState } from "react"
+import { JSX, use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
 import { getAvatarURL } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
 import { UserID, UserProfile } from "@/api/types"
-import { ensureString, getLocalpart } from "@/util/validation.ts"
+import { ensureString, getLocalpart, getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext } from "../modal"
 import { RoomContext } from "../roomview/roomcontext.ts"
@@ -58,6 +58,12 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		|| ensureString(globalProfile?.displayname)
 		|| getLocalpart(userID)
 	const fakeUser = userID === fakeGomuksSender
+	let reactUserID: JSX.Element | string
+	if (fakeUser) {
+		reactUserID = userID
+	} else {
+		reactUserID = <>@<span className="bidi-isolate">{getLocalpart(userID)}</span>:{getServerName(userID)}</>
+	}
 	return <>
 		<div className="avatar-container">
 			{member === null && globalProfile === null && errors == null ? <PuffLoader
@@ -73,7 +79,9 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			/>}
 		</div>
 		<div className="displayname" title={displayname}>{displayname}</div>
-		<div className="userid" title={userID}>{userID}</div>
+		<div className="userid" title={userID}>
+			{reactUserID}
+		</div>
 		{fakeUser && <div className="info-text">
 			This is a fake user used to represent messages sent by the backend,
 			such as command responses.

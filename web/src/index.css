@@ -316,3 +316,7 @@ a {
 .hidden {
 	display: none !important;
 }
+
+.bidi-isolate {
+	unicode-bidi: isolate;
+}

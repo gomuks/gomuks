@@ -68,7 +68,7 @@ const PolicyRuleBody = ({ event, sender }: EventContentProps) => {
 	const action = oldPolicyIsValid ? (newPolicyIsValid ? "updated" : "removed") : "added"
 	return <div className="policy-body">
 		{getDisplayname(event.sender, sender?.content)} {action} a {recommendationElement} rule
-		for {matchingWord} <code>{entityElement}</code>
+		for {matchingWord} <code className="bidi-isolate">{entityElement}</code>
 		{content.reason ? <> for <code>{ensureString(content.reason)}</code></> : null}
 	</div>
 }

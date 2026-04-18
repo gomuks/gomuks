@@ -27,7 +27,9 @@ interface JSONViewPropsWithKey extends JSONViewProps {
 }
 
 function renderJSONString(data: string, styleClass: string = "s2") {
-	return <span className={`json-string ${styleClass}`}>{JSON.stringify(data)}</span>
+	return <span className={`json-string ${styleClass}`}>
+		"<span className="bidi-isolate">{JSON.stringify(data).slice(1, -1)}</span>"
+	</span>
 }
 
 function renderJSONValue(data: unknown, collapsed: boolean) {

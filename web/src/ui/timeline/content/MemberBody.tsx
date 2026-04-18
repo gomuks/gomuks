@@ -131,7 +131,7 @@ const MemberBody = ({ event, sender }: EventContentProps) => {
 		</span> : null} <span className="change-description">
 			{changeDesc}
 		</span>
-		{content.reason ? <span className="reason"> for {ensureString(content.reason)}</span> : null}
+		{content.reason ? <> for <span className="reason">{ensureString(content.reason)}</span></> : null}
 	</div>
 }
 
