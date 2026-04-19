@@ -47,7 +47,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					redirectURL.pathname += "/"
 				}
 				redirectURL.pathname += "_gomuks/sso"
-				redirectURL.search = `?gomuksSession=${resp.session_id}`
+				redirectURL.searchParams.set("gomuksSession", resp.session_id)
 				redirectURL.hash = ""
 				const openURL = new URL(homeserverURL)
 				if (!openURL.pathname.endsWith("/")) {
