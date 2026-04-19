@@ -1,4 +1,4 @@
--- v0 -> v18 (compatible with v10+): Latest revision
+-- v0 -> v19 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT NOT NULL PRIMARY KEY,
 	device_id      TEXT NOT NULL,
@@ -149,6 +149,7 @@ BEGIN
 		 LIMIT 1),
 		0)
 	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
 	  AND last_edit_rowid = NEW.rowid
 	  AND state_key IS NULL
 	  AND (relation_type IS NULL OR relation_type NOT IN ('m.replace', 'm.annotation'));
@@ -164,12 +165,13 @@ BEGIN
 	UPDATE event
 	SET last_edit_rowid = NEW.rowid
 	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
 	  AND type = NEW.type
 	  AND sender = NEW.sender
 	  AND state_key IS NULL
 	  AND (relation_type IS NULL OR relation_type NOT IN ('m.replace', 'm.annotation'))
 	  AND NEW.timestamp >
-		  COALESCE((SELECT prev_edit.timestamp FROM event prev_edit WHERE prev_edit.rowid = event.last_edit_rowid), 0);
+	      COALESCE((SELECT prev_edit.timestamp FROM event prev_edit WHERE prev_edit.rowid = event.last_edit_rowid), 0);
 END;
 
 CREATE TRIGGER event_insert_fill_reactions
@@ -190,6 +192,7 @@ BEGIN
 			0
 		) + 1)
 	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
 	  AND reactions IS NOT NULL;
 END;
 
@@ -212,6 +215,7 @@ BEGIN
 			0
 		) - 1)
 	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
 	  AND reactions IS NOT NULL;
 END;
 

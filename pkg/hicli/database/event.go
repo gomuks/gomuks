@@ -36,7 +36,7 @@ const (
 	`
 	getEventByRowID                  = getEventBaseQuery + `WHERE rowid = $1`
 	getManyEventsByRowID             = getEventBaseQuery + `WHERE rowid IN (%s)`
-	getEventByID                     = getEventBaseQuery + `WHERE event_id = $1`
+	getEventByID                     = getEventBaseQuery + `WHERE room_id = $1 AND event_id = $2`
 	getEventByTransactionID          = getEventBaseQuery + `WHERE transaction_id = $1`
 	getFailedEventsByMegolmSessionID = getEventBaseQuery + `
 		WHERE room_id = $1 AND megolm_session_id = $2 AND decryption_error IS NOT NULL
@@ -109,9 +109,9 @@ const (
 		ORDER BY main.event_id, edit.timestamp
 	`
 	setLastEditRowIDQuery = `
-		UPDATE event SET last_edit_rowid = $2 WHERE event_id = $1
+		UPDATE event SET last_edit_rowid = $3 WHERE room_id = $1 AND event_id = $2
 	`
-	updateReactionCountsQuery = `UPDATE event SET reactions = $2 WHERE event_id = $1`
+	updateReactionCountsQuery = `UPDATE event SET reactions = $3 WHERE room_id = $1 AND event_id = $2`
 )
 
 type EventQuery struct {
@@ -126,8 +126,8 @@ func (eq *EventQuery) GetActiveSticky(ctx context.Context, roomID id.RoomID) ([]
 	return eq.QueryMany(ctx, getActiveStickyEvents, roomID, time.Now().Add(-event.MaxStickyDuration).UnixMilli(), time.Now().UnixMilli())
 }
 
-func (eq *EventQuery) GetByID(ctx context.Context, eventID id.EventID) (*Event, error) {
-	return eq.QueryOne(ctx, getEventByID, eventID)
+func (eq *EventQuery) GetByID(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*Event, error) {
+	return eq.QueryOne(ctx, getEventByID, roomID, eventID)
 }
 
 func (eq *EventQuery) GetByTransactionID(ctx context.Context, txnID string) (*Event, error) {
@@ -271,7 +271,7 @@ func (eq *EventQuery) FillLastEditRowIDs(ctx context.Context, roomID id.RoomID, 
 			lastEditRowID := res[len(res)-1]
 			eventMap[evtID].LastEditRowID = &lastEditRowID
 			delete(eventMap, evtID)
-			err = eq.Exec(ctx, setLastEditRowIDQuery, evtID, lastEditRowID)
+			err = eq.Exec(ctx, setLastEditRowIDQuery, roomID, evtID, lastEditRowID)
 			if err != nil {
 				return err
 			}
@@ -279,7 +279,7 @@ func (eq *EventQuery) FillLastEditRowIDs(ctx context.Context, roomID id.RoomID, 
 		var zero EventRowID
 		for evtID, evt := range eventMap {
 			evt.LastEditRowID = &zero
-			err = eq.Exec(ctx, setLastEditRowIDQuery, evtID, zero)
+			err = eq.Exec(ctx, setLastEditRowIDQuery, roomID, evtID, zero)
 			if err != nil {
 				return err
 			}
@@ -347,7 +347,7 @@ func (eq *EventQuery) GetReactions(ctx context.Context, roomID id.RoomID, eventI
 		}
 		for evtID, res := range result {
 			if len(res.Counts) > 0 {
-				err = eq.Exec(ctx, updateReactionCountsQuery, evtID, dbutil.JSON{Data: &res.Counts})
+				err = eq.Exec(ctx, updateReactionCountsQuery, roomID, evtID, dbutil.JSON{Data: &res.Counts})
 				if err != nil {
 					return err
 				}

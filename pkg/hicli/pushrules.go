@@ -51,8 +51,8 @@ func (p *pushRoom) GetMemberCount() int {
 	return 0
 }
 
-func (p *pushRoom) GetEvent(id id.EventID) *event.Event {
-	evt, err := p.h.DB.Event.GetByID(p.ctx, id)
+func (p *pushRoom) GetEvent(roomID id.RoomID, id id.EventID) *event.Event {
+	evt, err := p.h.DB.Event.GetByID(p.ctx, roomID, id)
 	if err != nil {
 		zerolog.Ctx(p.ctx).Err(err).
 			Stringer("event_id", id).
@@ -103,8 +103,8 @@ func (p *pushRoom) GetPowerLevels() *event.PowerLevelsEventContent {
 }
 
 var (
-	_ pushrules.EventfulRoom      = (*pushRoom)(nil)
-	_ pushrules.PowerLevelfulRoom = (*pushRoom)(nil)
+	_ pushrules.ScopedEventfulRoom = (*pushRoom)(nil)
+	_ pushrules.PowerLevelfulRoom  = (*pushRoom)(nil)
 )
 
 func (h *HiClient) evaluatePushRules(ctx context.Context, llSummary *mautrix.LazyLoadSummary, baseType database.UnreadType, evt *event.Event) (database.UnreadType, string) {

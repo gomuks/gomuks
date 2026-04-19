@@ -26,7 +26,7 @@ import (
 var ErrPaginationAlreadyInProgress = errors.New("pagination is already in progress")
 
 func (h *HiClient) GetEvent(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*database.Event, error) {
-	if evt, err := h.DB.Event.GetByID(ctx, eventID); err != nil {
+	if evt, err := h.DB.Event.GetByID(ctx, roomID, eventID); err != nil {
 		return nil, fmt.Errorf("failed to get event from database: %w", err)
 	} else if evt != nil {
 		h.ReprocessExistingEvent(ctx, evt)
@@ -39,7 +39,7 @@ func (h *HiClient) GetEvent(ctx context.Context, roomID id.RoomID, eventID id.Ev
 }
 
 func (h *HiClient) GetUnredactedEvent(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*database.Event, error) {
-	if evt, err := h.DB.Event.GetByID(ctx, eventID); err != nil {
+	if evt, err := h.DB.Event.GetByID(ctx, roomID, eventID); err != nil {
 		return nil, fmt.Errorf("failed to get event from database: %w", err)
 		// TODO this check doesn't handle events which keep some fields on redaction
 	} else if evt != nil && len(evt.Content) > 2 {
@@ -310,7 +310,7 @@ func (h *HiClient) Paginate(ctx context.Context, roomID id.RoomID, maxTimelineID
 		if replyTo != "" {
 			_, replyToAdded := eventMap[replyTo]
 			if !replyToAdded {
-				dbEvt, err := h.DB.Event.GetByID(ctx, replyTo)
+				dbEvt, err := h.DB.Event.GetByID(ctx, roomID, replyTo)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get reply-to event: %w", err)
 				} else if dbEvt != nil {

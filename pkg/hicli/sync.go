@@ -737,7 +737,7 @@ func (h *HiClient) postDecryptProcess(ctx context.Context, llSummary *mautrix.La
 
 func (h *HiClient) fillPrevContent(ctx context.Context, evt *event.Event) error {
 	if evt.StateKey != nil && evt.Unsigned.PrevContent == nil && evt.Unsigned.ReplacesState != "" {
-		replacesState, err := h.DB.Event.GetByID(ctx, evt.Unsigned.ReplacesState)
+		replacesState, err := h.DB.Event.GetByID(ctx, evt.RoomID, evt.Unsigned.ReplacesState)
 		if err != nil {
 			return fmt.Errorf("failed to get prev content for %s from %s: %w", evt.ID, evt.Unsigned.ReplacesState, err)
 		} else if replacesState != nil {
@@ -755,7 +755,7 @@ func (h *HiClient) processEvent(
 	checkDB bool,
 ) (*database.Event, error) {
 	if checkDB {
-		dbEvt, err := h.DB.Event.GetByID(ctx, evt.ID)
+		dbEvt, err := h.DB.Event.GetByID(ctx, evt.RoomID, evt.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if event %s exists: %w", evt.ID, err)
 		} else if dbEvt != nil {
@@ -891,7 +891,7 @@ func (h *HiClient) processStateAndTimeline(
 		if rowID != 0 {
 			dbEvt, err = h.DB.Event.GetByRowID(ctx, rowID)
 		} else {
-			dbEvt, err = h.DB.Event.GetByID(ctx, evtID)
+			dbEvt, err = h.DB.Event.GetByID(ctx, room.ID, evtID)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to get redaction target: %w", err)
