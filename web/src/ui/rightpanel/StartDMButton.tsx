@@ -30,6 +30,7 @@ const StartDMButton = ({ userID, client }: { userID: UserID; client: Client }) =
 			}
 		}
 	}
+	// eslint-disable-next-line react-hooks/use-memo
 	const existingRoom = useMemo(findExistingRoom, [userID, client])
 
 	const startDM = async () => {

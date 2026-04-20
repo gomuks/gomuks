@@ -239,11 +239,11 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 		vscodeInitialContentRef.current = text
 		setVSCodeOpen(true)
 	}
-	const closeVSCode = useCallback(() => {
+	const closeVSCode = useEvent(() => {
 		setVSCodeOpen(false)
 		setText(vscodeContentRef.current)
 		vscodeContentRef.current = ""
-	}, [])
+	})
 	return <div className="custom-css-input">
 		<div className="header">
 			<h3>Custom CSS</h3>
