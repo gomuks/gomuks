@@ -492,3 +492,27 @@ export interface RespMediaConfig {
 	"m.upload.size": number
 	[key: string]: unknown
 }
+
+export interface BooleanCapability {
+	enabled: boolean
+}
+export interface RoomVersionsCapability {
+	default: RoomVersion
+	available: {RoomVersion: string},
+}
+export interface AccountModerationCapability {
+	lock?: boolean
+	suspend?: boolean
+}
+export interface Capabilities {
+	"m.room_versions"?: RoomVersionsCapability
+	"m.change_password"?: BooleanCapability
+	"m.set_displayname"?: BooleanCapability
+	"m.set_avatar_url"?: BooleanCapability
+	"m.3pid_changes"?: BooleanCapability
+	"m.get_login_token"?: BooleanCapability
+	"uk.timedout.msc4323"?: AccountModerationCapability
+}
+export interface RespCapabilities {
+	capabilities: Capabilities
+}
