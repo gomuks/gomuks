@@ -26,7 +26,7 @@ import {
 	ImagePackRooms,
 	RPCEvent,
 	RawDBEvent,
-	RelationType,
+	RelationType, RespCapabilities,
 	RoomID,
 	RoomStateGUID,
 	SyncStatus,
@@ -44,6 +44,7 @@ export default class Client {
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 	passwordCache?: string
+	capabilities?: RespCapabilities
 
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.event.listen(this.#handleEvent)

@@ -63,6 +63,7 @@ const (
 	ReqKnockRoom                Name = "knock_room"
 	ReqLeaveRoom                Name = "leave_room"
 	ReqCreateRoom               Name = "create_room"
+	ReqCapabilities             Name = "capabilities"
 	ReqMuteRoom                 Name = "mute_room"
 	ReqEnsureGroupSessionShared Name = "ensure_group_session_shared"
 	ReqSendToDevice             Name = "send_to_device"
@@ -200,6 +201,8 @@ var (
 	LeaveRoom = &CommandSpec[*LeaveRoomParams, *mautrix.RespLeaveRoom]{Name: ReqLeaveRoom}
 	// CreateRoom creates a new room.
 	CreateRoom = &CommandSpec[*mautrix.ReqCreateRoom, *mautrix.RespCreateRoom]{Name: ReqCreateRoom}
+	// Capabilities fetches the user's capabilities.
+	Capabilities = &CommandSpecWithoutRequest[*mautrix.RespCapabilities]{}
 	// MuteRoom mutes or unmutes a room by manipulating push rules. It returns the previous mute state.
 	MuteRoom = &CommandSpec[*MuteRoomParams, bool]{Name: ReqMuteRoom}
 	// EnsureGroupSessionShared ensures that the Megolm session for a room has been shared to all
@@ -316,6 +319,7 @@ var AllNames = []Name{
 	ReqKnockRoom,
 	ReqLeaveRoom,
 	ReqCreateRoom,
+	ReqCapabilities,
 	ReqMuteRoom,
 	ReqEnsureGroupSessionShared,
 	ReqSendToDevice,

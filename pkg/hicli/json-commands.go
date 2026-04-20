@@ -111,6 +111,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.LeaveRoom.RunCtx(ctx, req.Data, h.API.LeaveRoom)
 	case jsoncmd.ReqCreateRoom:
 		return jsoncmd.CreateRoom.RunCtx(ctx, req.Data, h.API.CreateRoom)
+	case jsoncmd.ReqCapabilities:
+		return jsoncmd.Capabilities.RunCtx(ctx, req.Data, h.Client.Capabilities)
 	case jsoncmd.ReqMuteRoom:
 		return jsoncmd.MuteRoom.RunCtx(ctx, req.Data, h.API.MuteRoom)
 	case jsoncmd.ReqEnsureGroupSessionShared:
