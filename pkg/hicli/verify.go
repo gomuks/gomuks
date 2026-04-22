@@ -48,6 +48,7 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 			err = fmt.Errorf("failed to get default SSSS key ID: %w", err)
 			return
 		}
+		err = nil
 		state.HasSSSS = defaultKeyID != ""
 	} else {
 		err = h.loadPrivateKeys(ctx)
