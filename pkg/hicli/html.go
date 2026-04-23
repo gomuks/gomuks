@@ -145,6 +145,12 @@ func attributeIsAllowed(tag atom.Atom, attr html.Attribute) bool {
 			_, err := strconv.Atoi(attr.Val)
 			return err == nil
 		}
+	case atom.Li:
+		switch attr.Key {
+		case "value":
+			_, err := strconv.Atoi(attr.Val)
+			return err == nil
+		}
 	case atom.Code:
 		switch attr.Key {
 		case "class":
