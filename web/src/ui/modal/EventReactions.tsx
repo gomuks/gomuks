@@ -65,7 +65,7 @@ const mapReactionEvents = (reactions: MemDBEvent[]) => {
 		return info
 	}
 	for (const evt of reactions) {
-		if (evt.redacted_by) {
+		if (evt.redacted_by || !evt.event_id.startsWith("$")) {
 			continue
 		}
 		const key = ensureString(evt.content["m.relates_to"]?.key)
