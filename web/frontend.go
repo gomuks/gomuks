@@ -24,5 +24,5 @@ import (
 //go:generate ./build-wasm.sh
 //go:generate npm install
 //go:generate npm run build
-//go:embed dist
+//go:embed all:dist
 var Frontend embed.FS
