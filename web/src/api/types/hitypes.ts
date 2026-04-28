@@ -320,6 +320,7 @@ export interface MediaEncodingOptions {
 	resize_percent?: number
 	_no_encrypt?: boolean
 	voice_message?: boolean
+	force_file?: boolean
 }
 
 export type MembershipAction = "invite" | "kick" | "ban" | "unban"

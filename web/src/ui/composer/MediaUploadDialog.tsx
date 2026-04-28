@@ -67,6 +67,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 	const [resizeSlider, setResizeSlider] = useState(100)
 	const [origDimensions, setOrigDimensions] = useState<dimensions | null>(null)
 	const [noEncrypt, setNoEncrypt] = useState(false)
+	const [sendAsFile, setSendAsFile] = useState(false)
 	const closeModal = use(ModalCloseContext)
 	let previewContent: JSX.Element | null = null
 	let reencTargets: string[] | null = null
@@ -84,6 +85,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 			})
 		}
 	}, [file, blobURL])
+	let isFile = false
 	if (file.type.startsWith("image/")) {
 		previewContent = <img src={blobURL} alt={file.name} />
 		if (imageReencSources.includes(file.type)) {
@@ -104,6 +106,8 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 		previewContent = <audio controls>
 			<source src={blobURL} type={file.type} />
 		</audio>
+	} else {
+		isFile = true
 	}
 	const submit = (evt: React.FormEvent) => {
 		evt.preventDefault()
@@ -115,9 +119,22 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 			resize_percent: resizeSlider,
 			_no_encrypt: noEncrypt,
 			voice_message: isVoice,
+			force_file: sendAsFile,
 		})
 		closeModal()
 	}
+	const sendAsFileCheckbox = <>
+		<div className="meta-key">Send as file</div>
+		<div className="meta-value">
+			<input
+				type="checkbox"
+				checked={sendAsFile || isFile}
+				id="checkbox-send-as-file"
+				disabled={isFile}
+				onChange={evt => setSendAsFile(evt.target.checked)}
+			/>
+		</div>
+	</>
 	return <form className="media-upload-modal" onSubmit={submit}>
 		<h3>Upload attachment</h3>
 		<div className="attachment-preview">{previewContent}</div>
@@ -144,9 +161,9 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 				{origDimensions ? `${resizedWidth}×${resizedHeight}` : null}
 			</div>
 
-			{reencTargets && <>
+			{reencTargets ? <>
 				<label htmlFor="select-reenc-type" className="meta-key">Re-encode</label>
-				<div className="meta-value meta-value-long">
+				<div className="meta-value">
 					<select value={reencTarget} id="select-reenc-type" onChange={evt => {
 						setReencTarget(evt.target.value)
 						setResizeSlider(100)
@@ -155,6 +172,8 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 						{reencTargets.map(target => <option key={target} value={target}>{target}</option>)}
 					</select>
 				</div>
+
+				{sendAsFileCheckbox}
 
 				<label htmlFor="slider-resize" className="meta-key">Resize</label>
 				<div className="meta-value meta-value-long">
@@ -173,7 +192,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 					/>
 					<span>{resizeSlider}%</span>
 				</div>
-			</>}
+			</> : sendAsFileCheckbox}
 
 			{(reencTarget === "image/jpeg" || reencTarget === "image/webp") && <>
 				<label htmlFor="slider-reenc-quality" className="meta-key">Quality</label>

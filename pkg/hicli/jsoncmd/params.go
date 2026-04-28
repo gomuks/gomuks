@@ -305,6 +305,8 @@ type UploadMediaParams struct {
 	Encrypt bool `json:"encrypt,omitempty"`
 	// Whether the upload is a voice message. If true, a waveform will be generated.
 	VoiceMessage bool `json:"voice_message,omitempty"`
+	// Force sending as `m.file` instead of image/video/audio based on mime type?
+	ForceFile bool `json:"force_file,omitempty"`
 
 	// Mime type to re-encode media to. Options below only apply if this is set.
 	EncodeTo string `json:"encode_to,omitempty"`

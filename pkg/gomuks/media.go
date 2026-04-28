@@ -688,10 +688,12 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
 	voiceMessage, _ := strconv.ParseBool(r.URL.Query().Get("voice_message"))
+	forceFile, _ := strconv.ParseBool(r.URL.Query().Get("force_file"))
 	params := jsoncmd.UploadMediaParams{
 		Filename:     query.Get("filename"),
 		Encrypt:      encrypt,
 		VoiceMessage: voiceMessage,
+		ForceFile:    forceFile,
 		EncodeTo:     query.Get("encode_to"),
 	}
 	resizeWidthVal := query.Get("resize_width")
@@ -890,7 +892,9 @@ func (gmx *Gomuks) CacheAndUploadMedia(
 		Info:     info,
 		FileName: params.Filename,
 	}
-	if params.VoiceMessage {
+	if params.ForceFile {
+		content.MsgType = event.MsgFile
+	} else if params.VoiceMessage {
 		samples := 80
 		if info.Duration != 0 {
 			samples = min(max(info.Duration/125, 30), 120)
