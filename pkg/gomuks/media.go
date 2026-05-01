@@ -463,6 +463,9 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	wrappedReader := io.TeeReader(reader, fileHasher)
 	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !useThumbnail && r.Header.Get("Range") == "" {
 		cacheEntryToHeaders(w, cacheEntry, useThumbnail)
+		// These homeserver -> frontend streamed responses don't support ranges themselves,
+		// but the browser can still request ranges, it just won't be streamed from the homeserver then.
+		w.Header().Set("Accept-Ranges", "bytes")
 		w.WriteHeader(http.StatusOK)
 		wrappedReader = io.TeeReader(wrappedReader, &noErrorWriter{w})
 		w = nil
