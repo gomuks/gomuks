@@ -143,11 +143,7 @@ func (gmx *Gomuks) downloadMediaFromCache(ctx context.Context, w http.ResponseWr
 		_ = cacheFile.Close()
 	}()
 	cacheEntryToHeaders(w, entry, useThumbnail)
-	w.WriteHeader(http.StatusOK)
-	_, err = io.Copy(w, cacheFile)
-	if err != nil {
-		log.Err(err).Msg("Failed to copy cache file to response")
-	}
+	http.ServeContent(w, r, "", time.Time{}, cacheFile)
 	return true
 }
 
@@ -465,7 +461,7 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	cacheEntry.Size = resp.ContentLength
 	fileHasher := sha256.New()
 	wrappedReader := io.TeeReader(reader, fileHasher)
-	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !useThumbnail {
+	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !useThumbnail && r.Header.Get("Range") == "" {
 		cacheEntryToHeaders(w, cacheEntry, useThumbnail)
 		w.WriteHeader(http.StatusOK)
 		wrappedReader = io.TeeReader(wrappedReader, &noErrorWriter{w})
