@@ -245,11 +245,20 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
-	custom_notification_sound: new Preference<ContentURI>({
-		displayName: "Custom notification sound",
+	notification_sound: new Preference<ContentURI>({
+		displayName: "Notification sound",
 		description: "The mxc:// URI to a custom notification sound.",
 		allowedContexts: anyContext,
-		defaultValue: "",
+		defaultValue: "sounds/bright.flac",
+	}),
+	notification_sound_volume: new Preference<number>({
+		displayName: "Notification sound volume",
+		description: "The volume at which to play notification sounds.",
+		allowedContexts: anyContext,
+		defaultValue: 100,
+		minValue: 0,
+		maxValue: 100,
+		numberType: "range",
 	}),
 	room_window_title: new Preference<string>({
 		displayName: "In-room window title",

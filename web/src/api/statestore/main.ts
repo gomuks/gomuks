@@ -19,6 +19,7 @@ import { CustomEmojiPack } from "@/util/emoji"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { focused } from "@/util/focus.ts"
 import toSearchableString from "@/util/searchablestring.ts"
+import { playSound } from "@/util/sound.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import {
@@ -561,7 +562,7 @@ export class StateStore {
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
 		if (sound) {
-			(document.getElementById("default-notification-sound") as HTMLAudioElement)?.play()
+			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
 		}
 		const notif = new Notification(title, {
 			body,

@@ -71,7 +71,7 @@ const TextPreferenceCell = ({ context, name, setPref, value, inheritedValue }: P
 const NumberPreferenceCell = ({ context, name, pref, setPref, value, inheritedValue }: PreferenceCellProps<number>) => {
 	return <div className="preference number-preference">
 		<input
-			type="number"
+			type={pref.numberType ?? "number"}
 			min={pref.minValue}
 			max={pref.maxValue}
 			value={value ?? inheritedValue}
@@ -108,7 +108,6 @@ interface PreferenceRowProps {
 
 const customUIPrefs = new Set([
 	"custom_css",
-	"custom_notification_sound",
 ] as (keyof Preferences)[])
 
 const PreferenceRow = ({
