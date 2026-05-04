@@ -37,7 +37,6 @@ import {
 	TypingEventData,
 	UnknownEventContent,
 	UserID,
-	roomStateGUIDToString,
 } from "../types"
 import { InvitedRoomStore } from "./invitedroom.ts"
 import { RoomStateStore } from "./room.ts"
@@ -475,14 +474,20 @@ export class StateStore {
 		this.emojiRoomsSub.notify()
 	}
 
-	getEmojiPackKeys(): RoomStateGUID[] {
+	getEmojiPackKeys(bothKeys: boolean = true): RoomStateGUID[] {
 		if (this.#emojiPackKeys === null) {
-			const emoteRooms = this.accountData.get("im.ponies.emote_rooms") as ImagePackRooms | undefined
+			const emoteRooms = (
+				this.accountData.get("m.image_pack.rooms")
+				?? this.accountData.get("im.ponies.emote_rooms")
+			) as ImagePackRooms | undefined
 			try {
 				const emojiPacks: RoomStateGUID[] = []
 				for (const [roomID, packs] of Object.entries(emoteRooms?.rooms ?? {})) {
 					for (const pack of Object.keys(packs)) {
-						emojiPacks.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
+						if (bothKeys) {
+							emojiPacks.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
+						}
+						emojiPacks.push({ room_id: roomID, type: "m.room.image_pack", state_key: pack })
 					}
 				}
 				this.#emojiPackKeys = emojiPacks
@@ -497,7 +502,7 @@ export class StateStore {
 	getRoomEmojiPacks() {
 		if (this.#watchedRoomEmojiPacks === null) {
 			this.#watchedRoomEmojiPacks = Object.fromEntries(
-				this.getEmojiPackKeys()
+				this.getEmojiPackKeys(false)
 					.map(key => {
 						const room = this.rooms.get(key.room_id)
 						if (!room) {
@@ -509,7 +514,7 @@ export class StateStore {
 							console.warn("Failed to find pack", key)
 							return null
 						}
-						return [roomStateGUIDToString(key), pack]
+						return [pack.id, pack]
 					})
 					.filter(pack => !!pack),
 			)

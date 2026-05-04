@@ -225,7 +225,10 @@ export class RoomStateStore {
 
 	getEmojiPack(key: string): CustomEmojiPack | null {
 		if (!this.#emojiPacksCache.has(key)) {
-			const packEvt = this.getStateEvent("im.ponies.room_emotes", key)
+			let packEvt = this.getStateEvent("m.room.image_pack", key)
+			if (!packEvt) {
+				packEvt = this.getStateEvent("im.ponies.room_emotes", key)
+			}
 			if (!packEvt || packEvt?.redacted_by || !packEvt?.content?.images) {
 				this.#emojiPacksCache.set(key, null)
 				return null
@@ -234,7 +237,7 @@ export class RoomStateStore {
 				? this.meta.current.name : `${this.meta.current.name} - ${key}`
 			const packID = roomStateGUIDToString({
 				room_id: this.roomID,
-				type: "im.ponies.room_emotes",
+				type: packEvt.type,
 				state_key: key,
 			})
 			this.#emojiPacksCache.set(key, parseCustomEmojiPack(packEvt.content as ImagePack, packID, fallbackName))
@@ -244,13 +247,15 @@ export class RoomStateStore {
 
 	getAllEmojiPacks(): Record<string, CustomEmojiPack> {
 		if (this.#allPacksCache === null) {
+			const keys = [
+				...(this.state.get("im.ponies.room_emotes")?.keys() ?? []),
+				...(this.state.get("m.room.image_pack")?.keys() ?? []),
+			]
 			this.#allPacksCache = Object.fromEntries(
-				this.state.get("im.ponies.room_emotes")?.keys()
-					.map(stateKey => {
-						const pack = this.getEmojiPack(stateKey)
-						return pack ? [pack.id, pack] : null
-					})
-					.filter((res): res is [string, CustomEmojiPack] => !!res) ?? [],
+				keys.map(stateKey => {
+					const pack = this.getEmojiPack(stateKey)
+					return pack ? [pack.id, pack] : null
+				}).filter((res): res is [string, CustomEmojiPack] => !!res),
 			)
 		}
 		return this.#allPacksCache
@@ -520,7 +525,7 @@ export class RoomStateStore {
 	}
 
 	invalidateStateCaches(evtType: string, key: string) {
-		if (evtType === "im.ponies.room_emotes") {
+		if (evtType === "im.ponies.room_emotes" || evtType === "m.room.image_pack") {
 			this.#emojiPacksCache.delete(key)
 			this.#allPacksCache = null
 			this.parent.invalidateEmojiPacksCache()
@@ -725,10 +730,17 @@ export class RoomStateStore {
 				}
 			}) ?? [],
 		))
-		const emotes = this.state.get("im.ponies.room_emotes")
+		const emotes = this.state.get("m.room.image_pack")
 		if (emotes) {
-			newState.set("im.ponies.room_emotes", emotes)
+			newState.set("m.room.image_pack", emotes)
 			for (const rowid of emotes.values()) {
+				eventsToKeep.add(rowid)
+			}
+		}
+		const oldEmotes = this.state.get("im.ponies.room_emotes")
+		if (oldEmotes) {
+			newState.set("im.ponies.room_emotes", oldEmotes)
+			for (const rowid of oldEmotes.values()) {
 				eventsToKeep.add(rowid)
 			}
 		}

@@ -74,7 +74,7 @@ func (h *HiClient) getInitialSyncAccountData(ctx context.Context) (first, last m
 	last = make(map[event.Type]*database.AccountData, 1)
 	for _, data := range ad {
 		switch data.Type {
-		case "im.ponies.emote_rooms":
+		case "im.ponies.emote_rooms", "m.image_pack.rooms":
 			last[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
 		default:
 			first[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
