@@ -58,19 +58,19 @@ func (h *HiClient) GetUnredactedEvent(ctx context.Context, roomID id.RoomID, eve
 	}
 }
 
-func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err error) {
+func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err error) bool {
 	if !errors.Is(err, mautrix.MForbidden) {
-		return
+		return false
 	}
 	log := zerolog.Ctx(ctx)
 	joinedRooms, err := h.Client.JoinedRooms(ctx)
 	if err != nil {
 		log.Err(err).Msg("Failed to fetch joined rooms to check if join event was reset")
-		return
+		return false
 	}
 	if slices.Contains(joinedRooms.JoinedRooms, roomID) {
 		log.Debug().Msg("Fetching state failed, but room is still in joined rooms")
-		return
+		return false
 	}
 	log.Info().Msg("Fetching room state failed and room is not in joined rooms, deleting from database")
 	err = h.DB.Room.Delete(ctx, roomID)
@@ -80,6 +80,7 @@ func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err 
 	h.EventHandler(&jsoncmd.SyncComplete{
 		LeftRooms: []id.RoomID{roomID},
 	})
+	return true
 }
 
 func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fetchMembers, refetch, dispatchEvt bool) error {
@@ -108,6 +109,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 	mediaCacheEntries := make([]*database.PlainMedia, 0, len(evts))
 	var joinedMembers, invitedMembers int
 	var joinedOrInvitedMemberIDs, leftMemberIDs []id.UserID
+	var hasSelf bool
 	for i, evt := range evts {
 		if err := h.fillPrevContent(ctx, evt); err != nil {
 			return err
@@ -132,6 +134,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 					leftMemberIDs = append(leftMemberIDs, userID)
 				}
 			} else if membership == event.MembershipJoin {
+				hasSelf = true
 				joinedMembers++
 			}
 			currentStateEntries[i].Membership = membership
@@ -145,6 +148,14 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 				MediaMXC: mxc,
 			}
 		}
+	}
+	// World-readable rooms may allow fetching state even if the user has left,
+	// so make sure our own member event is present.
+	if !hasSelf {
+		if h.processStateReset(context.WithoutCancel(ctx), roomID, mautrix.MForbidden) {
+			return nil
+		}
+		zerolog.Ctx(ctx).Warn().Msg("Own member event not found in state, but listing rooms didn't delete it")
 	}
 	llSummary := &mautrix.LazyLoadSummary{
 		JoinedMemberCount:  &joinedMembers,
