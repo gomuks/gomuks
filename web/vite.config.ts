@@ -3,7 +3,7 @@ import { defineConfig } from "vite"
 import svgr from "vite-plugin-svgr"
 import elementCallPlugin from "./vite-element-call.ts"
 
-const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api"]
+const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api", "@dnd-kit"]
 
 export default defineConfig({
 	base: "./",
@@ -15,8 +15,6 @@ export default defineConfig({
 				manualChunks: id => {
 					if (id.includes("wailsio")) {
 						return "wails"
-					} else if (id.includes("@dnd-kit")) {
-						return "dndkit"
 					} else if (id.includes("node_modules") && !splitDeps.some(dep => id.includes(dep))) {
 						return "vendor"
 					} else if (id.endsWith("/emoji/data.json")) {
