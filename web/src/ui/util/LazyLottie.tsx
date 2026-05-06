@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2026 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,17 +13,16 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX } from "react"
-import { getMediaURL } from "@/api/media.ts"
-import { Emoji } from "@/util/emoji"
-import LazyLottie from "../util/LazyLottie.tsx"
+import { ComponentProps, Suspense, lazy } from "react"
+import { GridLoader } from "react-spinners"
 
-export default function renderEmoji(emoji: Emoji): JSX.Element | string {
-	if (emoji.i?.mimetype === "video/lottie+json") {
-		return <LazyLottie src={getMediaURL(emoji.u)} loop autoplay />
-	}
-	if (emoji.u.startsWith("mxc://")) {
-		return <img loading="lazy" src={getMediaURL(emoji.u)} alt={`:${emoji.n}:`}/>
-	}
-	return emoji.u
+const Lottie = lazy(() =>
+	import("@lottiefiles/dotlottie-react/webgl").then(res => ({ default: res.DotLottieReact })))
+
+const LazyLottie = (props: ComponentProps<typeof Lottie>) => {
+	return <Suspense fallback={<GridLoader color="var(--primary-color)" />}>
+		<Lottie {...props}/>
+	</Suspense>
 }
+
+export default LazyLottie
