@@ -966,6 +966,9 @@ func (h *HiClient) processStateAndTimeline(
 				if !megolmSessionDiscarded && room.EncryptionEvent != nil {
 					megolmSessionDiscarded = h.maybeDiscardOutboundSession(ctx, membership, evt)
 				}
+				if evt.GetStateKey() == h.Account.UserID.String() && gjson.GetBytes(evt.Content.VeryRaw, "displayname").Str != ptr.Val(h.ownDisplayName.Load()) {
+					h.ownDisplayName.Store(nil)
+				}
 			} else if evt.Type == event.StateElementFunctionalMembers {
 				heroesChanged = true
 			}

@@ -17,8 +17,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/tidwall/gjson"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -124,6 +126,7 @@ func (h *HiClient) SendMessage(
 	var rawInputBody bool
 	var perMessageProfile *event.BeeperPerMessageProfile
 	msgType := event.MsgText
+	origText := text
 Loop:
 	for {
 		spaceIdx := strings.IndexByte(text, ' ')
@@ -175,7 +178,6 @@ Loop:
 		}
 		text = text[spaceIdx+1:]
 	}
-	origText := text
 	var content event.MessageEventContent
 	if strings.HasPrefix(text, "/rainbow ") {
 		text = strings.TrimPrefix(text, "/rainbow ")
@@ -235,7 +237,6 @@ Loop:
 		// Hack to force an empty link previews array
 		extra["com.beeper.linkpreviews"] = []any{}
 	}
-	content.AddPerMessageProfileFallback()
 	if relatesTo != nil {
 		if relatesTo.Type == event.RelReplace {
 			contentCopy := content
@@ -453,6 +454,49 @@ func (h *HiClient) getSendLock(roomID id.RoomID) *sync.Mutex {
 	return l
 }
 
+var pmpPath = exgjson.Path("com.beeper.per_message_profile")
+var editPMPPath = exgjson.Path("m.new_content", "com.beeper.per_message_profile")
+
+func (h *HiClient) getCurrentDisplayName(ctx context.Context) string {
+	val := h.ownDisplayName.Load()
+	if val != nil {
+		return *val
+	}
+	profile, err := h.Client.GetProfile(ctx, h.Account.UserID)
+	if err != nil {
+		return ""
+	}
+	h.ownDisplayName.Store(&profile.DisplayName)
+	return profile.DisplayName
+}
+
+func (h *HiClient) addFallbacks(ctx context.Context, evtType string, content json.RawMessage) json.RawMessage {
+	if evtType != event.EventMessage.Type {
+		return content
+	}
+	if gjson.GetBytes(content, pmpPath).IsObject() || gjson.GetBytes(content, editPMPPath).IsObject() {
+		var parsedContent event.Content
+		if json.Unmarshal(content, &parsedContent) != nil || parsedContent.ParseRaw(event.EventMessage) != nil {
+			return content
+		}
+		msg, ok := parsedContent.Parsed.(*event.MessageEventContent)
+		if !ok {
+			return content
+		}
+		if msg.NewContent != nil {
+			msg = msg.NewContent
+		}
+		if msg.BeeperPerMessageProfile != nil && !msg.BeeperPerMessageProfile.HasFallback && msg.BeeperPerMessageProfile.Displayname != h.getCurrentDisplayName(ctx) {
+			msg.AddPerMessageProfileFallback()
+			updatedContent, _ := json.Marshal(&parsedContent)
+			if updatedContent != nil {
+				content = updatedContent
+			}
+		}
+	}
+	return content
+}
+
 func (h *HiClient) actuallySend(
 	ctx context.Context,
 	room *database.Room,
@@ -482,9 +526,10 @@ func (h *HiClient) actuallySend(
 			})
 		}
 	}()
+	var sendContent json.RawMessage
 	if dbEvt.Decrypted != nil && len(dbEvt.Content) <= 2 {
 		var encryptedContent *event.EncryptedEventContent
-		encryptedContent, err = h.Encrypt(ctx, room, evtType, dbEvt.Decrypted)
+		encryptedContent, err = h.Encrypt(ctx, room, evtType, h.addFallbacks(ctx, dbEvt.DecryptedType, dbEvt.Decrypted))
 		if err != nil {
 			dbEvt.SendError = fmt.Sprintf("failed to encrypt: %v", err)
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to encrypt event")
@@ -498,12 +543,15 @@ func (h *HiClient) actuallySend(
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to marshal encrypted content")
 			return
 		}
+		sendContent = dbEvt.Content
 		err = h.DB.Event.UpdateEncryptedContent(ctx, dbEvt)
 		if err != nil {
 			dbEvt.SendError = fmt.Sprintf("failed to save event after encryption: %v", err)
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to save event after encryption")
 			return
 		}
+	} else {
+		sendContent = h.addFallbacks(ctx, dbEvt.Type, dbEvt.Content)
 	}
 	var resp *mautrix.RespSendEvent
 	req := mautrix.ReqSendEvent{
@@ -513,7 +561,7 @@ func (h *HiClient) actuallySend(
 	if overrideTimestamp {
 		req.Timestamp = dbEvt.Timestamp.UnixMilli()
 	}
-	resp, err = h.Client.SendMessageEvent(ctx, room.ID, evtType, dbEvt.Content, req)
+	resp, err = h.Client.SendMessageEvent(ctx, room.ID, evtType, sendContent, req)
 	if err != nil {
 		dbEvt.SendError = err.Error()
 		err = fmt.Errorf("failed to send event: %w", err)
