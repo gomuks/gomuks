@@ -82,6 +82,8 @@ type HiClient struct {
 	directChatUsers     event.DirectChatsEventContent
 	directChatRooms     map[id.RoomID]id.UserID
 
+	perMessageProfiles atomic.Pointer[map[string]*event.BeeperPerMessageProfile]
+
 	API *JSONAPI
 }
 

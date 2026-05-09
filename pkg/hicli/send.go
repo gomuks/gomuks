@@ -17,11 +17,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/tidwall/gjson"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
-	"go.mau.fi/util/exgjson"
-	"go.mau.fi/util/exstrings"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -79,23 +76,33 @@ func init() {
 	}
 }
 
-func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) (prof *event.BeeperPerMessageProfile, err error) {
-	evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.Type{
-		Type:  "fi.mau.msc4461.per_message_profiles",
-		Class: event.AccountDataEventType,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get profiles from account data: %w", err)
-	} else if evt == nil {
-		return nil, fmt.Errorf("no profiles found in account data")
-	} else if res := gjson.GetBytes(evt.Content, exgjson.Path(name)); !res.Exists() {
-		return nil, fmt.Errorf("profile not found: %s", name)
-	} else if !res.IsObject() {
-		return nil, fmt.Errorf("profile data for %s is malformed: not an object", name)
-	} else if err = json.Unmarshal(exstrings.UnsafeBytes(res.Raw), &prof); err != nil {
-		return nil, fmt.Errorf("profile data for %s is malformed: %w", name, err)
+var accountDataPerMessageProfiles = event.Type{
+	Type:  "fi.mau.msc4461.per_message_profiles",
+	Class: event.AccountDataEventType,
+}
+
+func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) *event.BeeperPerMessageProfile {
+	var profiles map[string]*event.BeeperPerMessageProfile
+	profilesPtr := h.perMessageProfiles.Load()
+	if profilesPtr == nil {
+		evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataPerMessageProfiles)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
+			return nil
+		}
+		defer h.perMessageProfiles.Store(&profiles)
+		if evt == nil {
+			return nil
+		} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
+			return nil
+		}
+	} else if *profilesPtr == nil {
+		return nil
+	} else {
+		profiles = *profilesPtr
 	}
-	return
+	return profiles[name]
 }
 
 func (h *HiClient) SendMessage(
@@ -123,6 +130,14 @@ Loop:
 		if spaceIdx < 2 {
 			break
 		}
+		colonIdx := strings.IndexByte(text, ':')
+		if perMessageProfile == nil && colonIdx > 0 && colonIdx < spaceIdx {
+			perMessageProfile = h.getPerMessageProfile(ctx, text[:colonIdx])
+			if perMessageProfile != nil {
+				text = strings.TrimPrefix(text[colonIdx+1:], " ")
+				continue
+			}
+		}
 		switch strings.ToLower(text[:spaceIdx]) {
 		case "/timestamp":
 			parts := strings.SplitN(text, " ", 3)
@@ -141,10 +156,9 @@ Loop:
 			if len(parts) != 3 {
 				return nil, fmt.Errorf("missing parameters for /profile")
 			}
-			var err error
-			perMessageProfile, err = h.getPerMessageProfile(ctx, parts[1])
-			if err != nil {
-				return nil, err
+			perMessageProfile = h.getPerMessageProfile(ctx, parts[1])
+			if perMessageProfile == nil {
+				return nil, fmt.Errorf("unknown per-message profile: %s", parts[1])
 			}
 			text = parts[2]
 			continue

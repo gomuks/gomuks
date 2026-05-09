@@ -269,6 +269,8 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 			if syncCtx != nil {
 				syncCtx.changedDMs = changes
 			}
+		case accountDataPerMessageProfiles:
+			h.perMessageProfiles.Store(nil)
 		}
 	}
 	if syncCtx != nil {
