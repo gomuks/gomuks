@@ -17,8 +17,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/tidwall/gjson"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"go.mau.fi/util/exgjson"
+	"go.mau.fi/util/exstrings"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -76,6 +79,25 @@ func init() {
 	}
 }
 
+func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) (prof *event.BeeperPerMessageProfile, err error) {
+	evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.Type{
+		Type:  "fi.mau.msc4461.per_message_profiles",
+		Class: event.AccountDataEventType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profiles from account data: %w", err)
+	} else if evt == nil {
+		return nil, fmt.Errorf("no profiles found in account data")
+	} else if res := gjson.GetBytes(evt.Content, exgjson.Path(name)); !res.Exists() {
+		return nil, fmt.Errorf("profile not found: %s", name)
+	} else if !res.IsObject() {
+		return nil, fmt.Errorf("profile data for %s is malformed: not an object", name)
+	} else if err = json.Unmarshal(exstrings.UnsafeBytes(res.Raw), &prof); err != nil {
+		return nil, fmt.Errorf("profile data for %s is malformed: %w", name, err)
+	}
+	return
+}
+
 func (h *HiClient) SendMessage(
 	ctx context.Context,
 	roomID id.RoomID,
@@ -91,38 +113,56 @@ func (h *HiClient) SendMessage(
 		return h.ProcessCommand(ctx, roomID, base.MSC4391BotCommand, base, relatesTo)
 	}
 	var unencrypted bool
-	if strings.HasPrefix(text, "/unencrypted ") {
-		text = strings.TrimPrefix(text, "/unencrypted ")
-		unencrypted = true
-	}
 	var ts int64
-	if strings.HasPrefix(text, "/timestamp ") {
-		parts := strings.SplitN(text, " ", 3)
-		if len(parts) != 3 {
-			return nil, fmt.Errorf("missing parameters for /timestamp")
-		}
-		var err error
-		ts, err = strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("malformed timestamp: %w", err)
-		}
-		text = parts[2]
-	}
 	var rawInputBody bool
-	if strings.HasPrefix(text, "/rawinputbody ") {
-		text = strings.TrimPrefix(text, "/rawinputbody ")
-		rawInputBody = true
-	}
-	var content event.MessageEventContent
+	var perMessageProfile *event.BeeperPerMessageProfile
 	msgType := event.MsgText
-	origText := text
-	if strings.HasPrefix(text, "/me ") {
-		msgType = event.MsgEmote
-		text = strings.TrimPrefix(text, "/me ")
-	} else if strings.HasPrefix(text, "/notice ") {
-		msgType = event.MsgNotice
-		text = strings.TrimPrefix(text, "/notice ")
+Loop:
+	for {
+		spaceIdx := strings.IndexByte(text, ' ')
+		if spaceIdx < 2 {
+			break
+		}
+		switch strings.ToLower(text[:spaceIdx]) {
+		case "/timestamp":
+			parts := strings.SplitN(text, " ", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("missing parameters for /timestamp")
+			}
+			var err error
+			ts, err = strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("malformed timestamp: %w", err)
+			}
+			text = parts[2]
+			continue
+		case "/pmp", "/profile":
+			parts := strings.SplitN(text, " ", 3)
+			if len(parts) != 3 {
+				return nil, fmt.Errorf("missing parameters for /profile")
+			}
+			var err error
+			perMessageProfile, err = h.getPerMessageProfile(ctx, parts[1])
+			if err != nil {
+				return nil, err
+			}
+			text = parts[2]
+			continue
+		case "/unencrypted":
+			unencrypted = true
+		case "/rawinputbody":
+			rawInputBody = true
+		case "/me":
+			msgType = event.MsgEmote
+		case "/notice":
+			msgType = event.MsgNotice
+		default:
+			break Loop
+		}
+		text = text[spaceIdx+1:]
 	}
+	origText := text
+	var content event.MessageEventContent
 	if strings.HasPrefix(text, "/rainbow ") {
 		text = strings.TrimPrefix(text, "/rainbow ")
 		content = format.RenderMarkdownCustom(text, rainbowWithHTML)
@@ -134,7 +174,8 @@ func (h *HiClient) SendMessage(
 		text = strings.TrimPrefix(text, "/html ")
 		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
 	} else if text != "" {
-		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText
+		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText ||
+			content.BeeperPerMessageProfile != nil
 		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructuredCommand {
 			if strings.HasPrefix(text, "//") {
 				text = text[1:]
@@ -156,6 +197,9 @@ func (h *HiClient) SendMessage(
 			base.Mentions = content.Mentions
 		}
 		content = *base
+	}
+	if perMessageProfile != nil {
+		content.BeeperPerMessageProfile = perMessageProfile
 	}
 	if content.Mentions == nil {
 		content.Mentions = &event.Mentions{}

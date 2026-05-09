@@ -35,6 +35,14 @@ function makeFakeCommand(name: string, description: string, ...extraParams: BotP
 	}
 }
 
+const profileArgs: BotParameter = {
+	key: "key",
+	schema: {
+		schema_type: "primitive",
+		type: "string",
+	},
+}
+
 const FakeCommands: WrappedBotCommand[] = [
 	makeFakeCommand("plain", "Send a plain text message without any formatting"),
 	makeFakeCommand("html", "Send a formatted message with only HTML (no markdown)"),
@@ -45,6 +53,8 @@ const FakeCommands: WrappedBotCommand[] = [
 	makeFakeCommand(
 		"rawinputbody", "Use the input text as the body field as-is, rather than re-parsing generated HTML",
 	),
+	makeFakeCommand("profile", "Use a stored per-message profile", profileArgs),
+	makeFakeCommand("pmp", "Use a stored per-message profile", profileArgs),
 	makeFakeCommand("timestamp", "Send a message with a custom timestamp", {
 		key: "timestamp",
 		schema: {
@@ -63,6 +73,8 @@ export function isFakeCommand(text: string): boolean {
 		|| text.startsWith("/timestamp ")
 		|| text.startsWith("/unencrypted ")
 		|| text.startsWith("/rawinputbody ")
+		|| text.startsWith("/pmp ")
+		|| text.startsWith("/profile ")
 }
 
 export default FakeCommands
