@@ -508,16 +508,13 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				client.rpc.setAccountData(
 					"m.invite_permission_config",
 					value ? { default_action: "block" } : {},
-				).then(() => console.debug("Set m.invite_permission_config: %s", value), console.error)
+				)
 				client.rpc.setAccountData(
 					"org.matrix.msc4155.invite_permission_config",
 					value ? { blocked_users: ["*"]} : {},
-				).then(() => console.debug("Set invite permission config (unstable): %s", value), console.error)
+				)
 			}
-			client.rpc.setAccountData("fi.mau.gomuks.preferences", {
-				...client.store.serverPreferenceCache,
-				[key]: value,
-			})
+
 		} else if (context === PreferenceContext.Device) {
 			if (value === undefined) {
 				delete client.store.localPreferenceCache[key]
