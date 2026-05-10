@@ -14,7 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { ContentURI, RoomType } from "../../types"
-import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
+import {
+	Preference,
+	PreferenceContext,
+	anyContext,
+	anyGlobalContext,
+	globalDeviceSpecific,
+	roomSpecific,
+} from "./types.ts"
 
 export const codeBlockStyles = [
 	"auto", "abap", "algol_nu", "algol", "arduino", "autumn", "average", "base16-snazzy", "borland", "bw",
@@ -81,6 +88,12 @@ export const preferences = {
 		displayName: "Show avatars in invites",
 		description: "If disabled, the avatar of the room or inviter will not be shown in the invite view.",
 		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
+	block_all_invites: new Preference<boolean>({
+		displayName: "Block all invites",
+		description: "Prevent anyone sending you new invites.",
+		allowedContexts: [PreferenceContext.Account],
 		defaultValue: false,
 	}),
 	code_block_line_wrap: new Preference<boolean>({

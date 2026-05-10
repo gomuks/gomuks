@@ -508,6 +508,16 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				...client.store.serverPreferenceCache,
 				[key]: value,
 			})
+			if (key === "block_all_invites") {
+				client.rpc.setAccountData(
+					"m.invite_permission_config",
+					value ? { default_action: "block" } : {},
+				)
+				client.rpc.setAccountData(
+					"org.matrix.msc4155.invite_permission_config",
+					value ? { blocked_users: ["*"]} : {},
+				)
+			}
 		} else if (context === PreferenceContext.Device) {
 			if (value === undefined) {
 				delete client.store.localPreferenceCache[key]

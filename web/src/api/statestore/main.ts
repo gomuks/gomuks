@@ -387,6 +387,7 @@ export class StateStore {
 				this.serverPreferenceCache = ad.content
 				this.preferenceSub.notify()
 			}
+			// TODO: Update preferences AD event if m.invite_permission_config is updated?
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
 		}
