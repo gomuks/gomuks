@@ -381,6 +381,29 @@ export class StateStore {
 			}
 		}
 		for (const ad of Object.values(sync.account_data ?? {})) {
+			switch (ad.type) {
+			case "io.element.recent_emoji":
+				this.#frequentlyUsedEmoji = null
+				break
+			case "fi.mau.gomuks.preferences":
+				this.serverPreferenceCache = ad.content
+				this.preferenceSub.notify()
+				break
+			case "m.invite_permission_config":
+				interface evt { default_action?: string }
+				this.serverPreferenceCache.block_all_invites = (ad.content as evt).default_action === "block"
+				// TODO: update preferences event
+				break
+			case "org.matrix.msc4155.invite_permission_config":
+			{
+				interface evt { blocked_users?: string[], blocked_servers?: string[] }
+				const content = ad.content as evt
+				this.serverPreferenceCache.block_all_invites = (
+					content.blocked_users?.includes("*") || content.blocked_servers?.includes("*")
+				)
+				// TODO: update preferences event
+			}
+			}
 			if (ad.type === "io.element.recent_emoji") {
 				this.#frequentlyUsedEmoji = null
 			} else if (ad.type === "fi.mau.gomuks.preferences") {
