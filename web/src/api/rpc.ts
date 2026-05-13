@@ -40,6 +40,7 @@ import {
 	RecoveryKeyResponse,
 	RelatesTo,
 	RelationType,
+	ReportEventParams,
 	ReqCreateRoom,
 	ResolveAliasResponse,
 	RespCreateRoom,
@@ -216,8 +217,8 @@ export default abstract class RPCClient {
 		return this.request("resend_event", { transaction_id })
 	}
 
-	reportEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<void> {
-		return this.request("report_event", { room_id, event_id, reason })
+	reportEvent(params: ReportEventParams): Promise<void> {
+		return this.request("report_event", params)
 	}
 
 	redactEvent(room_id: RoomID, event_id: EventID, reason: string): Promise<void> {
