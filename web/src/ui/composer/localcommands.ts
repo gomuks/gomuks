@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import Client from "@/api/client.ts"
 import { fakeGomuksSender } from "@/api/statestore"
-import { BotArgumentValue, RawDBEvent, RoomID, WrappedBotCommand } from "@/api/types"
+import { BotArgumentValue, EventID, RawDBEvent, RoomID, WrappedBotCommand } from "@/api/types"
 import type { CommandName } from "@/api/types/stdcommands.d.ts"
 import { escapeHTML } from "@/util/markdown.ts"
 import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
@@ -30,11 +30,13 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 		}
 		room_reference = matrixToToMatrixURI(room_reference) ?? room_reference
 		let via: string[] = []
+		let openEventID: EventID | undefined
 		if (room_reference.startsWith("matrix:")) {
 			const parsed = parseMatrixURI(room_reference)
 			if (parsed) {
 				room_reference = parsed.identifier
 				via = parsed.params.getAll("via")
+				openEventID = parsed.eventID
 			}
 		}
 		if (room_reference.startsWith("#")) {
@@ -52,6 +54,12 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 		} else if (room_reference.startsWith("!")) {
 			mainScreen.setActiveRoom(room_reference, {
 				previewMeta: { via },
+				openEventID,
+			})
+		} else if (room_reference.startsWith("@")) {
+			mainScreen.setRightPanel({
+				type: "user",
+				userID: room_reference,
 			})
 		} else {
 			reply(escapedHTML`Invalid room reference <code>${room_reference}</code>`)

@@ -49,6 +49,7 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 	}},
 }, {
 	Command:     Join,
+	Aliases:     []string{"open"},
 	Description: event.MakeExtensibleText("Jump to the join room view by ID, alias or link"),
 	Parameters: []*cmdschema.Parameter{{
 		Key:         "room_reference",
