@@ -1,3 +1,26 @@
+# v26.05
+
+### Backend
+* Added support for `Range` requests when downloading media.
+* Added support for sending per-message profiles with [MSC4461].
+* Changed resyncing state to detect the user being state reset out of the room
+  even if the request doesn't fail (e.g. due to the room being world-readable).
+* Fixed login failing if the user has no SSSS set up.
+
+### Web
+* Added support for reading stable [MSC2545] event types.
+* Added support for per-room notification sounds.
+* Added option to force sending an attachment as a file.
+* Added the `value` to the whitelisted attributes for `li` tags
+  (allows ordered lists where the indexes jump arbitrarily).
+* Changed `/join` command to accept user IDs and event links in addition to
+  plain room links/aliases.
+* Fixed SSO login not working if the homeserver URL had a trailing slash.
+* Fixed unicode RTL overrides not being isolated properly in some contexts.
+
+[MSC2545]: https://github.com/matrix-org/matrix-spec-proposals/pull/2545
+[MSC4461]: https://github.com/matrix-org/matrix-spec-proposals/pull/4461
+
 # v26.04
 
 ### Backend
