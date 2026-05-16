@@ -589,7 +589,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				<div>{roomMeta.topic}</div>
 				<div className="room-buttons">
 					<button className="leave-room" onClick={onClickLeave}>Leave room</button>
-					<button className="devtools" onClick={openDevtools}>Explore room state</button>
+					<button className="devtools" onClick={openDevtools}>Open devtools</button>
 					<select onChange={evt => {
 						window.activeRoomContext?.setForceViewType(evt.target.value as RoomType)
 						closeModal()
