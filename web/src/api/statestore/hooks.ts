@@ -33,10 +33,10 @@ import type { StateStore } from "./main.ts"
 import type { AutocompleteMemberEntry, RoomStateStore } from "./room.ts"
 import type { SpaceEdgeStore } from "./space.ts"
 
-export function useRoomTimeline(room: RoomStateStore): (MemDBEvent | null)[] {
+export function useRoomTimeline(room: RoomStateStore | undefined): (MemDBEvent | null)[] {
 	return useSyncExternalStore(
-		room.timelineSub.subscribe,
-		() => room.timelineCache,
+		room ? room.timelineSub.subscribe : noopSubscribe,
+		() => room?.timelineCache ?? emptyArray,
 	)
 }
 

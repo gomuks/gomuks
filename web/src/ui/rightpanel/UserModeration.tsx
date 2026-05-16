@@ -17,7 +17,6 @@ import { JSX, use, useState } from "react"
 import Client from "@/api/client.ts"
 import { RoomStateStore, useRoomTimeline } from "@/api/statestore"
 import { MemDBEvent, MembershipAction } from "@/api/types"
-import { useRoomContext } from "@/ui/roomview/roomcontext.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import { getPowerLevels } from "../menu/util.ts"
 import { BulkRedactModal, ConfirmWithMessageModal, ModalContext } from "../modal"
@@ -37,8 +36,7 @@ interface UserModerationProps {
 
 const UserModeration = ({ userID, client, member, room }: UserModerationProps) => {
 	const openModal = use(ModalContext)
-	const roomCtx = useRoomContext()
-	const timeline = useRoomTimeline(roomCtx.store)
+	const timeline = useRoomTimeline(room)
 	const [redactRemaining, setRedactRemaining] = useState<number>(0)
 	const hasPL = (action: "invite" | "kick" | "ban" | "redact") => {
 		if (!room) {
