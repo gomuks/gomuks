@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, Tray, Menu } from "electron"
+import { app, BrowserWindow, Menu, nativeImage, shell, Tray } from "electron"
 import path from "node:path"
 import { ChildProcess, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -117,7 +117,7 @@ let tray: Tray | null = null
 
 function createTrayIcon() {
 	const trayIconPath = path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), "icon.png")
-	tray = new Tray(trayIconPath)
+	tray = new Tray(nativeImage.createFromPath(trayIconPath))
 	tray.setContextMenu(Menu.buildFromTemplate([
 		{
 			label: "Open",
