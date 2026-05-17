@@ -257,7 +257,7 @@ docker/manifest:
   - tree out/make/
   artifacts:
     paths:
-    - gomuks-desktop-*
+    - gomuks*desktop*
 
 desktop/linux/amd64:
   <<: *build-desktop
