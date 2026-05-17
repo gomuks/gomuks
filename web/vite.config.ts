@@ -3,7 +3,7 @@ import { defineConfig } from "vite"
 import svgr from "vite-plugin-svgr"
 import elementCallPlugin from "./vite-element-call.ts"
 
-const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api", "@dnd-kit"]
+const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api", "@dnd-kit", "@lottiefiles/dotlottie"]
 
 export default defineConfig({
 	base: "./",

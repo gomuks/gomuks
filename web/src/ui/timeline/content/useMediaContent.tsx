@@ -19,6 +19,7 @@ import type { EventType, MediaMessageEventContent } from "@/api/types"
 import { ImageContainerSize, calculateMediaSize, defaultVideoContainerSize } from "@/util/mediasize.ts"
 import { ensureString } from "@/util/validation.ts"
 import { LightboxContext } from "../../modal"
+import LazyLottie from "../../util/LazyLottie.tsx"
 import DownloadIcon from "@/icons/download.svg?react"
 
 export const useMediaContent = (
@@ -34,6 +35,26 @@ export const useMediaContent = (
 	const [errored, setErrored] = useState(false)
 	if (content.msgtype === "m.image" || content.msgtype === "m.sticker" || evtType === "m.sticker") {
 		const style = calculateMediaSize(content.info?.w, content.info?.h, containerSize)
+		if (content.info?.mimetype === "video/lottie+json") {
+			return [<LazyLottie
+				autoplay={autoplayGifs}
+				playOnHover={!autoplayGifs}
+				loop
+				dotLottieRefCallback={dl => {
+					if (onLoad) {
+						dl?.addEventListener("load", onLoad)
+					}
+					dl?.addEventListener("loadError", () => {
+						setErrored(true)
+						onLoad?.()
+					})
+				}}
+				style={style.media}
+				src={mediaURL}
+				title={ensureString(content.filename ?? content.body)}
+				className={errored ? "errored" : undefined}
+			/>, "image-container", style.container]
+		}
 		return [<img
 			onLoad={onLoad}
 			onError={() => {

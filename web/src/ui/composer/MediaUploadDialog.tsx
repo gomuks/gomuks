@@ -16,6 +16,7 @@
 import React, { JSX, use, useEffect, useRef, useState } from "react"
 import type { MediaEncodingOptions } from "@/api/types"
 import { ModalCloseContext } from "@/ui/modal"
+import LazyLottie from "@/ui/util/LazyLottie.tsx"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import "./MediaUploadDialog.css"
 
@@ -86,7 +87,9 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 		}
 	}, [file, blobURL])
 	let isFile = false
-	if (file.type.startsWith("image/")) {
+	if (file.type === "video/lottie+json") {
+		previewContent = <LazyLottie src={blobURL} autoplay loop style={{ maxWidth: "30rem" }} />
+	} else if (file.type.startsWith("image/")) {
 		previewContent = <img src={blobURL} alt={file.name} />
 		if (imageReencSources.includes(file.type)) {
 			reencTargets = imageReencTargets
@@ -156,10 +159,16 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 				/>
 			</div>
 
-			<div className="meta-key">{origDimensions ? "Dimensions" : null}</div>
-			<div className="meta-value">
-				{origDimensions ? `${resizedWidth}×${resizedHeight}` : null}
-			</div>
+			{origDimensions ? <>
+				<div className="meta-key">Dimensions</div>
+				<div className="meta-value">
+					{resizedWidth}×{resizedHeight}
+				</div>
+			</> : reencTargets ? <>
+				{/* Empty field for proper sizing */}
+				<div className="meta-key"></div>
+				<div className="meta-value"></div>
+			</> : null}
 
 			{reencTargets ? <>
 				<label htmlFor="select-reenc-type" className="meta-key">Re-encode</label>
@@ -211,7 +220,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 
 			{isEncrypted && <>
 				<label htmlFor="checkbox-no-encrypt" className="meta-key">Don't encrypt</label>
-				<div className="meta-value meta-value-long">
+				<div className="meta-value">
 					<input
 						type="checkbox"
 						checked={noEncrypt}
