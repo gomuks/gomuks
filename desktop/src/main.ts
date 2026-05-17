@@ -6,6 +6,20 @@ import started from "electron-squirrel-startup"
 
 if (started) {
 	app.quit()
+	process.exit(0)
+}
+
+if (process.defaultApp) {
+	if (process.argv.length >= 2) {
+		app.setAsDefaultProtocolClient("matrix", process.execPath, [path.resolve(process.argv[1])])
+	}
+} else {
+	app.setAsDefaultProtocolClient("matrix")
+}
+
+if (!app.requestSingleInstanceLock()) {
+	app.quit()
+	process.exit(0)
 }
 
 function backendBinaryPath() {
@@ -130,65 +144,53 @@ function handleMatrixURI(uri: string) {
 	activeMainWindow?.webContents.send("open-matrix-uri", uri)
 }
 
-if (process.defaultApp) {
-	if (process.argv.length >= 2) {
-		app.setAsDefaultProtocolClient("matrix", process.execPath, [path.resolve(process.argv[1])])
-	}
-} else {
-	app.setAsDefaultProtocolClient("matrix")
-}
+let triedToQuit = false
 
-if (!app.requestSingleInstanceLock()) {
-	app.quit()
-} else {
-	let triedToQuit = false
-
-	app.on("window-all-closed", () => {
-		if (process.platform !== "darwin") {
-			if (backendProc) {
-				console.log("All windows closed, sending SIGTERM to backend")
-				backendProc.kill("SIGTERM")
-			} else {
-				console.log("All windows closed, but backend not running, quitting immediately")
-				app.quit()
-			}
-		}
-	})
-
-	app.on("before-quit", evt => {
+app.on("window-all-closed", () => {
+	if (process.platform !== "darwin") {
 		if (backendProc) {
-			evt.preventDefault()
-			console.log("Sending", triedToQuit ? "SIGKILL" : "SIGTERM", "to backend instead of quitting immediately")
-			backendProc.kill(triedToQuit ? "SIGKILL" : "SIGTERM")
-			triedToQuit = true
+			console.log("All windows closed, sending SIGTERM to backend")
+			backendProc.kill("SIGTERM")
+		} else {
+			console.log("All windows closed, but backend not running, quitting immediately")
+			app.quit()
 		}
-	})
+	}
+})
 
-	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			createWindow()
-		}
-	})
+app.on("before-quit", evt => {
+	if (backendProc) {
+		evt.preventDefault()
+		console.log("Sending", triedToQuit ? "SIGKILL" : "SIGTERM", "to backend instead of quitting immediately")
+		backendProc.kill(triedToQuit ? "SIGKILL" : "SIGTERM")
+		triedToQuit = true
+	}
+})
 
-	app.on("second-instance", (event, commandLine, workingDirectory) => {
-		console.log("Got second instance with", commandLine)
-		if (activeMainWindow) {
-			if (activeMainWindow.isMinimized()) activeMainWindow.restore()
-			activeMainWindow.focus()
-		}
-
-		const uri = commandLine.pop()
-		if (uri?.startsWith("matrix:")) {
-			handleMatrixURI(uri)
-		}
-	})
-
-	app.on("open-url", (event, url) => {
-		handleMatrixURI(url)
-	})
-
-	app.whenReady().then(() => {
-		startBackend()
+app.on("activate", () => {
+	if (BrowserWindow.getAllWindows().length === 0) {
 		createWindow()
-	})
-}
+	}
+})
+
+app.on("second-instance", (event, commandLine, workingDirectory) => {
+	console.log("Got second instance with", commandLine)
+	if (activeMainWindow) {
+		if (activeMainWindow.isMinimized()) activeMainWindow.restore()
+		activeMainWindow.focus()
+	}
+
+	const uri = commandLine.pop()
+	if (uri?.startsWith("matrix:")) {
+		handleMatrixURI(uri)
+	}
+})
+
+app.on("open-url", (event, url) => {
+	handleMatrixURI(url)
+})
+
+app.whenReady().then(() => {
+	startBackend()
+	createWindow()
+})
