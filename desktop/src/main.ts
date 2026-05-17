@@ -116,7 +116,10 @@ const onFocus = () => {
 let tray: Tray | null = null
 
 function createTrayIcon() {
-	const trayIconPath = path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), "icon.png")
+	const trayIconPath = path.join(
+		app.isPackaged ? process.resourcesPath : app.getAppPath(),
+		process.platform === "darwin" ? "trayTemplate@2x.png" : "tray@2x.png",
+	)
 	tray = new Tray(nativeImage.createFromPath(trayIconPath))
 	tray.setContextMenu(Menu.buildFromTemplate([
 		{
