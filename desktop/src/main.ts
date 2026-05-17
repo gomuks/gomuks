@@ -230,4 +230,8 @@ app.whenReady().then(() => {
 	startBackend()
 	createWindow()
 	createTrayIcon()
+	const lastArg = process.argv[process.argv.length-1]
+	if (lastArg.startsWith("matrix:")) {
+		handleMatrixURI(lastArg)
+	}
 })
