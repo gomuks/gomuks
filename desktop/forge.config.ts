@@ -36,6 +36,7 @@ const config: ForgeConfig = {
 		} : undefined,
 		appBundleId: "app.gomuks.desktop",
 		appCategoryType: "public.app-category.social-networking",
+		extraResource: ["icon.png"],
 	},
 	hooks: {
 		packageAfterCopy: async (forgeConfig, buildPath, _electronVersion, platform, arch) => {

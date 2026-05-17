@@ -116,7 +116,8 @@ const onFocus = () => {
 let tray: Tray | null = null
 
 function createTrayIcon() {
-	tray = new Tray("icon.png")
+	const trayIconPath = path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), "icon.png")
+	tray = new Tray(trayIconPath)
 	tray.setContextMenu(Menu.buildFromTemplate([
 		{
 			label: "Open",
@@ -214,6 +215,6 @@ app.on("open-url", (event, url) => {
 
 app.whenReady().then(() => {
 	startBackend()
-	createTrayIcon()
 	createWindow()
+	createTrayIcon()
 })
