@@ -158,11 +158,14 @@ function createWindow() {
 		return { action: "deny" }
 	})
 
-	let serverURL: string | null = null
+	let serverURL: string | null = externalAddress || null
 	mainWindow.webContents.on("login", (event, authenticationResponseDetails, authInfo, callback) => {
 		event.preventDefault()
 		if (serverURL && authenticationResponseDetails.url.startsWith(`${serverURL}/_gomuks/auth`)) {
 			if (externalAddress) {
+				if (!externalUsername || !externalPassword) {
+					console.warn("External backend requires authentication but username or password not set in environment variables")
+				}
 				callback(externalUsername, externalPassword)
 			} else {
 				callback("desktop-key", desktopKey)
