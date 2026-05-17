@@ -27,6 +27,7 @@ import (
 	"html"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -111,17 +112,24 @@ func (gmx *Gomuks) StartServer() {
 			1,
 		)
 	}
-	gmx.Server = &http.Server{
-		Addr:    gmx.Config.Web.ListenAddress,
-		Handler: router,
+	gmx.Server = &http.Server{Handler: router}
+	gmx.Log.Info().Str("address", gmx.Config.Web.ListenAddress).Msg("Starting server")
+	ln, err := net.Listen("tcp", gmx.Config.Web.ListenAddress)
+	if err != nil {
+		panic(err)
 	}
+	gmx.Server.Addr = ln.Addr().String()
 	go func() {
-		err := gmx.Server.ListenAndServe()
+		err = gmx.Server.Serve(ln)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
-	gmx.Log.Info().Str("address", gmx.Config.Web.ListenAddress).Msg("Server started")
+	gmx.Log.Info().Str("address", gmx.Server.Addr).Msg("Server started")
+	if gmx.DesktopKey != "" {
+		out := exerrors.Must(json.Marshal(map[string]any{"started": true, "address": gmx.Server.Addr}))
+		fmt.Printf("%s\n", out)
+	}
 }
 
 func (gmx *Gomuks) FrontendCacheMiddleware(next http.Handler) http.Handler {
@@ -285,15 +293,23 @@ func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ctEqualString(expected, got string) bool {
+	gotHash := sha256.Sum256([]byte(got))
+	expectedHash := sha256.Sum256([]byte(expected))
+	return hmac.Equal(gotHash[:], expectedHash[:])
+}
+
 func (gmx *Gomuks) doBasicAuth(r *http.Request) (found, correct bool) {
 	var username, password string
 	username, password, found = r.BasicAuth()
 	if !found {
 		return
 	}
-	usernameHash := sha256.Sum256([]byte(username))
-	expectedUsernameHash := sha256.Sum256([]byte(gmx.Config.Web.Username))
-	usernameCorrect := hmac.Equal(usernameHash[:], expectedUsernameHash[:])
+	if gmx.DesktopKey != "" && username == "desktop-key" {
+		correct = ctEqualString(gmx.DesktopKey, password)
+		return
+	}
+	usernameCorrect := ctEqualString(gmx.Config.Web.Username, username)
 	passwordCorrect := bcrypt.CompareHashAndPassword([]byte(gmx.Config.Web.PasswordHash), []byte(password)) == nil
 	correct = passwordCorrect && usernameCorrect
 	return

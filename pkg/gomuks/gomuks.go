@@ -63,6 +63,7 @@ type Gomuks struct {
 
 	Config      Config
 	DisableAuth bool
+	DesktopKey  string
 
 	GetDBConfig func() dbutil.PoolConfig
 

@@ -18,7 +18,7 @@ variables:
   MAU_VERSION_PACKAGE: go.mau.fi/gomuks/version
 
 wasm:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.25-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
   stage: frontend
   cache:
     paths:
@@ -46,7 +46,7 @@ frontend:
     - web/node_modules
   script:
   - cd web
-  - npm install --include=dev
+  - npm ci --include=dev
   - npm run build
   artifacts:
     paths:
@@ -58,7 +58,7 @@ frontend:
   - wasm
 
 deploy wasmuks:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.25-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
   stage: frontend
   tags:
   - webdeploy
@@ -241,6 +241,7 @@ docker/manifest:
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-amd64 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-arm64
 
 .build-desktop: &build-desktop
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
   stage: build desktop
   cache:
     paths:
@@ -251,77 +252,67 @@ docker/manifest:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   script:
   - cd desktop
-  - wails3 task $PLATFORM:package
-  - ls bin
+  - npm ci --include=dev
+  - npm run make -- --platform=$PLATFORM --arch=$ARCH
+  - tree out/make/
   artifacts:
     paths:
-    - desktop/bin/*
-  dependencies:
-  - frontend
-  needs:
-  - frontend
+    - gomuks*desktop*
 
 desktop/linux/amd64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:linux-amd64
   variables:
     PLATFORM: linux
+    ARCH: x64
+  before_script:
+  - apk add --no-cache fakeroot dpkg
   after_script:
-  - mv desktop/bin/gomuks-desktop .
-  - mv desktop/build/nfpm/bin/gomuks-desktop.deb .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    - gomuks-desktop.deb
-  tags:
-  - linux
-  - amd64
+  - mv desktop/out/make/deb/x64/gomuks* .
+  dependencies:
+  - linux/amd64
+  needs:
+  - linux/amd64
 
 desktop/linux/arm64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:linux-arm64-native
   variables:
     PLATFORM: linux
+    ARCH: arm64
+  before_script:
+  - apk add --no-cache fakeroot dpkg
   after_script:
-  - mv desktop/bin/gomuks-desktop .
-  - mv desktop/build/nfpm/bin/gomuks-desktop.deb .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    - gomuks-desktop.deb
-  tags:
-  - linux
-  - arm64
+  - mv desktop/out/make/deb/arm64/gomuks* .
+  dependencies:
+  - linux/arm64
+  needs:
+  - linux/arm64
 
 desktop/windows/amd64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:windows-amd64
-  after_script:
-  - mv desktop/bin/gomuks-desktop.exe .
-  artifacts:
-    paths:
-    - gomuks-desktop.exe
   variables:
-    PLATFORM: windows
+    PLATFORM: win32
+    ARCH: x64
+  before_script:
+  - apk add --no-cache wine mono
+  after_script:
+  - mv desktop/out/make/squirrel.windows/x64/gomuks* .
+  dependencies:
+  - windows/amd64
+  needs:
+  - windows/amd64
 
 desktop/macos/arm64:
   <<: *build-desktop
   cache: {}
-  before_script:
-  - export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
-  - export LIBRARY_PATH=$(brew --prefix)/lib
-  - export CPATH=$(brew --prefix)/include
-  after_script:
-  - hdiutil create -srcFolder ./desktop/bin/gomuks-desktop.app/ -o ./gomuks-desktop.dmg
-  - codesign -s - --timestamp -i fi.mau.gomuks.desktop.mac gomuks-desktop.dmg
-  - mv desktop/bin/gomuks-desktop .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    # TODO generate proper dmgs
-    #- gomuks-desktop.dmg
   variables:
     PLATFORM: darwin
+    ARCH: arm64
+  after_script:
+  - mv desktop/out/make/gomuks* .
   tags:
   - macos
   - arm64
+  dependencies:
+  - macos/arm64
+  needs:
+  - macos/arm64
