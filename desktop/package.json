@@ -21,8 +21,8 @@
 	"devDependencies": {
 		"@electron-forge/cli": "^7.11.1",
 		"@electron-forge/maker-deb": "^7.11.1",
-		"@electron-forge/maker-squirrel": "^7.11.1",
 		"@electron-forge/maker-dmg": "^7.11.1",
+		"@electron-forge/maker-squirrel": "^7.11.1",
 		"@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
 		"@electron-forge/plugin-fuses": "^7.11.1",
 		"@electron-forge/plugin-vite": "^7.11.1",
@@ -33,6 +33,7 @@
 		"vite": "^8.0.5"
 	},
 	"dependencies": {
+		"electron-dl": "^4.0.0",
 		"electron-squirrel-startup": "^1.0.1"
 	}
 }

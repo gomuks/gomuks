@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, nativeImage, shell, Tray } from "electron"
+import electronDl from "electron-dl"
 import path from "node:path"
 import { ChildProcess, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -123,11 +124,11 @@ function createTrayIcon() {
 	tray = new Tray(nativeImage.createFromPath(trayIconPath))
 	tray.setContextMenu(Menu.buildFromTemplate([
 		{
-			label: "Open",
+			label: "Open gomuks",
 			click: onFocus,
 		},
 		{
-			label: "Quit",
+			label: "Quit gomuks",
 			click: onClickQuit,
 		},
 	]))
@@ -147,8 +148,13 @@ function createWindow() {
 	activeMainWindow = mainWindow
 
 	mainWindow.webContents.setWindowOpenHandler(details => {
-		console.log("Opening", details.url, "externally")
-		shell.openExternal(details.url)
+		if (details.url.startsWith(`${serverURL}/_gomuks/media/`)) {
+			console.log("Downloading", details.url)
+			mainWindow.webContents.downloadURL(details.url)
+		} else {
+			console.log("Opening", details.url, "externally")
+			shell.openExternal(details.url)
+		}
 		return { action: "deny" }
 	})
 
@@ -214,6 +220,10 @@ app.on("second-instance", (event, commandLine, workingDirectory) => {
 
 app.on("open-url", (event, url) => {
 	handleMatrixURI(url)
+})
+
+electronDl({
+	saveAs: process.platform !== "darwin",
 })
 
 app.whenReady().then(() => {
