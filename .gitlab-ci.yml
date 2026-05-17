@@ -254,10 +254,10 @@ docker/manifest:
   - cd desktop
   - npm ci --include=dev
   - npm run make -- --platform=$PLATFORM --arch=$ARCH
-  - ls out/make/
+  - tree out/make/
   artifacts:
     paths:
-    - desktop/out/make
+    - gomuks-desktop-*
 
 desktop/linux/amd64:
   <<: *build-desktop
@@ -266,6 +266,8 @@ desktop/linux/amd64:
     ARCH: x64
   before_script:
   - apk add --no-cache fakeroot dpkg
+  after_script:
+  - mv desktop/out/make/deb/x64/gomuks-desktop-*.deb ../
   dependencies:
   - linux/amd64
   needs:
@@ -278,6 +280,8 @@ desktop/linux/arm64:
     ARCH: arm64
   before_script:
   - apk add --no-cache fakeroot dpkg
+  after_script:
+  - mv desktop/out/make/deb/arm64/gomuks-desktop-*.deb ../
   dependencies:
   - linux/arm64
   needs:
@@ -290,6 +294,8 @@ desktop/windows/amd64:
     ARCH: x64
   before_script:
   - apk add --no-cache wine mono
+  after_script:
+  - mv desktop/out/make/gomuks-desktop-* ../
   dependencies:
   - windows/amd64
   needs:
@@ -301,6 +307,8 @@ desktop/macos/arm64:
   variables:
     PLATFORM: darwin
     ARCH: arm64
+  after_script:
+  - mv desktop/out/make/gomuks-desktop-*-arm64.dmg ../
   tags:
   - macos
   - arm64
