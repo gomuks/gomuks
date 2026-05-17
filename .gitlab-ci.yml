@@ -257,7 +257,7 @@ docker/manifest:
   - ls out/make/
   artifacts:
     paths:
-    - out/make
+    - desktop/out/make
 
 desktop/linux/amd64:
   <<: *build-desktop
