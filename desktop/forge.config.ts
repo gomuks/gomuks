@@ -23,8 +23,6 @@ const config: ForgeConfig = {
 			appleApiKey: process.env.APPLE_API_KEY_PATH,
 			appleApiKeyId: process.env.APPLE_API_KEY_ID!,
 			appleApiIssuer: process.env.APPLE_API_ISSUER!,
-		} : process.env.KEYCHAIN_PROFILE ? {
-			keychainProfile: process.env.KEYCHAIN_PROFILE,
 		} : undefined,
 		appBundleId: "app.gomuks.desktop",
 		appCategoryType: "public.app-category.social-networking",
