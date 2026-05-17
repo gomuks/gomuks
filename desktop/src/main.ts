@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from "electron"
+import { app, BrowserWindow, shell, Tray, Menu } from "electron"
 import path from "node:path"
 import { ChildProcess, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -90,6 +90,45 @@ function startBackend() {
 	})
 }
 
+let triedToQuit = false
+
+const onClickQuit = () => {
+	if (backendProc) {
+		console.log("Sending", triedToQuit ? "SIGKILL" : "SIGTERM", "to backend")
+		backendProc.kill(triedToQuit ? "SIGKILL" : "SIGTERM")
+		triedToQuit = true
+	} else {
+		app.quit()
+	}
+}
+
+const onFocus = () => {
+	if (BrowserWindow.getAllWindows().length === 0) {
+		createWindow()
+	} else {
+		if (activeMainWindow.isMinimized()) {
+			activeMainWindow.restore()
+		}
+		activeMainWindow.focus()
+	}
+}
+
+let tray: Tray | null = null
+
+function createTrayIcon() {
+	tray = new Tray("icon.png")
+	tray.setContextMenu(Menu.buildFromTemplate([
+		{
+			label: "Open",
+			click: onFocus,
+		},
+		{
+			label: "Quit",
+			click: onClickQuit,
+		},
+	]))
+}
+
 let activeMainWindow: BrowserWindow
 
 function createWindow() {
@@ -144,41 +183,24 @@ function handleMatrixURI(uri: string) {
 	activeMainWindow?.webContents.send("open-matrix-uri", uri)
 }
 
-let triedToQuit = false
-
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		if (backendProc) {
-			console.log("All windows closed, sending SIGTERM to backend")
-			backendProc.kill("SIGTERM")
-		} else {
-			console.log("All windows closed, but backend not running, quitting immediately")
-			app.quit()
-		}
+	if (!backendProc) {
+		app.quit()
 	}
 })
 
 app.on("before-quit", evt => {
 	if (backendProc) {
 		evt.preventDefault()
-		console.log("Sending", triedToQuit ? "SIGKILL" : "SIGTERM", "to backend instead of quitting immediately")
-		backendProc.kill(triedToQuit ? "SIGKILL" : "SIGTERM")
-		triedToQuit = true
+		onClickQuit()
 	}
 })
 
-app.on("activate", () => {
-	if (BrowserWindow.getAllWindows().length === 0) {
-		createWindow()
-	}
-})
+app.on("activate", onFocus)
 
 app.on("second-instance", (event, commandLine, workingDirectory) => {
 	console.log("Got second instance with", commandLine)
-	if (activeMainWindow) {
-		if (activeMainWindow.isMinimized()) activeMainWindow.restore()
-		activeMainWindow.focus()
-	}
+	onFocus()
 
 	const uri = commandLine.pop()
 	if (uri?.startsWith("matrix:")) {
@@ -192,5 +214,6 @@ app.on("open-url", (event, url) => {
 
 app.whenReady().then(() => {
 	startBackend()
+	createTrayIcon()
 	createWindow()
 })
