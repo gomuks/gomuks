@@ -267,7 +267,7 @@ desktop/linux/amd64:
   before_script:
   - apk add --no-cache fakeroot dpkg
   after_script:
-  - mv desktop/out/make/deb/x64/gomuks-desktop-*.deb ../
+  - mv desktop/out/make/deb/x64/gomuks* .
   dependencies:
   - linux/amd64
   needs:
@@ -281,7 +281,7 @@ desktop/linux/arm64:
   before_script:
   - apk add --no-cache fakeroot dpkg
   after_script:
-  - mv desktop/out/make/deb/arm64/gomuks-desktop-*.deb ../
+  - mv desktop/out/make/deb/arm64/gomuks* .
   dependencies:
   - linux/arm64
   needs:
@@ -295,7 +295,7 @@ desktop/windows/amd64:
   before_script:
   - apk add --no-cache wine mono
   after_script:
-  - mv desktop/out/make/gomuks-desktop-* ../
+  - mv desktop/out/make/squirrel.windows/x64/gomuks* .
   dependencies:
   - windows/amd64
   needs:
@@ -308,7 +308,7 @@ desktop/macos/arm64:
     PLATFORM: darwin
     ARCH: arm64
   after_script:
-  - mv desktop/out/make/gomuks-desktop-*-arm64.dmg ../
+  - mv desktop/out/make/gomuks* .
   tags:
   - macos
   - arm64
