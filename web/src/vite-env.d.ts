@@ -20,7 +20,7 @@ declare global {
 		openModal: openNonNestableModal
 		openNestableModal: openNestableModal
 		gomuksAndroid?: true
-		gomuksDesktop?: boolean
+		gomuksDesktop?: true
 		gomuksWebWasm?: boolean
 		vapidPublicKey?: string
 	}

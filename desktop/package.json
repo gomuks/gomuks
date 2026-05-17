@@ -1,0 +1,38 @@
+{
+	"name": "gomuks-desktop",
+	"private": true,
+	"license": "AGPL-3.0-or-later",
+	"productName": "gomuks-desktop",
+	"version": "0.2605.0",
+	"description": "Electron wrapper for gomuks web and backend",
+	"main": ".vite/build/main.js",
+	"scripts": {
+		"start": "NODE_ENV=development electron-forge start",
+		"package": "electron-forge package",
+		"make": "electron-forge make",
+		"publish": "electron-forge publish",
+		"lint": "eslint --ext .ts,.tsx ."
+	},
+	"keywords": [],
+	"author": {
+		"name": "Tulir Asokan",
+		"email": "tulir@maunium.net"
+	},
+	"devDependencies": {
+		"@electron-forge/cli": "^7.11.1",
+		"@electron-forge/maker-deb": "^7.11.1",
+		"@electron-forge/maker-squirrel": "^7.11.1",
+		"@electron-forge/maker-dmg": "^7.11.1",
+		"@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+		"@electron-forge/plugin-fuses": "^7.11.1",
+		"@electron-forge/plugin-vite": "^7.11.1",
+		"@electron/fuses": "^1.8.0",
+		"@types/electron-squirrel-startup": "^1.0.2",
+		"electron": "42.1.0",
+		"typescript": "^6.0.2",
+		"vite": "^8.0.5"
+	},
+	"dependencies": {
+		"electron-squirrel-startup": "^1.0.1"
+	}
+}

@@ -34,8 +34,10 @@ repos:
         entry: ./.pre-commit-eslint.sh
         language: script
         types_or: [ts, tsx]
+        require_serial: true
       - id: typescript
         name: typescript
         entry: ./.pre-commit-tsc.sh
         language: script
         types_or: [ts, tsx]
+        require_serial: true

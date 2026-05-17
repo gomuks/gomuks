@@ -11,7 +11,6 @@
 <body>
 	<div id="root"></div>
 	<script type="module">
-		window.gomuksDesktop = window.wails || window._wails || navigator.userAgent.includes("wails.io")
 		window.gomuksWebWasm = import.meta.env.PROD && !document.querySelector("meta[name=gomuks-frontend-etag]")
 	</script>
 	<script type="module" src="src/main.tsx"></script>

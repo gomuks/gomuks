@@ -13,9 +13,7 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: id => {
-					if (id.includes("wailsio")) {
-						return "wails"
-					} else if (id.includes("node_modules") && !splitDeps.some(dep => id.includes(dep))) {
+					if (id.includes("node_modules") && !splitDeps.some(dep => id.includes(dep))) {
 						return "vendor"
 					} else if (id.endsWith("/emoji/data.json")) {
 						return "emoji"
