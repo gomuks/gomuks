@@ -17,6 +17,7 @@
 package gomuks
 
 import (
+	"cmp"
 	"context"
 	"embed"
 	"errors"
@@ -132,7 +133,7 @@ func (gmx *Gomuks) InitDirectories(root string) {
 		gmx.CacheDir = filepath.Join(gomuksRoot, "cache")
 		gmx.ConfigDir = filepath.Join(gomuksRoot, "config")
 		gmx.DataDir = filepath.Join(gomuksRoot, "data")
-		gmx.LogDir = filepath.Join(gomuksRoot, "logs")
+		gmx.LogDir = cmp.Or(os.Getenv("GOMUKS_LOGS_HOME"), filepath.Join(gomuksRoot, "logs"))
 	} else {
 		homeDir := exerrors.Must(os.UserHomeDir())
 		if cacheDir := os.Getenv("GOMUKS_CACHE_HOME"); cacheDir != "" {

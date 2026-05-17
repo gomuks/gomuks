@@ -48,6 +48,7 @@ function startBackend() {
 		stdio: ["ignore", "pipe", "inherit"],
 		windowsHide: true,
 		env: {
+			GOMUKS_LOGS_HOME: app.getPath("logs"),
 			GOMUKS_ROOT: path.join(app.getPath("sessionData"), "backend"),
 			...process.env,
 			GOMUKS_DESKTOP_KEY: desktopKey,
