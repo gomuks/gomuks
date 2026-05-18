@@ -21,6 +21,7 @@ declare global {
 		openNestableModal: openNestableModal
 		gomuksAndroid?: true
 		gomuksDesktop?: true
+		gomuksDesktopNotifications?: true
 		gomuksWebWasm?: boolean
 		vapidPublicKey?: string
 	}

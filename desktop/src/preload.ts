@@ -10,3 +10,7 @@ ipcRenderer.on("open-matrix-uri", (evt, url: string) => {
 	console.log("Received matrix: URI from main process:", url)
 	location.hash = `#/uri/${encodeURIComponent(url)}`
 })
+
+ipcRenderer.on("disable-notifications", () => {
+	contextBridge.exposeInMainWorld("gomuksDesktopNotifications", true)
+})

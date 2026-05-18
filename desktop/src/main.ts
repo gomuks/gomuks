@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, nativeImage, shell, Tray } from "electron"
+import { app, BrowserWindow, Menu, nativeImage, Notification, shell, Tray } from "electron"
 import electronDl from "electron-dl"
 import path from "node:path"
 import { ChildProcess, spawn } from "node:child_process"
@@ -37,6 +37,75 @@ const externalPassword = process.env.GOMUKS_DESKTOP_BACKEND_PASSWORD
 const desktopKey = randomBytes(32).toString("hex")
 let backendProc: ChildProcess | null = null
 let serverAddrPromise: Promise<string> | null = null
+
+interface NotificationUser {
+	id: string
+	name: string
+	avatar?: string
+}
+
+interface PushNewMessage {
+	desktop_notification: true
+	timestamp: number
+	event_id: string
+	event_rowid: number
+
+	room_id: string
+	room_name: string
+	room_avatar?: string
+	sender: NotificationUser
+	self: NotificationUser
+
+	text: string
+	image?: string
+	mention?: true
+	reply?: true
+	sound?: true
+}
+
+const openNotifications = new Map<string, Map<number, Notification>>()
+
+function getNotifMap(roomID: string) {
+	let map = openNotifications.get(roomID)
+	if (!map) {
+		map = new Map()
+		openNotifications.set(roomID, map)
+	}
+	return map
+}
+
+function onPushNotification(data: PushNewMessage) {
+	const notif = new Notification({
+		body: data.text,
+		title: data.sender.name === data.room_name ? data.sender.name : `${data.sender.name} (${data.room_name})`,
+		silent: !data.sound,
+		// TODO this doesn't support webp
+		// icon: data.sender.avatar,
+		groupId: data.room_id,
+		groupTitle: data.room_name,
+	})
+	getNotifMap(data.room_id).set(data.event_rowid, notif)
+	notif.on("close", () => getNotifMap(data.room_id).delete(data.event_rowid))
+	notif.on("click", () => {
+		const targetURI = `matrix:roomid/${encodeURIComponent(data.room_id.slice(1))}/e/${encodeURIComponent(data.event_id.slice(1))}`
+		console.log("Opening", targetURI, "after notification click")
+		onFocus()
+		handleMatrixURI(targetURI)
+	})
+	console.log("Displaying notification for", data.event_id, "in", data.room_id)
+	notif.show()
+}
+
+function onDismissNotification(roomID: string) {
+	const map = openNotifications.get(roomID)
+	if (map?.size) {
+		console.log("Clearing active notifications in", roomID)
+		for (const notif of map.values()) {
+			notif.close()
+		}
+		map.clear()
+	}
+}
 
 function startBackend() {
 	if (externalAddress) {
@@ -77,9 +146,12 @@ function startBackend() {
 				const data = JSON.parse(output)
 				if (data.started === true && data.address) {
 					console.info("Got status from backend:", data)
-					stdout.off("data", handler)
 					backendProc?.off("exit", exitHandler)
 					resolve(data.address)
+				} else if (data.desktop_notification) {
+					onPushNotification(data.desktop_notification)
+				} else if (data.dismiss_notification) {
+					onDismissNotification(data.dismiss_notification)
 				} else {
 					console.warn("Unexpected backend output:", data)
 				}
@@ -182,8 +254,9 @@ function createWindow() {
 	} else if (serverAddrPromise) {
 		serverAddrPromise.then(addr => {
 			serverURL = `http://${addr}`
-			mainWindow.loadURL(serverURL)
+			return mainWindow.loadURL(serverURL)
 		})
+		mainWindow.webContents.send("disable-notifications")
 	} else {
 		throw new Error("Server address not available")
 	}
@@ -234,7 +307,7 @@ app.whenReady().then(() => {
 	startBackend()
 	createWindow()
 	createTrayIcon()
-	const lastArg = process.argv[process.argv.length-1]
+	const lastArg = process.argv[process.argv.length - 1]
 	if (lastArg.startsWith("matrix:")) {
 		handleMatrixURI(lastArg)
 	}

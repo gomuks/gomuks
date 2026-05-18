@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/rs/zerolog"
@@ -51,6 +52,43 @@ type PushNewMessage struct {
 	Mention bool   `json:"mention,omitempty"`
 	Reply   bool   `json:"reply,omitempty"`
 	Sound   bool   `json:"sound,omitempty"`
+}
+
+func (gmx *Gomuks) getFilePath(ctx context.Context, url string) string {
+	unprefixed, ok := strings.CutPrefix(url, "_gomuks/media/")
+	if !ok {
+		return ""
+	}
+	queryIdx := strings.IndexByte(unprefixed, '?')
+	if queryIdx == -1 {
+		return ""
+	}
+	parts := strings.Split(unprefixed[:queryIdx], "/")
+	if len(parts) != 2 {
+		return ""
+	}
+	media, err := gmx.Client.DB.Media.Get(ctx, id.ContentURI{
+		Homeserver: parts[0],
+		FileID:     parts[1],
+	})
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Str("url", url).Msg("Failed to get media for desktop notification")
+	} else if media != nil {
+		if media.ThumbnailHash != nil {
+			return gmx.cacheEntryToPath(media.ThumbnailHash[:])
+		} else if media.Hash != nil {
+			return gmx.cacheEntryToPath(media.Hash[:])
+		}
+	}
+	return ""
+}
+
+func (gmx *Gomuks) toDesktopNotification(ctx context.Context, pnm PushNewMessage) PushNewMessage {
+	pnm.RoomAvatar = gmx.getFilePath(ctx, pnm.RoomAvatar)
+	pnm.Sender.Avatar = gmx.getFilePath(ctx, pnm.Sender.Avatar)
+	pnm.Self.Avatar = gmx.getFilePath(ctx, pnm.Self.Avatar)
+	pnm.Image = gmx.getFilePath(ctx, pnm.Image)
+	return pnm
 }
 
 type NotificationUser struct {

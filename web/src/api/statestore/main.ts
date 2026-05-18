@@ -557,6 +557,13 @@ export class StateStore {
 		if (!evt || typeof evt.content.body !== "string") {
 			return
 		}
+		if (sound) {
+			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
+		}
+		if (window.gomuksDesktopNotifications) {
+			// Notifications are sent by the main process
+			return
+		}
 		let body = evt.content.body
 		if (body.length > 400) {
 			body = body.slice(0, 350) + " […]"
@@ -566,9 +573,6 @@ export class StateStore {
 		const roomName = room.meta.current.name ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
-		if (sound) {
-			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
-		}
 		const notif = new Notification(title, {
 			body,
 			icon,

@@ -77,6 +77,9 @@ func (gmx *Gomuks) SendPushNotifications(sync *jsoncmd.SyncComplete) {
 		if room.DismissNotifications && len(push.Dismiss) < 10 {
 			push.Dismiss = append(push.Dismiss, PushDismiss{RoomID: room.Meta.ID})
 		}
+		if room.DismissNotifications && gmx.DesktopKey != "" {
+			emitDesktopDismiss(room.Meta.ID)
+		}
 		for _, notif := range room.Notifications {
 			if ctx == nil {
 				ctx = gmx.Log.With().
@@ -86,6 +89,9 @@ func (gmx *Gomuks) SendPushNotifications(sync *jsoncmd.SyncComplete) {
 			msg := gmx.formatPushNotificationMessage(ctx, notif)
 			if msg == nil {
 				continue
+			}
+			if gmx.DesktopKey != "" {
+				emitDesktopPush(gmx.toDesktopNotification(ctx, *msg))
 			}
 			msgJSON, err := json.Marshal(msg)
 			if err != nil {
@@ -127,6 +133,16 @@ func (gmx *Gomuks) SendPushNotifications(sync *jsoncmd.SyncComplete) {
 	for notif := range push.Split {
 		gmx.SendPushNotification(ctx, pushRegs, notif)
 	}
+}
+
+func emitDesktopPush(notif PushNewMessage) {
+	data, _ := json.Marshal(map[string]any{"desktop_notification": &notif})
+	fmt.Printf("%s\n", data)
+}
+
+func emitDesktopDismiss(roomID id.RoomID) {
+	data, _ := json.Marshal(map[string]any{"dismiss_notification": roomID})
+	fmt.Printf("%s\n", data)
 }
 
 func (pn *PushNotification) Split(yield func(*PushNotification) bool) {
