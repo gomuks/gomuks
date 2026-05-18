@@ -67,6 +67,12 @@ type ReportEventParams struct {
 	RoomID  id.RoomID  `json:"room_id"`
 	EventID id.EventID `json:"event_id"`
 	Reason  string     `json:"reason,omitempty"`
+	Harm    string     `json:"harm,omitempty"`
+
+	DontReportToOwnServer bool      `json:"dont_report_to_own_server,omitempty"`
+	ReportToOtherServer   string    `json:"report_to_other_server,omitempty"`
+	ReportToCommunity     string    `json:"report_to_community,omitempty"`
+	ReportViaUser         id.UserID `json:"report_via_user_id,omitempty"`
 }
 
 type RedactEventParams struct {

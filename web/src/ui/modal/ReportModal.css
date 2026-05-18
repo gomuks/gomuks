@@ -1,0 +1,31 @@
+form.report-modal {
+	> div.report-destinations > label {
+		display: flex;
+		align-items: center;
+		gap: .25rem;
+
+		&:has(> input:disabled) {
+			color: var(--secondary-text-color);
+		}
+
+		> input {
+			width: 1.5rem;
+			height: 1.5rem;
+		}
+	}
+
+	> div.harm-picker {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		grid-template-rows: repeat(2, 1fr);
+		align-items: center;
+		gap: .125rem .25rem;
+
+		> select {
+			padding: .5rem;
+			background-color: var(--background-color);
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+		}
+	}
+}

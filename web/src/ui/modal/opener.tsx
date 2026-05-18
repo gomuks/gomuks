@@ -16,7 +16,6 @@
 import { RefObject } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
-import EventReactions from "@/ui/modal/EventReactions.tsx"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import MediaUploadDialog, { UploadFileFunc } from "../composer/MediaUploadDialog.tsx"
 import VoiceRecorder from "../composer/VoiceRecorder.tsx"
@@ -27,6 +26,8 @@ import SettingsView from "../settings/SettingsView.tsx"
 import EventContextModal from "../timeline/EventContextModal.tsx"
 import EventEditHistory from "../timeline/EventEditHistory.tsx"
 import JSONView from "../util/JSONView.tsx"
+import EventReactions from "./EventReactions.tsx"
+import ReportModal from "./ReportModal.tsx"
 import { ShareModal } from "./ShareModal.tsx"
 import { ModalState, NestableModalState, NonNestableModalState } from "./contexts.ts"
 
@@ -150,5 +151,15 @@ export function eventReactions(roomCtx: RoomContextData, evt: MemDBEvent): NonNe
 		boxed: true,
 		boxClass: "full-screen-mobile event-reactions-wrapper",
 		innerBoxClass: "event-reactions-modal",
+	}
+}
+
+export function report(roomCtx: RoomContextData, evt: MemDBEvent): ModalState {
+	return {
+		dimmed: true,
+		boxed: true,
+		content: <RoomContext value={roomCtx}>
+			<ReportModal evt={evt} room={roomCtx.store} />
+		</RoomContext>,
 	}
 }
