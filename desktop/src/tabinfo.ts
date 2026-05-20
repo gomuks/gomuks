@@ -4,4 +4,5 @@ export interface TabInfo {
 	displayname: string
 	icon?: string
 	unread: number
+	exited: boolean
 }

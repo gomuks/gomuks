@@ -38,8 +38,8 @@ export type BackendConfig = BaseBackendConfig & ({
 
 export class GomuksView {
 	public unreadCount: number = 0
+	public exited = false
 	private webContentsView: WebContentsView | null = null
-	private exited = false
 	private readonly backend: GomuksBackend
 	private readonly partition: string
 
@@ -117,7 +117,7 @@ export class GomuksView {
 		this.parent.setFocused(this)
 
 		let serverURL: string | null = null
-		view.webContents.ipc.on("set-notification-counts", (_evt, count) => {
+		view.webContents.ipc.on("set-notification-count", (_evt, count) => {
 			this.unreadCount = count
 			this.parent.emitTabs()
 		})

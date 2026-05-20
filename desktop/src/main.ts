@@ -64,23 +64,7 @@ function createTrayIcon() {
 function prepareMenu() {
 	const isMac = process.platform === "darwin"
 	Menu.setApplicationMenu(Menu.buildFromTemplate([
-		{
-			role: "appMenu",
-			label: app.name,
-			submenu: [
-				...(isMac ? [
-					{ role: "about" },
-					{ type: "separator" },
-					{ role: "services" },
-					{ type: "separator" },
-					{ role: "hide" },
-					{ role: "hideOthers" },
-					{ role: "unhide" },
-					{ type: "separator" },
-					{ role: "quit" },
-				] as MenuItemConstructorOptions[] : []),
-			],
-		},
+		...(isMac ? [{ role: "appMenu" }] as MenuItemConstructorOptions[] : []),
 		{ role: "fileMenu" },
 		{ role: "editMenu" },
 		{

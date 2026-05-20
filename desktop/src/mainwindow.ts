@@ -47,6 +47,7 @@ export class GomuksWindow {
 			displayname: view.config.displayname || id,
 			icon: view.config.icon,
 			unread: view.unreadCount,
+			exited: view.exited,
 		})).toArray()
 	}
 
