@@ -296,6 +296,9 @@ desktop/windows/amd64:
   - apk add --no-cache wine mono
   after_script:
   - mv desktop/out/make/squirrel.windows/x64/gomuks* .
+  tags:
+  - linux
+  - amd64 # wine on aarch64 alpine doesn't include wine64, which electron-forge wants
   dependencies:
   - windows/amd64
   needs:
