@@ -13,19 +13,13 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { contextBridge, ipcRenderer } from "electron"
+import { WebContents } from "electron"
+import path from "node:path"
 
-contextBridge.exposeInMainWorld("gomuksDesktop", true)
-
-ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
-	if (!url.startsWith("matrix:")) {
-		console.warn("Received non-matrix URI from main process:", url)
-		return
+export function loadPage(webContents: WebContents, file: string) {
+	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+		return webContents.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}/src/chrome/${file}`)
+	} else {
+		return webContents.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/src/chrome/${file}`))
 	}
-	console.log("Received matrix: URI from main process:", url)
-	location.hash = `#/uri/${encodeURIComponent(url)}`
-})
-
-ipcRenderer.on("disable-notifications", () => {
-	contextBridge.exposeInMainWorld("gomuksDesktopNotifications", true)
-})
+}

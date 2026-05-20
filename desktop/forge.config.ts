@@ -39,7 +39,7 @@ const config: ForgeConfig = {
 		extraResource: ["tray@2x.png", "trayTemplate@2x.png"],
 	},
 	hooks: {
-		packageAfterCopy: async (forgeConfig, buildPath, _electronVersion, platform, arch) => {
+		packageAfterCopy: async (_forgeConfig, buildPath, _electronVersion, platform, arch) => {
 			const binaryName = platform === "win32" ? "gomuks.exe" : "gomuks"
 			const resourcesDir = path.resolve(buildPath, "..")
 			const dest = path.join(resourcesDir, binaryName)
@@ -83,8 +83,18 @@ const config: ForgeConfig = {
 					config: "vite.preload.config.ts",
 					target: "preload",
 				},
+				{
+					entry: "src/chrome/tabspreload.ts",
+					config: "vite.preload.config.ts",
+					target: "preload",
+				},
 			],
-			renderer: [],
+			renderer: [
+				{
+					name: "main_window",
+					config: "vite.renderer.config.ts",
+				},
+			],
 		}),
 		// Fuses are used to enable/disable various Electron functionality
 		// at package time, before code signing the application

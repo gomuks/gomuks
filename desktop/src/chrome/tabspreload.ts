@@ -14,18 +14,29 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { contextBridge, ipcRenderer } from "electron"
+import { type TabInfo } from "./tabs.tsx"
 
-contextBridge.exposeInMainWorld("gomuksDesktop", true)
+let subscriber = (_tabs: TabInfo[]) => {}
+let cache: TabInfo[] | null  = null
 
-ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
-	if (!url.startsWith("matrix:")) {
-		console.warn("Received non-matrix URI from main process:", url)
-		return
-	}
-	console.log("Received matrix: URI from main process:", url)
-	location.hash = `#/uri/${encodeURIComponent(url)}`
+contextBridge.exposeInMainWorld("tabAPI", {
+	subscribe: (fn: (tabs: TabInfo[]) => void) => {
+		subscriber = fn
+		if (cache) {
+			fn(cache)
+		}
+	},
+	switchTo: (tab: string) => {
+		console.log("Sending tab switch request", tab)
+		ipcRenderer.send("switch-tab", tab)
+	},
 })
 
-ipcRenderer.on("disable-notifications", () => {
-	contextBridge.exposeInMainWorld("gomuksDesktopNotifications", true)
+
+ipcRenderer.on("update-tabs", (_evt, tabs) => {
+	cache = tabs
+	subscriber(tabs)
+	console.log("Received update", tabs)
 })
+
+console.log("Tab preload initialized")
