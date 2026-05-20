@@ -39,7 +39,6 @@ export class GomuksWindow {
 
 	public setFocused(view: GomuksView) {
 		this.activeView = view
-		this.emitTabs()
 	}
 
 	public getTabs(): TabInfo[] {
@@ -70,7 +69,6 @@ export class GomuksWindow {
 			const view = new GomuksView(backend, this)
 			this.views.set(backend.name, view)
 		}
-		this.emitTabs()
 	}
 
 	public open = () => {
@@ -95,6 +93,7 @@ export class GomuksWindow {
 		for (const view of this.views.values()) {
 			view.onWindowCreated(newWindow)
 		}
+		this.emitTabs()
 		return newWindow
 	}
 

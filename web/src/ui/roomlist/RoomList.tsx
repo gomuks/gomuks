@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useCallback, useRef, useState } from "react"
 import { BarLoader } from "react-spinners"
+import { getAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListFilter, Space as SpaceStore, SpaceUnreadCounts, usePreference } from "@/api/statestore"
+import { useTabs } from "@/api/tabs.ts"
 import type { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import reverseMap from "@/util/reversemap.ts"
@@ -44,8 +46,12 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const roomList = useEventAsState(client.store.roomList)
 	const spaces = useEventAsState(client.store.topLevelSpaces)
 	const initComplete = useEventAsState(client.initComplete)
+	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
+	const tabs = useTabs()
+	const currentTab = window.gomuksDesktop?.getTabID() ?? ""
+	const currentTabIndex = tabs.findIndex(t => t.id === currentTab)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)
@@ -147,7 +153,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
-		<div className="space-bar">
+		<div className={`space-bar ${currentTab ? "has-profiles" : "no-profiles"}`}>
 			<FakeSpace space={null} setSpace={mainScreen.setSpace} isActive={space === null} />
 			{client.store.pseudoSpaces.map(pseudoSpace => <FakeSpace
 				key={pseudoSpace.id}
@@ -165,6 +171,16 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				onClickUnread={onClickSpaceUnread}
 			/>)}
 		</div>
+		{currentTab && <div className="profile-switcher">
+			<img
+				src={tabs[currentTabIndex]?.icon ?? getAvatarThumbnailURL(client.userID, ownProfile)}
+				className="avatar"
+				alt="Profile switcher"
+				onClick={() => {
+					window.gomuksDesktop!.switchTab(tabs[(currentTabIndex+1) % tabs.length].id)
+				}}
+			/>
+		</div>}
 		<div className="room-list">
 			{initComplete ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}

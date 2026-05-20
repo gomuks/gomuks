@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld("gomuksDesktop", {
 		if (cache) {
 			listener(cache)
 		}
+		console.log("Tab subscriber updated, current cache:", cache)
 	},
 	switchTab: (tab: string) => {
 		console.log("Sending tab switch request", tab)

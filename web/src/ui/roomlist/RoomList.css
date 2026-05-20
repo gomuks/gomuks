@@ -10,6 +10,7 @@ div.room-list-wrapper {
 		"spacebar search"   var(--window-top-margin)
 		"spacebar search"   3.5rem
 		"spacebar roomlist" 1fr
+		"profile  roomlist" 3rem
 		/ 3rem    1fr;
 }
 
@@ -19,12 +20,24 @@ div.room-list {
 	grid-area: roomlist;
 }
 
+div.profile-switcher {
+	background-color: var(--space-list-background-overlay);
+	grid-area: profile;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
 div.space-bar {
 	background-color: var(--space-list-background-overlay);
 	grid-area: spacebar;
 	overflow: auto;
 	scrollbar-width: none;
 	padding-top: var(--window-top-margin);
+
+	&.no-profiles {
+		grid-row-end: profile;
+	}
 
 	> div.space-entry {
 		width: 2rem;

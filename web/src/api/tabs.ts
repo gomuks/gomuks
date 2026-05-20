@@ -18,7 +18,7 @@ import { useSyncExternalStore } from "react"
 // This should match desktop/src/tabinfo.ts
 export interface TabInfo {
 	id: string
-	name: string
+	displayname: string
 	icon?: string
 	unread: number
 }

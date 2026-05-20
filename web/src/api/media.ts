@@ -83,7 +83,7 @@ export const getAvatarURL = (
 	content?: UserProfile | null,
 	thumbnail = false,
 	forceFallback = false,
-): string | undefined => {
+): string => {
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
 	const backgroundColor = getUserColor(userID)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
@@ -100,7 +100,7 @@ export const getAvatarThumbnailURL = (
 	userID: UserID,
 	content?: UserProfile | null,
 	forceFallback = false,
-): string | undefined => {
+): string => {
 	return getAvatarURL(userID, content, true, forceFallback)
 }
 

@@ -32,10 +32,12 @@ import {
 	SyncStatus,
 	UnreadType,
 	UserID,
+	UserProfile,
 } from "./types"
 
 export default class Client {
 	readonly state = new CachedEventDispatcher<ClientState>()
+	readonly profile = new NonNullCachedEventDispatcher<UserProfile>({})
 	readonly syncStatus = new NonNullCachedEventDispatcher<SyncStatus>({ type: "waiting", error_count: 0 })
 	readonly initComplete = new NonNullCachedEventDispatcher<boolean>(false)
 	readonly store = new StateStore()
@@ -67,6 +69,14 @@ export default class Client {
 				}
 			})
 		}
+		this.state.listen(state => {
+			if (state.is_logged_in) {
+				this.profile.emit({
+					displayname: state.displayname,
+					avatar_url: state.avatar_url,
+				})
+			}
+		})
 	}
 
 	async #reallyStart(signal: AbortSignal) {
