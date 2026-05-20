@@ -20,10 +20,9 @@ import "./tabs.css"
 export interface TabInfo {
 	name: string
 	active: boolean
+	unread: number
 }
 
-let tabsCache: TabInfo[] = []
-let tabListeners: (() => void)[] = []
 declare global {
 	interface Window {
 		tabAPI: {
@@ -32,6 +31,9 @@ declare global {
 		}
 	}
 }
+
+let tabsCache: TabInfo[] = []
+let tabListeners: (() => void)[] = []
 
 function subscribeTabs(fn: () => void) {
 	tabListeners.push(fn)
@@ -56,7 +58,7 @@ const TabBar = () => {
 			key={tab.name}
 			className={tab.active ? "active" : ""}
 			onClick={() => tabAPI.switchTo(tab.name)}
-		>{tab.name}</button>)}
+		>{tab.name} {tab.unread}</button>)}
 		{tabs.length === 0 ? "No tabs :(" : null}
 	</>
 }

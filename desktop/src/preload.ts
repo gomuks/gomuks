@@ -16,6 +16,9 @@
 import { contextBridge, ipcRenderer } from "electron"
 
 contextBridge.exposeInMainWorld("gomuksDesktop", true)
+contextBridge.exposeInMainWorld("gomuksDesktopSetNotificationCounts", (counts: number) => {
+	ipcRenderer.send("set-notification-counts", counts)
+})
 
 ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
 	if (!url.startsWith("matrix:")) {

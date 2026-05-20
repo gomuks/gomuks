@@ -9,7 +9,7 @@ export default tseslint.config(
 	{ignores: ["dist"]},
 	{
 		extends: [js.configs.recommended, ...tseslint.configs.recommended],
-		files: ["**/*.{ts,tsx}", "../desktop/*.ts", "../desktop/src/*.ts"],
+		files: ["**/*.{ts,tsx}", "../desktop/**/*.{ts,tsx}"],
 		languageOptions: {
 			ecmaVersion: 2023,
 			globals: globals.browser,

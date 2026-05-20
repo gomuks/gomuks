@@ -42,6 +42,7 @@ export class GomuksWindow {
 		const tabs = Array.from(this.views.entries().map(([name, view]) => ({
 			name,
 			active: view === this.activeView,
+			unread: view.unreadCount,
 		})))
 		this.tabBar.webContents.send("update-tabs", tabs)
 		console.log("Sent tabs", tabs)
@@ -51,6 +52,15 @@ export class GomuksWindow {
 		if (!this.config) {
 			throw new Error("Config not loaded")
 		}
+		ipcMain.on("set-notification-counts", (evt, count) => {
+			const sourceView = this.views.values().find(view => view.isThisView(evt.sender))
+			if (sourceView) {
+				sourceView.unreadCount = count
+				this.emitUpdateTabs()
+			} else {
+				console.log("Received notification count update from unknown sender", evt.sender, count)
+			}
+		})
 		ipcMain.on("switch-tab", (evt, tab) => {
 			if (evt.sender === this.tabBar?.webContents) {
 				const view = this.views.get(tab)

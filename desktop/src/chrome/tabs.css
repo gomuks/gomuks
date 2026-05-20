@@ -11,9 +11,11 @@ nav {
 	> button {
 		height: 100%;
 		box-sizing: border-box;
+		border: none;
+		background-color: inherit;
 
 		&.active {
-			background-color: green;
+			background-color: lightgreen;
 		}
 	}
 }

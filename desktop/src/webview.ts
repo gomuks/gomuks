@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, shell, WebContentsView } from "electron"
+import { app, BaseWindow, shell, WebContents, WebContentsView } from "electron"
 import path from "node:path"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
 import { type GomuksWindow } from "./mainwindow.ts"
@@ -34,6 +34,7 @@ export type BackendConfig = BaseBackendConfig & ({
 })
 
 export class GomuksView {
+	public unreadCount: number = 0
 	private webContentsView: WebContentsView | null = null
 	private exited = false
 	private readonly backend: GomuksBackend
@@ -46,6 +47,10 @@ export class GomuksView {
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
 		}
+	}
+
+	public isThisView(webContents: WebContents): boolean {
+		return !!this.webContentsView && this.webContentsView.webContents === webContents
 	}
 
 	private onBackendQuit = () => {
