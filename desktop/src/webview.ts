@@ -74,6 +74,12 @@ export class GomuksView {
 		}
 	}
 
+	public toggleDevTools() {
+		if (this.webContentsView) {
+			this.webContentsView.webContents.toggleDevTools()
+		}
+	}
+
 	public onWindowCreated(window: BaseWindow) {
 		this.makeWebContentsView(window)
 	}
@@ -172,6 +178,10 @@ export class GomuksView {
 			view.webContents.send("disable-notifications")
 		}
 		view.webContents.send("tab-id", this.config.name)
+
+		if (process.env.NODE_ENV === "development") {
+			view.webContents.openDevTools()
+		}
 
 		this.webContentsView = view
 	}

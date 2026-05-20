@@ -100,4 +100,6 @@ export class GomuksWindow {
 	public handleMatrixURI(uri: string) {
 		this.activeView?.handleMatrixURI(uri)
 	}
+
+	toggleDevTools = () => this.activeView?.toggleDevTools()
 }

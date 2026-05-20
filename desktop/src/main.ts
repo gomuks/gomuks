@@ -62,12 +62,13 @@ function createTrayIcon() {
 }
 
 function prepareMenu() {
+	const isMac = process.platform === "darwin"
 	Menu.setApplicationMenu(Menu.buildFromTemplate([
 		{
 			role: "appMenu",
 			label: app.name,
 			submenu: [
-				...(process.platform === "darwin" ? [
+				...(isMac ? [
 					{ role: "about" },
 					{ type: "separator" },
 					{ role: "services" },
@@ -82,7 +83,25 @@ function prepareMenu() {
 		},
 		{ role: "fileMenu" },
 		{ role: "editMenu" },
-		{ role: "viewMenu" },
+		{
+			label: "View",
+			submenu: [
+				{ role: "reload" },
+				{ role: "forceReload" },
+				{
+					// https://github.com/electron/electron/pull/49356 might remove the need to override this
+					label: "Toggle Developer Tools",
+					accelerator: isMac ? "Alt+Command+I" : "Ctrl+Shift+I",
+					click: mainWindow.toggleDevTools,
+				},
+				{ type: "separator" },
+				{ role: "resetZoom" },
+				{ role: "zoomIn" },
+				{ role: "zoomOut" },
+				{ type: "separator" },
+				{ role: "togglefullscreen" },
+			],
+		},
 		{ role: "windowMenu" },
 	]))
 }
