@@ -23,15 +23,6 @@ export interface TabInfo {
 	unread: number
 }
 
-declare global {
-	interface Window {
-		tabAPI: {
-			subscribe: (fn: (tabs: TabInfo[]) => void) => void
-			switchTo: (tab: string) => void
-		}
-	}
-}
-
 let tabsCache: TabInfo[] = []
 let tabListeners: (() => void)[] = []
 
@@ -46,7 +37,7 @@ function getTabs() {
 	return tabsCache
 }
 
-tabAPI.subscribe((tabs: TabInfo[]) => {
+window.tabAPI.subscribe((tabs: TabInfo[]) => {
 	tabsCache = tabs
 	tabListeners.forEach(l => l())
 })
@@ -57,7 +48,7 @@ const TabBar = () => {
 		{tabs.map(tab => <button
 			key={tab.name}
 			className={tab.active ? "active" : ""}
-			onClick={() => tabAPI.switchTo(tab.name)}
+			onClick={() => window.tabAPI.switchTo(tab.name)}
 		>{tab.name} {tab.unread}</button>)}
 		{tabs.length === 0 ? "No tabs :(" : null}
 	</>

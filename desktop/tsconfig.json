@@ -10,6 +10,7 @@
 		"module": "nodenext",
 		"skipLibCheck": true,
 		"esModuleInterop": true,
+		"resolveJsonModule": true,
 		/* Bundler mode */
 		"moduleResolution": "nodenext",
 		"allowImportingTsExtensions": true,

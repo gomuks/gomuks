@@ -7,7 +7,7 @@ import { FusesPlugin } from "@electron-forge/plugin-fuses"
 import { FuseV1Options, FuseVersion } from "@electron/fuses"
 import path from "node:path"
 import fs from "node:fs/promises"
-import pkg from "./package.json" with { type: "json" }
+import pkg from "./package.json"
 
 const commit = process.env.CI_COMMIT_SHA
 const tag = process.env.CI_COMMIT_TAG
@@ -39,7 +39,7 @@ const config: ForgeConfig = {
 		extraResource: ["tray@2x.png", "trayTemplate@2x.png"],
 	},
 	hooks: {
-		packageAfterCopy: async (_forgeConfig, buildPath, _electronVersion, platform, arch) => {
+		packageAfterCopy: async (_forgeConfig, buildPath, _electronVersion, platform, _arch) => {
 			const binaryName = platform === "win32" ? "gomuks.exe" : "gomuks"
 			const resourcesDir = path.resolve(buildPath, "..")
 			const dest = path.join(resourcesDir, binaryName)
