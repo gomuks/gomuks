@@ -13,15 +13,18 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, shell, WebContents, WebContentsView } from "electron"
+import { app, BaseWindow, shell, WebContentsView } from "electron"
 import path from "node:path"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
 import { type GomuksWindow } from "./mainwindow.ts"
 import { loadPage } from "./html.ts"
+import { TabInfo } from "./tabinfo.ts"
 
 interface BaseBackendConfig {
 	type: "embedded" | "remote"
 	name: string
+	displayname?: string
+	icon?: string
 }
 
 export type BackendConfig = BaseBackendConfig & ({
@@ -49,16 +52,16 @@ export class GomuksView {
 		}
 	}
 
-	public isThisView(webContents: WebContents): boolean {
-		return !!this.webContentsView && this.webContentsView.webContents === webContents
-	}
-
 	private onBackendQuit = () => {
-		if (this.parent.dedicated) {
-			app.quit()
-		} else if (this.webContentsView) {
+		if (this.webContentsView && !this.parent.quitting) {
 			this.exited = true
 			loadPage(this.webContentsView.webContents, "exited.html")
+		}
+	}
+
+	public emitTabs(tabs: TabInfo[] | null = null) {
+		if (this.webContentsView) {
+			this.webContentsView.webContents.send("update-tabs", tabs ?? this.parent.getTabs())
 		}
 	}
 
@@ -79,13 +82,16 @@ export class GomuksView {
 		const parentView = this.parent.open()
 		if (!this.webContentsView || this.exited) {
 			this.makeWebContentsView(parentView)
-		} else if (!this.parent.dedicated) {
+		} else {
 			parentView.contentView.addChildView(this.webContentsView)
 			this.parent.setFocused(this)
 		}
 	}
 
 	private makeWebContentsView(parent: BaseWindow) {
+		if (this.parent.quitting) {
+			throw new Error("Can't create view when app is quitting")
+		}
 		this.webContentsView?.webContents.close({ waitForBeforeUnload: false })
 		this.exited = false
 		this.backend.start()
@@ -95,20 +101,28 @@ export class GomuksView {
 				partition: this.partition,
 			},
 		})
-		if (this.parent.dedicated) {
-			parent.setContentView(view)
-		} else {
-			const onResize = () => {
-				const bounds = parent.contentView.getBounds()
-				view.setBounds({ x: 0, y: 32, width: bounds.width, height: bounds.height - 32 })
-			}
-			parent.contentView.on("bounds-changed", onResize)
-			onResize()
-			parent.contentView.addChildView(view)
+		const onResize = () => {
+			const bounds = parent.contentView.getBounds()
+			view.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height })
 		}
+		parent.contentView.on("bounds-changed", onResize)
+		onResize()
+		parent.contentView.addChildView(view)
 		this.parent.setFocused(this)
 
 		let serverURL: string | null = null
+		view.webContents.ipc.on("set-notification-counts", (_evt, count) => {
+			this.unreadCount = count
+			this.parent.emitTabs()
+		})
+		view.webContents.ipc.on("restart-backend", () => {
+			if (this.exited) {
+				this.focus()
+			}
+		})
+		view.webContents.ipc.on("quit-app", () => {
+			app.quit()
+		})
 		view.webContents.on("destroyed", () => {
 			if (this.webContentsView === view) {
 				this.webContentsView = null
@@ -157,6 +171,7 @@ export class GomuksView {
 		if (this.backend instanceof EmbeddedBackend || process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true") {
 			view.webContents.send("disable-notifications")
 		}
+		view.webContents.send("tab-id", this.config.name)
 
 		this.webContentsView = view
 	}

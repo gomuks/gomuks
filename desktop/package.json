@@ -28,16 +28,12 @@
 		"@electron-forge/plugin-vite": "^7.11.1",
 		"@electron/fuses": "^1.8.0",
 		"@types/electron-squirrel-startup": "^1.0.2",
-		"@types/react": "^19.2.14",
-		"@types/react-dom": "^19.2.3",
 		"electron": "42.1.0",
 		"typescript": "^6.0.2",
 		"vite": "^8.0.5"
 	},
 	"dependencies": {
 		"electron-dl": "^4.0.0",
-		"electron-squirrel-startup": "^1.0.1",
-		"react": "^19.2.6",
-		"react-dom": "^19.2.6"
+		"electron-squirrel-startup": "^1.0.1"
 	}
 }

@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, Menu, nativeImage, MenuItemConstructorOptions, Tray } from "electron"
+import { app, Menu, MenuItemConstructorOptions, nativeImage, Tray } from "electron"
 import electronDl from "electron-dl"
 import path from "node:path"
 import started from "electron-squirrel-startup"
@@ -94,6 +94,7 @@ app.on("window-all-closed", () => {
 })
 
 app.on("before-quit", evt => {
+	mainWindow.quitting = true
 	if (EmbeddedBackend.runningInstances) {
 		evt.preventDefault()
 		EmbeddedBackend.stopAll().then(() => app.quit())

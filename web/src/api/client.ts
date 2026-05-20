@@ -52,10 +52,19 @@ export default class Client {
 			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
-		const notifListener = window.gomuksDesktopSetNotificationCounts
+
+		const notifListener = window.gomuksDesktop?.setNotificationCount
 		if (notifListener) {
 			this.store.homeSpace.counts.listen(counts => {
-				notifListener(counts.unread_highlights || counts.unread_notifications)
+				if (this.initComplete.current) {
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+			this.initComplete.listen(complete => {
+				if (complete) {
+					const counts = this.store.homeSpace.counts.current
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
 			})
 		}
 	}

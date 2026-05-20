@@ -4,9 +4,21 @@
 	<meta charset="utf-8"/>
 	<title>gomuks desktop</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; img-src *; connect-src *;">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'">
+	<style>
+		body {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding-top: 32px;
+		}
+	</style>
 </head>
 <body>
-	<p style="text-align: center; margin-top: 32px;">Backend exited</p>
+	<p>Backend exited :(</p>
+	<div>
+		<button onclick="window.gomuksDesktop.restartBackend()">Restart</button>
+		<button onclick="window.gomuksDesktop.quitApp()">Quit</button>
+	</div>
 </body>
 </html>

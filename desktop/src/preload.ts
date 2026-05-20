@@ -14,10 +14,40 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { contextBridge, ipcRenderer } from "electron"
+import { TabInfo } from "./tabinfo.ts"
 
-contextBridge.exposeInMainWorld("gomuksDesktop", true)
-contextBridge.exposeInMainWorld("gomuksDesktopSetNotificationCounts", (counts: number) => {
-	ipcRenderer.send("set-notification-counts", counts)
+let subscriber = (_tabs: TabInfo[]) => {}
+let cache: TabInfo[] | null  = null
+let currentTabID: string = ""
+let disableNotifications: boolean = false
+
+contextBridge.exposeInMainWorld("gomuksDesktop", {
+	isDesktop: true,
+	getTabID() {
+		return currentTabID
+	},
+	getDisableNotifications() {
+		return disableNotifications
+	},
+	setNotificationCount: (count: number) => {
+		ipcRenderer.send("set-notification-count", count)
+	},
+	subscribeToTabs: (listener: (tabs: TabInfo[]) => void) => {
+		subscriber = listener
+		if (cache) {
+			listener(cache)
+		}
+	},
+	switchTab: (tab: string) => {
+		console.log("Sending tab switch request", tab)
+		ipcRenderer.send("switch-tab", tab)
+	},
+	restartBackend: () => {
+		ipcRenderer.send("restart-backend")
+	},
+	quitApp: () => {
+		ipcRenderer.send("quit-app")
+	},
 })
 
 ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
@@ -30,5 +60,15 @@ ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
 })
 
 ipcRenderer.on("disable-notifications", () => {
-	contextBridge.exposeInMainWorld("gomuksDesktopNotifications", true)
+	disableNotifications = true
+})
+
+ipcRenderer.on("tab-id", (_evt, name: string) => {
+	currentTabID = name
+})
+
+ipcRenderer.on("update-tabs", (_evt, tabs) => {
+	console.log("Received tab update", tabs)
+	cache = tabs
+	subscriber(tabs)
 })

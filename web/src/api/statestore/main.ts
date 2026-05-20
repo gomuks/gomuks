@@ -570,7 +570,7 @@ export class StateStore {
 		if (sound) {
 			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
 		}
-		if (window.gomuksDesktopNotifications) {
+		if (window.gomuksDesktop?.getDisableNotifications()) {
 			// Notifications are sent by the main process
 			return
 		}

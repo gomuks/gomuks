@@ -13,67 +13,56 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { BaseWindow, WebContentsView, ipcMain } from "electron"
-import path from "node:path"
+import { BaseWindow, ipcMain } from "electron"
 import { GomuksView } from "./webview.ts"
 import { GomuksConfig } from "./config.ts"
-import { loadPage } from "./html.ts"
+import { TabInfo } from "./tabinfo.ts"
 
 export class GomuksWindow {
 	private window: BaseWindow | null = null
 	private views: Map<string, GomuksView> = new Map()
 	private activeView: GomuksView | null = null
-	public dedicated = false
 	public config: GomuksConfig | null = null
-	private tabBar: WebContentsView | null = null
+	public quitting = false
 
-	constructor() {}
+	constructor() {
+		ipcMain.on("switch-tab", (_evt, tab) => {
+			const view = this.views.get(tab)
+			if (!view) {
+				console.log("Received switch tab request for unknown tab", tab)
+			} else {
+				console.log("Switching to", tab)
+				view.focus()
+			}
+		})
+	}
 
 	public setFocused(view: GomuksView) {
 		this.activeView = view
-		this.emitUpdateTabs()
+		this.emitTabs()
 	}
 
-	private emitUpdateTabs() {
-		if (!this.tabBar) {
-			console.log("No tab bar")
-			return
-		}
-		const tabs = Array.from(this.views.entries().map(([name, view]) => ({
-			name,
-			active: view === this.activeView,
+	public getTabs(): TabInfo[] {
+		return this.views.entries().map(([id, view]): TabInfo => ({
+			id,
+			displayname: view.config.displayname || id,
+			icon: view.config.icon,
 			unread: view.unreadCount,
-		})))
-		this.tabBar.webContents.send("update-tabs", tabs)
-		console.log("Sent tabs", tabs)
+		})).toArray()
+	}
+
+	public emitTabs() {
+		const tabs = this.getTabs()
+		for (const view of this.views.values()) {
+			view.emitTabs(tabs)
+		}
+		console.debug("Sent tabs", tabs)
 	}
 
 	public initialize() {
 		if (!this.config) {
 			throw new Error("Config not loaded")
 		}
-		ipcMain.on("set-notification-counts", (evt, count) => {
-			const sourceView = this.views.values().find(view => view.isThisView(evt.sender))
-			if (sourceView) {
-				sourceView.unreadCount = count
-				this.emitUpdateTabs()
-			} else {
-				console.log("Received notification count update from unknown sender", evt.sender, count)
-			}
-		})
-		ipcMain.on("switch-tab", (evt, tab) => {
-			if (evt.sender === this.tabBar?.webContents) {
-				const view = this.views.get(tab)
-				if (!view) {
-					console.log("Received switch tab request for unknown tab", tab)
-				} else {
-					console.log("Switching to", tab)
-					view.focus()
-				}
-			} else {
-				console.log("Received switch tab request from unexpected sender", evt.sender, tab)
-			}
-		})
 		for (const backend of this.config.backends) {
 			if (this.views.has(backend.name)) {
 				throw new Error(`Duplicate backend name: ${backend.name}`)
@@ -81,6 +70,7 @@ export class GomuksWindow {
 			const view = new GomuksView(backend, this)
 			this.views.set(backend.name, view)
 		}
+		this.emitTabs()
 	}
 
 	public open = () => {
@@ -102,35 +92,10 @@ export class GomuksWindow {
 			}
 		})
 		this.window = newWindow
-		if (!this.dedicated) {
-			this.createTabBar(newWindow)
-		}
 		for (const view of this.views.values()) {
 			view.onWindowCreated(newWindow)
 		}
 		return newWindow
-	}
-
-	private createTabBar(window: BaseWindow) {
-		const tabBar = new WebContentsView({
-			webPreferences: {
-				preload: path.join(__dirname, "tabspreload.js"),
-			},
-		})
-		tabBar.webContents.setWindowOpenHandler(() => ({ action: "deny" }))
-		tabBar.webContents.on("will-navigate", evt => evt.preventDefault())
-		const onResize = () => {
-			const bounds = window.getContentBounds()
-			tabBar.setBounds({ x: 0, y: 0, width: bounds.width, height: 32 })
-		}
-		window.on("resize", onResize)
-		onResize()
-		loadPage(tabBar.webContents, "tabs.html").then(() => this.emitUpdateTabs())
-		if (process.env.NODE_ENV === "development") {
-			tabBar.webContents.openDevTools({ mode: "detach" })
-		}
-		window.contentView.addChildView(tabBar)
-		this.tabBar = tabBar
 	}
 
 	public handleMatrixURI(uri: string) {

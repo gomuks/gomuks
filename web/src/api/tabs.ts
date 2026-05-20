@@ -13,30 +13,40 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { contextBridge, ipcRenderer } from "electron"
-import { type TabInfo } from "./tabs.tsx"
+import { useSyncExternalStore } from "react"
 
-let subscriber = (_tabs: TabInfo[]) => {}
-let cache: TabInfo[] | null  = null
+// This should match desktop/src/tabinfo.ts
+export interface TabInfo {
+	id: string
+	name: string
+	icon?: string
+	unread: number
+}
 
-contextBridge.exposeInMainWorld("tabAPI", {
-	subscribe: (fn: (tabs: TabInfo[]) => void) => {
-		subscriber = fn
-		if (cache) {
-			fn(cache)
-		}
-	},
-	switchTo: (tab: string) => {
-		console.log("Sending tab switch request", tab)
-		ipcRenderer.send("switch-tab", tab)
-	},
+let tabsCache: TabInfo[] = []
+let tabListeners: (() => void)[] = []
+
+const noopFunc = () => {}
+
+function subscribeTabs(fn: () => void) {
+	if (!window.gomuksDesktop) {
+		return noopFunc
+	}
+	tabListeners.push(fn)
+	return () => {
+		tabListeners = tabListeners.filter(l => l !== fn)
+	}
+}
+
+function getTabs() {
+	return tabsCache
+}
+
+export function useTabs(): TabInfo[] {
+	return useSyncExternalStore(subscribeTabs, getTabs)
+}
+
+window.gomuksDesktop?.subscribeToTabs((tabs: TabInfo[]) => {
+	tabsCache = tabs
+	tabListeners.forEach(l => l())
 })
-
-
-ipcRenderer.on("update-tabs", (_evt, tabs) => {
-	cache = tabs
-	subscriber(tabs)
-	console.log("Received update", tabs)
-})
-
-console.log("Tab preload initialized")
