@@ -24,7 +24,7 @@ export interface TabInfo {
 	exited: boolean
 }
 
-let tabsCache: TabInfo[] = []
+let tabsCache: readonly TabInfo[] = []
 let tabListeners: (() => void)[] = []
 
 const noopFunc = () => {}

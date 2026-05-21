@@ -25,9 +25,11 @@ import toSearchableString from "@/util/searchablestring.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { keyToString } from "../keybindings.ts"
+import { getRightOpeningModalStyleFromButton } from "../menu/util.ts"
 import { ModalContext, modals } from "../modal"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
+import ProfileSwitcher from "./ProfileSwitcher.tsx"
 import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
@@ -173,8 +175,15 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		{currentTabID && <div className="profile-switcher">
 			<div
 				className="profile-switcher-item"
-				onClick={() => {
-					switchTab(tabs[(currentTabIndex + 1) % tabs.length].id)
+				onClick={evt => {
+					openModal({
+						content: <ProfileSwitcher
+							tabs={tabs}
+							currentTabID={currentTabID}
+							switchTab={switchTab}
+							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * (tabs.length - 1) + 4)}
+						/>,
+					})
 				}}
 			>
 				{totalUnreads > 0 ? <div className="room-entry-unreads floating">

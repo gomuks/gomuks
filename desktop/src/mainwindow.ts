@@ -56,7 +56,7 @@ export class GomuksWindow {
 		for (const view of this.views.values()) {
 			view.emitTabs(tabs)
 		}
-		console.debug("Sent tabs", tabs)
+		// console.debug("Sent tabs", tabs)
 	}
 
 	public initialize() {

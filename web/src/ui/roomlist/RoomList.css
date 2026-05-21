@@ -36,6 +36,29 @@ div.profile-switcher {
 	}
 }
 
+div.profile-switcher-menu {
+	> button {
+		justify-content: space-between;
+		height: 2.5rem;
+		padding: 0 .75rem;
+		gap: .25rem;
+
+		&.active {
+			background-color: var(--room-list-entry-selected-color);
+		}
+
+		> img.avatar {
+			height: 2rem;
+			width: 2rem;
+		}
+
+		> div.room-entry-unreads {
+			width: 2rem;
+			margin: 0;
+		}
+	}
+}
+
 div.space-bar {
 	background-color: var(--space-list-background-overlay);
 	grid-area: spacebar;
