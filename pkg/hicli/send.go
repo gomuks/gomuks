@@ -457,19 +457,6 @@ func (h *HiClient) getSendLock(roomID id.RoomID) *sync.Mutex {
 var pmpPath = exgjson.Path("com.beeper.per_message_profile")
 var editPMPPath = exgjson.Path("m.new_content", "com.beeper.per_message_profile")
 
-func (h *HiClient) getCurrentDisplayName(ctx context.Context) string {
-	val := h.ownDisplayName.Load()
-	if val != nil {
-		return *val
-	}
-	profile, err := h.Client.GetProfile(ctx, h.Account.UserID)
-	if err != nil {
-		return ""
-	}
-	h.ownDisplayName.Store(&profile.DisplayName)
-	return profile.DisplayName
-}
-
 func (h *HiClient) addFallbacks(ctx context.Context, evtType string, content json.RawMessage) json.RawMessage {
 	if evtType != event.EventMessage.Type {
 		return content
@@ -486,7 +473,7 @@ func (h *HiClient) addFallbacks(ctx context.Context, evtType string, content jso
 		if msg.NewContent != nil {
 			msg = msg.NewContent
 		}
-		if msg.BeeperPerMessageProfile != nil && !msg.BeeperPerMessageProfile.HasFallback && msg.BeeperPerMessageProfile.Displayname != h.getCurrentDisplayName(ctx) {
+		if msg.BeeperPerMessageProfile != nil && !msg.BeeperPerMessageProfile.HasFallback && msg.BeeperPerMessageProfile.Displayname != "" {
 			msg.AddPerMessageProfileFallback()
 			updatedContent, _ := json.Marshal(&parsedContent)
 			if updatedContent != nil {
