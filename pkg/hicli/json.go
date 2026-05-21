@@ -30,6 +30,8 @@ func (h *HiClient) State() *jsoncmd.ClientState {
 		state.HomeserverURL = acc.HomeserverURL
 		state.IsVerified = h.VerificationState.IsVerified
 		state.VerificationState = h.VerificationState
+		state.Displayname = acc.DisplayName
+		state.AvatarURL = acc.AvatarURL.CUString()
 	}
 	return state
 }

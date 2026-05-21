@@ -25,6 +25,7 @@ import {
 	TimelineRowTuple,
 } from "./hitypes.ts"
 import {
+	ContentURI,
 	DeviceID,
 	EventID,
 	EventType,
@@ -129,6 +130,8 @@ export type ClientState = {
 	user_id: UserID
 	device_id: DeviceID
 	homeserver_url: string
+	displayname?: string
+	avatar_url?: ContentURI
 }
 
 export interface ClientStateEvent extends BaseRPCCommand<ClientState> {

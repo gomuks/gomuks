@@ -32,10 +32,12 @@ import {
 	SyncStatus,
 	UnreadType,
 	UserID,
+	UserProfile,
 } from "./types"
 
 export default class Client {
 	readonly state = new CachedEventDispatcher<ClientState>()
+	readonly profile = new NonNullCachedEventDispatcher<UserProfile>({})
 	readonly syncStatus = new NonNullCachedEventDispatcher<SyncStatus>({ type: "waiting", error_count: 0 })
 	readonly initComplete = new NonNullCachedEventDispatcher<boolean>(false)
 	readonly store = new StateStore()
@@ -52,6 +54,29 @@ export default class Client {
 			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
+
+		const notifListener = window.gomuksDesktop?.setNotificationCount
+		if (notifListener) {
+			this.store.homeSpace.counts.listen(counts => {
+				if (this.initComplete.current) {
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+			this.initComplete.listen(complete => {
+				if (complete) {
+					const counts = this.store.homeSpace.counts.current
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+		}
+		this.state.listen(state => {
+			if (state.is_logged_in) {
+				this.profile.emit({
+					displayname: state.displayname,
+					avatar_url: state.avatar_url,
+				})
+			}
+		})
 	}
 
 	async #reallyStart(signal: AbortSignal) {

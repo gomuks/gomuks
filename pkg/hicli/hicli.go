@@ -9,6 +9,7 @@ package hicli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/tidwall/gjson"
 	"go.mau.fi/util/dbutil"
 	_ "go.mau.fi/util/dbutil/litestream"
 	"go.mau.fi/util/exerrors"
@@ -82,8 +84,10 @@ type HiClient struct {
 	directChatUsers     event.DirectChatsEventContent
 	directChatRooms     map[id.RoomID]id.UserID
 
-	ownDisplayName     atomic.Pointer[string]
 	perMessageProfiles atomic.Pointer[map[string]*event.BeeperPerMessageProfile]
+
+	lastOwnProfileFetch time.Time
+	ownProfileFetchLock sync.Mutex
 
 	API *JSONAPI
 }
@@ -239,6 +243,7 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 		if h.VerificationState.IsVerified {
 			go h.Sync()
 		}
+		go h.loadOwnProfile(ctx)
 	}
 	h.Initialized = true
 	h.dispatchCurrentState()
@@ -261,6 +266,36 @@ func (h *HiClient) checkServerVersions(ctx context.Context, cli *mautrix.Client)
 		return fmt.Errorf("%w (minimum: %s, highest supported: %s)", ErrOutdatedServer, MinimumSpecVersion, versions.GetLatest())
 	}
 	return nil
+}
+
+func (h *HiClient) maybeUpdateOwnProfile(ctx context.Context, profile json.RawMessage) {
+	h.ownProfileFetchLock.Lock()
+	defer h.ownProfileFetchLock.Unlock()
+	if time.Since(h.lastOwnProfileFetch) < 1*time.Minute {
+		return
+	}
+	newName := gjson.GetBytes(profile, "displayname").Str
+	newAvatarURL := gjson.GetBytes(profile, "avatar_url").Str
+	if newName != h.Account.DisplayName || newAvatarURL != h.Account.AvatarURL.String() {
+		h.loadOwnProfile(ctx)
+	}
+}
+
+func (h *HiClient) loadOwnProfile(ctx context.Context) {
+	profile, err := h.Client.GetProfile(ctx, h.Account.UserID)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to get own profile")
+		return
+	}
+	if profile.DisplayName != h.Account.DisplayName || profile.AvatarURL != h.Account.AvatarURL {
+		h.Account.DisplayName = profile.DisplayName
+		h.Account.AvatarURL = profile.AvatarURL
+		//err = h.DB.Account.Put(ctx, h.Account)
+		//if err != nil {
+		//	zerolog.Ctx(ctx).Err(err).Msg("Failed to update account with profile information")
+		//}
+		h.dispatchCurrentState()
+	}
 }
 
 func (h *HiClient) IsSyncing() bool {

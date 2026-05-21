@@ -168,6 +168,9 @@ type ClientState struct {
 	UserID            id.UserID         `json:"user_id,omitempty"`
 	DeviceID          id.DeviceID       `json:"device_id,omitempty"`
 	HomeserverURL     string            `json:"homeserver_url,omitempty"`
+
+	Displayname string              `json:"displayname,omitempty"`
+	AvatarURL   id.ContentURIString `json:"avatar_url,omitempty"`
 }
 
 type ImageAuthToken string

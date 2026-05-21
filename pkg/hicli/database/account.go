@@ -62,6 +62,10 @@ type Account struct {
 	AccessToken   string      `json:"access_token,omitempty"`
 	HomeserverURL string      `json:"homeserver_url,omitempty"`
 	NextBatch     string      `json:"-"`
+
+	// TODO save to database
+	DisplayName string        `json:"display_name,omitempty"`
+	AvatarURL   id.ContentURI `json:"avatar_url,omitempty"`
 }
 
 func (a *Account) Scan(row dbutil.Scannable) (*Account, error) {
