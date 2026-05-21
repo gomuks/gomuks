@@ -181,7 +181,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 							tabs={tabs}
 							currentTabID={currentTabID}
 							switchTab={switchTab}
-							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * (tabs.length - 1) + 4)}
+							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * tabs.length + 4)}
 						/>,
 					})
 				}}

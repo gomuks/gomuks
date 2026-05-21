@@ -44,6 +44,9 @@ const ProfileSwitcher = ({ tabs, currentTabID, switchTab, style }: ProfileSwitch
 				</div>
 			</div>}
 		</button> : null)}
+		{window.gomuksDesktop && <button onClick={() => window.gomuksDesktop?.quitApp()}>
+			Quit
+		</button>}
 	</div>
 }
 
