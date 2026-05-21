@@ -49,9 +49,8 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
-	const tabs = useTabs()
-	const currentTab = window.gomuksDesktop?.getTabID() ?? ""
-	const currentTabIndex = tabs.findIndex(t => t.id === currentTab)
+	const [tabs, currentTabID, totalUnreads, switchTab] = useTabs()
+	const currentTabIndex = tabs.findIndex(t => t.id === currentTabID)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)
@@ -153,7 +152,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
-		<div className={`space-bar ${currentTab ? "has-profiles" : "no-profiles"}`}>
+		<div className={`space-bar ${currentTabID ? "has-profiles" : "no-profiles"}`}>
 			<FakeSpace space={null} setSpace={mainScreen.setSpace} isActive={space === null} />
 			{client.store.pseudoSpaces.map(pseudoSpace => <FakeSpace
 				key={pseudoSpace.id}
@@ -171,15 +170,24 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				onClickUnread={onClickSpaceUnread}
 			/>)}
 		</div>
-		{currentTab && <div className="profile-switcher">
-			<img
-				src={tabs[currentTabIndex]?.icon ?? getAvatarThumbnailURL(client.userID, ownProfile)}
-				className="avatar"
-				alt="Profile switcher"
+		{currentTabID && <div className="profile-switcher">
+			<div
+				className="profile-switcher-item"
 				onClick={() => {
-					window.gomuksDesktop!.switchTab(tabs[(currentTabIndex+1) % tabs.length].id)
+					switchTab(tabs[(currentTabIndex + 1) % tabs.length].id)
 				}}
-			/>
+			>
+				{totalUnreads > 0 ? <div className="room-entry-unreads floating">
+					<div className="unread-count space notified">
+						{totalUnreads > 999 ? "99+" : totalUnreads}
+					</div>
+				</div> : null}
+				<img
+					src={tabs[currentTabIndex]?.icon ?? getAvatarThumbnailURL(client.userID, ownProfile)}
+					className="avatar"
+					alt="Profile switcher"
+				/>
+			</div>
 		</div>}
 		<div className="room-list">
 			{initComplete ? null

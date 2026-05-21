@@ -43,8 +43,16 @@ function getTabs() {
 	return tabsCache
 }
 
-export function useTabs(): TabInfo[] {
-	return useSyncExternalStore(subscribeTabs, getTabs)
+const noTabs = [[], "", 0, () => {}] as const
+
+export function useTabs() {
+	const tabs = useSyncExternalStore(subscribeTabs, getTabs)
+	if (!window.gomuksDesktop) {
+		return noTabs
+	}
+	const currentTabID = window.gomuksDesktop.getTabID() ?? ""
+	const totalUnreads = tabs.reduce((acc, t) => acc + (t.id !== currentTabID ? t.unread : 0), 0)
+	return [tabs, currentTabID, totalUnreads, window.gomuksDesktop.switchTab] as const
 }
 
 window.gomuksDesktop?.subscribeToTabs((tabs: TabInfo[]) => {

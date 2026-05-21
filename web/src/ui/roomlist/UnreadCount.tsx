@@ -65,7 +65,7 @@ const UnreadCount = ({ counts, space, onClick }: UnreadCountProps) => {
 	if (counts.unread_highlights) {
 		classNames.push("highlighted")
 	}
-	return <div className="room-entry-unreads">
+	return <div className={`room-entry-unreads ${space ? "floating" : ""}`}>
 		<div title={unreadCountTitle} className={classNames.join(" ")} onClick={onClick}>
 			{unreadCountDisplay}
 		</div>
