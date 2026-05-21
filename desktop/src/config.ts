@@ -40,6 +40,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 			backends: [{
 				type: "embedded",
 				name: "backend",
+				displayname: "Default Profile",
 			}]
 		}
 		await saveConfig(config)

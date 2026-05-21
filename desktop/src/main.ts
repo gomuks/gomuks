@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, Menu, MenuItemConstructorOptions, nativeImage, Tray } from "electron"
+import { app, Menu, MenuItemConstructorOptions } from "electron"
 import electronDl from "electron-dl"
 import path from "node:path"
 import started from "electron-squirrel-startup"
@@ -40,26 +40,6 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 const mainWindow = new GomuksWindow()
-
-let tray: Tray | null = null
-
-function createTrayIcon() {
-	const trayIconPath = path.join(
-		app.isPackaged ? process.resourcesPath : app.getAppPath(),
-		process.platform === "darwin" ? "trayTemplate@2x.png" : "tray@2x.png",
-	)
-	tray = new Tray(nativeImage.createFromPath(trayIconPath))
-	tray.setContextMenu(Menu.buildFromTemplate([
-		{
-			label: "Open gomuks",
-			click: mainWindow.open,
-		},
-		{
-			label: "Quit gomuks",
-			click: app.quit,
-		},
-	]))
-}
 
 function prepareMenu() {
 	const isMac = process.platform === "darwin"
@@ -104,22 +84,6 @@ app.on("before-quit", evt => {
 	}
 })
 
-app.on("activate", mainWindow.open)
-
-app.on("second-instance", (_event, commandLine, _workingDirectory) => {
-	console.log("Got second instance with", commandLine)
-	mainWindow.open()
-
-	const uri = commandLine.pop()
-	if (uri?.startsWith("matrix:")) {
-		mainWindow.handleMatrixURI(uri)
-	}
-})
-
-app.on("open-url", (_event, url) => {
-	mainWindow.handleMatrixURI(url)
-})
-
 electronDl({
 	saveAs: process.platform !== "darwin",
 })
@@ -129,7 +93,7 @@ app.whenReady().then(async () => {
 	mainWindow.initialize()
 	prepareMenu()
 	mainWindow.open()
-	createTrayIcon()
+	mainWindow.createTray()
 	const lastArg = process.argv[process.argv.length - 1]
 	if (lastArg.startsWith("matrix:")) {
 		mainWindow.handleMatrixURI(lastArg)

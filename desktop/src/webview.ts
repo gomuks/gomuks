@@ -84,7 +84,7 @@ export class GomuksView {
 		this.makeWebContentsView(window)
 	}
 
-	public focus() {
+	public focus = () => {
 		const parentView = this.parent.open()
 		if (!this.webContentsView || this.exited) {
 			this.makeWebContentsView(parentView)

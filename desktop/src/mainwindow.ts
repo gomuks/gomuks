@@ -13,15 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { BaseWindow, ipcMain } from "electron"
+import { app, BaseWindow, ipcMain, Menu, MenuItemConstructorOptions, nativeImage, Tray } from "electron"
 import { GomuksView } from "./webview.ts"
 import { GomuksConfig } from "./config.ts"
 import { TabInfo } from "./tabinfo.ts"
+import path from "node:path"
 
 export class GomuksWindow {
 	private window: BaseWindow | null = null
 	private views: Map<string, GomuksView> = new Map()
 	private activeView: GomuksView | null = null
+	private tray: Tray | null = null
 	public config: GomuksConfig | null = null
 	public quitting = false
 
@@ -35,6 +37,40 @@ export class GomuksWindow {
 				view.focus()
 			}
 		})
+		app.on("activate", this.open)
+		app.on("second-instance", (_event, commandLine, _workingDirectory) => {
+			console.log("Got second instance with", commandLine)
+			this.open()
+
+			const uri = commandLine.pop()
+			if (uri?.startsWith("matrix:")) {
+				this.handleMatrixURI(uri)
+			}
+		})
+		app.on("open-url", (_event, url) => {
+			this.handleMatrixURI(url)
+		})
+	}
+
+	createTray() {
+		const trayIconPath = path.join(
+			app.isPackaged ? process.resourcesPath : app.getAppPath(),
+			process.platform === "darwin" ? "trayTemplate@2x.png" : "tray@2x.png",
+		)
+		this.tray = new Tray(nativeImage.createFromPath(trayIconPath))
+		this.updateTrayMenu()
+	}
+
+	updateTrayMenu() {
+		const items: MenuItemConstructorOptions[] = this.views.entries().map(([id, view]) => ({
+			label: this.views.size === 1 ? "Open gomuks" : `Open: ${view.config.displayname || id}`,
+			click: view.focus,
+		})).toArray()
+		items.push({
+			label: "Quit gomuks",
+			click: app.quit,
+		})
+		this.tray?.setContextMenu(Menu.buildFromTemplate(items))
 	}
 
 	public setFocused(view: GomuksView) {
