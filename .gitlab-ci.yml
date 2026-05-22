@@ -303,7 +303,7 @@ deploy/desktop:
     mv deb/x64/* linux/x64/
     mv *.dmg darwin/arm64/
     mv squirrel.windows windows
-    rmdir deb zip
+    rmdir deb/arm64 deb/x64 deb zip
     cd ../../..
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
