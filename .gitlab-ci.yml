@@ -301,8 +301,10 @@ deploy/desktop:
     mv zip/linux .
     mv deb/arm64/* linux/arm64/
     mv deb/x64/* linux/x64/
-    mv *.dmg zip/darwin/arm64/
+    mv *.dmg darwin/arm64/
     mv squirrel.windows windows
+    rmdir deb zip
+    cd ../../..
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
       RELEASE_TYPE=nightly
