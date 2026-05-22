@@ -78,7 +78,7 @@ export class GomuksWindow {
 				})
 				autoUpdater.checkForUpdates()
 			},
-			enabled: app.isPackaged,
+			enabled: app.isPackaged && (process.platform === "darwin" || process.platform === "win32"),
 		})
 		items.push({
 			label: "Quit gomuks",
