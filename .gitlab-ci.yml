@@ -9,10 +9,6 @@ default:
   - mkdir -p .cache
   - export GOPATH="$CI_PROJECT_DIR/.cache"
 
-cache:
-  paths:
-  - .cache
-
 variables:
   GOTOOLCHAIN: local
   MAU_VERSION_PACKAGE: go.mau.fi/gomuks/version
@@ -52,12 +48,10 @@ frontend:
     paths:
     - web/dist
     expire_in: 1 hour
-  dependencies:
-  - wasm
   needs:
   - wasm
 
-deploy wasmuks:
+deploy/wasmuks:
   image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
   stage: frontend
   tags:
@@ -73,8 +67,6 @@ deploy wasmuks:
       mkdir -p /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
       rsync -rcthvl --delete web/dist/ /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
     fi
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -98,8 +90,6 @@ deploy wasmuks:
     paths:
     - gomuks
     - gomuks-terminal
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -172,8 +162,6 @@ macos/arm64:
     - gomuks
     - gomuks-terminal
     - libolm.3.dylib
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -182,8 +170,6 @@ docker/amd64:
   tags:
   - linux
   - amd64
-  dependencies:
-  - linux/amd64
   needs:
   - linux/amd64
   variables:
@@ -194,8 +180,6 @@ docker/arm64:
   tags:
   - linux
   - arm64
-  dependencies:
-  - linux/arm64
   needs:
   - linux/arm64
   variables:
@@ -241,23 +225,23 @@ docker/manifest:
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-amd64 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-arm64
 
 .build-desktop: &build-desktop
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
+  # Node 24.16+ and 26.1+ are broken https://github.com/electron/electron/issues/51619
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24.15.0-alpine
   stage: build desktop
   cache:
     paths:
-    - .cache
-  before_script:
-  - mkdir -p .cache
-  - export GOPATH="$CI_PROJECT_DIR/.cache"
-  - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+    - desktop/node_modules
   script:
+  - export GIT_DESCRIBE=$(git describe --tags)
+  - echo $GIT_DESCRIBE
   - cd desktop
   - npm ci --include=dev
   - npm run make -- --platform=$PLATFORM --arch=$ARCH
   - tree out/make/
   artifacts:
     paths:
-    - gomuks*desktop*
+    - desktop/out/make/
+    expire_in: 1 day
 
 desktop/linux/amd64:
   <<: *build-desktop
@@ -265,11 +249,7 @@ desktop/linux/amd64:
     PLATFORM: linux
     ARCH: x64
   before_script:
-  - apk add --no-cache fakeroot dpkg
-  after_script:
-  - mv desktop/out/make/deb/x64/gomuks* .
-  dependencies:
-  - linux/amd64
+  - apk add --no-cache fakeroot dpkg git zip
   needs:
   - linux/amd64
 
@@ -279,11 +259,7 @@ desktop/linux/arm64:
     PLATFORM: linux
     ARCH: arm64
   before_script:
-  - apk add --no-cache fakeroot dpkg
-  after_script:
-  - mv desktop/out/make/deb/arm64/gomuks* .
-  dependencies:
-  - linux/arm64
+  - apk add --no-cache fakeroot dpkg git zip
   needs:
   - linux/arm64
 
@@ -293,14 +269,10 @@ desktop/windows/amd64:
     PLATFORM: win32
     ARCH: x64
   before_script:
-  - apk add --no-cache wine mono
-  after_script:
-  - mv desktop/out/make/squirrel.windows/x64/gomuks* .
+  - apk add --no-cache wine mono git zip
   tags:
   - linux
   - amd64 # wine on aarch64 alpine doesn't include wine64, which electron-forge wants
-  dependencies:
-  - windows/amd64
   needs:
   - windows/amd64
 
@@ -310,12 +282,42 @@ desktop/macos/arm64:
   variables:
     PLATFORM: darwin
     ARCH: arm64
-  after_script:
-  - mv desktop/out/make/gomuks* .
   tags:
   - macos
   - arm64
-  dependencies:
-  - macos/arm64
   needs:
   - macos/arm64
+
+deploy/desktop:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  stage: build desktop
+  tags:
+  - webdeploy
+  script:
+  - apk add --no-cache rsync
+  - mkdir desktop/out/make/dmg && mv desktop/out/make/*.dmg desktop/out/make/dmg/
+  - |
+    if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
+      RELEASE_TYPE=nightly
+    else
+      RELEASE_TYPE=stable
+    fi
+    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
+    rsync -rcthvl --delete --exclude latest desktop/out/make/ $TARGET_DIR
+    cd $TARGET_DIR
+    mkdir -p latest
+    cd latest
+    ln -sf ../dmg/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
+    ln -sf ../deb/x64/*.deb gomuks-desktop-linux-amd64.deb
+    ln -sf ../deb/arm64/*.deb gomuks-desktop-linux-arm64.deb
+    ln -sf ../zip/linux/x64/*.deb gomuks-desktop-linux-amd64.zip
+    ln -sf ../zip/linux/arm64/*.deb gomuks-desktop-linux-arm64.zip
+    ln -sf ../squirrel.windows/x64/*.exe gomuks-desktop-windows-amd64.exe
+  only:
+    - main
+    - tags
+  needs:
+  - desktop/linux/amd64
+  - desktop/linux/arm64
+  - desktop/windows/amd64
+  - desktop/macos/arm64

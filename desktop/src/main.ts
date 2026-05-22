@@ -17,9 +17,11 @@ import { app, Menu, MenuItemConstructorOptions } from "electron"
 import electronDl from "electron-dl"
 import path from "node:path"
 import started from "electron-squirrel-startup"
+import { updateElectronApp, UpdateSourceType } from "update-electron-app"
 import { EmbeddedBackend } from "./backend.ts"
 import { GomuksWindow } from "./mainwindow.ts"
 import { loadConfig } from "./config.ts"
+import buildInfo from "./build-info.ts"
 
 if (started) {
 	app.quit()
@@ -97,5 +99,15 @@ app.whenReady().then(async () => {
 	const lastArg = process.argv[process.argv.length - 1]
 	if (lastArg.startsWith("matrix:")) {
 		mainWindow.handleMatrixURI(lastArg)
+	}
+
+	if (buildInfo.ci && buildInfo.updateChannel) {
+		updateElectronApp({
+			updateSource: {
+				type: UpdateSourceType.StaticStorage,
+				baseUrl: `https://update.gomuks.app/desktop-${buildInfo.updateChannel}/${process.platform}/${process.arch}`,
+			},
+			notifyUser: true,
+		})
 	}
 })

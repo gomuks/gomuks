@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, ipcMain, Menu, MenuItemConstructorOptions, nativeImage, Tray } from "electron"
+import { app, BaseWindow, ipcMain, Menu, MenuItemConstructorOptions, nativeImage, Tray, autoUpdater, dialog } from "electron"
 import { GomuksView } from "./webview.ts"
 import { GomuksConfig } from "./config.ts"
 import { TabInfo } from "./tabinfo.ts"
@@ -66,6 +66,20 @@ export class GomuksWindow {
 			label: this.views.size === 1 ? "Open gomuks" : `Open: ${view.config.displayname || id}`,
 			click: view.focus,
 		})).toArray()
+		items.push({
+			label: "Check for updates",
+			click: () => {
+				autoUpdater.once("update-not-available", () => {
+					dialog.showMessageBox({
+						type: "info",
+						title: "gomuks",
+						message: "No updates found",
+					})
+				})
+				autoUpdater.checkForUpdates()
+			},
+			enabled: app.isPackaged,
+		})
 		items.push({
 			label: "Quit gomuks",
 			click: app.quit,
