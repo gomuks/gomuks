@@ -295,7 +295,14 @@ deploy/desktop:
   - webdeploy
   script:
   - apk add --no-cache rsync
-  - mkdir desktop/out/make/dmg && mv desktop/out/make/*.dmg desktop/out/make/dmg/
+  - |
+    cd desktop/out/make
+    mv zip/darwin .
+    mv zip/linux .
+    mv deb/arm64/* linux/arm64/
+    mv deb/x64/* linux/x64/
+    mv *.dmg zip/darwin/arm64/
+    mv squirrel.windows windows
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
       RELEASE_TYPE=nightly
@@ -303,16 +310,16 @@ deploy/desktop:
       RELEASE_TYPE=stable
     fi
     TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
-    rsync -rcthvl --delete --exclude latest desktop/out/make/ $TARGET_DIR
+    rsync -rcthvl --exclude latest desktop/out/make/ $TARGET_DIR
     cd $TARGET_DIR
     mkdir -p latest
     cd latest
-    ln -sf ../dmg/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
-    ln -sf ../deb/x64/*.deb gomuks-desktop-linux-amd64.deb
-    ln -sf ../deb/arm64/*.deb gomuks-desktop-linux-arm64.deb
-    ln -sf ../zip/linux/x64/*.deb gomuks-desktop-linux-amd64.zip
-    ln -sf ../zip/linux/arm64/*.deb gomuks-desktop-linux-arm64.zip
-    ln -sf ../squirrel.windows/x64/*.exe gomuks-desktop-windows-amd64.exe
+    ln -sf ../darwin/arm64/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
+    ln -sf ../linux/x64/*.deb gomuks-desktop-linux-amd64.deb
+    ln -sf ../linux/arm64/*.deb gomuks-desktop-linux-arm64.deb
+    ln -sf ../linux/x64/*.zip gomuks-desktop-linux-amd64.zip
+    ln -sf ../linux/arm64/*.zip gomuks-desktop-linux-arm64.zip
+    ln -sf ../windows/x64/*.exe gomuks-desktop-windows-amd64.exe
   only:
     - main
     - tags
