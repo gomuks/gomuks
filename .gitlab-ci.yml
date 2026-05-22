@@ -312,7 +312,7 @@ deploy/desktop:
       RELEASE_TYPE=stable
     fi
     TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
-    rsync -rcthvl --exclude latest desktop/out/make/ $TARGET_DIR
+    rsync -rcthvl --delete desktop/out/make/ $TARGET_DIR
     cd $TARGET_DIR
     mkdir -p latest
     cd latest
