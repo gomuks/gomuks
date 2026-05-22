@@ -91,7 +91,9 @@ const config: ForgeConfig = {
 			try {
 				await fs.copyFile(path.join(__dirname, "..", binaryName), dest)
 				if (platform === "darwin") {
-					await fs.copyFile(path.join(__dirname, "..", "libolm.3.dylib"), path.join(resourcesDir, "libolm.3.dylib"))
+					const dylibDest = path.join(resourcesDir, "libolm.3.dylib")
+					await fs.copyFile(path.join(__dirname, "..", "libolm.3.dylib"), dylibDest)
+					await fs.chmod(dylibDest, 0o644)
 				}
 				if (platform !== "win32") {
 					await fs.chmod(dest, 0o755)
