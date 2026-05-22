@@ -107,6 +107,7 @@ app.whenReady().then(async () => {
 				type: UpdateSourceType.StaticStorage,
 				baseUrl: `https://update.gomuks.app/desktop-${buildInfo.updateChannel}/${process.platform}/${process.arch}`,
 			},
+			updateInterval: "1 hour",
 			notifyUser: true,
 		})
 	}
