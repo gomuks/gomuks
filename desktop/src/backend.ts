@@ -87,6 +87,7 @@ export class EmbeddedBackend implements GomuksBackend {
 			windowsHide: true,
 			env: {
 				GOMUKS_LOGS_HOME: path.join(app.getPath("logs"), this.profileName),
+				GOMUKS_CACHE_HOME: path.join(app.getPath("sessionData"), "gomuks-cache"),
 				GOMUKS_ROOT: path.join(app.getPath("sessionData"), this.profileName),
 				...process.env,
 				GOMUKS_DESKTOP_KEY: this.desktopKey,
