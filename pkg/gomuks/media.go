@@ -181,9 +181,28 @@ func (gmx *Gomuks) saveMediaCacheEntryWithThumbnail(ctx context.Context, entry *
 }
 
 func decodeImageWithOrientationFix(file *os.File) (image.Image, error) {
-	decoded, decodedFrom, err := image.Decode(file)
+	cfg, decodedFrom, err := image.DecodeConfig(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to decode image config: %w", err)
+	} else if cfg.Width > 25000 || cfg.Height > 25000 {
+		return nil, fmt.Errorf("image dimensions too large: %dx%d", cfg.Width, cfg.Height)
+	}
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+	}
+	decoded, _, err := image.Decode(file)
+	if err != nil {
+		if decodedFrom == "webp" {
+			_, err = file.Seek(0, io.SeekStart)
+			if err != nil {
+				return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+			}
+			decoded, err = decodeAnimatedWebp(file)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode image: %w", err)
+		}
 	}
 	var o orientation.Orientation
 	if decodedFrom == "jpeg" {
@@ -205,6 +224,10 @@ var encodeAvatarThumbnail = func(writer io.Writer, img image.Image) error {
 
 var encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossless bool) error {
 	return fmt.Errorf("webp encoding not implemented")
+}
+
+var decodeAnimatedWebp = func(data io.Reader) (image.Image, error) {
+	return nil, fmt.Errorf("animated webp decoding not implemented")
 }
 
 func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) error {

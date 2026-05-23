@@ -29,6 +29,9 @@ func init() {
 	encodeAvatarThumbnail = func(writer io.Writer, img image.Image) error {
 		return cwebp.Encode(writer, img, &cwebp.Options{Quality: 80})
 	}
+	decodeAnimatedWebp = func(data io.Reader) (image.Image, error) {
+		return cwebp.Decode(data)
+	}
 	encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossless bool) error {
 		return cwebp.Encode(writer, img, &cwebp.Options{
 			Lossless: lossless,

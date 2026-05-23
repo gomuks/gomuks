@@ -30,10 +30,10 @@ require (
 	go.mau.fi/goheif v0.0.0-20260413100809-7ec7087b8d7d
 	go.mau.fi/mauview v0.3.0
 	go.mau.fi/util v0.9.9
-	go.mau.fi/webp v0.2.0
+	go.mau.fi/webp v0.3.0
 	go.mau.fi/zeroconfig v0.2.0
 	golang.org/x/crypto v0.51.0
-	golang.org/x/image v0.40.0
+	golang.org/x/image v0.41.0
 	golang.org/x/net v0.54.0
 	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.37.0
