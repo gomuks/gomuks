@@ -29,6 +29,7 @@ interface BaseBackendConfig {
 
 export type BackendConfig = BaseBackendConfig & ({
 	type: "embedded"
+	env?: Record<string, string>
 } | {
 	type: "remote"
 	address: string
@@ -46,7 +47,7 @@ export class GomuksView {
 	constructor(public config: BackendConfig, private parent: GomuksWindow) {
 		this.partition = `persist:${config.name}`
 		if (config.type === "embedded") {
-			this.backend = new EmbeddedBackend(config.name, this.onBackendQuit, this.handleMatrixURI)
+			this.backend = new EmbeddedBackend(config.name, config.env, this.onBackendQuit, this.handleMatrixURI)
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
 		}

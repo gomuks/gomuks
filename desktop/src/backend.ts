@@ -53,6 +53,7 @@ export class EmbeddedBackend implements GomuksBackend {
 
 	constructor(
 		private profileName = "backend",
+		private env: Record<string, string> = {},
 		private onQuit: () => void,
 		private handleMatrixURI: (uri: string) => void,
 	) {}
@@ -86,10 +87,11 @@ export class EmbeddedBackend implements GomuksBackend {
 			stdio: ["ignore", "pipe", "inherit"],
 			windowsHide: true,
 			env: {
+				...process.env,
 				GOMUKS_LOGS_HOME: path.join(app.getPath("logs"), this.profileName),
 				GOMUKS_CACHE_HOME: path.join(app.getPath("sessionData"), "gomuks-cache"),
 				GOMUKS_ROOT: path.join(app.getPath("sessionData"), this.profileName),
-				...process.env,
+				...this.env,
 				GOMUKS_DESKTOP_KEY: this.desktopKey,
 			},
 		})

@@ -61,6 +61,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 					name: backend.name,
 					displayname: backend.displayname,
 					icon: backend.icon,
+					env: backend.env,
 				} as BackendConfig
 			} else if (backend.type === "remote") {
 				if (typeof backend.address !== "string" || typeof backend.username !== "string" || (typeof backend.password !== "string" && typeof backend.password_encrypted !== "string")) {
