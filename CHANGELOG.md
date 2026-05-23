@@ -1,3 +1,17 @@
+# v26.06 (unreleased)
+
+### Backend
+* Added support for thumbnailing animated webp avatars.
+* Changed environment variable processing to prefer `GOMUKS_*_HOME` over
+  `GOMUKS_ROOT` to allow finer control.
+
+### Web
+* Rewrote desktop wrapper to use Electron instead of Wails.
+  * Linux builds now have an actually usable browser engine,
+    and macOS builds are signed to allow installing without workarounds.
+  * The new wrapper supports both embedded and remote backends and can have
+    multiple backends at once.
+
 # v26.05
 
 ### Backend
