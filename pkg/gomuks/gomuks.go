@@ -102,10 +102,9 @@ func NewGomuks() *Gomuks {
 func (gmx *Gomuks) InitDirectories(root string) {
 	// We need 4 directories: config, data, cache, logs
 	//
-	// 1. If root is provided as a parameter, all directories are created under that.
-	// 2. If GOMUKS_ROOT is set, all directories are created under that.
-	// 3. If GOMUKS_*_HOME is set, that value is used as the directory.
-	// 4. Use system-specific defaults as below
+	// 1. If GOMUKS_*_HOME is set, that value is used as the directory.
+	// 2. If GOMUKS_ROOT or the root argument is set, all directories are created under that.
+	// 3. Use system-specific defaults as below
 	//
 	// *nix:
 	// - Config: $XDG_CONFIG_HOME/gomuks or $HOME/.config/gomuks
@@ -128,37 +127,37 @@ func (gmx *Gomuks) InitDirectories(root string) {
 	} else {
 		gomuksRoot = os.Getenv("GOMUKS_ROOT")
 	}
+	gmx.CacheDir = os.Getenv("GOMUKS_CACHE_HOME")
+	gmx.ConfigDir = os.Getenv("GOMUKS_CONFIG_HOME")
+	gmx.DataDir = os.Getenv("GOMUKS_DATA_HOME")
+	gmx.LogDir = os.Getenv("GOMUKS_LOGS_HOME")
 	if gomuksRoot != "" {
 		exerrors.PanicIfNotNil(os.MkdirAll(gomuksRoot, 0700))
-		gmx.CacheDir = filepath.Join(gomuksRoot, "cache")
-		gmx.ConfigDir = filepath.Join(gomuksRoot, "config")
-		gmx.DataDir = filepath.Join(gomuksRoot, "data")
-		gmx.LogDir = cmp.Or(os.Getenv("GOMUKS_LOGS_HOME"), filepath.Join(gomuksRoot, "logs"))
+		gmx.CacheDir = cmp.Or(gmx.CacheDir, filepath.Join(gomuksRoot, "cache"))
+		gmx.ConfigDir = cmp.Or(gmx.ConfigDir, filepath.Join(gomuksRoot, "config"))
+		gmx.DataDir = cmp.Or(gmx.DataDir, filepath.Join(gomuksRoot, "data"))
+		gmx.LogDir = cmp.Or(gmx.LogDir, filepath.Join(gomuksRoot, "logs"))
 	} else {
 		homeDir := exerrors.Must(os.UserHomeDir())
-		if cacheDir := os.Getenv("GOMUKS_CACHE_HOME"); cacheDir != "" {
-			gmx.CacheDir = cacheDir
-		} else {
+		if gmx.CacheDir == "" {
 			gmx.CacheDir = filepath.Join(exerrors.Must(os.UserCacheDir()), "gomuks")
 		}
-		if configDir := os.Getenv("GOMUKS_CONFIG_HOME"); configDir != "" {
-			gmx.ConfigDir = configDir
-		} else {
+		if gmx.ConfigDir == "" {
 			gmx.ConfigDir = filepath.Join(exerrors.Must(os.UserConfigDir()), "gomuks")
 		}
-		if dataDir := os.Getenv("GOMUKS_DATA_HOME"); dataDir != "" {
-			gmx.DataDir = dataDir
-		} else if dataDir = os.Getenv("XDG_DATA_HOME"); dataDir != "" {
-			gmx.DataDir = filepath.Join(dataDir, "gomuks")
+		if gmx.DataDir != "" {
+			// already set
+		} else if xdgDataHome := os.Getenv("XDG_DATA_HOME"); xdgDataHome != "" {
+			gmx.DataDir = filepath.Join(xdgDataHome, "gomuks")
 		} else if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 			gmx.DataDir = gmx.ConfigDir
 		} else {
 			gmx.DataDir = filepath.Join(homeDir, ".local", "share", "gomuks")
 		}
-		if logDir := os.Getenv("GOMUKS_LOGS_HOME"); logDir != "" {
-			gmx.LogDir = logDir
-		} else if logDir = os.Getenv("XDG_STATE_HOME"); logDir != "" {
-			gmx.LogDir = filepath.Join(logDir, "gomuks")
+		if gmx.LogDir != "" {
+			// already set
+		} else if xdgStateHome := os.Getenv("XDG_STATE_HOME"); xdgStateHome != "" {
+			gmx.LogDir = filepath.Join(xdgStateHome, "gomuks")
 		} else if runtime.GOOS == "darwin" {
 			gmx.LogDir = filepath.Join(homeDir, "Library", "Logs", "gomuks")
 		} else if runtime.GOOS == "windows" {
