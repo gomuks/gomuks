@@ -135,7 +135,14 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
 	const roomListFilter = client.store.roomListFilterFunc
-	return <div className="room-list-wrapper">
+	const onWrapperKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+		if (keyToString(evt) === "Escape" && query !== "") {
+			clearQuery()
+			evt.stopPropagation()
+			evt.preventDefault()
+		}
+	}
+	return <div className="room-list-wrapper" onKeyDown={onWrapperKeyDown}>
 		<div className="room-search-wrapper">
 			<input
 				value={query}
