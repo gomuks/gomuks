@@ -186,6 +186,10 @@ const MessageComposer = () => {
 		setState({ replyTo: evt, silentReply: false, explicitReplyInThread: false, startNewThread: false })
 		textInput.current?.focus()
 	}, [])
+	roomCtx.setReplyToAsThread = useCallback((evt: EventID) => {
+		setState({ replyTo: evt, silentReply: false, explicitReplyInThread: false, startNewThread: true })
+		textInput.current?.focus()
+	}, [])
 	const setSilentReply = useCallback((newVal: boolean | React.MouseEvent) => {
 		if (typeof newVal === "boolean") {
 			setState({ silentReply: newVal })

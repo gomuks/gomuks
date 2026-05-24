@@ -53,7 +53,7 @@ interface ReplyBodyProps {
 	isExplicitInThread?: boolean
 	onSetExplicitInThread?: (evt: React.MouseEvent) => void
 	startNewThread?: boolean
-	onSetStartNewThread?: (evt: React.MouseEvent) => void
+	onSetStartNewThread?: (value: boolean | React.MouseEvent) => void
 }
 
 interface ReplyIDBodyProps {
@@ -181,16 +181,22 @@ export const ReplyBody = ({
 				>
 					{isExplicitInThread ? <ReplyIcon /> : <ThreadIcon />}
 				</TooltipButton>}
-				{!isThread && onSetStartNewThread && <TooltipButton
-					tooltipText={startNewThread
-						? "Click to reply in main timeline instead of starting a new thread"
-						: "Click to start a new thread instead of replying"}
-					tooltipDirection="left"
-					className="thread-explicit-reply"
-					onClick={onSetStartNewThread}
-				>
-					{startNewThread ? <ThreadIcon /> : <ReplyIcon />}
-				</TooltipButton>}
+				{!isThread && onSetStartNewThread && <>
+					<TooltipButton
+						tooltipText="Reply in main timeline"
+						tooltipDirection="left"
+						onClick={evt => { evt.stopPropagation(); onSetStartNewThread(false) }}
+					>
+						<ReplyIcon />
+					</TooltipButton>
+					<TooltipButton
+						tooltipText="Start new thread"
+						tooltipDirection="left"
+						onClick={evt => { evt.stopPropagation(); onSetStartNewThread(true) }}
+					>
+						<ThreadIcon />
+					</TooltipButton>
+				</>}
 				{onClose && <button className="close-reply" onClick={onClose}><CloseIcon/></button>}
 			</div>}
 		</div>
