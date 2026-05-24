@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { app, BaseWindow, shell, WebContentsView } from "electron"
 import path from "node:path"
+import contextMenu from "electron-context-menu"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
 import { type GomuksWindow } from "./mainwindow.ts"
 import { loadPage } from "./html.ts"
@@ -134,6 +135,12 @@ export class GomuksView {
 			if (this.webContentsView === view) {
 				this.webContentsView = null
 			}
+		})
+		contextMenu({
+			window: view,
+			showInspectElement: true,
+			showSaveImageAs: true,
+			showSaveVideoAs: true,
 		})
 		view.webContents.setWindowOpenHandler(details => {
 			if (!serverURL) {
