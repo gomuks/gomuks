@@ -84,7 +84,7 @@ export const ReplyBody = ({
 	timelineThreadMsg, reactions,
 	isSilent, onSetSilent,
 	isExplicitInThread, onSetExplicitInThread,
-	startNewThread, onSetStartNewThread,
+	onSetStartNewThread,
 }: ReplyBodyProps) => {
 	const room = roomCtx.store
 	const client = use(ClientContext)
