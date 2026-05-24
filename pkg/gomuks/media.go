@@ -1088,7 +1088,7 @@ func (gmx *Gomuks) GenerateFileInfo(ctx context.Context, file io.ReadSeeker) (ev
 		msgType = event.MsgImage
 		defaultFileName = "image" + mimeType.Extension()
 		img, _, err := image.Decode(file)
-		if strings.Contains(err.Error(), "webp: invalid format") {
+		if err != nil && strings.Contains(err.Error(), "webp: invalid format") {
 			img, err = decodeAnimatedWebp(file)
 		}
 		if err != nil {
