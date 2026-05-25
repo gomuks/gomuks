@@ -106,9 +106,11 @@ const config: ForgeConfig = {
 	},
 	rebuildConfig: {},
 	makers: [
-		new MakerSquirrel(arch => ({
-			remoteReleases: `https://update.gomuks.app/desktop-${updateChannel}/win32/${arch}`,
-		})),
+		new MakerSquirrel({
+			// Delta updates could be enabled for squirrel.windows, but it's not worth it
+			// because the gomuks binary is the majority of the package anyway.
+			//remoteReleases: `https://update.gomuks.app/desktop-${updateChannel}/win32/${arch}`,
+		}),
 		new MakerDMG({}),
 		new MakerZIP(arch => ({
 			macUpdateManifestBaseUrl: `https://update.gomuks.app/desktop-${updateChannel}/darwin/${arch}`,
