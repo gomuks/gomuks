@@ -302,7 +302,7 @@ deploy/desktop:
     mv deb/arm64/* linux/arm64/
     mv deb/x64/* linux/x64/
     mv *.dmg darwin/arm64/
-    mv squirrel.windows windows
+    mv squirrel.windows win32
     rmdir deb/arm64 deb/x64 deb zip
     cd ../../..
   - |
@@ -318,7 +318,7 @@ deploy/desktop:
     ln -sf ../linux/arm64/*.deb gomuks-desktop-linux-arm64.deb
     ln -sf ../linux/x64/*.zip gomuks-desktop-linux-amd64.zip
     ln -sf ../linux/arm64/*.zip gomuks-desktop-linux-arm64.zip
-    ln -sf ../windows/x64/*.exe gomuks-desktop-windows-amd64.exe
+    ln -sf ../win32/x64/*.exe gomuks-desktop-windows-amd64.exe
     cd ..
     TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
     rsync -rcthvl . $TARGET_DIR
