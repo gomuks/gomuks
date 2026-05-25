@@ -311,17 +311,17 @@ deploy/desktop:
     else
       RELEASE_TYPE=stable
     fi
-    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
-    rsync -rcthvl --delete desktop/out/make/ $TARGET_DIR
-    cd $TARGET_DIR
-    mkdir -p latest
-    cd latest
+    mkdir desktop/out/make/latest
+    cd desktop/out/make/latest
     ln -sf ../darwin/arm64/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
     ln -sf ../linux/x64/*.deb gomuks-desktop-linux-amd64.deb
     ln -sf ../linux/arm64/*.deb gomuks-desktop-linux-arm64.deb
     ln -sf ../linux/x64/*.zip gomuks-desktop-linux-amd64.zip
     ln -sf ../linux/arm64/*.zip gomuks-desktop-linux-arm64.zip
     ln -sf ../windows/x64/*.exe gomuks-desktop-windows-amd64.exe
+    cd ..
+    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
+    rsync -rcthvl . $TARGET_DIR
   only:
     - main
     - tags
