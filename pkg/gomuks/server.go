@@ -56,6 +56,7 @@ func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 	api.HandleFunc("GET /sso", gmx.HandleSSOComplete)
 	api.HandleFunc("POST /sso", gmx.PrepareSSO)
 	api.HandleFunc("GET /media/{server}/{media_id}", gmx.DownloadMedia)
+	api.HandleFunc("POST /exec/{command}", gmx.ExecCommand)
 	api.HandleFunc("POST /keys/export", gmx.ExportKeys)
 	api.HandleFunc("POST /keys/export/{room_id}", gmx.ExportKeys)
 	api.HandleFunc("POST /keys/import", gmx.ImportKeys)
@@ -361,4 +362,39 @@ func (gmx *Gomuks) GetCodeblockCSS(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/css")
 	_ = hicli.CodeBlockFormatter.WriteCSS(w, style)
+}
+
+func (gmx *Gomuks) ExecCommand(w http.ResponseWriter, r *http.Request) {
+	log := hlog.FromRequest(r)
+	reqPayload, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Err(err).Msg("Failed to read command request body")
+		mautrix.MBadJSON.WithMessage("Failed to read request body: %w", err).Write(w)
+		return
+	} else if !json.Valid(reqPayload) {
+		mautrix.MBadJSON.WithMessage("Request body is not valid JSON").Write(w)
+		return
+	}
+	resp := gmx.Client.SubmitJSONCommand(r.Context(), &hicli.JSONCommand{
+		Command: jsoncmd.Name(r.PathValue("command")),
+		Data:    reqPayload,
+	})
+	switch resp.Command {
+	case jsoncmd.RespError:
+		var errString string
+		_ = json.Unmarshal(resp.Data, &errString)
+		mautrix.RespError{
+			ErrCode:    "FI.MAU.GOMUKS.COMMAND_ERROR",
+			Err:        errString,
+			StatusCode: http.StatusTeapot,
+		}.Write(w)
+	case jsoncmd.RespSuccess:
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(resp.Data)
+	default:
+		log.Warn().Stringer("response_command", resp.Command).
+			Msg("Received unknown response command from JSON command execution")
+		mautrix.MUnknown.WithMessage("Unexpected response command: %s", resp.Command).Write(w)
+	}
 }
