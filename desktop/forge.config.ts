@@ -106,8 +106,8 @@ const config: ForgeConfig = {
 	},
 	rebuildConfig: {},
 	makers: [
-		new MakerSquirrel(_arch => ({
-			// remoteReleases: `https://update.gomuks.app/desktop-${updateChannel}/win32/${arch}`,
+		new MakerSquirrel(arch => ({
+			remoteReleases: `https://update.gomuks.app/desktop-${updateChannel}/win32/${arch}`,
 		})),
 		new MakerDMG({}),
 		new MakerZIP(arch => ({

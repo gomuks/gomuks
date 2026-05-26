@@ -1088,6 +1088,9 @@ func (gmx *Gomuks) GenerateFileInfo(ctx context.Context, file io.ReadSeeker) (ev
 		msgType = event.MsgImage
 		defaultFileName = "image" + mimeType.Extension()
 		img, _, err := image.Decode(file)
+		if err != nil && strings.Contains(err.Error(), "webp: invalid format") {
+			img, err = decodeAnimatedWebp(file)
+		}
 		if err != nil {
 			if magickPath != "" && osFile != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to decode image config, trying with magick")

@@ -269,7 +269,8 @@ desktop/windows/amd64:
     PLATFORM: win32
     ARCH: x64
   before_script:
-  - apk add --no-cache wine mono git zip
+  - apk add --no-cache wine mono ca-certificates git zip
+  - cert-sync /etc/ssl/certs/ca-certificates.crt
   tags:
   - linux
   - amd64 # wine on aarch64 alpine doesn't include wine64, which electron-forge wants
@@ -302,7 +303,7 @@ deploy/desktop:
     mv deb/arm64/* linux/arm64/
     mv deb/x64/* linux/x64/
     mv *.dmg darwin/arm64/
-    mv squirrel.windows windows
+    mv squirrel.windows win32
     rmdir deb/arm64 deb/x64 deb zip
     cd ../../..
   - |
@@ -311,17 +312,17 @@ deploy/desktop:
     else
       RELEASE_TYPE=stable
     fi
-    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
-    rsync -rcthvl --delete desktop/out/make/ $TARGET_DIR
-    cd $TARGET_DIR
-    mkdir -p latest
-    cd latest
+    mkdir desktop/out/make/latest
+    cd desktop/out/make/latest
     ln -sf ../darwin/arm64/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
     ln -sf ../linux/x64/*.deb gomuks-desktop-linux-amd64.deb
     ln -sf ../linux/arm64/*.deb gomuks-desktop-linux-arm64.deb
     ln -sf ../linux/x64/*.zip gomuks-desktop-linux-amd64.zip
     ln -sf ../linux/arm64/*.zip gomuks-desktop-linux-arm64.zip
-    ln -sf ../windows/x64/*.exe gomuks-desktop-windows-amd64.exe
+    ln -sf ../win32/x64/*.exe gomuks-desktop-windows-amd64.exe
+    cd ..
+    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
+    rsync -rcthvl . $TARGET_DIR
   only:
     - main
     - tags

@@ -87,6 +87,9 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	const previewSender = useRoomMember(client, realRoom, room.preview_event?.sender)
 
 	const onContextMenu = (evt: React.MouseEvent<HTMLDivElement>) => {
+		if (evt.shiftKey) {
+			return
+		}
 		if (!realRoom) {
 			// TODO implement separate menu for invite rooms
 			console.error("Room state store not found for", room.room_id)

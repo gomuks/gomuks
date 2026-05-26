@@ -124,6 +124,9 @@ const TimelineEvent = ({
 	const openNestableModal = use(NestableModalContext)
 	const [forceContextMenuOpen, setForceContextMenuOpen] = useState(false)
 	const onContextMenu = (mouseEvt: React.MouseEvent) => {
+		if (mouseEvt.shiftKey) {
+			return
+		}
 		const targetElem = mouseEvt.target as HTMLElement
 		if (
 			!roomCtx.store.preferences.message_context_menu

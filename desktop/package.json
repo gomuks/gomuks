@@ -34,6 +34,7 @@
 		"vite": "^8.0.5"
 	},
 	"dependencies": {
+		"electron-context-menu": "^4.1.2",
 		"electron-dl": "^4.0.0",
 		"electron-squirrel-startup": "^1.0.1",
 		"update-electron-app": "^3.2.0"

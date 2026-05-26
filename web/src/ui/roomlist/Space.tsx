@@ -42,6 +42,9 @@ const Space = ({
 		return
 	}
 	const onContextMenu = (evt: React.MouseEvent<HTMLDivElement>) => {
+		if (evt.shiftKey) {
+			return
+		}
 		const realRoom = client.store.rooms.get(room.room_id)
 		const edgeStore = client.store.spaceEdges.get(room.room_id)
 		if (!realRoom || !edgeStore) {
