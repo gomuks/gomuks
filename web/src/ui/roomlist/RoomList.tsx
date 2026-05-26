@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { use, useCallback, useEffect, useRef, useState } from "react"
+import React, { use, useCallback, useRef, useState } from "react"
 import { BarLoader } from "react-spinners"
 import { getAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListFilter, Space as SpaceStore, SpaceUnreadCounts, usePreference } from "@/api/statestore"
@@ -113,26 +113,18 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 			}
 		}
 	}, [mainScreen, client])
-	const clearQuery = useCallback(() => {
+	const clearQuery = () => {
 		client.store.currentRoomListQuery = ""
 		directSetQuery("")
 		searchInputRef.current?.focus()
-	}, [client.store])
-	useEffect(() => {
-		if (!query) return
-		const onCapture = (evt: KeyboardEvent) => {
-			if (evt.key !== "Escape") return
-			if ((evt.target as Element)?.closest?.(".overlay.modal")) return
-			evt.stopPropagation()
-			evt.preventDefault()
-			clearQuery()
-		}
-		document.addEventListener("keydown", onCapture, { capture: true })
-		return () => document.removeEventListener("keydown", onCapture, { capture: true })
-	}, [query, clearQuery])
+	}
 	const onKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
 		const key = keyToString(evt)
-		if (key === "Enter") {
+		if (key === "Escape") {
+			clearQuery()
+			evt.stopPropagation()
+			evt.preventDefault()
+		} else if (key === "Enter") {
 			const roomList = client.store.getFilteredRoomList()
 			mainScreen.setActiveRoom(roomList[roomList.length-1]?.room_id)
 			client.store.currentRoomListQuery = ""
@@ -145,7 +137,14 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
 	const roomListFilter = client.store.roomListFilterFunc
-	return <div className="room-list-wrapper">
+	const onWrapperKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+		if (keyToString(evt) === "Escape" && query !== "") {
+			clearQuery()
+			evt.stopPropagation()
+			evt.preventDefault()
+		}
+	}
+	return <div className="room-list-wrapper" onKeyDown={onWrapperKeyDown}>
 		<div className="room-search-wrapper">
 			<input
 				value={query}
