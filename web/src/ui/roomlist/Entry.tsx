@@ -28,6 +28,7 @@ import UnreadCount from "./UnreadCount.tsx"
 export interface RoomListEntryProps {
 	room: RoomListEntry
 	isActive: boolean
+	isSearchSelected: boolean
 	hidden: boolean
 	hideAvatar?: boolean
 }
@@ -78,7 +79,7 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previ
 	</>
 }
 
-const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
+const Entry = ({ room, isActive, isSearchSelected, hidden, hideAvatar }: RoomListEntryProps) => {
 	const [isVisible, divRef] = useContentVisibility<HTMLDivElement>()
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
@@ -106,7 +107,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	}
 	return <div
 		ref={divRef}
-		className={`room-entry ${isActive ? "active" : ""} ${hidden ? "hidden" : ""}`}
+		className={`room-entry ${isActive ? "active" : ""} ${isSearchSelected ? "search-selected" : ""} ${hidden ? "hidden" : ""}`}
 		onClick={mainScreen.clickRoom}
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
