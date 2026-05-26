@@ -46,6 +46,10 @@ export class RoomContextData {
 		}
 	}
 
+	get isThreadView() {
+		return !!this.threadRoot
+	}
+
 	scrollToBottom = () => {
 		if (this.scrolledToBottom) {
 			this.timelineBottomRef.current?.scrollIntoView()
