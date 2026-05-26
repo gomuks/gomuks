@@ -28,7 +28,7 @@ import UnreadCount from "./UnreadCount.tsx"
 export interface RoomListEntryProps {
 	room: RoomListEntry
 	isActive: boolean
-	isSearchSelected: boolean
+	isSearchSelected?: boolean
 	hidden: boolean
 	hideAvatar?: boolean
 }
