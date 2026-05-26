@@ -135,7 +135,9 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		if (key === "Enter") {
 			const roomList = client.store.getFilteredRoomList()
 			mainScreen.setActiveRoom(roomList[roomList.length-1]?.room_id)
-			clearQuery()
+			client.store.currentRoomListQuery = ""
+			directSetQuery("")
+			requestAnimationFrame(() => document.getElementById("message-composer")?.focus())
 			evt.stopPropagation()
 			evt.preventDefault()
 		}
