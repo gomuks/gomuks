@@ -51,14 +51,12 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
-	const [searchSelectedIndex, setSearchSelectedIndex] = useState<number | null>(null)
 	const [tabs, currentTabID, totalUnreads, switchTab] = useTabs()
 	const currentTabIndex = tabs.findIndex(t => t.id === currentTabID)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)
 		directSetQuery(evt.target.value)
-		setSearchSelectedIndex(null)
 	}
 	const openCreateRoom = () => {
 		openModal(modals.createRoom())
@@ -118,7 +116,6 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const clearQuery = useCallback(() => {
 		client.store.currentRoomListQuery = ""
 		directSetQuery("")
-		setSearchSelectedIndex(null)
 		searchInputRef.current?.focus()
 	}, [client.store])
 	useEffect(() => {
@@ -133,35 +130,13 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		document.addEventListener("keydown", onCapture, { capture: true })
 		return () => document.removeEventListener("keydown", onCapture, { capture: true })
 	}, [query, clearQuery])
-	useEffect(() => {
-		if (searchSelectedIndex === null) return
-		const filteredList = client.store.getFilteredRoomList()
-		const selectedRoom = filteredList[filteredList.length - 1 - searchSelectedIndex]
-		if (!selectedRoom) return
-		document.querySelector(`.room-entry[data-room-id="${CSS.escape(selectedRoom.room_id)}"]`)
-			?.scrollIntoView({ block: "nearest" })
-	}, [searchSelectedIndex, client.store])
-
 	const onKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
 		const key = keyToString(evt)
-		if (key === "ArrowDown") {
-			const filteredList = client.store.getFilteredRoomList()
-			if (filteredList.length > 0) {
-				setSearchSelectedIndex(prev => prev === null ? 0 : Math.min(prev + 1, filteredList.length - 1))
-			}
-			evt.preventDefault()
-		} else if (key === "ArrowUp") {
-			setSearchSelectedIndex(prev => (prev !== null && prev > 0) ? prev - 1 : 0)
-			evt.preventDefault()
-		} else if (key === "Enter") {
-			const filteredList = client.store.getFilteredRoomList()
-			const arrayIdx = searchSelectedIndex !== null
-				? filteredList.length - 1 - searchSelectedIndex
-				: filteredList.length - 1
-			mainScreen.setActiveRoom(filteredList[arrayIdx]?.room_id)
+		if (key === "Enter") {
+			const roomList = client.store.getFilteredRoomList()
+			mainScreen.setActiveRoom(roomList[roomList.length-1]?.room_id)
 			client.store.currentRoomListQuery = ""
 			directSetQuery("")
-			setSearchSelectedIndex(null)
 			requestAnimationFrame(() => document.getElementById("message-composer")?.focus())
 			evt.stopPropagation()
 			evt.preventDefault()
@@ -170,10 +145,6 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
 	const roomListFilter = client.store.roomListFilterFunc
-	const filteredRoomList = client.store.getFilteredRoomList()
-	const searchSelectedRoomID = searchSelectedIndex !== null && filteredRoomList.length > 0
-		? (filteredRoomList[filteredRoomList.length - 1 - searchSelectedIndex]?.room_id ?? null)
-		: null
 	return <div className="room-list-wrapper">
 		<div className="room-search-wrapper">
 			<input
@@ -244,7 +215,6 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				<Entry
 					key={room.room_id}
 					isActive={room.room_id === activeRoomID}
-					isSearchSelected={room.room_id === searchSelectedRoomID}
 					hidden={roomListFilter ? !roomListFilter(room) : false}
 					room={room}
 					hideAvatar={room.is_invite && !showInviteAvatars}

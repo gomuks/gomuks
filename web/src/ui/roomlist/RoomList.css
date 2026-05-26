@@ -147,10 +147,6 @@ div.room-entry {
 		background-color: var(--room-list-entry-selected-color);
 	}
 
-	&.search-selected {
-		background-color: var(--room-list-entry-hover-color);
-	}
-
 	> div.room-entry-left {
 		height: 3rem;
 		width: 3rem;
