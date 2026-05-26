@@ -84,7 +84,7 @@ export const ReplyBody = ({
 	timelineThreadMsg, reactions,
 	isSilent, onSetSilent,
 	isExplicitInThread, onSetExplicitInThread,
-	onSetStartNewThread,
+	startNewThread, onSetStartNewThread,
 }: ReplyBodyProps) => {
 	const room = roomCtx.store
 	const client = use(ClientContext)
@@ -185,6 +185,7 @@ export const ReplyBody = ({
 					<TooltipButton
 						tooltipText="Reply in main timeline"
 						tooltipDirection="left"
+						className={!startNewThread ? "mode-active" : undefined}
 						onClick={evt => { evt.stopPropagation(); onSetStartNewThread(false) }}
 					>
 						<ReplyIcon />
@@ -192,6 +193,7 @@ export const ReplyBody = ({
 					<TooltipButton
 						tooltipText="Start new thread"
 						tooltipDirection="left"
+						className={startNewThread ? "mode-active" : undefined}
 						onClick={evt => { evt.stopPropagation(); onSetStartNewThread(true) }}
 					>
 						<ThreadIcon />

@@ -142,7 +142,10 @@ blockquote.reply-body {
 					width: 24px;
 				}
 
+				&.mode-active {
+					background-color: var(--timeline-hover-bg-color);
 				}
+			}
 		}
 	}
 
