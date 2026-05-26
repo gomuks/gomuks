@@ -19,7 +19,7 @@ import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
-import { getDisplayname, getRelatesTo, getServerName } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getServerName, getThreadRoot } from "@/util/validation.ts"
 import {
 	ContentURI,
 	DBReceipt,
@@ -97,8 +97,8 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 	if (!threadRoot) {
 		return false
 	}
-	const rel = getRelatesTo(evt)
-	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
+	const expectedRoot = getThreadRoot(getRelatesTo(evt))
+	return !!expectedRoot && expectedRoot === threadRoot
 }
 
 export const fakeGomuksSender: UserID = "@gomuks"

@@ -25,7 +25,7 @@ import {
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
@@ -198,8 +198,7 @@ const TimelineEvent = ({
 	const relatesTo = getRelatesTo(evt)
 	const replyTo = relatesTo?.["m.in_reply_to"]?.event_id
 	const isFallbackReply = relatesTo?.is_falling_back
-	const threadRoot = relatesTo?.rel_type === "m.thread" && isEventID(relatesTo.event_id)
-		? relatesTo.event_id : undefined
+	const threadRoot = getThreadRoot(relatesTo)
 	const isSmallThreadMessage = Boolean(threadRoot && smallThreads)
 	const BodyType = getBodyType(evt, isRedacted, isSmallThreadMessage)
 	if (evt.unread_type & UnreadType.Highlight) {
@@ -259,7 +258,7 @@ const TimelineEvent = ({
 		const replyElem = <ReplyIDBody
 			roomCtx={roomCtx}
 			eventID={replyTo}
-			isThread={viewType !== "thread" && relatesTo?.rel_type === "m.thread"}
+			isThread={viewType !== "thread" && isThread(relatesTo)}
 			threadRoot={threadRoot}
 			small={!!smallReplies}
 		/>
@@ -295,7 +294,7 @@ const TimelineEvent = ({
 	}
 	if (isSmallThreadMessage) {
 		const prevRelatesTo = getRelatesTo(prevEvt)
-		if (dateSeparator === null && prevRelatesTo?.rel_type === "m.thread" && prevRelatesTo.event_id === threadRoot) {
+		if (dateSeparator === null && getThreadRoot(prevRelatesTo) === threadRoot) {
 			wrapperClassNames.push("same-thread")
 		}
 		wrapperClassNames.push("small-thread-message")

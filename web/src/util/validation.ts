@@ -48,6 +48,14 @@ export function getRelatesTo(evt?: MemDBEvent | null): RelatesTo | undefined {
 	return (evt.orig_content ?? evt.content)?.["m.relates_to"] as RelatesTo | undefined
 }
 
+export function getThreadRoot(rel: RelatesTo | undefined): EventID | undefined {
+	return rel?.rel_type === "m.thread" && isEventID(rel.event_id) ? rel.event_id : undefined
+}
+
+export function isThread(rel: RelatesTo | undefined): boolean {
+	return !!getThreadRoot(rel)
+}
+
 export interface ParsedMatrixURI {
 	identifier: UserID | RoomID | RoomAlias
 	eventID?: EventID

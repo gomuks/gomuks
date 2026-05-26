@@ -46,7 +46,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getRelatesTo, getServerName, isEventID } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, getThreadRoot, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -285,10 +285,8 @@ const MessageComposer = () => {
 			}
 		} else if (replyToEvt) {
 			const replyToEvtRelation = getRelatesTo(replyToEvt)
-			const isThread = !roomCtx.threadRoot
-				&& replyToEvtRelation?.rel_type === "m.thread"
-				&& isEventID(replyToEvtRelation?.event_id)
-			if (!state.silentReply && (!isThread || state.explicitReplyInThread)) {
+			const replyToThreadRoot = !roomCtx.threadRoot ? getThreadRoot(replyToEvtRelation) : undefined
+			if (!state.silentReply && (!replyToThreadRoot || state.explicitReplyInThread)) {
 				mentions.user_ids.push(replyToEvt.sender)
 			}
 			if (!relates_to) {
@@ -299,9 +297,9 @@ const MessageComposer = () => {
 			}
 			if (roomCtx.threadRoot) {
 				relates_to.is_falling_back = false
-			} else if (isThread) {
+			} else if (replyToThreadRoot) {
 				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToEvtRelation.event_id
+				relates_to.event_id = replyToThreadRoot
 				relates_to.is_falling_back = !state.explicitReplyInThread
 			} else if (state.startNewThread) {
 				relates_to.rel_type = "m.thread"
@@ -970,7 +968,7 @@ const MessageComposer = () => {
 				roomCtx={roomCtx}
 				event={replyToEvt}
 				onClose={closeReply}
-				isThread={!roomCtx.threadRoot && getRelatesTo(replyToEvt)?.rel_type === "m.thread"}
+				isThread={!roomCtx.threadRoot && isThread(getRelatesTo(replyToEvt))}
 				isSilent={state.silentReply}
 				onSetSilent={setSilentReply}
 				isExplicitInThread={state.explicitReplyInThread}
