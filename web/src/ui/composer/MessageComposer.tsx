@@ -46,7 +46,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getRelatesTo, getServerName, getThreadRoot, isThread } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -96,8 +96,6 @@ export interface ComposerState {
 	replyTo: EventID | null
 	mentionRoom: boolean
 	silentReply: boolean
-	explicitReplyInThread: boolean
-	startNewThread: boolean
 	uninited?: boolean
 }
 
@@ -114,8 +112,6 @@ const emptyComposer: ComposerState = {
 	replyTo: null,
 	mentionRoom: true,
 	silentReply: false,
-	explicitReplyInThread: false,
-	startNewThread: false,
 }
 const uninitedComposer: ComposerState = { ...emptyComposer, uninited: true }
 const composerReducer = (
@@ -183,7 +179,7 @@ const MessageComposer = () => {
 		document.execCommand("insertText", false, text)
 	}, [])
 	roomCtx.setReplyTo = useCallback((evt: EventID | null) => {
-		setState({ replyTo: evt, silentReply: false, explicitReplyInThread: false, startNewThread: false })
+		setState({ replyTo: evt, silentReply: false })
 		textInput.current?.focus()
 	}, [])
 	const setSilentReply = useCallback((newVal: boolean | React.MouseEvent) => {
@@ -192,22 +188,6 @@ const MessageComposer = () => {
 		} else {
 			newVal.stopPropagation()
 			setState(state => ({ silentReply: !state.silentReply }))
-		}
-	}, [])
-	const setExplicitReplyInThread = useCallback((newVal: boolean | React.MouseEvent) => {
-		if (typeof newVal === "boolean") {
-			setState({ explicitReplyInThread: newVal })
-		} else {
-			newVal.stopPropagation()
-			setState(state => ({ explicitReplyInThread: !state.explicitReplyInThread }))
-		}
-	}, [])
-	const setStartNewThread = useCallback((newVal: boolean | React.MouseEvent) => {
-		if (typeof newVal === "boolean") {
-			setState({ startNewThread: newVal })
-		} else {
-			newVal.stopPropagation()
-			setState(state => ({ startNewThread: !state.startNewThread }))
 		}
 	}, [])
 	roomCtx.setEditing = useCallback((evt: MemDBEvent | null) => {
@@ -234,8 +214,6 @@ const MessageComposer = () => {
 				: "",
 			replyTo: null,
 			silentReply: false,
-			explicitReplyInThread: false,
-			startNewThread: false,
 			command: null,
 			previews:
 				evt.content["m.url_previews"] ??
@@ -284,9 +262,7 @@ const MessageComposer = () => {
 				event_id: editing.event_id,
 			}
 		} else if (replyToEvt) {
-			const replyToEvtRelation = getRelatesTo(replyToEvt)
-			const replyToThreadRoot = !roomCtx.threadRoot ? getThreadRoot(replyToEvtRelation) : undefined
-			if (!state.silentReply && (!replyToThreadRoot || state.explicitReplyInThread)) {
+			if (!state.silentReply) {
 				mentions.user_ids.push(replyToEvt.sender)
 			}
 			if (!relates_to) {
@@ -297,14 +273,6 @@ const MessageComposer = () => {
 			}
 			if (roomCtx.threadRoot) {
 				relates_to.is_falling_back = false
-			} else if (replyToThreadRoot) {
-				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToThreadRoot
-				relates_to.is_falling_back = !state.explicitReplyInThread
-			} else if (state.startNewThread) {
-				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToEvt.event_id
-				relates_to.is_falling_back = true
 			}
 		}
 		let base_content: MessageEventContent | undefined
@@ -971,10 +939,6 @@ const MessageComposer = () => {
 				isThread={!roomCtx.threadRoot && isThread(getRelatesTo(replyToEvt))}
 				isSilent={state.silentReply}
 				onSetSilent={setSilentReply}
-				isExplicitInThread={state.explicitReplyInThread}
-				onSetExplicitInThread={!roomCtx.threadRoot ? setExplicitReplyInThread : undefined}
-				startNewThread={state.startNewThread}
-				onSetStartNewThread={!roomCtx.threadRoot ? setStartNewThread : undefined}
 			/>}
 			{editing && <ReplyBody
 				roomCtx={roomCtx}

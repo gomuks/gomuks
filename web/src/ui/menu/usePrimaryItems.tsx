@@ -142,7 +142,7 @@ export const usePrimaryItems = (
 			<ReactIcon/>
 			{names && "React"}
 		</button>}
-		{canSend && <button
+		{canSend && (!threadRoot || roomCtx.isThreadView) && <button
 			disabled={isEditing || isPending}
 			title={isEditing ? "Can't reply to messages while editing a message" : pendingTitle}
 			onClick={onClickReply}

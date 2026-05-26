@@ -34,7 +34,6 @@ import CloseIcon from "@/icons/close.svg?react"
 import EditIcon from "@/icons/edit.svg?react"
 import NotificationsOffIcon from "@/icons/notifications-off.svg?react"
 import NotificationsIcon from "@/icons/notifications.svg?react"
-import ReplyIcon from "@/icons/reply.svg?react"
 import ThreadIcon from "@/icons/thread.svg?react"
 import "./ReplyBody.css"
 
@@ -50,10 +49,6 @@ interface ReplyBodyProps {
 	onClose?: (evt: React.MouseEvent) => void
 	isSilent?: boolean
 	onSetSilent?: (evt: React.MouseEvent) => void
-	isExplicitInThread?: boolean
-	onSetExplicitInThread?: (evt: React.MouseEvent) => void
-	startNewThread?: boolean
-	onSetStartNewThread?: (evt: React.MouseEvent) => void
 }
 
 interface ReplyIDBodyProps {
@@ -83,8 +78,6 @@ export const ReplyBody = ({
 	roomCtx, event, onClose, isThread, threadRoot, isEditing, small,
 	timelineThreadMsg, reactions,
 	isSilent, onSetSilent,
-	isExplicitInThread, onSetExplicitInThread,
-	startNewThread, onSetStartNewThread,
 }: ReplyBodyProps) => {
 	const room = roomCtx.store
 	const client = use(ClientContext)
@@ -161,7 +154,7 @@ export const ReplyBody = ({
 				</span>
 			</div>}
 			{onClose && <div className="buttons">
-				{onSetSilent && (isExplicitInThread || !isThread) && <TooltipButton
+				{onSetSilent && <TooltipButton
 					tooltipText={isSilent
 						? "Click to enable pinging the original author"
 						: "Click to disable pinging the original author"}
@@ -170,26 +163,6 @@ export const ReplyBody = ({
 					onClick={onSetSilent}
 				>
 					{isSilent ? <NotificationsOffIcon /> : <NotificationsIcon />}
-				</TooltipButton>}
-				{isThread && onSetExplicitInThread && <TooltipButton
-					tooltipText={isExplicitInThread
-						? "Click to respond in thread without replying to a specific message"
-						: "Click to reply explicitly in thread"}
-					tooltipDirection="left"
-					className="thread-explicit-reply"
-					onClick={onSetExplicitInThread}
-				>
-					{isExplicitInThread ? <ReplyIcon /> : <ThreadIcon />}
-				</TooltipButton>}
-				{!isThread && onSetStartNewThread && <TooltipButton
-					tooltipText={startNewThread
-						? "Click to reply in main timeline instead of starting a new thread"
-						: "Click to start a new thread instead of replying"}
-					tooltipDirection="left"
-					className="thread-explicit-reply"
-					onClick={onSetStartNewThread}
-				>
-					{startNewThread ? <ThreadIcon /> : <ReplyIcon />}
 				</TooltipButton>}
 				{onClose && <button className="close-reply" onClick={onClose}><CloseIcon/></button>}
 			</div>}
