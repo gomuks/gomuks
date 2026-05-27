@@ -259,26 +259,41 @@ var (
 
 // FFI-specific command specs
 var (
-	SpecGetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
-	SpecUploadMedia    = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
-	SpecExportKeys     = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
+	// GetAccountInfo returns the homeserver URL and access token for the active login.
+	GetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
+	// UploadMedia uploads a file on the local disk to the server and returns the m.room.message to use in `send_message`.
+	UploadMedia = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
+	// ExportKeys exports megolm room keys and returns the exported file as a string.
+	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
 )
 
 // Backend -> frontend event specs
 var (
-	SpecSyncComplete    = &EventSpec[*SyncComplete]{Name: EventSyncComplete}
-	SpecSyncStatus      = &EventSpec[*SyncStatus]{Name: EventSyncStatus}
+	// SpecSyncComplete is emitted after a /sync request has been fully processed and stored.
+	// This is also used for sending the room list to the client when first connecting.
+	SpecSyncComplete = &EventSpec[*SyncComplete]{Name: EventSyncComplete}
+	// SpecSyncStatus is emitted if the /sync loop starts or stops erroring.
+	SpecSyncStatus = &EventSpec[*SyncStatus]{Name: EventSyncStatus}
+	// SpecEventsDecrypted is emitted when one or more events were decrypted after initially failing to decrypt.
 	SpecEventsDecrypted = &EventSpec[*EventsDecrypted]{Name: EventEventsDecrypted}
-	SpecTyping          = &EventSpec[*Typing]{Name: EventTyping}
-	SpecSendComplete    = &EventSpec[*SendComplete]{Name: EventSendComplete}
-	SpecClientState     = &EventSpec[*ClientState]{Name: EventClientState}
+	// SpecTyping is emitted when new typing notifications are received in a room.
+	SpecTyping = &EventSpec[*Typing]{Name: EventTyping}
+	// SpecSendComplete is emitted when a previously started message send has completed.
+	// Both successes and failures can be reported this way.
+	SpecSendComplete = &EventSpec[*SendComplete]{Name: EventSendComplete}
+	// SpecClientState is emitted when the client login state or global profile changes.
+	SpecClientState = &EventSpec[*ClientState]{Name: EventClientState}
+	// SpecInitComplete is emitted after all post-connect payloads have been dispatched.
+	SpecInitComplete = &EventSpec[InitComplete]{Name: EventInitComplete}
 )
 
 // Websocket-specific backend -> frontend event specs
 var (
+	// SpecImageAuthToken is emitted in websocket mode every 30 minutes,
+	// containing a short-lived token for image/media requests.
 	SpecImageAuthToken = &EventSpec[ImageAuthToken]{Name: EventImageAuthToken}
-	SpecInitComplete   = &EventSpec[InitComplete]{Name: EventInitComplete}
-	SpecRunID          = &EventSpec[*RunData]{Name: EventRunID}
+	// SpecRunID is emitted to identify the current backend process and some additional metadata.
+	SpecRunID = &EventSpec[*RunData]{Name: EventRunID}
 )
 
 var AllNames = []Name{

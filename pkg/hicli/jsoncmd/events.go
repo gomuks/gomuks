@@ -178,7 +178,12 @@ type ImageAuthToken string
 type InitComplete struct{}
 
 type RunData struct {
-	RunID    string `json:"run_id"`
-	ETag     string `json:"etag"`
+	// RunID is a random string that changes whenever the backend is restarted.
+	// This is sent with the last received event ID when resuming connections, as resume data is only stored in memory.
+	RunID string `json:"run_id"`
+	// ETag is a hash of the frontend. If the ETag meta value in index.html doesn't match this,
+	// the web interface will reload itself to update. Non-web clients don't need to care about this.
+	ETag string `json:"etag"`
+	// VAPIDKey is the server key used for web push sent by the gomuks backend.
 	VAPIDKey string `json:"vapid_key"`
 }

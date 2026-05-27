@@ -233,7 +233,7 @@ func gomuksUploadMediaAny(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, 
 		panic(fmt.Errorf("GomuksSubmitCommand called before GomuksStart"))
 	}
 	reqData := borrowBufferBytes(params)
-	return containerToResponse(wrapFFIResponse(jsoncmd.SpecUploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
+	return containerToResponse(wrapFFIResponse(jsoncmd.UploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
 		var reader io.Reader
 		if direct != nil {
 			reader = bytes.NewReader(direct)
@@ -252,11 +252,11 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 	case jsoncmd.ReqGetAccountInfo:
 		return wrapFFIResponse(gmx.Client.Account, nil)
 	case jsoncmd.ReqUploadMedia:
-		return wrapFFIResponse(jsoncmd.SpecUploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
+		return wrapFFIResponse(jsoncmd.UploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
 			return gmx.CacheAndUploadMedia(gmx.ctx, nil, *params, nil)
 		}))
 	case jsoncmd.ReqExportKeys:
-		return wrapFFIResponse(jsoncmd.SpecExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {
+		return wrapFFIResponse(jsoncmd.ExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {
 			var sessions dbutil.RowIter[*crypto.InboundGroupSession]
 			if params.RoomID == "" {
 				sessions = gmx.Client.CryptoStore.GetAllGroupSessions(gmx.ctx)
