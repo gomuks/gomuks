@@ -475,8 +475,8 @@ export class RoomStateStore {
 		if (viewRedacted) {
 			memEvt.viewing_redacted = true
 		}
-		if (evt.type === "m.room.encrypted" && evt.decrypted && evt.decrypted_type) {
-			memEvt.type = evt.decrypted_type
+		if (evt.type === "m.room.encrypted" && evt.decrypted) {
+			memEvt.type = evt.decrypted_type ?? ""
 			memEvt.encrypted = evt.content as EncryptedEventContent
 			memEvt.content = evt.decrypted
 		}
