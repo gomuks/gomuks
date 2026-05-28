@@ -711,9 +711,18 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		respEnc = json.NewEncoder(w)
 		lastFlush := time.Now()
 		var progressLock sync.Mutex
+		var done bool
+		defer func() {
+			progressLock.Lock()
+			done = true
+			progressLock.Unlock()
+		}()
 		updateInterval := 250 * time.Millisecond
 		realProgressCallback := func(progress float64) {
 			defer progressLock.Unlock()
+			if r.Context().Err() != nil || done {
+				return
+			}
 			start := time.Now()
 			_ = respEnc.Encode(progress)
 			w.(http.Flusher).Flush()
