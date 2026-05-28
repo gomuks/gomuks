@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"html"
 	"image"
+	"image/color"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
@@ -180,12 +181,29 @@ func (gmx *Gomuks) saveMediaCacheEntryWithThumbnail(ctx context.Context, entry *
 	}
 }
 
-func decodeImageWithOrientationFix(file *os.File) (image.Image, error) {
+func BytesPerPixel(cm color.Model) int {
+	switch cm {
+	case color.GrayModel:
+		return 1
+	case color.Gray16Model:
+		return 2
+	case color.YCbCrModel:
+		return 3
+	case color.RGBAModel, color.NRGBAModel, color.CMYKModel, color.NYCbCrAModel:
+		return 4
+	case color.RGBA64Model, color.NRGBA64Model:
+		return 8
+	default:
+		return 16
+	}
+}
+
+func decodeImageWithOrientationFix(file *os.File, maxDecodeMemory int) (image.Image, error) {
 	cfg, decodedFrom, err := image.DecodeConfig(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image config: %w", err)
-	} else if cfg.Width > 25000 || cfg.Height > 25000 {
-		return nil, fmt.Errorf("image dimensions too large: %dx%d", cfg.Width, cfg.Height)
+	} else if cfg.Width > 20000 || cfg.Height > 20000 || cfg.Width*cfg.Height*BytesPerPixel(cfg.ColorModel) > maxDecodeMemory {
+		return nil, fmt.Errorf("image dimensions too large: %dx%d (color model: %T)", cfg.Width, cfg.Height, cfg.ColorModel)
 	}
 	_, err = file.Seek(0, io.SeekStart)
 	if err != nil {
@@ -230,12 +248,14 @@ var decodeAnimatedWebp = func(data io.Reader) (image.Image, error) {
 	return nil, fmt.Errorf("animated webp decoding not implemented")
 }
 
+const maxAvatarDecodeMemory = 128 * 1024 * 1024
+
 func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) error {
 	cacheFile, err := os.Open(gmx.cacheEntryToPath(entry.Hash[:]))
 	if err != nil {
 		return fmt.Errorf("failed to open full file: %w", err)
 	}
-	img, err := decodeImageWithOrientationFix(cacheFile)
+	img, err := decodeImageWithOrientationFix(cacheFile, maxAvatarDecodeMemory)
 	if err != nil {
 		return err
 	}
@@ -551,6 +571,8 @@ func (gmx *Gomuks) DownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const maxUploadDecodeMemory = 512 * 1024 * 1024
+
 func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMediaParams, tempFile *os.File) ([]byte, error) {
 	defer func() {
 		_ = tempFile.Close()
@@ -567,7 +589,7 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMedia
 		if params.Quality == 0 {
 			params.Quality = 80
 		}
-		decoded, err := decodeImageWithOrientationFix(tempFile)
+		decoded, err := decodeImageWithOrientationFix(tempFile, maxUploadDecodeMemory)
 		if err != nil {
 			return nil, err
 		}
