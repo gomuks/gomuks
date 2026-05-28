@@ -260,10 +260,13 @@ var (
 // FFI-specific command specs
 var (
 	// GetAccountInfo returns the homeserver URL and access token for the active login.
+	// This is only available in the C FFI. HTTP clients aren't allowed to read the client's access token.
 	GetAccountInfo = &CommandSpecWithoutRequest[*database.Account]{Name: ReqGetAccountInfo}
 	// UploadMedia uploads a file on the local disk to the server and returns the m.room.message to use in `send_message`.
+	// This is only available in the C FFI. HTTP clients must use the /upload API.
 	UploadMedia = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
+	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
 )
 
