@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ .Title }}</title>
 <style>
   :root {
@@ -43,6 +44,7 @@
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
     min-height: 100vh;
+    width: 100%;
   }
   nav.sidebar {
     border-right: 1px solid var(--border);
@@ -75,6 +77,8 @@
   main {
     padding: 2rem 2.5rem 6rem;
     max-width: 960px;
+    min-width: 0;
+    box-sizing: border-box;
   }
   h1 { margin-top: 0; }
   section.cmd-section { margin-bottom: 3rem; }
@@ -90,23 +94,27 @@
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 1.1rem;
   }
-  article.entry h3 .varname {
-    color: var(--muted);
-    font-weight: normal;
-    font-size: 0.85rem;
-    margin-left: 0.5rem;
-  }
   article.entry .doc { margin-bottom: 1rem; }
   article.entry .doc p:first-child { margin-top: 0; }
   article.entry .doc p:last-child { margin-bottom: 0; }
   article.entry .doc code,
   article.entry .schema code,
+  article.entry .schema .type-label,
   article.entry .schema .type-expr {
     background: var(--code-bg);
     padding: 0.05rem 0.35rem;
     border-radius: 3px;
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 0.88em;
+    overflow-wrap: anywhere;
+  }
+  article.entry .schema .type-label .type-expr {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font: inherit;
+    font-size: inherit;
+    overflow-wrap: inherit;
   }
   article.entry .doc pre {
     background: var(--code-bg);
@@ -138,6 +146,7 @@
     list-style: none;
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 0.92rem;
+    overflow-x: auto;
   }
   details.schema > summary::-webkit-details-marker { display: none; }
   details.schema > summary::before {
@@ -200,7 +209,34 @@
   .anchor-link { color: var(--muted); text-decoration: none; margin-left: 0.5rem; opacity: 0; transition: opacity 0.1s; }
   article.entry h3:hover .anchor-link { opacity: 1; }
   .recursive-marker { color: var(--muted); font-style: italic; margin-left: 0.5rem; font-size: 0.8em; }
+  .underlying-type { color: var(--muted); font-size: 0.9em; margin-left: 0.25rem; }
   .nested-schema { margin-top: 0.4rem; }
+  @media (max-width: 820px) {
+    .layout {
+      display: block;
+    }
+    nav.sidebar {
+      display: none;
+    }
+    main {
+      max-width: none;
+      padding: 1rem 0.85rem 4rem;
+    }
+    article.entry {
+      padding: 1rem;
+      border-radius: 6px;
+    }
+    details.schema .field-list > li {
+      padding-left: 0.75rem;
+    }
+    .field-header {
+      align-items: flex-start;
+      gap: 0.35rem 0.5rem;
+    }
+    .schema-leaf {
+      overflow-x: auto;
+    }
+  }
 </style>
 </head>
 <body>
@@ -223,7 +259,6 @@
           <article class="entry" id="{{ .Anchor }}">
             <h3>
               {{ .CmdName }}
-              <span class="varname">{{ .VarName }}</span>
               <a class="anchor-link" href="#{{ .Anchor }}">#</a>
             </h3>
             <div class="doc">{{ .Doc }}</div>
@@ -264,31 +299,48 @@
     {{ end }}
   {{ else if and (eq .Kind "named") .Fields }}
     <details class="schema">
-      <summary>
-        {{ template "typelabel" . }}
-        <span class="field-type">({{ len .Fields }} field{{ if ne (len .Fields) 1 }}s{{ end }})</span>
-      </summary>
+      <summary>{{ template "typelabel" . }}<span class="field-type">({{ len .Fields }} field{{ if ne (len .Fields) 1 }}s{{ end }})</span></summary>
       <ul class="field-list">
         {{ range .Fields }}
           {{ template "field" . }}
         {{ end }}
       </ul>
     </details>
+  {{ else if and (eq .Kind "named") .EmptyStruct }}
+    <div class="schema-leaf">{{ template "typelabel" . }} <span class="field-type">(empty object)</span></div>
   {{ else if or (eq .Kind "slice") (eq .Kind "array") }}
-    {{ if hasInline . }}
+    {{ $fields := flattenedFields . }}
+    {{ if $fields }}
       <details class="schema">
-        <summary><span class="type-expr">[{{ .ArrayLen }}]</span>{{ template "typelabel-inline" .Elem }}</summary>
+        <summary>{{ template "typelabel" . }}<span class="field-type">({{ len $fields }} field{{ if ne (len $fields) 1 }}s{{ end }} per {{ flattenedFieldUnit . }})</span></summary>
+        <ul class="field-list">
+          {{ range $fields }}
+            {{ template "field" . }}
+          {{ end }}
+        </ul>
+      </details>
+    {{ else if hasInline . }}
+      <details class="schema">
+        <summary>{{ template "typelabel" . }}</summary>
         <div class="nested-schema">{{ template "typeref" .Elem }}</div>
       </details>
     {{ else }}
       <div class="schema-leaf">{{ template "typelabel" . }}</div>
     {{ end }}
   {{ else if eq .Kind "map" }}
-    {{ if hasInline . }}
+    {{ $fields := flattenedFields . }}
+    {{ if $fields }}
       <details class="schema">
-        <summary>
-          <span class="type-expr">map[</span>{{ template "typelabel-inline" .Key }}<span class="type-expr">]</span>{{ template "typelabel-inline" .Elem }}
-        </summary>
+        <summary>{{ template "typelabel" . }}<span class="field-type">({{ len $fields }} field{{ if ne (len $fields) 1 }}s{{ end }} per {{ flattenedFieldUnit . }})</span></summary>
+        <ul class="field-list">
+          {{ range $fields }}
+            {{ template "field" . }}
+          {{ end }}
+        </ul>
+      </details>
+    {{ else if hasInline . }}
+      <details class="schema">
+        <summary>{{ template "typelabel" . }}</summary>
         <div class="nested-schema">{{ template "typeref" .Elem }}</div>
       </details>
     {{ else }}
@@ -299,15 +351,14 @@
   {{ end }}
 {{ end }}
 
-{{ define "typelabel" }}
-  {{ template "typelabel-inline" . }}
-{{ end }}
+{{ define "typelabel" -}}<span class="type-label">{{ template "typelabel-inline" . }}</span>{{- end }}
 
 {{ define "typelabel-inline" }}
   {{- if eq .Kind "basic" -}}
     <span class="type-expr">{{ .Display }}</span>
   {{- else if eq .Kind "named" -}}
-    <span class="type-expr">{{- if .PkgAlias -}}{{ .PkgAlias }}.{{- end -}}<a href="{{ .Link }}" target="_blank" rel="noreferrer">{{ .Name }}</a>{{- if .TypeArgs -}}[{{- range $i, $a := .TypeArgs -}}{{- if $i -}}, {{ end -}}{{- template "typelabel-inline" $a -}}{{- end -}}]{{- end -}}</span>
+    <span class="type-expr"><a href="{{ .Link }}" target="_blank" rel="noreferrer">{{- if .PkgAlias -}}{{ .PkgAlias }}.{{- end -}}{{ .Name }}</a>{{- if .TypeArgs -}}[{{- range $i, $a := .TypeArgs -}}{{- if $i -}}, {{ end -}}{{- template "typelabel-inline" $a -}}{{- end -}}]{{- end -}}</span>
+    {{- if .Underlying }}<span class="underlying-type">({{ .Underlying }})</span>{{ end -}}
     {{- if .Recursive }}<span class="recursive-marker">(recursive)</span>{{ end -}}
   {{- else if eq .Kind "slice" -}}
     <span class="type-expr">[]</span>{{ template "typelabel-inline" .Elem }}
@@ -328,7 +379,7 @@
   <li>
     <div class="field-header">
       <span class="field-name{{ if .Embedded }} embedded{{ end }}">{{ .JSONName }}</span>
-      <span class="field-type">{{ template "typelabel-inline" .Type }}</span>
+      <span class="field-type">{{ template "typelabel" .Type }}</span>
       {{ if .Optional }}<span class="tag optional">optional</span>{{ end }}
       {{ if .Embedded }}<span class="tag">embedded</span>{{ end }}
     </div>

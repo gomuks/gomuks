@@ -32,7 +32,6 @@ type Section struct {
 // Entry is one CommandSpec or EventSpec rendered to the page.
 type Entry struct {
 	CmdName     string // the on-wire string name, e.g. "get_state"
-	VarName     string // the Go variable name, e.g. "GetState"
 	Doc         template.HTML
 	Request     *TypeRef // may be nil
 	Response    *TypeRef // may be nil
@@ -60,7 +59,6 @@ func (g *generator) buildPage(specs []*rawSpec) *Page {
 	for _, rs := range specs {
 		entry := &Entry{
 			CmdName: rs.cmdName,
-			VarName: rs.varName,
 			IsEvent: rs.kind.isEvent(),
 			Anchor:  anchorFor(rs.cmdName),
 		}
@@ -142,6 +140,12 @@ var pageTemplate = template.Must(
 	template.New("page").
 		Funcs(template.FuncMap{
 			"hasInline": func(t *TypeRef) bool { return t.HasInlineStruct() },
+			"flattenedFields": func(t *TypeRef) []*Field {
+				return t.FlattenedFields()
+			},
+			"flattenedFieldUnit": func(t *TypeRef) string {
+				return t.FlattenedFieldUnit()
+			},
 		}).
 		Parse(pageTemplateSource),
 )

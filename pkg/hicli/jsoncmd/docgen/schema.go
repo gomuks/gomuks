@@ -16,19 +16,21 @@ import (
 
 // TypeRef is the rendered shape of a Go type, ready for the HTML template.
 type TypeRef struct {
-	Kind       string // basic, named, slice, array, map, struct, interface, func, chan, ellipsis, unknown
-	Name       string
-	PkgAlias   string // empty when in jsoncmd itself
-	ImportPath string
-	Link       string // pkg.go.dev URL, or empty for basic types
-	InModule   bool   // true if Link points inside this module
-	Elem       *TypeRef
-	Key        *TypeRef
-	ArrayLen   string
-	TypeArgs   []*TypeRef // for generic instances
-	Fields     []*Field   // inline-expanded struct fields, when applicable
-	Recursive  bool       // we hit a cycle and stopped expanding here
-	Display    string     // fallback text for kinds we don't structure further
+	Kind        string // basic, named, slice, array, map, struct, interface, func, chan, ellipsis, unknown
+	Name        string
+	PkgAlias    string // empty when in jsoncmd itself
+	ImportPath  string
+	Link        string // pkg.go.dev URL, or empty for basic types
+	InModule    bool   // true if Link points inside this module
+	Elem        *TypeRef
+	Key         *TypeRef
+	ArrayLen    string
+	TypeArgs    []*TypeRef // for generic instances
+	Fields      []*Field   // inline-expanded struct fields, when applicable
+	EmptyStruct bool       // true when a named struct resolved to an empty object
+	Recursive   bool       // we hit a cycle and stopped expanding here
+	Underlying  string     // underlying JSON-ish type for named aliases, e.g. string
+	Display     string     // fallback text for kinds we don't structure further
 }
 
 // Field is one struct field as it appears in the rendered schema.
@@ -54,11 +56,56 @@ func (t *TypeRef) HasInlineStruct() bool {
 	case "named":
 		return len(t.Fields) > 0
 	case "slice", "array":
-		return t.Elem.HasInlineStruct()
+		return t.Elem != nil && t.Elem.HasInlineStruct()
 	case "map":
-		return t.Elem.HasInlineStruct()
+		return t.Elem != nil && t.Elem.HasInlineStruct()
 	}
 	return false
+}
+
+// DirectFields returns fields directly attached to this type, without walking
+// through containers. The template uses this to flatten arrays of structs.
+func (t *TypeRef) DirectFields() []*Field {
+	if t == nil {
+		return nil
+	}
+	switch t.Kind {
+	case "struct", "named":
+		return t.Fields
+	}
+	return nil
+}
+
+// FlattenedFields returns fields that can be shown directly when a collection
+// type is opened. It unwraps containers until it reaches a struct-like value.
+func (t *TypeRef) FlattenedFields() []*Field {
+	if t == nil {
+		return nil
+	}
+	if fields := t.DirectFields(); len(fields) > 0 {
+		return fields
+	}
+	switch t.Kind {
+	case "slice", "array", "map":
+		return t.Elem.FlattenedFields()
+	}
+	return nil
+}
+
+func (t *TypeRef) FlattenedFieldUnit() string {
+	if t == nil {
+		return "value"
+	}
+	switch t.Kind {
+	case "slice", "array":
+		return "item"
+	case "map":
+		if t.Elem != nil && (t.Elem.Kind == "slice" || t.Elem.Kind == "array") {
+			return "value item"
+		}
+		return "value"
+	}
+	return "value"
 }
 
 // goBuiltins are the predeclared identifiers we treat as basic types (no link).
@@ -69,6 +116,37 @@ var goBuiltins = map[string]bool{
 	"float32": true, "float64": true,
 	"complex64": true, "complex128": true,
 	"error": true, "any": true,
+}
+
+var noInlineTypes = map[string]bool{
+	"maunium.net/go/mautrix/event.MessageEventContent": true,
+	"maunium.net/go/mautrix/event.Unsigned":            true,
+}
+
+var customJSONTypeUnderlying = map[string]string{
+	"encoding/json.RawMessage": "arbitrary JSON",
+
+	"maunium.net/go/mautrix/event.Type":    "string",
+	"maunium.net/go/mautrix/event.Content": "arbitrary JSON object",
+	"maunium.net/go/mautrix/id.ContentURI": "string",
+	"maunium.net/go/mautrix/id.TrustState": "string",
+
+	"maunium.net/go/mautrix.Direction": "string, 1 character",
+
+	"go.mau.fi/util/jsontime.Unix":      "int64",
+	"go.mau.fi/util/jsontime.UnixMilli": "int64",
+	"go.mau.fi/util/jsontime.UnixMicro": "int64",
+	"go.mau.fi/util/jsontime.UnixNano":  "int64",
+
+	"go.mau.fi/util/jsontime.Seconds":      "int64",
+	"go.mau.fi/util/jsontime.Milliseconds": "int64",
+	"go.mau.fi/util/jsontime.Microseconds": "int64",
+	"go.mau.fi/util/jsontime.Nanoseconds":  "int64",
+
+	"go.mau.fi/util/jsontime.UnixString":      "int64 in string",
+	"go.mau.fi/util/jsontime.UnixMilliString": "int64 in string",
+	"go.mau.fi/util/jsontime.UnixMicroString": "int64 in string",
+	"go.mau.fi/util/jsontime.UnixNanoString":  "int64 in string",
 }
 
 // renderType turns an AST type expression into a TypeRef tree. file gives us
@@ -105,7 +183,7 @@ func (g *generator) renderType(p *pkg, file *ast.File, expr ast.Expr, visited ma
 			Elem: g.renderType(p, file, t.Value, visited),
 		}
 	case *ast.StructType:
-		return g.renderStructFields(p, file, t, visited, "")
+		return g.renderStructFields(p, file, t, visited)
 	case *ast.InterfaceType:
 		return &TypeRef{Kind: "interface", Display: "any"}
 	case *ast.IndexExpr:
@@ -150,7 +228,7 @@ func (g *generator) renderSelector(p *pkg, file *ast.File, sel *ast.SelectorExpr
 }
 
 // renderNamedRef looks up a named type by (importPath, typeName) and produces
-// a TypeRef, expanding it inline when it's an in-module struct.
+// a TypeRef. Structs are expanded inline unless a specific type is blacklisted.
 func (g *generator) renderNamedRef(importPath, typeName, alias string, visited map[string]bool) *TypeRef {
 	if alias == "" && importPath != jsoncmdImportPath {
 		alias = defaultImportAlias(importPath)
@@ -164,11 +242,12 @@ func (g *generator) renderNamedRef(importPath, typeName, alias string, visited m
 		InModule:   isInModule(importPath),
 	}
 
-	if !ref.InModule {
+	key := importPath + "." + typeName
+	if underlying, ok := customJSONTypeUnderlying[key]; ok {
+		ref.Underlying = underlying
 		return ref
 	}
 
-	// In-module type — try to expand inline.
 	if err := g.loadPackage(importPath); err != nil {
 		return ref
 	}
@@ -181,23 +260,25 @@ func (g *generator) renderNamedRef(importPath, typeName, alias string, visited m
 		return ref
 	}
 
-	key := importPath + "." + typeName
 	if visited[key] {
 		ref.Recursive = true
 		return ref
 	}
+	nextVisited := cloneVisited(visited)
+	nextVisited[key] = true
 
 	st, ok := td.spec.Type.(*ast.StructType)
 	if !ok {
-		// Not a struct (probably a typedef like `type EventRowID int64`).
-		// Treat as a basic-ish named type.
+		ref.Underlying = g.underlyingTypeText(loaded, td.file, td.spec.Type, nextVisited)
+		return ref
+	}
+	if noInlineTypes[key] {
 		return ref
 	}
 
-	nextVisited := cloneVisited(visited)
-	nextVisited[key] = true
-	inner := g.renderStructFields(loaded, td.file, st, nextVisited, "")
+	inner := g.renderStructFields(loaded, td.file, st, nextVisited)
 	ref.Fields = inner.Fields
+	ref.EmptyStruct = len(inner.Fields) == 0
 	return ref
 }
 
@@ -213,9 +294,7 @@ func (g *generator) renderGenericInstance(p *pkg, file *ast.File, base ast.Expr,
 
 // renderStructFields turns a struct type body into a TypeRef of kind "struct",
 // recursively rendering each field's type and pulling docs out of the AST.
-// embeddedFromName is the field name to display when this struct came from an
-// embedded field (used for Go-embedded types); empty otherwise.
-func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructType, visited map[string]bool, embeddedFromName string) *TypeRef {
+func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructType, visited map[string]bool) *TypeRef {
 	ref := &TypeRef{Kind: "struct"}
 	if st.Fields == nil {
 		return ref
@@ -229,6 +308,15 @@ func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructTyp
 		docHTML := combineDocs(field.Doc, field.Comment)
 
 		if len(field.Names) == 0 {
+			if skipped {
+				continue
+			}
+			if jsonName == "" {
+				if flattened := cloneFields(fieldTypeRef.DirectFields(), optional); len(flattened) > 0 {
+					ref.Fields = append(ref.Fields, flattened...)
+					continue
+				}
+			}
 			// Embedded field. Use the type's terminal name as the display name.
 			name := embeddedDisplayName(field.Type)
 			if jsonName == "" && name == "" {
@@ -331,6 +419,80 @@ func cloneVisited(v map[string]bool) map[string]bool {
 	return out
 }
 
+func cloneFields(fields []*Field, optional bool) []*Field {
+	if len(fields) == 0 {
+		return nil
+	}
+	out := make([]*Field, 0, len(fields))
+	for _, field := range fields {
+		if field == nil || field.Skipped {
+			continue
+		}
+		cloned := *field
+		cloned.Embedded = false
+		cloned.Optional = cloned.Optional || optional
+		out = append(out, &cloned)
+	}
+	return out
+}
+
+func (g *generator) underlyingTypeText(p *pkg, file *ast.File, expr ast.Expr, visited map[string]bool) string {
+	ref := g.renderType(p, file, expr, visited)
+	if ref.Kind == "named" && ref.Underlying != "" {
+		return ref.Underlying
+	}
+	return plainTypeLabel(ref)
+}
+
+func plainTypeLabel(t *TypeRef) string {
+	if t == nil {
+		return "?"
+	}
+	switch t.Kind {
+	case "basic":
+		if t.Display != "" {
+			return t.Display
+		}
+		return t.Name
+	case "named":
+		var b strings.Builder
+		if t.PkgAlias != "" {
+			b.WriteString(t.PkgAlias)
+			b.WriteByte('.')
+		}
+		b.WriteString(t.Name)
+		if len(t.TypeArgs) > 0 {
+			b.WriteByte('[')
+			for i, arg := range t.TypeArgs {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(plainTypeLabel(arg))
+			}
+			b.WriteByte(']')
+		}
+		return b.String()
+	case "slice":
+		return "[]" + plainTypeLabel(t.Elem)
+	case "array":
+		return "[" + t.ArrayLen + "]" + plainTypeLabel(t.Elem)
+	case "map":
+		return "map[" + plainTypeLabel(t.Key) + "]" + plainTypeLabel(t.Elem)
+	case "struct":
+		return "object"
+	case "interface":
+		return "any"
+	case "func":
+		return "function"
+	case "chan":
+		return "channel"
+	}
+	if t.Display != "" {
+		return t.Display
+	}
+	return "?"
+}
+
 func isInModule(importPath string) bool {
 	return importPath == moduleRoot || strings.HasPrefix(importPath, moduleRoot+"/")
 }
@@ -360,6 +522,18 @@ func exprString(e ast.Expr) string {
 		return t.Value
 	case *ast.IndexExpr:
 		return exprString(t.X) + "[" + exprString(t.Index) + "]"
+	case *ast.IndexListExpr:
+		var b strings.Builder
+		b.WriteString(exprString(t.X))
+		b.WriteByte('[')
+		for i, index := range t.Indices {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(exprString(index))
+		}
+		b.WriteByte(']')
+		return b.String()
 	}
 	return fmt.Sprintf("<%T>", e)
 }

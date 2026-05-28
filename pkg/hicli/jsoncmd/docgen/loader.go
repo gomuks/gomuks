@@ -7,11 +7,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/fs"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -40,6 +41,12 @@ type typeDecl struct {
 	doc  *ast.CommentGroup
 }
 
+type goListPackage struct {
+	Dir      string
+	GoFiles  []string
+	CgoFiles []string
+}
+
 type generator struct {
 	root     string          // module root directory
 	packages map[string]*pkg // import path → loaded package
@@ -55,53 +62,62 @@ func newGenerator(root string) (*generator, error) {
 	}, nil
 }
 
-// loadPackage loads a single Go package by import path. It only handles paths
-// under the module root; external paths are ignored (they're rendered as
-// pkg.go.dev links rather than expanded inline).
+// loadPackage loads a single Go package by import path. It uses `go list` so
+// external packages and stdlib packages can be parsed shallowly for type aliases
+// and top-level request/response schemas.
 func (g *generator) loadPackage(importPath string) error {
 	if _, ok := g.packages[importPath]; ok {
 		return nil
 	}
-	if !g.isInModule(importPath) {
-		return fmt.Errorf("not an in-module package: %s", importPath)
+
+	listed, err := g.goList(importPath)
+	if err != nil {
+		return err
 	}
-	rel := strings.TrimPrefix(importPath, moduleRoot+"/")
-	dir := filepath.Join(g.root, rel)
 
 	fset := token.NewFileSet()
-	parsed, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, parser.ParseComments)
-	if err != nil {
-		return fmt.Errorf("parse %s: %w", dir, err)
-	}
-
-	// There may be multiple packages in a directory (e.g. xxx and xxx_test).
-	// Pick the one whose name matches the basename (or the only one if just one).
-	var chosen *ast.Package
-	for _, p := range parsed {
-		if !strings.HasSuffix(p.Name, "_test") {
-			chosen = p
-			break
-		}
-	}
-	if chosen == nil {
-		return fmt.Errorf("no package found in %s", dir)
-	}
-
 	loaded := &pkg{
 		importPath: importPath,
-		dir:        dir,
+		dir:        listed.Dir,
 		fset:       fset,
 		types:      make(map[string]typeDecl),
 		consts:     make(map[string]string),
 	}
-	for _, f := range chosen.Files {
+	goFiles := append([]string{}, listed.GoFiles...)
+	goFiles = append(goFiles, listed.CgoFiles...)
+	for _, name := range goFiles {
+		path := filepath.Join(listed.Dir, name)
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			return fmt.Errorf("parse %s: %w", path, err)
+		}
 		loaded.files = append(loaded.files, f)
+	}
+	if len(loaded.files) == 0 {
+		return fmt.Errorf("no Go files found in %s", listed.Dir)
+	}
+	for _, f := range loaded.files {
 		g.indexFile(loaded, f)
 	}
 	g.packages[importPath] = loaded
 	return nil
+}
+
+func (g *generator) goList(importPath string) (*goListPackage, error) {
+	cmd := exec.Command("go", "list", "-json", importPath)
+	cmd.Dir = g.root
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("go list %s: %w: %s", importPath, err, strings.TrimSpace(string(out)))
+	}
+	var listed goListPackage
+	if err := json.Unmarshal(out, &listed); err != nil {
+		return nil, fmt.Errorf("decode go list %s: %w", importPath, err)
+	}
+	if listed.Dir == "" {
+		return nil, fmt.Errorf("go list %s returned no directory", importPath)
+	}
+	return &listed, nil
 }
 
 func (g *generator) indexFile(p *pkg, f *ast.File) {
@@ -151,10 +167,6 @@ func (g *generator) indexFile(p *pkg, f *ast.File) {
 			}
 		}
 	}
-}
-
-func (g *generator) isInModule(importPath string) bool {
-	return importPath == moduleRoot || strings.HasPrefix(importPath, moduleRoot+"/")
 }
 
 // defaultImportAlias returns the conventional package name used for an import
