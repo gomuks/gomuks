@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --fg: #1a1a1a;
+    --muted: #666;
+    --accent: #2155cc;
+    --border: #d0d0d0;
+    --panel: #ffffff;
+    --panel-alt: #f3f4f6;
+    --code-bg: #eef0f3;
+    --tag-bg: #e2e8f0;
+    --tag-fg: #1f2937;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161719;
+      --fg: #e6e6e6;
+      --muted: #9aa0a6;
+      --accent: #8ab4f8;
+      --border: #2c2f33;
+      --panel: #1d1f22;
+      --panel-alt: #232629;
+      --code-bg: #2a2d31;
+      --tag-bg: #2f343b;
+      --tag-fg: #d6dbe1;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+  nav.sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  nav.sidebar h2 {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+  nav.sidebar h2:first-child { margin-top: 0; }
+  nav.sidebar a {
+    display: block;
+    padding: 0.15rem 0.25rem;
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-radius: 3px;
+  }
+  nav.sidebar a:hover { background: var(--panel-alt); color: var(--accent); }
+  main {
+    padding: 2rem 2.5rem 6rem;
+    max-width: 960px;
+  }
+  h1 { margin-top: 0; }
+  section.cmd-section { margin-bottom: 3rem; }
+  article.entry {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  article.entry h3 {
+    margin: 0 0 0.5rem;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 1.1rem;
+  }
+  article.entry h3 .varname {
+    color: var(--muted);
+    font-weight: normal;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+  }
+  article.entry .doc { margin-bottom: 1rem; }
+  article.entry .doc p:first-child { margin-top: 0; }
+  article.entry .doc p:last-child { margin-bottom: 0; }
+  article.entry .doc code,
+  article.entry .schema code,
+  article.entry .schema .type-expr {
+    background: var(--code-bg);
+    padding: 0.05rem 0.35rem;
+    border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+  }
+  article.entry .doc pre {
+    background: var(--code-bg);
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+  article.entry .doc pre code { background: none; padding: 0; }
+  article.entry .schema-block {
+    margin-top: 0.75rem;
+  }
+  article.entry .schema-block > .label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  details.schema {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--panel-alt);
+    padding: 0;
+  }
+  details.schema > summary {
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    list-style: none;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92rem;
+  }
+  details.schema > summary::-webkit-details-marker { display: none; }
+  details.schema > summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 1em;
+    color: var(--muted);
+    transition: transform 0.15s;
+  }
+  details.schema[open] > summary::before { content: "▾"; }
+  details.schema .field-list {
+    border-top: 1px solid var(--border);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  details.schema .field-list > li {
+    padding: 0.5rem 0.75rem 0.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  details.schema .field-list > li:last-child { border-bottom: none; }
+  .field-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+  .field-name {
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-weight: 600;
+  }
+  .field-name.embedded { font-style: italic; font-weight: 500; }
+  .field-type {
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    color: var(--muted);
+    font-size: 0.9em;
+  }
+  .field-doc { margin-top: 0.3rem; color: var(--fg); font-size: 0.92rem; }
+  .field-doc p { margin: 0.25rem 0; }
+  .tag {
+    background: var(--tag-bg);
+    color: var(--tag-fg);
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag.optional { background: var(--tag-bg); }
+  .schema-leaf {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--panel-alt);
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92rem;
+  }
+  a { color: var(--accent); }
+  a:hover { text-decoration: underline; }
+  .anchor-link { color: var(--muted); text-decoration: none; margin-left: 0.5rem; opacity: 0; transition: opacity 0.1s; }
+  article.entry h3:hover .anchor-link { opacity: 1; }
+  .recursive-marker { color: var(--muted); font-style: italic; margin-left: 0.5rem; font-size: 0.8em; }
+  .nested-schema { margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    {{ range .Sections }}
+      <h2><a href="#{{ .ID }}">{{ .Title }}</a></h2>
+      {{ range .Entries }}
+        <a href="#{{ .Anchor }}">{{ .CmdName }}</a>
+      {{ end }}
+    {{ end }}
+  </nav>
+  <main>
+    <h1>{{ .Title }}</h1>
+    {{ range .Sections }}
+      <section class="cmd-section" id="{{ .ID }}">
+        <h2>{{ .Title }}</h2>
+        <p>{{ .Intro }}</p>
+        {{ range .Entries }}
+          <article class="entry" id="{{ .Anchor }}">
+            <h3>
+              {{ .CmdName }}
+              <span class="varname">{{ .VarName }}</span>
+              <a class="anchor-link" href="#{{ .Anchor }}">#</a>
+            </h3>
+            <div class="doc">{{ .Doc }}</div>
+            {{ if .HasRequest }}
+              <div class="schema-block">
+                <div class="label">Request</div>
+                {{ template "typeref" .Request }}
+              </div>
+            {{ end }}
+            {{ if .HasResponse }}
+              <div class="schema-block">
+                <div class="label">{{ if .IsEvent }}Payload{{ else }}Response{{ end }}</div>
+                {{ template "typeref" .Response }}
+              </div>
+            {{ end }}
+          </article>
+        {{ end }}
+      </section>
+    {{ end }}
+  </main>
+</div>
+</body>
+</html>
+
+{{ define "typeref" }}
+  {{ if eq .Kind "struct" }}
+    {{ if .Fields }}
+      <details class="schema">
+        <summary><span class="type-expr">{ ... }</span> <span class="field-type">({{ len .Fields }} field{{ if ne (len .Fields) 1 }}s{{ end }})</span></summary>
+        <ul class="field-list">
+          {{ range .Fields }}
+            {{ template "field" . }}
+          {{ end }}
+        </ul>
+      </details>
+    {{ else }}
+      <div class="schema-leaf"><span class="type-expr">struct {}</span></div>
+    {{ end }}
+  {{ else if and (eq .Kind "named") .Fields }}
+    <details class="schema">
+      <summary>
+        {{ template "typelabel" . }}
+        <span class="field-type">({{ len .Fields }} field{{ if ne (len .Fields) 1 }}s{{ end }})</span>
+      </summary>
+      <ul class="field-list">
+        {{ range .Fields }}
+          {{ template "field" . }}
+        {{ end }}
+      </ul>
+    </details>
+  {{ else if or (eq .Kind "slice") (eq .Kind "array") }}
+    {{ if hasInline . }}
+      <details class="schema">
+        <summary><span class="type-expr">[{{ .ArrayLen }}]</span>{{ template "typelabel-inline" .Elem }}</summary>
+        <div class="nested-schema">{{ template "typeref" .Elem }}</div>
+      </details>
+    {{ else }}
+      <div class="schema-leaf">{{ template "typelabel" . }}</div>
+    {{ end }}
+  {{ else if eq .Kind "map" }}
+    {{ if hasInline . }}
+      <details class="schema">
+        <summary>
+          <span class="type-expr">map[</span>{{ template "typelabel-inline" .Key }}<span class="type-expr">]</span>{{ template "typelabel-inline" .Elem }}
+        </summary>
+        <div class="nested-schema">{{ template "typeref" .Elem }}</div>
+      </details>
+    {{ else }}
+      <div class="schema-leaf">{{ template "typelabel" . }}</div>
+    {{ end }}
+  {{ else }}
+    <div class="schema-leaf">{{ template "typelabel" . }}</div>
+  {{ end }}
+{{ end }}
+
+{{ define "typelabel" }}
+  {{ template "typelabel-inline" . }}
+{{ end }}
+
+{{ define "typelabel-inline" }}
+  {{- if eq .Kind "basic" -}}
+    <span class="type-expr">{{ .Display }}</span>
+  {{- else if eq .Kind "named" -}}
+    <span class="type-expr">{{- if .PkgAlias -}}{{ .PkgAlias }}.{{- end -}}<a href="{{ .Link }}" target="_blank" rel="noreferrer">{{ .Name }}</a>{{- if .TypeArgs -}}[{{- range $i, $a := .TypeArgs -}}{{- if $i -}}, {{ end -}}{{- template "typelabel-inline" $a -}}{{- end -}}]{{- end -}}</span>
+    {{- if .Recursive }}<span class="recursive-marker">(recursive)</span>{{ end -}}
+  {{- else if eq .Kind "slice" -}}
+    <span class="type-expr">[]</span>{{ template "typelabel-inline" .Elem }}
+  {{- else if eq .Kind "array" -}}
+    <span class="type-expr">[{{ .ArrayLen }}]</span>{{ template "typelabel-inline" .Elem }}
+  {{- else if eq .Kind "map" -}}
+    <span class="type-expr">map[</span>{{ template "typelabel-inline" .Key }}<span class="type-expr">]</span>{{ template "typelabel-inline" .Elem }}
+  {{- else if eq .Kind "struct" -}}
+    <span class="type-expr">struct {{ "{" }} ... {{ "}" }}</span>
+  {{- else if eq .Kind "interface" -}}
+    <span class="type-expr">any</span>
+  {{- else -}}
+    <span class="type-expr">{{ .Display }}</span>
+  {{- end -}}
+{{ end }}
+
+{{ define "field" }}
+  <li>
+    <div class="field-header">
+      <span class="field-name{{ if .Embedded }} embedded{{ end }}">{{ .JSONName }}</span>
+      <span class="field-type">{{ template "typelabel-inline" .Type }}</span>
+      {{ if .Optional }}<span class="tag optional">optional</span>{{ end }}
+      {{ if .Embedded }}<span class="tag">embedded</span>{{ end }}
+    </div>
+    {{ if .Doc }}<div class="field-doc">{{ .Doc }}</div>{{ end }}
+    {{ if hasInline .Type }}
+      <div class="nested-schema">{{ template "typeref" .Type }}</div>
+    {{ end }}
+  </li>
+{{ end }}
