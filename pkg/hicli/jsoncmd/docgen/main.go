@@ -39,7 +39,10 @@ func main() {
 		log.Fatalf("extract specs: %v", err)
 	}
 
-	page := g.buildPage(specs)
+	page, err := g.buildPage(specs)
+	if err != nil {
+		log.Fatalf("build page: %v", err)
+	}
 
 	f, err := os.Create(*output)
 	if err != nil {

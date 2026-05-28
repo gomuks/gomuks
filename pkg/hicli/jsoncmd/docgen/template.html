@@ -94,10 +94,12 @@
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 1.1rem;
   }
+  .doc-section { margin-bottom: 3rem; }
+  .doc h2:first-child { margin-top: 0; }
   article.entry .doc { margin-bottom: 1rem; }
-  article.entry .doc p:first-child { margin-top: 0; }
-  article.entry .doc p:last-child { margin-bottom: 0; }
-  article.entry .doc code,
+  .doc p:first-child { margin-top: 0; }
+  .doc p:last-child { margin-bottom: 0; }
+  .doc code,
   article.entry .schema code,
   article.entry .schema .type-label,
   article.entry .schema .type-expr {
@@ -116,13 +118,13 @@
     font-size: inherit;
     overflow-wrap: inherit;
   }
-  article.entry .doc pre {
+  .doc pre {
     background: var(--code-bg);
     padding: 0.75rem 1rem;
     border-radius: 4px;
     overflow-x: auto;
   }
-  article.entry .doc pre code { background: none; padding: 0; }
+  .doc pre code { background: none; padding: 0; }
   article.entry .schema-block {
     margin-top: 0.75rem;
   }
@@ -242,6 +244,9 @@
 <body>
 <div class="layout">
   <nav class="sidebar">
+    {{ range .Docs }}
+      <h2><a href="#{{ .ID }}">{{ .Title }}</a></h2>
+    {{ end }}
     {{ range .Sections }}
       <h2><a href="#{{ .ID }}">{{ .Title }}</a></h2>
       {{ range .Entries }}
@@ -251,6 +256,11 @@
   </nav>
   <main>
     <h1>{{ .Title }}</h1>
+    {{ range .Docs }}
+      <section class="doc-section" id="{{ .ID }}">
+        <div class="doc">{{ .HTML }}</div>
+      </section>
+    {{ end }}
     {{ range .Sections }}
       <section class="cmd-section" id="{{ .ID }}">
         <h2>{{ .Title }}</h2>

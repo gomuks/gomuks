@@ -9,7 +9,10 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"html/template"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -18,7 +21,15 @@ import (
 // Page is the top-level data fed to the HTML template.
 type Page struct {
 	Title    string
+	Docs     []*DocSection
 	Sections []*Section
+}
+
+// DocSection is a standalone markdown document rendered before the command list.
+type DocSection struct {
+	ID    string
+	Title string
+	HTML  template.HTML
 }
 
 // Section groups entries (client→server commands vs server→client events).
@@ -43,19 +54,23 @@ type Entry struct {
 
 // buildPage transforms raw extracted specs into the template-friendly Page
 // structure, resolving request/response type schemas as it goes.
-func (g *generator) buildPage(specs []*rawSpec) *Page {
+func (g *generator) buildPage(specs []*rawSpec) (*Page, error) {
 	commands := &Section{
 		ID:    "commands",
-		Title: "Commands (client → server)",
-		Intro: template.HTML("Requests the client can send to the server. Each command lists the request body and the response shape."),
+		Title: "Commands",
+		Intro: template.HTML("Requests that frontends can send to the backend."),
 	}
 	events := &Section{
 		ID:    "events",
-		Title: "Events (server → client)",
-		Intro: template.HTML("Asynchronous payloads pushed from the server to the client."),
+		Title: "Events",
+		Intro: template.HTML("Events that the backend will send to connected frontends."),
 	}
 
 	jsoncmd := g.packages[jsoncmdImportPath]
+	docs, err := g.buildDocSections(jsoncmd)
+	if err != nil {
+		return nil, err
+	}
 	for _, rs := range specs {
 		entry := &Entry{
 			CmdName: rs.cmdName,
@@ -84,9 +99,38 @@ func (g *generator) buildPage(specs []*rawSpec) *Page {
 	}
 
 	return &Page{
-		Title:    "gomuks JSON command reference",
+		Title:    "RPC API",
+		Docs:     docs,
 		Sections: []*Section{commands, events},
+	}, nil
+}
+
+func (g *generator) buildDocSections(jsoncmd *pkg) ([]*DocSection, error) {
+	if jsoncmd == nil {
+		return nil, fmt.Errorf("jsoncmd package not loaded")
 	}
+	docs := []struct {
+		id       string
+		title    string
+		filename string
+	}{
+		{id: "envelope", title: "Envelope", filename: "envelope.md"},
+		{id: "websocket", title: "Websocket", filename: "websocket.md"},
+	}
+	out := make([]*DocSection, 0, len(docs))
+	for _, doc := range docs {
+		path := filepath.Join(jsoncmd.dir, doc.filename)
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", path, err)
+		}
+		out = append(out, &DocSection{
+			ID:    doc.id,
+			Title: doc.title,
+			HTML:  renderMarkdown(string(raw)),
+		})
+	}
+	return out, nil
 }
 
 // renderEntryDoc takes the doc comment from a spec variable and converts it
