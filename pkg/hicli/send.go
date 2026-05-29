@@ -545,6 +545,8 @@ func (h *HiClient) actuallySend(
 		}
 	} else if !noFallbacks {
 		sendContent = h.addFallbacks(ctx, dbEvt.Type, dbEvt.Content)
+	} else {
+		sendContent = dbEvt.Content
 	}
 	var resp *mautrix.RespSendEvent
 	req := mautrix.ReqSendEvent{
