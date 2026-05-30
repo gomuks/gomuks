@@ -1,9 +1,3 @@
-// Copyright (c) 2026 Tulir Asokan
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 // Command docgen generates an HTML reference for the JSON commands and events
 // defined in the jsoncmd package.
 package main
@@ -13,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -20,7 +15,7 @@ func main() {
 	root := flag.String("root", ".", "Module root directory (defaults to working directory)")
 	flag.Parse()
 
-	absRoot, err := absPath(*root)
+	absRoot, err := filepath.Abs(*root)
 	if err != nil {
 		log.Fatalf("resolve root: %v", err)
 	}
