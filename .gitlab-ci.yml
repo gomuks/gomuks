@@ -25,9 +25,9 @@ wasm:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   - apk add --no-cache git
   script:
+  - go run ./cmd/rpcdocgen -o rpc.html
   - cd web
   - go run ../pkg/hicli/cmdspec/print src/api/types/stdcommands.json src/api/types/stdcommands.d.ts
-  - go run ./cmd/rpcdocgen -o rpc.html
   - ./build-wasm.sh
   artifacts:
     paths:
