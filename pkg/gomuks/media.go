@@ -229,7 +229,17 @@ func decodeImageWithOrientationFix(file *os.File, maxDecodeMemory int) (image.Im
 			return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
 		}
 		o = orientation.Read(file)
-	} // TODO heic orientation?
+	} else if decodedFrom == "heic" {
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek to start of temp file: %w", err)
+		}
+		exif, err := parseHEICEXIF(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse HEIC EXIF: %w", err)
+		}
+		o = orientation.ReadEXIF(bytes.NewReader(exif))
+	}
 	if o != orientation.Unspecified {
 		decoded = o.Fix(decoded)
 	}
@@ -246,6 +256,10 @@ var encodeWebp = func(writer io.Writer, img image.Image, quality float32, lossle
 
 var decodeAnimatedWebp = func(data io.Reader) (image.Image, error) {
 	return nil, fmt.Errorf("animated webp decoding not implemented")
+}
+
+var parseHEICEXIF = func(data io.ReaderAt) ([]byte, error) {
+	return nil, fmt.Errorf("HEIC EXIF parsing not implemented")
 }
 
 const maxAvatarDecodeMemory = 128 * 1024 * 1024

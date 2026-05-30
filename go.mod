@@ -27,7 +27,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	github.com/yuin/goldmark v1.8.2
 	github.com/zyedidia/clipboard v1.0.4
-	go.mau.fi/goheif v0.0.0-20260413100809-7ec7087b8d7d
+	go.mau.fi/goheif v0.1.0
 	go.mau.fi/mauview v0.3.0
 	go.mau.fi/util v0.9.9
 	go.mau.fi/webp v0.3.0
