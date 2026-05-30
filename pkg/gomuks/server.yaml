@@ -103,9 +103,8 @@ paths:
   /upload:
     post:
       tags: [media]
-      summary: Updates a pet in the store with form data.
-      description: update a pet via the form data.
-      operationId: updatePetWithForm
+      summary: Upload a file to the Matrix media repository.
+      operationId: mediaUpload
       parameters:
         - name: progress
           in: query
