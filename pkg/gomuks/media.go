@@ -700,13 +700,16 @@ func (gmx *Gomuks) reencodeMedia(ctx context.Context, params jsoncmd.UploadMedia
 	return checksum, nil
 }
 
+const progressMime = "application/x-mau-progress-stream+json"
+
 func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	log := hlog.FromRequest(r)
 	progress, _ := strconv.ParseBool(r.URL.Query().Get("progress"))
+	progress = progress || r.Header.Get("Accept") == progressMime
 	var respEnc *json.Encoder
 	var progressCallback func(progress float64)
 	if progress {
-		w.Header().Set("Content-Type", "application/x-mau-progress-stream+json")
+		w.Header().Set("Content-Type", progressMime)
 		w.WriteHeader(http.StatusOK)
 		respEnc = json.NewEncoder(w)
 		lastFlush := time.Now()
