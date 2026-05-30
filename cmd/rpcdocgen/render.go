@@ -19,6 +19,16 @@ type Page struct {
 	Sections []*Section
 }
 
+// EntryCount returns the total number of command and event entries across all
+// sections.
+func (p *Page) EntryCount() int {
+	n := 0
+	for _, s := range p.Sections {
+		n += len(s.Entries)
+	}
+	return n
+}
+
 // DocSection is a standalone markdown document rendered before the command list.
 type DocSection struct {
 	ID    string

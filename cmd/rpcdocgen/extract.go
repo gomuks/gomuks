@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"sort"
+	"strconv"
 )
 
 // specKind describes how a spec variable maps to request/response types.
@@ -20,14 +21,22 @@ const (
 
 func (k specKind) isEvent() bool { return k == kindEvent }
 
-// specTypes maps the bare type name in jsoncmd to its kind. The struct
-// definitions themselves live in jsoncmd/spec.go.
-var specTypes = map[string]specKind{
-	"CommandSpec":                kindCommand,
-	"CommandSpecWithoutResponse": kindCommandNoResponse,
-	"CommandSpecWithoutRequest":  kindCommandNoRequest,
-	"CommandSpecWithoutData":     kindCommandNoData,
-	"EventSpec":                  kindEvent,
+const noTypeArg = -1
+
+type specTypeInfo struct {
+	kind    specKind
+	reqArg  int
+	respArg int
+}
+
+// specTypes maps the bare type name in jsoncmd to its kind and generic type
+// argument layout. The struct definitions themselves live in jsoncmd/spec.go.
+var specTypes = map[string]specTypeInfo{
+	"CommandSpec":                {kind: kindCommand, reqArg: 0, respArg: 1},
+	"CommandSpecWithoutResponse": {kind: kindCommandNoResponse, reqArg: 0, respArg: noTypeArg},
+	"CommandSpecWithoutRequest":  {kind: kindCommandNoRequest, reqArg: noTypeArg, respArg: 0},
+	"CommandSpecWithoutData":     {kind: kindCommandNoData, reqArg: noTypeArg, respArg: noTypeArg},
+	"EventSpec":                  {kind: kindEvent, reqArg: noTypeArg, respArg: 0},
 }
 
 // rawSpec is a spec variable as extracted from the AST, before type schemas
@@ -102,7 +111,7 @@ func (g *generator) tryParseSpec(p *pkg, file *ast.File, varName string, value a
 	if typeIdent == nil {
 		return nil
 	}
-	kind, ok := specTypes[typeIdent.Name]
+	typeInfo, ok := specTypes[typeIdent.Name]
 	if !ok {
 		return nil
 	}
@@ -110,29 +119,10 @@ func (g *generator) tryParseSpec(p *pkg, file *ast.File, varName string, value a
 	rs := &rawSpec{
 		varName: varName,
 		doc:     doc,
-		kind:    kind,
+		kind:    typeInfo.kind,
 	}
-	switch kind {
-	case kindCommand:
-		if len(typeArgs) >= 2 {
-			rs.reqType = typeArgs[0]
-			rs.respType = typeArgs[1]
-		}
-	case kindCommandNoResponse:
-		if len(typeArgs) >= 1 {
-			rs.reqType = typeArgs[0]
-		}
-	case kindCommandNoRequest:
-		if len(typeArgs) >= 1 {
-			rs.respType = typeArgs[0]
-		}
-	case kindCommandNoData:
-		// no type args
-	case kindEvent:
-		if len(typeArgs) >= 1 {
-			rs.respType = typeArgs[0]
-		}
-	}
+	rs.reqType = getTypeArg(typeArgs, typeInfo.reqArg)
+	rs.respType = getTypeArg(typeArgs, typeInfo.respArg)
 
 	rs.cmdName = g.resolveNameField(p, cl)
 	if rs.cmdName == "" {
@@ -140,6 +130,13 @@ func (g *generator) tryParseSpec(p *pkg, file *ast.File, varName string, value a
 		return nil
 	}
 	return rs
+}
+
+func getTypeArg(args []ast.Expr, index int) ast.Expr {
+	if index < 0 || index >= len(args) {
+		return nil
+	}
+	return args[index]
 }
 
 // splitGenericType peels apart a (possibly generic) type expression like
@@ -181,16 +178,12 @@ func (g *generator) resolveNameField(p *pkg, cl *ast.CompositeLit) string {
 			}
 		case *ast.BasicLit:
 			if v.Kind == token.STRING {
-				return trimQuotes(v.Value)
+				name, err := strconv.Unquote(v.Value)
+				if err == nil {
+					return name
+				}
 			}
 		}
 	}
 	return ""
-}
-
-func trimQuotes(s string) string {
-	if len(s) >= 2 && (s[0] == '"' || s[0] == '`') {
-		return s[1 : len(s)-1]
-	}
-	return s
 }

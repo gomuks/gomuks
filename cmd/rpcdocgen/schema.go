@@ -5,12 +5,28 @@ import (
 	"go/ast"
 	"html/template"
 	"reflect"
+	"strconv"
 	"strings"
+)
+
+type typeKind string
+
+const (
+	typeKindBasic     typeKind = "basic"
+	typeKindNamed     typeKind = "named"
+	typeKindSlice     typeKind = "slice"
+	typeKindArray     typeKind = "array"
+	typeKindMap       typeKind = "map"
+	typeKindStruct    typeKind = "struct"
+	typeKindInterface typeKind = "interface"
+	typeKindFunc      typeKind = "func"
+	typeKindChan      typeKind = "chan"
+	typeKindUnknown   typeKind = "unknown"
 )
 
 // TypeRef is the rendered shape of a Go type, ready for the HTML template.
 type TypeRef struct {
-	Kind        string // basic, named, slice, array, map, struct, interface, func, chan, ellipsis, unknown
+	Kind        typeKind
 	Name        string
 	PkgAlias    string // empty when in jsoncmd itself
 	ImportPath  string
@@ -45,13 +61,11 @@ func (t *TypeRef) HasInlineStruct() bool {
 		return false
 	}
 	switch t.Kind {
-	case "struct":
+	case typeKindStruct, typeKindNamed:
 		return len(t.Fields) > 0
-	case "named":
-		return len(t.Fields) > 0
-	case "slice", "array":
+	case typeKindSlice, typeKindArray:
 		return t.Elem != nil && t.Elem.HasInlineStruct()
-	case "map":
+	case typeKindMap:
 		return t.Elem != nil && t.Elem.HasInlineStruct()
 	}
 	return false
@@ -64,7 +78,7 @@ func (t *TypeRef) DirectFields() []*Field {
 		return nil
 	}
 	switch t.Kind {
-	case "struct", "named":
+	case typeKindStruct, typeKindNamed:
 		return t.Fields
 	}
 	return nil
@@ -80,7 +94,7 @@ func (t *TypeRef) FlattenedFields() []*Field {
 		return fields
 	}
 	switch t.Kind {
-	case "slice", "array", "map":
+	case typeKindSlice, typeKindArray, typeKindMap:
 		return t.Elem.FlattenedFields()
 	}
 	return nil
@@ -91,10 +105,10 @@ func (t *TypeRef) FlattenedFieldUnit() string {
 		return "value"
 	}
 	switch t.Kind {
-	case "slice", "array":
+	case typeKindSlice, typeKindArray:
 		return "item"
-	case "map":
-		if t.Elem != nil && (t.Elem.Kind == "slice" || t.Elem.Kind == "array") {
+	case typeKindMap:
+		if t.Elem != nil && (t.Elem.Kind == typeKindSlice || t.Elem.Kind == typeKindArray) {
 			return "value item"
 		}
 		return "value"
@@ -148,7 +162,7 @@ var customJSONTypeUnderlying = map[string]string{
 // expanded so we don't recurse forever on cyclic schemas.
 func (g *generator) renderType(p *pkg, file *ast.File, expr ast.Expr, visited map[string]bool) *TypeRef {
 	if expr == nil {
-		return &TypeRef{Kind: "unknown", Display: "?"}
+		return &TypeRef{Kind: typeKindUnknown, Display: "?"}
 	}
 	switch t := expr.(type) {
 	case *ast.Ident:
@@ -160,46 +174,45 @@ func (g *generator) renderType(p *pkg, file *ast.File, expr ast.Expr, visited ma
 		// nullability), so we just unwrap it.
 		return g.renderType(p, file, t.X, visited)
 	case *ast.ArrayType:
-		ref := &TypeRef{Kind: "slice", Elem: g.renderType(p, file, t.Elt, visited)}
+		ref := &TypeRef{Kind: typeKindSlice, Elem: g.renderType(p, file, t.Elt, visited)}
 		if t.Len != nil {
-			ref.Kind = "array"
+			ref.Kind = typeKindArray
 			ref.ArrayLen = exprString(t.Len)
 		}
 		// Special case: []byte is usually base64-encoded JSON strings.
 		if id, ok := t.Elt.(*ast.Ident); ok && id.Name == "byte" && t.Len == nil {
-			return &TypeRef{Kind: "basic", Name: "[]byte", Display: "[]byte"}
+			return &TypeRef{Kind: typeKindBasic, Name: "[]byte", Display: "[]byte"}
 		}
 		return ref
 	case *ast.MapType:
 		return &TypeRef{
-			Kind: "map",
+			Kind: typeKindMap,
 			Key:  g.renderType(p, file, t.Key, visited),
 			Elem: g.renderType(p, file, t.Value, visited),
 		}
 	case *ast.StructType:
 		return g.renderStructFields(p, file, t, visited)
 	case *ast.InterfaceType:
-		return &TypeRef{Kind: "interface", Display: "any"}
+		return &TypeRef{Kind: typeKindInterface, Display: "any"}
 	case *ast.IndexExpr:
 		return g.renderGenericInstance(p, file, t.X, []ast.Expr{t.Index}, visited)
 	case *ast.IndexListExpr:
 		return g.renderGenericInstance(p, file, t.X, t.Indices, visited)
 	case *ast.FuncType:
-		return &TypeRef{Kind: "func", Display: "function"}
+		return &TypeRef{Kind: typeKindFunc, Display: "function"}
 	case *ast.ChanType:
-		return &TypeRef{Kind: "chan", Display: "channel"}
+		return &TypeRef{Kind: typeKindChan, Display: "channel"}
 	case *ast.Ellipsis:
-		ref := &TypeRef{Kind: "slice", Elem: g.renderType(p, file, t.Elt, visited)}
-		return ref
+		return &TypeRef{Kind: typeKindSlice, Elem: g.renderType(p, file, t.Elt, visited)}
 	}
-	return &TypeRef{Kind: "unknown", Display: fmt.Sprintf("<unknown %T>", expr)}
+	return &TypeRef{Kind: typeKindUnknown, Display: fmt.Sprintf("<unknown %T>", expr)}
 }
 
 // renderIdent handles a bare identifier — either a Go builtin or a type
 // declared in the current package.
 func (g *generator) renderIdent(p *pkg, id *ast.Ident, visited map[string]bool) *TypeRef {
 	if goBuiltins[id.Name] {
-		return &TypeRef{Kind: "basic", Name: id.Name, Display: id.Name}
+		return &TypeRef{Kind: typeKindBasic, Name: id.Name, Display: id.Name}
 	}
 	return g.renderNamedRef(p.importPath, id.Name, "", visited)
 }
@@ -209,14 +222,14 @@ func (g *generator) renderIdent(p *pkg, id *ast.Ident, visited map[string]bool) 
 func (g *generator) renderSelector(p *pkg, file *ast.File, sel *ast.SelectorExpr, visited map[string]bool) *TypeRef {
 	pkgIdent, ok := sel.X.(*ast.Ident)
 	if !ok {
-		return &TypeRef{Kind: "unknown", Display: exprString(sel)}
+		return &TypeRef{Kind: typeKindUnknown, Display: exprString(sel)}
 	}
 	imports := g.fileImports[file]
 	importPath, ok := imports[pkgIdent.Name]
 	if !ok {
 		// Probably an enum constant reference or another package without an
 		// explicit import alias — fall back to displaying the source text.
-		return &TypeRef{Kind: "unknown", Display: exprString(sel)}
+		return &TypeRef{Kind: typeKindUnknown, Display: exprString(sel)}
 	}
 	return g.renderNamedRef(importPath, sel.Sel.Name, pkgIdent.Name, visited)
 }
@@ -228,7 +241,7 @@ func (g *generator) renderNamedRef(importPath, typeName, alias string, visited m
 		alias = defaultImportAlias(importPath)
 	}
 	ref := &TypeRef{
-		Kind:       "named",
+		Kind:       typeKindNamed,
 		Name:       typeName,
 		PkgAlias:   alias,
 		ImportPath: importPath,
@@ -289,11 +302,16 @@ func (g *generator) renderGenericInstance(p *pkg, file *ast.File, base ast.Expr,
 // renderStructFields turns a struct type body into a TypeRef of kind "struct",
 // recursively rendering each field's type and pulling docs out of the AST.
 func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructType, visited map[string]bool) *TypeRef {
-	ref := &TypeRef{Kind: "struct"}
+	ref := &TypeRef{Kind: typeKindStruct}
 	if st.Fields == nil {
 		return ref
 	}
 	for _, field := range st.Fields.List {
+		exportedNames := exportedFieldNames(field.Names)
+		if len(field.Names) > 0 && len(exportedNames) == 0 {
+			continue
+		}
+
 		fieldTypeRef := g.renderType(p, file, field.Type, visited)
 
 		tag := parseStructTag(field.Tag)
@@ -332,10 +350,7 @@ func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructTyp
 			continue
 		}
 
-		for _, name := range field.Names {
-			if !name.IsExported() {
-				continue
-			}
+		for _, name := range exportedNames {
 			displayName := jsonName
 			if displayName == "" {
 				displayName = name.Name
@@ -356,16 +371,28 @@ func (g *generator) renderStructFields(p *pkg, file *ast.File, st *ast.StructTyp
 	return ref
 }
 
+func exportedFieldNames(names []*ast.Ident) []*ast.Ident {
+	if len(names) == 0 {
+		return nil
+	}
+	exported := make([]*ast.Ident, 0, len(names))
+	for _, name := range names {
+		if name.IsExported() {
+			exported = append(exported, name)
+		}
+	}
+	return exported
+}
+
 func parseStructTag(tag *ast.BasicLit) reflect.StructTag {
 	if tag == nil {
 		return ""
 	}
-	// tag.Value includes the surrounding backticks (or quotes).
-	v := tag.Value
-	if len(v) >= 2 {
-		v = v[1 : len(v)-1]
+	value, err := strconv.Unquote(tag.Value)
+	if err != nil {
+		return ""
 	}
-	return reflect.StructTag(v)
+	return reflect.StructTag(value)
 }
 
 // parseJSONTag splits a json struct tag into (name, optional, skipped).
@@ -432,7 +459,7 @@ func cloneFields(fields []*Field, optional bool) []*Field {
 
 func (g *generator) underlyingTypeText(p *pkg, file *ast.File, expr ast.Expr, visited map[string]bool) string {
 	ref := g.renderType(p, file, expr, visited)
-	if ref.Kind == "named" && ref.Underlying != "" {
+	if ref.Kind == typeKindNamed && ref.Underlying != "" {
 		return ref.Underlying
 	}
 	return plainTypeLabel(ref)
@@ -443,12 +470,12 @@ func plainTypeLabel(t *TypeRef) string {
 		return "?"
 	}
 	switch t.Kind {
-	case "basic":
+	case typeKindBasic:
 		if t.Display != "" {
 			return t.Display
 		}
 		return t.Name
-	case "named":
+	case typeKindNamed:
 		var b strings.Builder
 		if t.PkgAlias != "" {
 			b.WriteString(t.PkgAlias)
@@ -466,19 +493,19 @@ func plainTypeLabel(t *TypeRef) string {
 			b.WriteByte(']')
 		}
 		return b.String()
-	case "slice":
+	case typeKindSlice:
 		return "[]" + plainTypeLabel(t.Elem)
-	case "array":
+	case typeKindArray:
 		return "[" + t.ArrayLen + "]" + plainTypeLabel(t.Elem)
-	case "map":
+	case typeKindMap:
 		return "map[" + plainTypeLabel(t.Key) + "]" + plainTypeLabel(t.Elem)
-	case "struct":
+	case typeKindStruct:
 		return "object"
-	case "interface":
+	case typeKindInterface:
 		return "any"
-	case "func":
+	case typeKindFunc:
 		return "function"
-	case "chan":
+	case typeKindChan:
 		return "channel"
 	}
 	if t.Display != "" {

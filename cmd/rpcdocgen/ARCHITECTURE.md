@@ -1,6 +1,6 @@
-# docgen - jsoncmd reference generator
+# rpcdocgen - jsoncmd reference generator
 
-`docgen` is a standalone Go program that parses `pkg/hicli/jsoncmd` and emits a
+`rpcdocgen` is a standalone Go program that parses `pkg/hicli/jsoncmd` and emits a
 single self-contained HTML reference for the RPC API. It is intentionally
 hardcoded to the jsoncmd package, but it discovers commands, events, names, body
 types, and comments from the Go AST so command additions/removals normally do
@@ -20,7 +20,7 @@ The generated page contains:
 From the module root:
 
 ```sh
-go run ./pkg/hicli/jsoncmd/docgen -o jsoncmd.html
+go run ./cmd/rpcdocgen -o jsoncmd.html
 ```
 
 Flags:
@@ -31,9 +31,11 @@ Flags:
 The package should pass:
 
 ```sh
-go vet ./pkg/hicli/jsoncmd/docgen
-staticcheck ./pkg/hicli/jsoncmd/docgen
+go vet ./cmd/rpcdocgen
+staticcheck ./cmd/rpcdocgen
 ```
+
+staticcheck can be installed with `go install honnef.co/go/tools/cmd/staticcheck@latest` if it's not available
 
 ## Inputs
 
@@ -191,7 +193,6 @@ The template is a single-file responsive HTML page:
 | `schema.go`     | Converts AST type expressions to rendered schema trees, expands fields, handles links, aliases, recursion, custom JSON types, and flattening. |
 | `render.go`     | Builds `Page` data, renders Markdown docs/comments, wires template helpers. |
 | `template.html` | Embedded HTML/CSS/template for the generated page. |
-| `util.go`       | Small filesystem helper. |
 
 ## Common Changes
 

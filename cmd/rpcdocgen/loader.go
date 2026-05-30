@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -48,12 +51,12 @@ type generator struct {
 	fileImports map[*ast.File]map[string]string
 }
 
-func newGenerator(root string) (*generator, error) {
+func newGenerator(root string) *generator {
 	return &generator{
 		root:        root,
 		packages:    make(map[string]*pkg),
 		fileImports: make(map[*ast.File]map[string]string),
-	}, nil
+	}
 }
 
 // loadPackage loads a single Go package by import path. It uses `go list` so
@@ -77,8 +80,7 @@ func (g *generator) loadPackage(importPath string) error {
 		types:      make(map[string]typeDecl),
 		consts:     make(map[string]string),
 	}
-	goFiles := append([]string{}, listed.GoFiles...)
-	goFiles = append(goFiles, listed.CgoFiles...)
+	goFiles := slices.Concat(listed.GoFiles, listed.CgoFiles)
 	for _, name := range goFiles {
 		path := filepath.Join(listed.Dir, name)
 		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
@@ -91,7 +93,9 @@ func (g *generator) loadPackage(importPath string) error {
 		return fmt.Errorf("no Go files found in %s", listed.Dir)
 	}
 	for _, f := range loaded.files {
-		g.indexFile(loaded, f)
+		if err := g.indexFile(loaded, f); err != nil {
+			return err
+		}
 	}
 	g.packages[importPath] = loaded
 	return nil
@@ -103,7 +107,8 @@ func (g *generator) goList(importPath string) (*goListPackage, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		var stderr string
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			stderr = strings.TrimSpace(string(exitErr.Stderr))
 		}
 		if stderr == "" {
@@ -121,10 +126,13 @@ func (g *generator) goList(importPath string) (*goListPackage, error) {
 	return &listed, nil
 }
 
-func (g *generator) indexFile(p *pkg, f *ast.File) {
+func (g *generator) indexFile(p *pkg, f *ast.File) error {
 	imports := make(map[string]string, len(f.Imports))
 	for _, imp := range f.Imports {
-		path := strings.Trim(imp.Path.Value, `"`)
+		path, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			return fmt.Errorf("unquote import path %s: %w", imp.Path.Value, err)
+		}
 		name := defaultImportAlias(path)
 		if imp.Name != nil {
 			name = imp.Name.Name
@@ -162,12 +170,17 @@ func (g *generator) indexFile(p *pkg, f *ast.File) {
 						continue
 					}
 					if lit, ok := vs.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
-						p.consts[name.Name] = strings.Trim(lit.Value, `"`)
+						value, err := strconv.Unquote(lit.Value)
+						if err != nil {
+							return fmt.Errorf("unquote const %s: %w", name.Name, err)
+						}
+						p.consts[name.Name] = value
 					}
 				}
 			}
 		}
 	}
+	return nil
 }
 
 // defaultImportAlias returns the conventional package name used for an import
