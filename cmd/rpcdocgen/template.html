@@ -57,8 +57,6 @@
     overflow-y: auto;
   }
   nav.sidebar h2 {
-    margin-top: 1.25rem;
-    margin-bottom: 0.5rem;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -244,6 +242,8 @@
 <body>
 <div class="layout">
   <nav class="sidebar">
+    <h2><a href="https://docs.mau.fi/gomuks/">↩ Back to main docs</a></h2>
+    <h2><a href="https://spec.mau.fi/gomuks/http.html">↗ HTTP API</a></h2>
     {{ range .Docs }}
       <h2><a href="#{{ .ID }}">{{ .Title }}</a></h2>
     {{ end }}
