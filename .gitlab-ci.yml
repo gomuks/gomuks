@@ -25,6 +25,7 @@ wasm:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   - apk add --no-cache git
   script:
+  - go run ./cmd/rpcdocgen -o rpc.html
   - cd web
   - go run ../pkg/hicli/cmdspec/print src/api/types/stdcommands.json src/api/types/stdcommands.d.ts
   - ./build-wasm.sh
@@ -32,6 +33,7 @@ wasm:
     paths:
     - web/src/api/wasm/_gomuks.wasm
     - web/src/api/types/stdcommands.json
+    - rpc.html
     expire_in: 1 hour
 
 frontend:
@@ -63,6 +65,7 @@ deploy/wasmuks:
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
       rsync -rcthvl --delete web/dist/ /srv/web/demo.gomuks.app/
+      mv -f rpc.html /srv/web/spec.mau.fi/gomuks/rpc.html
     else
       mkdir -p /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
       rsync -rcthvl --delete web/dist/ /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
