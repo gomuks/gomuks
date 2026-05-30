@@ -1,0 +1,274 @@
+openapi: 3.2.0
+info:
+  title: Gomuks HTTP API
+  description: |-
+    This is the HTTP API for the gomuks backend.
+
+    See also:
+    * [Main gomuks docs](https://docs.mau.fi/gomuks/index.html)
+    * [RPC API docs](https://spec.mau.fi/gomuks/rpc.html)
+  license:
+    name: AGPL-3.0-or-later
+    url: https://github.com/gomuks/gomuks/blob/main/LICENSE
+  version: "26.05"
+servers:
+  - url: http://localhost:29325/_gomuks
+paths:
+  /auth:
+    post:
+      tags: [auth]
+      summary: Exchange basic auth credentials for a cookie auth token
+      operationId: Auth
+      security:
+        - basic_auth:
+        - cookie_auth:
+      parameters:
+        - name: output
+          in: query
+          description: The output format. Set to `json` to get the token in the response body instead of the `Set-Cookie` header.
+          schema:
+            type: string
+            enum: ["json", "cookie"]
+            default: cookie
+        - name: no_prompt
+          in: query
+          description: |
+            Disable prompting for auth if credentials aren't provided.
+            If set, the `WWW-Authenticate` header will never be set in the response.
+          schema:
+            type: boolean
+            default: false
+        - name: insecure_cookie
+          in: query
+          description: |
+            Disable the `Secure` flag in the `Set-Cookie` header.
+            Using this is only allowed from non-browser clients, or if the backend is configured to allow insecure cookies.
+          schema:
+            type: boolean
+            default: false
+        - name: secure
+          in: query
+          description: |
+            A flag that web clients can use to indicate whether they're running in a secure context.
+            This is used to throw an explicit error instead of setting an unusable cookie.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: The existing auth cookie was successfully validated and a new token was created.
+        "201":
+          description: The basic auth credentials were successfully validated and a new token was created.
+        "204":
+          description: The backend has authentication disabled, all endpoints can be used without auth
+        "401":
+          description: Neither an existing cookie nor the basic auth credentials were found to be valid.
+        "403":
+          description: The client requested a secure cookie from an insecure context.
+  /websocket:
+    get:
+      tags: [rpc]
+      summary: Connect to the RPC API
+      description: See the [RPC API docs](https://spec.mau.fi/gomuks/rpc.html) for more info
+      operationId: websocket
+      security:
+        - cookie_auth:
+      responses:
+        "101":
+          description: Connection successful
+        "401":
+          description: Auth cookie missing
+  /exec/{command}:
+    post:
+      tags: [rpc]
+      summary: Execute a one-off RPC command.
+      description: Available commands and responses are documented in the [RPC API docs](https://spec.mau.fi/gomuks/rpc.html)
+      operationId: execRPC
+      parameters:
+        - name: command
+          in: path
+          description: The command to execute
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully executed command.
+        "418":
+          description: Command returned an error.
+        "401":
+          description: Auth cookie missing
+      security:
+        - cookie_auth:
+  /upload:
+    post:
+      tags: [media]
+      summary: Updates a pet in the store with form data.
+      description: update a pet via the form data.
+      operationId: updatePetWithForm
+      parameters:
+        - name: progress
+          in: query
+          description: Whether to return a progress indicator stream in the response body
+          schema:
+            type: boolean
+            default: false
+        - name: encrypt
+          in: query
+          description: Whether the uploaded file should be encrypted
+          schema:
+            type: boolean
+            default: false
+        - name: voice_message
+          in: query
+          description: Whether the file is a voice message. A waveform will be generated automatically.
+          schema:
+            type: boolean
+            default: false
+        - name: force_file
+          in: query
+          description: Whether to force sending as `m.file` even if the upload is an image/video/audio file.
+          schema:
+            type: boolean
+            default: false
+        - name: encode_to
+          in: query
+          description: The target mime type to re-encode the uploaded file to.
+          schema:
+            type: string
+        - name: resize_width
+          in: query
+          description: The width to resize the image or video to. resize_height must also be provided if this is used.
+          schema:
+            type: integer
+        - name: resize_height
+          in: query
+          description: The height to resize the image or video to. resize_width must also be provided if this is used.
+          schema:
+            type: integer
+        - name: resize_percent
+          in: query
+          description: The percent to resize the imageor video by.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Upload successfully started
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/MessageEventContent"
+            "application/x-mau-progress-stream+json":
+              itemSchema:
+                description: |
+                  Stream where each line is a JSON-decodable float indicating the current upload progress. The final line is the standard JSON response for finishing the upload.
+                oneOf:
+                  - type: number
+                  - $ref: "#/components/schemas/MessageEventContent"
+        default:
+          description: Upload failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookie_auth:
+  /media/{server}/{media_id}:
+    get:
+      tags: [media]
+      summary: Download a file from the Matrix media repository.
+      operationId: mediaDownload
+      parameters:
+        - name: server
+          in: path
+          description: The server component of the `mxc://` URI
+          required: true
+          schema:
+            type: string
+            format: server name
+        - name: media_id
+          in: path
+          description: The ID component of the `mxc://` URI
+          required: true
+          schema:
+            type: string
+        - name: encrypted
+          in: query
+          description: |
+            Whether the file to download is encrypted.
+            The request will be rejected if the cache entry for the mxc URI doesn't match this field.
+          schema:
+            type: boolean
+            default: false
+        - name: thumbnail
+          in: query
+          description: |
+            The type of thumbnail to download. If unset, the original file will be returned. Currently only avatars can be thumbnailed.
+          schema:
+            type: string
+            enum: ["", "avatar"]
+        - name: fallback
+          in: query
+          description: |
+            When creating avatar thumbnails, the data for the fallback avatar.
+          schema:
+            type: string
+            description: A hex color and a letter separated by a colon
+            example: "#9f0850:T"
+      responses:
+        '200':
+          description: Successfully downloaded media.
+        default:
+          description: An error occurred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security:
+        - cookie_auth:
+        - image_auth:
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        errcode:
+          type: string
+          description: A Matrix error code
+      required:
+        - errcode
+        - error
+    MessageEventContent:
+      description: A Matrix `m.room.message` event content that can be used to send the uploaded file to a room.
+      type: object
+      properties:
+        msgtype:
+          type: string
+        url:
+          type: string
+          format: mxc
+        file:
+          type: object
+          properties:
+            url:
+              type: string
+              format: mxc
+        info:
+          type: object
+  securitySchemes:
+    cookie_auth:
+      type: apiKey
+      in: cookie
+      name: gomuks_auth
+    image_auth:
+      type: apiKey
+      in: query
+      name: image_auth
+    basic_auth:
+      type: http
+      scheme: basic
