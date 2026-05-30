@@ -99,7 +99,7 @@ func (g *generator) buildPage(specs []*rawSpec) (*Page, error) {
 	}
 
 	return &Page{
-		Title:    "RPC API",
+		Title:    "Gomuks RPC API",
 		Docs:     docs,
 		Sections: []*Section{commands, events},
 	}, nil

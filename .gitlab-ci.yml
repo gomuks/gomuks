@@ -70,6 +70,14 @@ deploy/wasmuks:
   needs:
   - frontend
 
+deploy/rpcdocs:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  stage: frontend
+  tags:
+  - webdeploy
+  script:
+  - go run ./cmd/rpcdocgen -o /srv/web/spec.mau.fi/gomuks/rpc.html
+
 .build-linux: &build-linux
   stage: build
   cache:
