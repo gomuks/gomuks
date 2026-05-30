@@ -106,9 +106,16 @@ func (g *generator) loadPackage(importPath string) error {
 func (g *generator) goList(importPath string) (*goListPackage, error) {
 	cmd := exec.Command("go", "list", "-json", importPath)
 	cmd.Dir = g.root
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("go list %s: %w: %s", importPath, err, strings.TrimSpace(string(out)))
+		var stderr string
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			stderr = strings.TrimSpace(string(exitErr.Stderr))
+		}
+		if stderr == "" {
+			return nil, fmt.Errorf("go list %s: %w", importPath, err)
+		}
+		return nil, fmt.Errorf("go list %s: %w: %s", importPath, err, stderr)
 	}
 	var listed goListPackage
 	if err := json.Unmarshal(out, &listed); err != nil {
