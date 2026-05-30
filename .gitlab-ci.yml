@@ -49,6 +49,7 @@ frontend:
   artifacts:
     paths:
     - web/dist
+    - rpc.html
     expire_in: 1 hour
   needs:
   - wasm
