@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/bin/sh
 go generate ./web
 ./build-noweb.sh
