@@ -149,6 +149,77 @@ func (eq *EventQuery) GetMentions(ctx context.Context, ts time.Time, unreadType 
 	return eq.QueryMany(ctx, getMentionEventsQuery, ts.UnixMilli(), unreadType, limit)
 }
 
+func (eq *EventQuery) Search(
+	ctx context.Context,
+	matches, like string,
+	rooms []id.RoomID,
+	senders []id.UserID,
+	minTime, maxTime time.Time,
+	includeRedacted bool,
+	orderByTimeOnly bool,
+	limit, offset int,
+) ([]*Event, error) {
+	args := make([]any, 0, len(rooms)+len(senders)+6)
+
+	query := getEventBaseQuery
+	wheres := make([]string, 0, 6)
+	if matches != "" {
+		query += " JOIN event_search ON event.rowid=event_search.rowid"
+		wheres = append(wheres, "event_search MATCH ?")
+		args = append(args, matches)
+	}
+	if like != "" {
+		wheres = append(wheres, "COALESCE(decrypted, content) LIKE ('%' || ? || '%') COLLATE NOCASE ESCAPE '\\'")
+		args = append(args, like)
+	}
+	if len(rooms) > 0 {
+		wheres = append(wheres, fmt.Sprintf("room_id IN (%s)", strings.TrimSuffix(strings.Repeat("?,", len(rooms)), ",")))
+		for _, room := range rooms {
+			args = append(args, room)
+		}
+	}
+	if len(senders) > 0 {
+		wheres = append(wheres, fmt.Sprintf("sender IN (%s)", strings.TrimSuffix(strings.Repeat("?,", len(senders)), ",")))
+		for _, sender := range senders {
+			args = append(args, sender)
+		}
+	}
+	if !minTime.IsZero() {
+		wheres = append(wheres, "timestamp >= ?")
+		args = append(args, minTime.UnixMilli())
+	}
+	if !maxTime.IsZero() {
+		wheres = append(wheres, "timestamp <= ?")
+		args = append(args, maxTime.UnixMilli())
+	}
+	if !includeRedacted {
+		wheres = append(wheres, "redacted_by IS NULL")
+	}
+	if len(wheres) == 0 {
+		return nil, fmt.Errorf("at least one filter must be provided")
+	}
+	query += " WHERE " + strings.Join(wheres, " AND ")
+
+	if matches != "" && !orderByTimeOnly {
+		query += " ORDER BY rank ASC, timestamp DESC"
+	} else {
+		query += " ORDER BY timestamp DESC"
+	}
+
+	if limit <= 0 {
+		limit = 100
+	} else if limit > 10000 {
+		limit = 10000
+	}
+	query += " LIMIT ?"
+	args = append(args, limit)
+	if offset > 0 {
+		query += " OFFSET ?"
+		args = append(args, offset)
+	}
+	return eq.QueryMany(ctx, query, args...)
+}
+
 func (eq *EventQuery) GetByRowIDs(ctx context.Context, rowIDs ...EventRowID) ([]*Event, error) {
 	query, params := buildMultiEventGetFunction(nil, rowIDs, getManyEventsByRowID)
 	return eq.QueryMany(ctx, query, params...)
