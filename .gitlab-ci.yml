@@ -88,8 +88,8 @@ deploy/wasmuks:
   # The maubuild tool will use TARGET_GOOS/GOARCH env vars for the actual build
   - export GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH)
   script:
-  - BINARY_NAME=gomuks go tool maubuild
-  - BINARY_NAME=gomuks-terminal go tool maubuild
+  - ./build-noweb.sh
+  - ./build-terminal.sh
   artifacts:
     paths:
     - gomuks
@@ -154,8 +154,8 @@ macos/arm64:
   before_script:
   - export PATH=/opt/homebrew/bin:$PATH
   script:
-  - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" BINARY_NAME=gomuks go tool maubuild
-  - BINARY_NAME=gomuks-terminal go tool maubuild
+  - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" ./build-noweb.sh
+  - ./build-terminal.sh
   - install_name_tool -change $(brew --prefix)/opt/libolm/lib/libolm.3.dylib @rpath/libolm.3.dylib gomuks
   - install_name_tool -add_rpath @executable_path gomuks
   - install_name_tool -add_rpath /opt/homebrew/opt/libolm/lib gomuks
