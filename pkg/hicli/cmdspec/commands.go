@@ -37,6 +37,7 @@ const (
 	DelAlias       = "alias del"
 	ConvertToDM    = "converttodm"
 	ConvertToRoom  = "converttoroom"
+	PowerLevel     = "powerlevel"
 )
 
 var CommandDefinitions = []*cmdschema.EventContent{{
@@ -237,4 +238,16 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 }, {
 	Command:     ConvertToRoom,
 	Description: event.MakeExtensibleText("Remove marking the current room as a DM"),
+}, {
+	Command:     PowerLevel,
+	Description: event.MakeExtensibleText("Change a power level in the current room"),
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "thing",
+		Schema:      cmdschema.Union(cmdschema.PrimitiveTypeString.Schema(), cmdschema.PrimitiveTypeUserID.Schema()),
+		Description: event.MakeExtensibleText("The user ID, event type or top-level key of the power level to change."),
+	}, {
+		Key:         "value",
+		Schema:      cmdschema.PrimitiveTypeInteger.Schema(),
+		Description: event.MakeExtensibleText("The new power level for the thing"),
+	}},
 }}

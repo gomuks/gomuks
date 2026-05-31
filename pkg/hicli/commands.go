@@ -79,6 +79,8 @@ func (h *HiClient) ProcessCommand(
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdConvertToDM)
 	case cmdspec.ConvertToRoom:
 		responseText = h.handleCmdConvertToRoom(ctx, roomID)
+	case cmdspec.PowerLevel:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdPowerLevel)
 	default:
 		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Command))
 	}
@@ -395,4 +397,62 @@ func (h *HiClient) handleCmdConvertToRoom(ctx context.Context, roomID id.RoomID)
 		return fmt.Sprintf("Failed to unmark room as a DM: %v", err)
 	}
 	return "Unmarked room as a DM"
+}
+
+type powerLevelParams struct {
+	Thing string `json:"thing"`
+	Value int    `json:"value"`
+}
+
+func (h *HiClient) handleCmdPowerLevel(ctx context.Context, roomID id.RoomID, args powerLevelParams, _ *event.RelatesTo) string {
+	pls, err := h.DB.CurrentState.Get(ctx, roomID, event.StatePowerLevels, "")
+	if err != nil {
+		return fmt.Sprintf("Failed to get current power level event: %v", err)
+	}
+	var plContent event.PowerLevelsEventContent
+	err = json.Unmarshal(pls.Content, &plContent)
+	if err != nil {
+		return fmt.Sprintf("Failed to parse current power level event content: %v", err)
+	}
+	switch args.Thing {
+	case "users_default":
+		plContent.UsersDefault = args.Value
+	case "events_default":
+		plContent.EventsDefault = args.Value
+	case "state_default":
+		plContent.StateDefaultPtr = &args.Value
+	case "invite":
+		plContent.InvitePtr = &args.Value
+	case "kick":
+		plContent.KickPtr = &args.Value
+	case "ban":
+		plContent.BanPtr = &args.Value
+	case "redact":
+		plContent.RedactPtr = &args.Value
+	case "room", "notifications.room":
+		if plContent.Notifications == nil {
+			plContent.Notifications = &event.NotificationPowerLevels{}
+		}
+		plContent.Notifications.RoomPtr = &args.Value
+	default:
+		var forceUser, forceEvent bool
+		args.Thing, forceUser = strings.CutPrefix(args.Thing, "users.")
+		args.Thing, forceEvent = strings.CutPrefix(args.Thing, "events.")
+		if strings.HasPrefix(args.Thing, "@") && !forceEvent {
+			plContent.SetUserLevel(id.UserID(args.Thing), args.Value)
+		} else {
+			if forceUser {
+				return "Invalid user power level key"
+			}
+			if plContent.Events == nil {
+				plContent.Events = make(map[string]int)
+			}
+			plContent.Events[args.Thing] = args.Value
+		}
+	}
+	_, err = h.SetState(ctx, roomID, event.StatePowerLevels, "", &plContent)
+	if err != nil {
+		return fmt.Sprintf("Failed to update power level event: %v", err)
+	}
+	return ""
 }
