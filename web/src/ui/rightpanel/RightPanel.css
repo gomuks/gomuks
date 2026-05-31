@@ -52,7 +52,7 @@ div.right-panel-content.pinned-messages {
 	}
 }
 
-div.right-panel-content.notifications {
+div.right-panel-content.notifications, div.right-panel-content.search {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -62,7 +62,36 @@ div.right-panel-content.notifications {
 		flex-shrink: 0;
 	}
 
-	> div.notification-panel-content {
+	> div.search-controls {
+		flex-shrink: 0;
+
+		> input[type="search"] {
+			border: none;
+			outline: none;
+			padding: .5rem;
+			border-bottom: 1px solid var(--border-color);
+			width: 100%;
+			box-sizing: border-box;
+		}
+
+		> details {
+			display: flex;
+			flex-direction: column;
+			padding: .5rem;
+			border-bottom: 1px solid var(--border-color);
+
+			> label {
+				display: block;
+			}
+		}
+
+		> div.error {
+			color: var(--error-color);
+			padding: .5rem;
+		}
+	}
+
+	> div.notification-panel-content, > div.search-panel-content {
 		padding: .5rem;
 		display: flex;
 		flex-direction: column;

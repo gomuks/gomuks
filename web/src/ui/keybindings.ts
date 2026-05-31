@@ -67,6 +67,7 @@ export default class Keybindings {
 				this.context.setActiveRoom(filteredRoomList[selectedIdx - 1].room_id)
 			}
 		},
+		"Ctrl+f": () => this.context.setRightPanel({ type: "search" }),
 	}
 
 	private keyUpMap: KeyMap = {

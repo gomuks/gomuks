@@ -205,7 +205,7 @@ export interface MutualRoomsResponse {
 
 export interface ManualPaginationResponse {
 	events: RawDBEvent[]
-	next_batch: string
+	next_batch?: string
 }
 
 export interface ResolveAliasResponse {
@@ -325,7 +325,7 @@ export interface MediaEncodingOptions {
 
 export type MembershipAction = "invite" | "kick" | "ban" | "unban"
 
-export interface KeyRestoreProgress  {
+export interface KeyRestoreProgress {
 	current_room_id: RoomID
 	stage: "fetching" | "decrypting" | "saving" | "postprocessing" | "done"
 	decrypted: number
@@ -346,4 +346,22 @@ export interface PassphraseMetadata {
 export interface RecoveryKeyResponse {
 	recovery_key: string
 	passphrase_meta?: PassphraseMetadata
+}
+
+interface BaseSearchParams {
+	search_term: string
+	limit: number
+	room_ids?: RoomID[]
+	senders?: UserID[]
+	next_batch?: string
+	sort_by_time?: boolean
+}
+
+export type ServerSearchParams = BaseSearchParams
+
+export interface LocalSearchParams extends BaseSearchParams {
+	raw_like?: string
+	min_timestamp?: number
+	max_timestamp?: number
+	include_redacted?: boolean
 }

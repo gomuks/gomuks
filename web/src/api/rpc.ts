@@ -23,6 +23,7 @@ import {
 	EventID,
 	EventType,
 	JSONValue,
+	LocalSearchParams,
 	LoginFlowsResponse,
 	LoginRequest,
 	ManualPaginationResponse,
@@ -52,6 +53,7 @@ import {
 	RoomID,
 	RoomStateGUID,
 	RoomSummary,
+	ServerSearchParams,
 	TimelineRowID,
 	URLPreview,
 	UnreadType,
@@ -331,6 +333,14 @@ export default abstract class RPCClient {
 		{ limit = 50, threadRoot }: { limit?: number, threadRoot?: EventID } = {},
 	): Promise<ManualPaginationResponse> {
 		return this.request("paginate_manual", { room_id, since, direction, limit, thread_root: threadRoot })
+	}
+
+	searchLocal(params: LocalSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_local", params)
+	}
+
+	searchServer(params: ServerSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_server", params)
 	}
 
 	paginate(

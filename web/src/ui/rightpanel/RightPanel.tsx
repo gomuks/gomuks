@@ -22,6 +22,7 @@ import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import ElementCall from "../widget/ElementCall.tsx"
 import LazyWidget from "../widget/LazyWidget.tsx"
 import MemberList from "./MemberList.tsx"
+import MessageSearch from "./MessageSearch.tsx"
 import Notifications from "./Notifications.tsx"
 import PinnedMessages from "./PinnedMessages.tsx"
 import UserInfo from "./UserInfo.tsx"
@@ -34,7 +35,7 @@ export type RightPanelType =
 	"pinned-messages" | "notifications" | "members" | "widgets" | "widget" | "user" | "thread" | "element-call"
 
 interface RightPanelSimpleProps {
-	type: "pinned-messages" | "notifications" | "members" | "widgets" | "element-call"
+	type: "pinned-messages" | "notifications" | "search" | "members" | "widgets" | "element-call"
 }
 
 interface RightPanelWidgetProps {
@@ -64,6 +65,8 @@ function getTitle(props: RightPanelProps): string {
 		return "Pinned Messages"
 	case "notifications":
 		return "Notification Center"
+	case "search":
+		return "Search"
 	case "members":
 		return "Room Members"
 	case "widgets":
@@ -85,6 +88,8 @@ function renderRightPanelContent(props: RightPanelProps, mainScreen: MainScreenC
 		return <PinnedMessages />
 	case "notifications":
 		return <Notifications />
+	case "search":
+		return <MessageSearch />
 	case "members":
 		return <MemberList />
 	case "widgets":

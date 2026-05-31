@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { MouseEvent } from "react"
+import { CancellablePromise } from "@/util/promise.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
@@ -24,11 +25,14 @@ import {
 	EventType,
 	GomuksAndroidMessageToWeb,
 	ImagePackRooms,
+	LocalSearchParams,
+	MemDBEvent,
 	RPCEvent,
 	RawDBEvent,
 	RelationType,
 	RoomID,
 	RoomStateGUID,
+	ServerSearchParams,
 	SyncStatus,
 	UnreadType,
 	UserID,
@@ -338,7 +342,7 @@ export default class Client {
 		if (typeof room === "string") {
 			room = this.store.rooms.get(room)
 		}
-		if (!room || (!unredact && room.eventsByID.has(eventID)) ||room.requestedEvents.has(eventID)) {
+		if (!room || (!unredact && room.eventsByID.has(eventID)) || room.requestedEvents.has(eventID)) {
 			return
 		}
 		room.requestedEvents.add(eventID)
@@ -394,6 +398,25 @@ export default class Client {
 			output.push(room.getOrApplyEvent(evt))
 		}
 		return output
+	}
+
+	search(
+		local: boolean, params: LocalSearchParams | ServerSearchParams,
+	): CancellablePromise<[MemDBEvent[], string | undefined]> {
+		const promise = local ? this.rpc.searchLocal(params) : this.rpc.searchServer(params)
+		return new CancellablePromise((resolve, reject) => {
+			promise.then(resp => {
+				const output = []
+				for (const evt of resp.events ?? []) {
+					const room = this.store.rooms.get(evt.room_id)
+					if (!room) {
+						continue
+					}
+					output.push(room.getOrApplyEvent(evt))
+				}
+				resolve([output, resp.next_batch] as const)
+			}, reject)
+		}, promise.cancel)
 	}
 
 	async pinMessage(room: RoomStateStore, evtID: EventID, wantPinned: boolean) {

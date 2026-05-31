@@ -33,6 +33,7 @@ export class RoomContextData {
 	public focusedEventRowID: EventRowID | null = null
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
 	public scrolledToBottom = true
+	public isFake = false
 	public setForceViewType: (viewType: RoomType | null) => void = noop("setForceViewType")
 
 	constructor(

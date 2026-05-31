@@ -217,7 +217,7 @@ div.timeline-event {
 	}
 }
 
-div.pinned-event > div.timeline-event, div.notification-panel-content > div.timeline-event {
+div.pinned-event > div.timeline-event, div.notification-panel-content > div.timeline-event, div.search-panel-content > div.timeline-event {
 	--timeline-status-size: 0;
 	--timeline-horizontal-padding: 0;
 

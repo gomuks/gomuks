@@ -46,8 +46,8 @@ const EventContextModal = ({ roomCtx, eventID }: EventContextModalProps) => {
 		setStartLoading(false)
 		setEndLoading(false)
 		client.rpc.getEventContext(room.roomID, eventID).then(res => {
-			setEnd(res.end)
-			setStart(res.start)
+			setEnd(res.end ?? "")
+			setStart(res.start ?? "")
 			setTimeline([
 				...res.before.reverse().map(evt => room.applyEvent(evt)),
 				room.applyEvent(res.event),
@@ -79,7 +79,7 @@ const EventContextModal = ({ roomCtx, eventID }: EventContextModalProps) => {
 		client.rpc.paginateManual(room.roomID, start, "b").then(
 			res => {
 				scrollFixRef.current = viewRef.current?.parentElement?.scrollHeight ?? null
-				setStart(res.next_batch)
+				setStart(res.next_batch ?? "")
 				setTimeline([
 					...res.events.reverse().map(evt => room.applyEvent(evt)),
 					...timeline,
@@ -92,7 +92,7 @@ const EventContextModal = ({ roomCtx, eventID }: EventContextModalProps) => {
 		setEndLoading(true)
 		client.rpc.paginateManual(room.roomID, end, "f").then(
 			res => {
-				setEnd(res.next_batch)
+				setEnd(res.next_batch ?? "")
 				setTimeline([
 					...timeline,
 					...res.events.map(evt => room.applyEvent(evt)),
