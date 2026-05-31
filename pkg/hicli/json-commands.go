@@ -7,11 +7,13 @@
 package hicli
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -190,7 +192,42 @@ func (h *JSONAPI) ResendEvent(ctx context.Context, params *jsoncmd.ResendEventPa
 }
 
 func (h *JSONAPI) ReportEvent(ctx context.Context, params *jsoncmd.ReportEventParams) error {
-	return h.Client.ReportEvent(ctx, params.RoomID, params.EventID, params.Reason)
+	if !params.DontReportToOwnServer {
+		err := h.Client.ReportEvent(ctx, params.RoomID, params.EventID, params.Reason)
+		if err != nil {
+			return err
+		}
+	}
+	if params.ReportToOtherServer != "" {
+		// TODO
+	}
+	if params.ReportToCommunity != "" && params.ReportViaUser != "" {
+		reportID := strconv.FormatInt(time.Now().UnixNano(), 10)
+		reportID = reportID[:len(reportID)-9] + "." + reportID[len(reportID)-9:]
+		_, err := h.Client.SendToDevice(ctx, event.Type{
+			Type:  "org.matrix.msc4468.report",
+			Class: event.ToDeviceEventType,
+		}, &mautrix.ReqSendToDevice{
+			Messages: map[id.UserID]map[id.DeviceID]*event.Content{
+				params.ReportViaUser: {
+					"*": {
+						Raw: map[string]any{
+							"community_id": params.ReportToCommunity,
+							"report_id":    reportID,
+							"type":         "complaint",
+							"harm":         cmp.Or(params.Harm, "m.spam"),
+							"regarding":    params.EventID,
+							"description":  params.Reason,
+						},
+					},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *JSONAPI) RedactEvent(ctx context.Context, params *jsoncmd.RedactEventParams) (*mautrix.RespSendEvent, error) {

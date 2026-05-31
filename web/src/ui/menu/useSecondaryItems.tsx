@@ -66,20 +66,7 @@ export const useSecondaryItems = (
 		openModal(modals.eventReactions(roomCtx, evt))
 	}
 	const onClickReport = () => {
-		openModal({
-			dimmed: true,
-			boxed: true,
-			content: <RoomContext value={roomCtx}>
-				<ConfirmWithMessageModal
-					evt={evt}
-					title="Report Message"
-					description="Report this message to your homeserver administrator?"
-					placeholder="Reason for report"
-					confirmButton="Send report"
-					onConfirm={reason => client.rpc.reportEvent(evt.room_id, evt.event_id, reason)}
-				/>
-			</RoomContext>,
-		})
+		openModal(modals.report(roomCtx, evt))
 	}
 	const onClickRedact = () => {
 		openModal({

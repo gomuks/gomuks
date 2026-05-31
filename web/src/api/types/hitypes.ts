@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { HarmCategory } from "./harms.ts"
 import {
 	ContentURI,
 	CreateEventContent,
@@ -346,4 +347,15 @@ export interface PassphraseMetadata {
 export interface RecoveryKeyResponse {
 	recovery_key: string
 	passphrase_meta?: PassphraseMetadata
+}
+
+export interface ReportEventParams {
+	room_id: RoomID
+	event_id: EventID
+	reason: string
+	harm?: HarmCategory
+	dont_report_to_own_server?: boolean
+	report_to_other_server?: string
+	report_to_community?: string
+	report_via_user_id?: UserID
 }
