@@ -124,6 +124,14 @@ func (gr *GomuksRPC) PaginateManual(ctx context.Context, params *jsoncmd.Paginat
 	return executeRequest(gr, ctx, jsoncmd.PaginateManual, params)
 }
 
+func (gr *GomuksRPC) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchLocal, params)
+}
+
+func (gr *GomuksRPC) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchServer, params)
+}
+
 func (gr *GomuksRPC) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMentions, params)
 }

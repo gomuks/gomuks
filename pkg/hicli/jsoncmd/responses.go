@@ -49,7 +49,7 @@ type EventContextResponse struct {
 
 type ManualPaginationResponse struct {
 	Events    []*database.Event `json:"events"`
-	NextBatch string            `json:"next_batch"`
+	NextBatch string            `json:"next_batch,omitempty"`
 }
 
 type RecoveryKeyResponse struct {

@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -575,6 +577,72 @@ func (h *HiClient) PaginateManual(
 		h.WakeupRequestQueue()
 	}
 	return &wrappedResp, nil
+}
+
+func (h *HiClient) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	var offset int
+	if params.NextBatch != "" {
+		var ok bool
+		params.NextBatch, ok = strings.CutPrefix(params.NextBatch, "local_offset:")
+		offset, _ = strconv.Atoi(params.NextBatch)
+		if !ok || offset <= 0 {
+			return nil, fmt.Errorf("invalid next_batch value: %q", params.NextBatch)
+		}
+	}
+	resp, err := h.DB.Event.Search(
+		ctx,
+		params.SearchTerm,
+		params.RawLike,
+		params.RoomIDs,
+		params.Senders,
+		params.MinTimestamp.Time,
+		params.MaxTimestamp.Time,
+		params.IncludeRedacted,
+		params.SortByTime,
+		params.Limit,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	var nextBatch string
+	if len(resp) >= params.Limit {
+		nextBatch = fmt.Sprintf("local_offset:%d", offset+params.Limit)
+	}
+	return &jsoncmd.ManualPaginationResponse{
+		Events:    resp,
+		NextBatch: nextBatch,
+	}, nil
+}
+
+func (h *HiClient) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	orderBy := "rank"
+	if params.SortByTime {
+		orderBy = "recent"
+	}
+	resp, err := h.Client.Search(ctx, &mautrix.ReqSearch{
+		NextBatch:  params.NextBatch,
+		SearchTerm: params.SearchTerm,
+		Filter: &mautrix.FilterPart{
+			Rooms:   params.RoomIDs,
+			Senders: params.Senders,
+			Limit:   params.Limit,
+		},
+		OrderBy: orderBy,
+	})
+	if err != nil {
+		return nil, err
+	}
+	wrappedResp := &jsoncmd.ManualPaginationResponse{
+		Events:    make([]*database.Event, len(resp.Results)),
+		NextBatch: resp.NextBatch,
+	}
+	for i, res := range resp.Results {
+		if wrappedResp.Events[i], err = h.processEvent(ctx, res.Event, nil, nil, true); err != nil {
+			return nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
+		}
+	}
+	return wrappedResp, nil
 }
 
 func (h *HiClient) GetMentions(ctx context.Context, maxTS time.Time, unreadType database.UnreadType, limit int, roomID id.RoomID) ([]*database.Event, error) {

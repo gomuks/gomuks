@@ -50,6 +50,8 @@ const (
 	ReqGetEvent                 Name = "get_event"
 	ReqGetEventContext          Name = "get_event_context"
 	ReqPaginateManual           Name = "paginate_manual"
+	ReqSearchLocal              Name = "search_local"
+	ReqSearchServer             Name = "search_server"
 	ReqGetMentions              Name = "get_mentions"
 	ReqGetRelatedEvents         Name = "get_related_events"
 	ReqGetStickyEvents          Name = "get_sticky_events"
@@ -165,6 +167,10 @@ var (
 	// This is used to paginate after jumping to a specific event using `get_event_context` and
 	// for normal pagination in the thread view.
 	PaginateManual = &CommandSpec[*PaginateManualParams, *ManualPaginationResponse]{Name: ReqPaginateManual}
+	// SearchLocal searches for messages in the local database.
+	SearchLocal = &CommandSpec[*SearchParams, *ManualPaginationResponse]{Name: ReqSearchLocal}
+	// SearchServer searches for messages on the homeserver.
+	SearchServer = &CommandSpec[*SearchServerParams, *ManualPaginationResponse]{Name: ReqSearchServer}
 	// GetMentions returns recent events that mention the current user. This will not call the homeserver.
 	// The result is sorted by timestamp in descending order. Sorting by timestamp means the sender could
 	// have faked it, but there's no other cross-room event ordering in Matrix.
