@@ -65,23 +65,29 @@ div.right-panel-content.notifications, div.right-panel-content.search {
 	> div.search-controls {
 		flex-shrink: 0;
 
-		> input[type="search"] {
+		input[type="search"] {
 			border: none;
 			outline: none;
 			padding: .5rem;
 			border-bottom: 1px solid var(--border-color);
 			width: 100%;
 			box-sizing: border-box;
+
+			&.raw-like-input {
+				border: 1px solid var(--border-color);
+				border-radius: .25rem;
+				padding: .25rem .5rem;
+			}
 		}
 
 		> details {
-			display: flex;
-			flex-direction: column;
 			padding: .5rem;
 			border-bottom: 1px solid var(--border-color);
 
-			> label {
+			> label, > input {
 				display: block;
+				width: 100%;
+				margin-top: .25rem;
 			}
 		}
 

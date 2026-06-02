@@ -92,6 +92,7 @@ const MessageSearch = () => {
 							const room = client.store.rooms.get(evt.room_id)
 							if (room) {
 								const ctx = new RoomContextData(room)
+								// TODO make appropriate things read this flag and jump to the real room view
 								ctx.isFake = true
 								roomContexts.current.set(evt.room_id, ctx)
 							}
@@ -203,15 +204,24 @@ const MessageSearch = () => {
 						}}
 					/>
 				</label>
-				<label>
-					Include redacted events
+				{local && <>
+					<label>
+						Include redacted events
+						<input
+							type="checkbox"
+							checked={includeRedacted}
+							disabled={!local}
+							onChange={e => setAndReload("include_redacted", e.currentTarget.checked)}
+						/>
+					</label>
 					<input
-						type="checkbox"
-						checked={includeRedacted}
-						disabled={!local}
-						onChange={e => setAndReload("include_redacted", e.currentTarget.checked)}
+						type="search"
+						className="raw-like-input"
+						placeholder="Raw LIKE query"
+						value={rawLike}
+						onChange={e => setAndReload("raw_like", e.target.value, true)}
 					/>
-				</label>
+				</>}
 			</details>
 			{error ? <div className="error">
 				{error}
@@ -219,6 +229,7 @@ const MessageSearch = () => {
 		</div>
 		<div className={contentClassNames.join(" ")}>
 			{events.map((evt, i) => {
+				// TODO separate event view type for search?
 				const elem = <TimelineEvent
 					key={evt.rowid} evt={evt} prevEvt={events[i-1] ?? null} viewType="notifications"
 				/>
