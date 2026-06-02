@@ -174,6 +174,7 @@ const MessageSearch = () => {
 				type="search"
 				placeholder="Search term"
 				value={searchTerm}
+				autoFocus
 				onChange={e => setAndReload("search_term", e.target.value, true)}
 			/>
 			<details>
