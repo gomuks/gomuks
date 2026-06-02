@@ -44,6 +44,8 @@ const MessageSearch = () => {
 	const [local, setLocal] = useState(!!roomCtx?.store.meta.current.encryption_event)
 	const [sortByTime, setSortByTime] = useState(false)
 	const [includeRedacted, setIncludeRedacted] = useState(true)
+	const [minDate, setMinDate] = useState("")
+	const [maxDate, setMaxDate] = useState("")
 	const [minTimestamp, setMinTimestamp] = useState<number | undefined>(undefined)
 	const [maxTimestamp, setMaxTimestamp] = useState<number | undefined>(undefined)
 	const [roomIDs, setRoomIDs] = useState<RoomID[]>(() => roomCtx ? [roomCtx.store.roomID] : [])
@@ -224,8 +226,30 @@ const MessageSearch = () => {
 						className="raw-like-input"
 						placeholder="Raw LIKE query"
 						value={rawLike}
-						onChange={e => setAndReload("raw_like", e.target.value, true)}
+						onChange={e => setAndReload("raw_like", e.currentTarget.value, true)}
 					/>
+					<label>
+						After
+						<input
+							type="date"
+							value={minDate}
+							onChange={e => {
+								setMinDate(e.currentTarget.value)
+								setAndReload("min_timestamp", +new Date(e.currentTarget.value + " 00:00:00"))
+							}}
+						/>
+					</label>
+					<label>
+						Before
+						<input
+							type="date"
+							value={maxDate}
+							onChange={e => {
+								setMaxDate(e.currentTarget.value)
+								setAndReload("max_timestamp", +new Date(e.currentTarget.value + " 23:59:59"))
+							}}
+						/>
+					</label>
 				</>}
 			</details>
 			{error ? <div className="error">
