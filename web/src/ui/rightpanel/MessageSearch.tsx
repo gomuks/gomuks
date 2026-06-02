@@ -64,10 +64,13 @@ const MessageSearch = () => {
 		sort_by_time: sortByTime,
 		...overrides,
 	})
+	const clearResults = () => {
+		setEvents([])
+		setNextBatch(undefined)
+	}
 	const loadImmediate = (local: boolean, params: LocalSearchParams, reset: boolean = true) => {
 		if (!params.search_term && !params.raw_like) {
-			setEvents([])
-			setNextBatch(undefined)
+			clearResults()
 			return
 		}
 		if (!reset) {
@@ -75,6 +78,8 @@ const MessageSearch = () => {
 				return
 			}
 			params.next_batch = nextBatch
+		} else {
+			clearResults()
 		}
 		clearTimeout(loadDebounce?.current)
 		loadDebounce.current = undefined
@@ -111,8 +116,7 @@ const MessageSearch = () => {
 				if (!canceled) {
 					setError(`${err}`)
 					if (reset) {
-						setEvents([])
-						setNextBatch(undefined)
+						clearResults()
 					}
 				}
 			},
