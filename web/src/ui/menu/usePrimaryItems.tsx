@@ -25,6 +25,7 @@ import { ModalCloseContext, ModalContext } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 import { EventExtraMenu } from "./EventMenu.tsx"
 import { getEncryption, getModalStyleFromButton, getPending, getPowerLevels } from "./util.ts"
+import DeleteIcon from "@/icons/delete.svg?react"
 import EditIcon from "@/icons/edit.svg?react"
 import MoreIcon from "@/icons/more.svg?react"
 import ReactIcon from "@/icons/react.svg?react"
@@ -104,6 +105,10 @@ export const usePrimaryItems = (
 		client.resendEvent(evt.transaction_id)
 			.catch(err => window.alert(`Failed to resend message: ${err}`))
 	}
+	const onClickCancelSend = () => {
+		roomCtx.store.removeFailedEvent(evt)
+		closeModal()
+	}
 	const onClickMore = (mevt: React.MouseEvent<HTMLButtonElement>) => {
 		const moreMenuHeight = 5 * 40
 		setForceOpen!(true)
@@ -137,6 +142,10 @@ export const usePrimaryItems = (
 		{didFail && <button onClick={onClickResend} title="Resend message">
 			<RefreshIcon/>
 			{names && "Resend"}
+		</button>}
+		{didFail && <button onClick={onClickCancelSend} title="Cancel send">
+			<DeleteIcon />
+			{names && "Cancel"}
 		</button>}
 		{canReact && <button disabled={isPending} title={pendingTitle} onClick={onClickReact}>
 			<ReactIcon/>
