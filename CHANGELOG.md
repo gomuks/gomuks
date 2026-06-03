@@ -1,9 +1,18 @@
 # v26.06 (unreleased)
 
 ### Backend
+* Added local full-text search support.
+  * Upgrading may take a few minutes if your database is large.
+  * The backend must now be compiled with the `sqlite_fts5` build tag. The build
+    scripts will add it by default, but if you run `go build` manually, you need
+    to add the tag yourself.
 * Added support for thumbnailing animated webp avatars.
+* Added support for correctly rotating HEIC images when re-encoding uploads.
+* Added documentation generator for RPC API and an OpenAPI spec for the HTTP API.
+* Added `/powerlevel` command to change individual power levels.
 * Changed environment variable processing to prefer `GOMUKS_*_HOME` over
   `GOMUKS_ROOT` to allow finer control.
+* Fixed panic when cancelling media uploads.
 
 ### Web
 * Rewrote desktop wrapper to use Electron instead of Wails.
@@ -11,6 +20,11 @@
     and macOS builds are signed to allow installing without workarounds.
   * The new wrapper supports both embedded and remote backends and can have
     multiple backends at once.
+* Added message search panel.
+* Added separate message context menu button to open thread panel.
+* Fixed reaction images not having a maximum width.
+* Fixed successfully decrypted events with an empty `type` showing up as waiting
+  for decryption.
 
 # v26.05
 

@@ -89,6 +89,13 @@ div.right-panel-content.notifications, div.right-panel-content.search {
 				width: 100%;
 				margin-top: .25rem;
 			}
+
+			input[type="date"] {
+				border: none;
+				outline: none;
+				border-bottom: 1px solid var(--border-color);
+				box-sizing: border-box;
+			}
 		}
 
 		> div.error {

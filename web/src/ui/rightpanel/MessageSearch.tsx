@@ -44,6 +44,8 @@ const MessageSearch = () => {
 	const [local, setLocal] = useState(!!roomCtx?.store.meta.current.encryption_event)
 	const [sortByTime, setSortByTime] = useState(false)
 	const [includeRedacted, setIncludeRedacted] = useState(true)
+	const [minDate, setMinDate] = useState("")
+	const [maxDate, setMaxDate] = useState("")
 	const [minTimestamp, setMinTimestamp] = useState<number | undefined>(undefined)
 	const [maxTimestamp, setMaxTimestamp] = useState<number | undefined>(undefined)
 	const [roomIDs, setRoomIDs] = useState<RoomID[]>(() => roomCtx ? [roomCtx.store.roomID] : [])
@@ -64,10 +66,13 @@ const MessageSearch = () => {
 		sort_by_time: sortByTime,
 		...overrides,
 	})
+	const clearResults = () => {
+		setEvents([])
+		setNextBatch(undefined)
+	}
 	const loadImmediate = (local: boolean, params: LocalSearchParams, reset: boolean = true) => {
 		if (!params.search_term && !params.raw_like) {
-			setEvents([])
-			setNextBatch(undefined)
+			clearResults()
 			return
 		}
 		if (!reset) {
@@ -75,6 +80,8 @@ const MessageSearch = () => {
 				return
 			}
 			params.next_batch = nextBatch
+		} else {
+			clearResults()
 		}
 		clearTimeout(loadDebounce?.current)
 		loadDebounce.current = undefined
@@ -111,8 +118,7 @@ const MessageSearch = () => {
 				if (!canceled) {
 					setError(`${err}`)
 					if (reset) {
-						setEvents([])
-						setNextBatch(undefined)
+						clearResults()
 					}
 				}
 			},
@@ -170,6 +176,7 @@ const MessageSearch = () => {
 				type="search"
 				placeholder="Search term"
 				value={searchTerm}
+				autoFocus
 				onChange={e => setAndReload("search_term", e.target.value, true)}
 			/>
 			<details>
@@ -219,8 +226,30 @@ const MessageSearch = () => {
 						className="raw-like-input"
 						placeholder="Raw LIKE query"
 						value={rawLike}
-						onChange={e => setAndReload("raw_like", e.target.value, true)}
+						onChange={e => setAndReload("raw_like", e.currentTarget.value, true)}
 					/>
+					<label>
+						After
+						<input
+							type="date"
+							value={minDate}
+							onChange={e => {
+								setMinDate(e.currentTarget.value)
+								setAndReload("min_timestamp", +new Date(e.currentTarget.value + " 00:00:00"))
+							}}
+						/>
+					</label>
+					<label>
+						Before
+						<input
+							type="date"
+							value={maxDate}
+							onChange={e => {
+								setMaxDate(e.currentTarget.value)
+								setAndReload("max_timestamp", +new Date(e.currentTarget.value + " 23:59:59"))
+							}}
+						/>
+					</label>
 				</>}
 			</details>
 			{error ? <div className="error">
