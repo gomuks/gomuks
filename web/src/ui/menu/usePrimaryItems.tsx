@@ -25,13 +25,13 @@ import { ModalCloseContext, ModalContext } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 import { EventExtraMenu } from "./EventMenu.tsx"
 import { getEncryption, getModalStyleFromButton, getPending, getPowerLevels } from "./util.ts"
-import DeleteIcon from "@/icons/delete.svg?react"
 import EditIcon from "@/icons/edit.svg?react"
 import MoreIcon from "@/icons/more.svg?react"
 import ReactIcon from "@/icons/react.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
 import ReplyIcon from "@/icons/reply.svg?react"
 import ThreadIcon from "@/icons/thread.svg?react"
+import UndoIcon from "@/icons/undo.svg?react"
 import "./index.css"
 
 const noop = () => {}
@@ -105,8 +105,9 @@ export const usePrimaryItems = (
 		client.resendEvent(evt.transaction_id)
 			.catch(err => window.alert(`Failed to resend message: ${err}`))
 	}
-	const onClickCancelSend = () => {
+	const onClickUndoSend = () => {
 		roomCtx.store.removeFailedEvent(evt)
+		roomCtx.setEditing(evt, true)
 		closeModal()
 	}
 	const onClickMore = (mevt: React.MouseEvent<HTMLButtonElement>) => {
@@ -143,9 +144,9 @@ export const usePrimaryItems = (
 			<RefreshIcon/>
 			{names && "Resend"}
 		</button>}
-		{didFail && <button onClick={onClickCancelSend} title="Cancel send">
-			<DeleteIcon />
-			{names && "Cancel"}
+		{didFail && <button onClick={onClickUndoSend} title="Undo send">
+			<UndoIcon />
+			{names && "Undo"}
 		</button>}
 		{canReact && <button disabled={isPending} title={pendingTitle} onClick={onClickReact}>
 			<ReactIcon/>

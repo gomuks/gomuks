@@ -26,7 +26,7 @@ const noop = (name: string) => () => {
 export class RoomContextData {
 	public readonly timelineBottomRef: RefObject<HTMLDivElement | null> = createRef()
 	public setReplyTo: (eventID: EventID | null) => void = noop("setReplyTo")
-	public setEditing: (evt: MemDBEvent | null) => void = noop("setEditing")
+	public setEditing: (evt: MemDBEvent | null, failed?: true) => void = noop("setEditing")
 	public insertText: (text: string) => void = noop("insertText")
 	public lastThreadEventID: EventID | null = null
 	public directSetFocusedEventRowID: (eventRowID: EventRowID | null) => void = noop("setFocusedEventRowID")

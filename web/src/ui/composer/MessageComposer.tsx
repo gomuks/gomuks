@@ -210,7 +210,7 @@ const MessageComposer = () => {
 			setState(state => ({ startNewThread: !state.startNewThread }))
 		}
 	}, [])
-	roomCtx.setEditing = useCallback((evt: MemDBEvent | null) => {
+	roomCtx.setEditing = useCallback((evt: MemDBEvent | null, failed?: true) => {
 		if (evt === null) {
 			rawSetEditing(null)
 			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
@@ -223,7 +223,9 @@ const MessageComposer = () => {
 		}
 		const isMedia = mediaMsgTypes.includes(evtContent.msgtype)
 			&& Boolean(evt.content?.url || evt.content?.file?.url)
-		rawSetEditing(evt)
+		if (!failed) {
+			rawSetEditing(evt)
+		}
 		const textIsEditable = (evt.content.filename && evt.content.filename !== evt.content.body)
 			|| evt.type === "m.sticker"
 			|| !isMedia
