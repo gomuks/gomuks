@@ -46,7 +46,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getRelatesTo, getServerName, getThreadRoot, isThread } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -223,8 +223,22 @@ const MessageComposer = () => {
 		}
 		const isMedia = mediaMsgTypes.includes(evtContent.msgtype)
 			&& Boolean(evt.content?.url || evt.content?.file?.url)
+		let replyTo: EventID | null = null
+		let silentReply  = false
+		let explicitReplyInThread = false
 		if (!failed) {
 			rawSetEditing(evt)
+		} else if (evt.relation_type === "m.replace" && evt.relates_to) {
+			rawSetEditing(room.eventsByID.get(evt.relates_to) ?? null)
+		} else {
+			const rel = getRelatesTo(evt)
+			const replyToEvtID = !rel?.is_falling_back && rel?.["m.in_reply_to"]?.event_id
+			if (isEventID(replyToEvtID)) {
+				replyTo = replyToEvtID
+				// this isn't a proper detection
+				silentReply = evt.content?.["m.mentions"]?.user_ids?.length === 0
+				explicitReplyInThread = rel?.is_falling_back === false
+			}
 		}
 		const textIsEditable = (evt.content.filename && evt.content.filename !== evt.content.body)
 			|| evt.type === "m.sticker"
@@ -234,11 +248,11 @@ const MessageComposer = () => {
 			text: textIsEditable
 				? (evt.local_content?.edit_source ?? evtContent.body ?? "")
 				: "",
-			replyTo: null,
-			silentReply: false,
-			explicitReplyInThread: false,
+			replyTo,
+			silentReply,
+			explicitReplyInThread,
 			startNewThread: false,
-			command: null,
+			command: null, // TODO allow editing command invocations?
 			previews:
 				evt.content["m.url_previews"] ??
 				evt.content["com.beeper.linkpreviews"] ??
