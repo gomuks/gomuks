@@ -37,7 +37,7 @@ div.event-fixed-menu {
 		height: 3rem;
 		flex-shrink: 0;
 
-		&.redact-button {
+		&.redact-button:not(:disabled) {
 			color: var(--error-color);
 		}
 	}
@@ -77,7 +77,7 @@ div.context-menu {
 			border-radius: 0 0 .5rem .5rem;
 		}
 
-		&.redact-button {
+		&.redact-button:not(:disabled) {
 			color: var(--error-color);
 		}
 	}

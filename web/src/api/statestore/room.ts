@@ -623,6 +623,14 @@ export class RoomStateStore {
 		}
 	}
 
+	removeFailedEvent(evt: MemDBEvent) {
+		const evtIdx = this.pendingEvents.indexOf(evt.rowid)
+		if (evtIdx >= 0) {
+			this.pendingEvents.splice(evtIdx, 1)
+			this.notifyTimelineSubscribers()
+		}
+	}
+
 	subscribeThread(threadRoot: EventID, listener: (append?: MemDBEvent[], overwrite?: MemDBEvent) => void) {
 		this.#threadListenerRoot = threadRoot
 		this.#threadListener = listener

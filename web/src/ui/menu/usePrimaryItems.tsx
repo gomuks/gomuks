@@ -31,6 +31,7 @@ import ReactIcon from "@/icons/react.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
 import ReplyIcon from "@/icons/reply.svg?react"
 import ThreadIcon from "@/icons/thread.svg?react"
+import UndoIcon from "@/icons/undo.svg?react"
 import "./index.css"
 
 const noop = () => {}
@@ -104,6 +105,11 @@ export const usePrimaryItems = (
 		client.resendEvent(evt.transaction_id)
 			.catch(err => window.alert(`Failed to resend message: ${err}`))
 	}
+	const onClickUndoSend = () => {
+		roomCtx.store.removeFailedEvent(evt)
+		roomCtx.setEditing(evt, true)
+		closeModal()
+	}
 	const onClickMore = (mevt: React.MouseEvent<HTMLButtonElement>) => {
 		const moreMenuHeight = 5 * 40
 		setForceOpen!(true)
@@ -137,6 +143,10 @@ export const usePrimaryItems = (
 		{didFail && <button onClick={onClickResend} title="Resend message">
 			<RefreshIcon/>
 			{names && "Resend"}
+		</button>}
+		{didFail && <button onClick={onClickUndoSend} title="Undo send">
+			<UndoIcon />
+			{names && "Undo"}
 		</button>}
 		{canReact && <button disabled={isPending} title={pendingTitle} onClick={onClickReact}>
 			<ReactIcon/>
