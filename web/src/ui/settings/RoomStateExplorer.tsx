@@ -18,39 +18,13 @@ import { RoomStateStore, StateStore, useAccountData, useRoomAccountData, useRoom
 import { MemDBEvent, UnknownEventContent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
 import JSONView from "../util/JSONView"
+import { PushRuleEditor, PushRuleList, PushRuleView } from "./PushRuleEditor.tsx"
+import { DoneCallback, EventKind, kindName } from "./devtools-util.ts"
 import "./RoomStateExplorer.css"
 
 interface StateExplorerProps {
 	room: RoomStateStore
 }
-
-enum EventKind {
-	None,
-	Message,
-	State,
-	AccountData,
-	RoomAccountData,
-	Profile,
-}
-
-function kindName(kind: EventKind): string {
-	switch (kind) {
-	case EventKind.None:
-		return ""
-	case EventKind.Message:
-		return "Message"
-	case EventKind.State:
-		return "Room State"
-	case EventKind.AccountData:
-		return "Account Data"
-	case EventKind.RoomAccountData:
-		return "Room Account Data"
-	case EventKind.Profile:
-		return "Profile"
-	}
-}
-
-type DoneCallback = (kind: EventKind, type: string, stateKey: string | undefined, content: unknown | undefined) => void
 
 interface BaseEventViewProps {
 	type?: string
@@ -331,13 +305,13 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 			setCreatingNew(null)
 		} else if (selectedStateKey !== null && selectedType !== null) {
 			setSelectedStateKey(null)
-			if (viewKind !== EventKind.State) {
-				setSelectedType(null)
-			} else {
+			if (viewKind === EventKind.State) {
 				const stateKeysMap = room.state.get(selectedType)
 				if (stateKeysMap?.size === 1 && stateKeysMap.has("")) {
 					setSelectedType(null)
 				}
+			} else if (viewKind !== EventKind.PushRules) {
+				setSelectedType(null)
 			}
 		} else if (selectedType !== null) {
 			setSelectedType(null)
@@ -372,6 +346,12 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 		return <RoomAccountDataEventView room={room} onBack={handleBack} onDone={handleNewEventDone} />
 	case EventKind.Profile:
 		return <EventView kind={EventKind.Profile} event={null} onBack={handleBack} onDone={handleNewEventDone} />
+	case EventKind.PushRules:
+		return <PushRuleEditor type={selectedType!} onBack={handleBack} onDone={handleNewEventDone} />
+	default:
+		return <div className="state-explorer">Invalid creating new view kind</div>
+	case null:
+		// continue
 	}
 	if (selectedType !== null) {
 		switch (viewKind) {
@@ -391,6 +371,17 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 				kind={EventKind.Profile} type={selectedType} event={profile![selectedType]} onBack={handleBack}
 				onDone={handleNewEventDone}
 			/>
+		case EventKind.PushRules:
+			if (selectedStateKey === null) {
+				return <PushRuleList
+					store={client.store}
+					type={selectedType}
+					onBack={handleBack}
+					onSelectRuleID={setSelectedStateKey}
+					onCreateNew={setCreatingNew}
+				/>
+			}
+			return <PushRuleView type={selectedType} id={selectedStateKey} onBack={handleBack} />
 		default:
 			return <div>Invalid view kind</div>
 		}
@@ -458,10 +449,16 @@ export const StateExplorer = ({ room }: StateExplorerProps) => {
 			<button onClick={() => setCreatingNew(EventKind.Profile)}>Add new profile field</button>
 		</>
 		break
+	case EventKind.PushRules:
+		stateKeys = ["override", "content", "room", "sender", "underride"]
+		navButtons = <></>
+		break
 	default:
 		return <div className="state-explorer">Invalid view kind</div>
 	}
-	const kinds = [EventKind.State, EventKind.AccountData, EventKind.RoomAccountData, EventKind.Profile]
+	const kinds = [
+		EventKind.State, EventKind.AccountData, EventKind.RoomAccountData, EventKind.Profile, EventKind.PushRules,
+	]
 	return <div className="state-explorer">
 		<div className="title-bar">
 			{kinds.map(kind =>

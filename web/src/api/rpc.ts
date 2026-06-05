@@ -34,6 +34,8 @@ import {
 	MutualRoomsResponse,
 	PaginationResponse,
 	ProfileEncryptionInfo,
+	PushRuleKind,
+	PutPushRuleRequest,
 	RPCCommand,
 	RPCEvent,
 	RawDBEvent,
@@ -386,6 +388,17 @@ export default abstract class RPCClient {
 
 	muteRoom(room_id: RoomID, muted: boolean): Promise<boolean> {
 		return this.request("mute_room", { room_id, muted })
+	}
+
+	updatePushRule(kind: PushRuleKind, rule_id: string, action: "put", new_content: PutPushRuleRequest): Promise<void>
+	updatePushRule(kind: PushRuleKind, rule_id: string, action: "enable" | "disable" | "delete" | "put"): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind,
+		rule_id: string,
+		action: "enable" | "disable" | "delete" | "put",
+		new_content?: PutPushRuleRequest,
+	): Promise<void> {
+		return this.request("update_push_rule", { kind, rule_id, action, new_content })
 	}
 
 	resolveAlias(alias: RoomAlias): Promise<ResolveAliasResponse> {

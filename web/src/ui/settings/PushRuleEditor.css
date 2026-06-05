@@ -1,0 +1,77 @@
+div.push-rule-editor {
+	h4 {
+		margin: 0;
+	}
+
+	> div.push-rule-actions, > div.push-rule-pattern {
+		display: flex;
+		align-items: center;
+		gap: .5rem;
+
+		> label {
+			height: 1.5rem;
+		}
+
+		input[type="text"] {
+			border: none;
+			border-bottom: 1px solid var(--border-color);
+			box-sizing: border-box;
+			margin-left: .25rem;
+		}
+	}
+
+	> div.push-rule-conditions {
+		display: flex;
+		flex-direction: column;
+		gap: .25rem;
+
+		> div.push-rule-condition {
+			display: flex;
+			gap: .25rem;
+			height: 1.5rem;
+
+			&.kind-custom {
+				display: block;
+				height: auto;
+			}
+
+			select {
+				background-color: var(--background-color);
+				border: none;
+				border-bottom: 1px solid var(--border-color);
+				padding: 0;
+			}
+
+			> label > input {
+				margin-left: .25rem;
+			}
+
+			input[type="text"], input[type="number"] {
+				border: none;
+				border-bottom: 1px solid var(--border-color);
+			}
+
+			textarea {
+				border: 1px solid transparent;
+				border-bottom: 1px solid var(--border-color);
+				padding: 0;
+				margin: 0;
+				outline: none;
+				width: 100%;
+				resize: vertical;
+
+				&:focus {
+					border: 1px solid var(--primary-color);
+				}
+
+				&.invalid {
+					border-color: var(--error-color);
+				}
+			}
+		}
+
+		button.add-condition {
+			padding: .25rem .5rem;
+		}
+	}
+}

@@ -22,6 +22,8 @@
     multiple backends at once.
 * Added message search panel.
 * Added separate message context menu button to open thread panel.
+* Added undo button to move a failed message send back into the composer.
+* Added push rule editor to devtools.
 * Fixed reaction images not having a maximum width.
 * Fixed successfully decrypted events with an empty `type` showing up as waiting
   for decryption.
