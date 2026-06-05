@@ -391,7 +391,8 @@ function renderConditionEditor(
 				{cond.kind === "event_match" ? "matches" : cond.kind === "event_property_is" ? "is" : "contains"}
 				<input
 					type="text"
-					value={cond.kind === "event_match" ? ensureString(cond.pattern) : cond.value}
+					//eslint-disable-next-line @typescript-eslint/no-explicit-any
+					value={cond.kind === "event_match" ? ensureString(cond.pattern) : (cond as any).value}
 					onChange={evt => onChange(index, {
 						...removeExtraFields(cond),
 						pattern: cond.kind === "event_match" ? evt.currentTarget.value : undefined,
