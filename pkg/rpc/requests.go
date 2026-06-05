@@ -164,6 +164,10 @@ func (gr *GomuksRPC) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParam
 	return executeRequest(gr, ctx, jsoncmd.MuteRoom, params)
 }
 
+func (gr *GomuksRPC) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePushRuleParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.UpdatePushRule, params)
+}
+
 func (gr *GomuksRPC) EnsureGroupSessionShared(ctx context.Context, params *jsoncmd.EnsureGroupSessionSharedParams) error {
 	return executeRequestNoResponse(gr, ctx, jsoncmd.EnsureGroupSessionShared, params)
 }

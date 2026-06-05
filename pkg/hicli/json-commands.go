@@ -117,6 +117,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.CreateRoom.RunCtx(ctx, req.Data, h.API.CreateRoom)
 	case jsoncmd.ReqMuteRoom:
 		return jsoncmd.MuteRoom.RunCtx(ctx, req.Data, h.API.MuteRoom)
+	case jsoncmd.ReqUpdatePushRule:
+		return jsoncmd.UpdatePushRule.RunCtx(ctx, req.Data, h.API.UpdatePushRule)
 	case jsoncmd.ReqEnsureGroupSessionShared:
 		return jsoncmd.EnsureGroupSessionShared.RunCtx(ctx, req.Data, h.API.EnsureGroupSessionShared)
 	case jsoncmd.ReqSendToDevice:
@@ -405,10 +407,25 @@ func (h *JSONAPI) CreateRoom(ctx context.Context, params *mautrix.ReqCreateRoom)
 func (h *JSONAPI) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParams) (bool, error) {
 	if params.Muted {
 		return true, h.Client.PutPushRule(ctx, "global", pushrules.RoomRule, string(params.RoomID), &mautrix.ReqPutPushRule{
-			Actions: []pushrules.PushActionType{},
+			Actions: []*pushrules.PushAction{},
 		})
 	}
 	return false, h.Client.DeletePushRule(ctx, "global", pushrules.RoomRule, string(params.RoomID))
+}
+
+func (h *JSONAPI) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePushRuleParams) error {
+	switch params.Action {
+	case jsoncmd.UpdatePushRuleActionEnable:
+		return h.Client.SetPushRuleEnabled(ctx, "global", params.Kind, params.RuleID, true)
+	case jsoncmd.UpdatePushRuleActionDisable:
+		return h.Client.SetPushRuleEnabled(ctx, "global", params.Kind, params.RuleID, false)
+	case jsoncmd.UpdatePushRuleActionDelete:
+		return h.Client.DeletePushRule(ctx, "global", params.Kind, params.RuleID)
+	case jsoncmd.UpdatePushRuleActionPut:
+		return h.Client.PutPushRule(ctx, "global", params.Kind, params.RuleID, params.NewContent)
+	default:
+		return fmt.Errorf("unknown action %q", params.Action)
+	}
 }
 
 func (h *JSONAPI) EnsureGroupSessionShared(ctx context.Context, params *jsoncmd.EnsureGroupSessionSharedParams) error {

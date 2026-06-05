@@ -66,6 +66,7 @@ const (
 	ReqLeaveRoom                Name = "leave_room"
 	ReqCreateRoom               Name = "create_room"
 	ReqMuteRoom                 Name = "mute_room"
+	ReqUpdatePushRule           Name = "update_push_rule"
 	ReqEnsureGroupSessionShared Name = "ensure_group_session_shared"
 	ReqSendToDevice             Name = "send_to_device"
 	ReqResolveAlias             Name = "resolve_alias"
@@ -208,6 +209,8 @@ var (
 	CreateRoom = &CommandSpec[*mautrix.ReqCreateRoom, *mautrix.RespCreateRoom]{Name: ReqCreateRoom}
 	// MuteRoom mutes or unmutes a room by manipulating push rules. It returns the previous mute state.
 	MuteRoom = &CommandSpec[*MuteRoomParams, bool]{Name: ReqMuteRoom}
+	// UpdatePushRule is used to create, edit, delete, enable or disable push rules.
+	UpdatePushRule = &CommandSpecWithoutResponse[*UpdatePushRuleParams]{Name: ReqUpdatePushRule}
 	// EnsureGroupSessionShared ensures that the Megolm session for a room has been shared to all
 	// recipient devices. Calling this is not required, but it should be called when the user first
 	// starts typing to make sending faster.

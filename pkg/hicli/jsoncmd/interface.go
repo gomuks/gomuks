@@ -45,6 +45,7 @@ type GomuksAPI interface {
 	LeaveRoom(ctx context.Context, params *LeaveRoomParams) (*mautrix.RespLeaveRoom, error)
 	CreateRoom(ctx context.Context, params *mautrix.ReqCreateRoom) (*mautrix.RespCreateRoom, error)
 	MuteRoom(ctx context.Context, params *MuteRoomParams) (bool, error)
+	UpdatePushRule(ctx context.Context, params *UpdatePushRuleParams) error
 	EnsureGroupSessionShared(ctx context.Context, params *EnsureGroupSessionSharedParams) error
 	SendToDevice(ctx context.Context, params *SendToDeviceParams) (*mautrix.RespSendToDevice, error)
 	ResolveAlias(ctx context.Context, params *ResolveAliasParams) (*mautrix.RespAliasResolve, error)

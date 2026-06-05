@@ -13,6 +13,7 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/pushrules"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -322,6 +323,31 @@ type GetReceiptsParams struct {
 type MuteRoomParams struct {
 	RoomID id.RoomID `json:"room_id"`
 	Muted  bool      `json:"muted"`
+}
+
+type UpdatePushRuleAction string
+
+const (
+	UpdatePushRuleActionEnable  UpdatePushRuleAction = "enable"
+	UpdatePushRuleActionDisable UpdatePushRuleAction = "disable"
+	UpdatePushRuleActionPut     UpdatePushRuleAction = "put"
+	UpdatePushRuleActionDelete  UpdatePushRuleAction = "delete"
+)
+
+type PushRulePutContent struct {
+	Actions pushrules.PushActionArray `json:"actions"`
+	// The conditions to match in order to trigger this rule.
+	// Only applicable to generic underride/override rules.
+	Conditions []*pushrules.PushCondition `json:"conditions,omitempty"`
+	// Pattern for content-specific push rules
+	Pattern string `json:"pattern,omitempty"`
+}
+
+type UpdatePushRuleParams struct {
+	Kind       pushrules.PushRuleType  `json:"kind"`
+	RuleID     string                  `json:"rule_id"`
+	Action     UpdatePushRuleAction    `json:"action"`
+	NewContent *mautrix.ReqPutPushRule `json:"new_content,omitempty"`
 }
 
 type PingParams struct {
