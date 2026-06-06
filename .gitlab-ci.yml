@@ -229,8 +229,7 @@ docker/manifest:
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-amd64 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-arm64
 
 .build-desktop: &build-desktop
-  # Node 24.16+ and 26.1+ are broken https://github.com/electron/electron/issues/51619
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24.15.0-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
   stage: build desktop
   cache:
     paths:
