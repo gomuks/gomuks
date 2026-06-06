@@ -7,6 +7,7 @@ div.push-rule-editor {
 		display: flex;
 		align-items: center;
 		gap: .5rem;
+		flex-wrap: wrap;
 
 		> label {
 			height: 1.5rem;
@@ -28,7 +29,7 @@ div.push-rule-editor {
 		> div.push-rule-condition {
 			display: flex;
 			gap: .25rem;
-			height: 1.5rem;
+			flex-wrap: wrap;
 
 			&.kind-custom {
 				display: block;
@@ -40,6 +41,12 @@ div.push-rule-editor {
 				border: none;
 				border-bottom: 1px solid var(--border-color);
 				padding: 0;
+				height: 1.5rem;
+			}
+
+			> label {
+				text-wrap: nowrap;
+				height: 1.5rem;
 			}
 
 			> label > input {

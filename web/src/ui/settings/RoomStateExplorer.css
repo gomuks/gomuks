@@ -16,10 +16,12 @@ div.state-explorer {
 		display: flex;
 		align-items: center;
 		gap: .25rem;
+		overflow-x: scroll;
 
 		> button {
 			padding: .25rem .5rem;
 			font-size: 1.1rem;
+			text-wrap: nowrap;
 
 			&:disabled {
 				color: var(--text-color);
