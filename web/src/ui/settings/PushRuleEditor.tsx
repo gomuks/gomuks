@@ -174,7 +174,10 @@ export const PushRuleEditor = ({ type, rule, onBack, onDone }: PushRuleEditorPro
 	const client = use(ClientContext)!
 	const [newRuleID, setNewRuleID] = useState("")
 	const [notify, setNotify] = useState(() => rule?.actions?.includes("notify") ?? false)
-	const [highlight, setHighlight] = useState(() => !!rule?.actions?.find(findHighlight))
+	const [highlight, setHighlight] = useState(() => {
+		const hl = rule?.actions?.find(findHighlight)
+		return typeof hl?.value === "boolean" ? hl.value : !!hl
+	})
 	const [sound, setSound] = useState(() => ensureString(rule?.actions?.find(findSound)?.value))
 	const [pattern, setPattern] = useState((rule as ContentPushRule)?.pattern ?? "")
 	const [conditions, setConditions] = useState<UnknownPushRuleCondition[]>((rule as RidePushRule)?.conditions ?? [])
