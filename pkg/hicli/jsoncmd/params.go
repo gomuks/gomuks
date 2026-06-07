@@ -328,10 +328,11 @@ type MuteRoomParams struct {
 type UpdatePushRuleAction string
 
 const (
-	UpdatePushRuleActionEnable  UpdatePushRuleAction = "enable"
-	UpdatePushRuleActionDisable UpdatePushRuleAction = "disable"
-	UpdatePushRuleActionPut     UpdatePushRuleAction = "put"
-	UpdatePushRuleActionDelete  UpdatePushRuleAction = "delete"
+	UpdatePushRuleActionEnable     UpdatePushRuleAction = "enable"
+	UpdatePushRuleActionDisable    UpdatePushRuleAction = "disable"
+	UpdatePushRuleActionPut        UpdatePushRuleAction = "put"
+	UpdatePushRuleActionDelete     UpdatePushRuleAction = "delete"
+	UpdatePushRuleActionPutActions UpdatePushRuleAction = "put_actions"
 )
 
 type PushRulePutContent struct {
@@ -344,10 +345,16 @@ type PushRulePutContent struct {
 }
 
 type UpdatePushRuleParams struct {
-	Kind       pushrules.PushRuleType  `json:"kind"`
-	RuleID     string                  `json:"rule_id"`
-	Action     UpdatePushRuleAction    `json:"action"`
+	Kind   pushrules.PushRuleType `json:"kind"`
+	RuleID string                 `json:"rule_id"`
+	Action UpdatePushRuleAction   `json:"action"`
+
+	// When action is put, the new content for the push rule
 	NewContent *mautrix.ReqPutPushRule `json:"new_content,omitempty"`
+
+	// When action is put_actions, the new list of actions for the push rule.
+	// This is mostly for default rules that can't be edited otherwise.
+	Actions []*pushrules.PushAction `json:"actions,omitempty"`
 }
 
 type PingParams struct {

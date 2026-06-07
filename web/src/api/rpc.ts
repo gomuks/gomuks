@@ -390,15 +390,19 @@ export default abstract class RPCClient {
 		return this.request("mute_room", { room_id, muted })
 	}
 
-	updatePushRule(kind: PushRuleKind, rule_id: string, action: "put", new_content: PutPushRuleRequest): Promise<void>
-	updatePushRule(kind: PushRuleKind, rule_id: string, action: "enable" | "disable" | "delete" | "put"): Promise<void>
+	updatePushRule(kind: PushRuleKind, rule_id: string, action: "enable" | "disable" | "delete"): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind, rule_id: string, action: "put" | "put_actions", new_content: PutPushRuleRequest,
+	): Promise<void>
 	updatePushRule(
 		kind: PushRuleKind,
 		rule_id: string,
-		action: "enable" | "disable" | "delete" | "put",
+		action: "enable" | "disable" | "delete" | "put" | "put_actions",
 		new_content?: PutPushRuleRequest,
 	): Promise<void> {
-		return this.request("update_push_rule", { kind, rule_id, action, new_content })
+		const actions = action === "put_actions" ? new_content?.actions || [] : undefined
+		new_content = action === "put" ? new_content : undefined
+		return this.request("update_push_rule", { kind, rule_id, action, new_content, actions })
 	}
 
 	resolveAlias(alias: RoomAlias): Promise<ResolveAliasResponse> {

@@ -153,7 +153,7 @@ export const PushRuleView = ({ type, id, onBack }: PushRuleViewProps) => {
 				{pushRule && <>
 					{!pushRule.default && <button onClick={doDelete}>Delete</button>}
 					<button onClick={doToggleEnable}>{pushRule.enabled ? "Disable" : "Enable"}</button>
-					{!pushRule.default && <button onClick={startEdit}>Edit</button>}
+					<button onClick={startEdit}>Edit</button>
 				</>}
 			</div>
 		</div>
@@ -214,10 +214,10 @@ export const PushRuleEditor = ({ type, rule, onBack, onDone }: PushRuleEditorPro
 		}
 		const newContent = {
 			actions,
-			conditions: type === "override" || type === "underride" ? conditions : undefined,
+			conditions: !rule?.default && (type === "override" || type === "underride") ? conditions : undefined,
 			pattern: type === "content" ? pattern : undefined,
 		}
-		client.rpc.updatePushRule(type, realRuleID, "put", newContent).then(
+		client.rpc.updatePushRule(type, realRuleID, rule?.default ? "put_actions" : "put", newContent).then(
 			() => onDone ? onDone(EventKind.PushRules, type, newRuleID, undefined) : onBack(),
 			err => {
 				console.error("Failed to put push rule", err)
@@ -279,17 +279,18 @@ export const PushRuleEditor = ({ type, rule, onBack, onDone }: PushRuleEditorPro
 				/>
 			</div> : null}
 			{type === "override" || type === "underride" ? <div className="push-rule-conditions">
-				<h4>Conditions</h4>
-				{conditions.map((cond, idx) =>
-					<PushRuleConditionEditor key={idx} index={idx} cond={cond} onChange={onChangeCondition} />)}
-				<div>
+				<h4>Conditions {rule?.default ? "(read-only)" : ""}</h4>
+				{conditions.map((cond, idx) => <PushRuleConditionEditor
+					key={idx} index={idx} cond={cond} onChange={onChangeCondition} readOnly={rule?.default ?? false}
+				/>)}
+				{!rule?.default ? <div>
 					<button
 						className="add-condition"
 						onClick={() => setConditions(prev => [
 							...prev, { kind: "event_match", key: "", pattern: "" },
 						])}
 					>Add condition</button>
-				</div>
+				</div> : !conditions.length ? "None" : null}
 			</div> : null}
 			<div className="nav-buttons">
 				<button onClick={onBack}>Back</button>
@@ -304,6 +305,7 @@ interface PushRuleConditionEditorProps {
 	cond: UnknownPushRuleCondition
 	index: number
 	onChange: (index: number, newCond: UnknownPushRuleCondition | null) => void
+	readOnly: boolean
 }
 
 const knownConditionKinds = [
@@ -321,7 +323,7 @@ const knownConditionKindNames: Record<string, string> = {
 	"custom": "Custom",
 }
 
-const PushRuleConditionEditor = ({ cond, index, onChange }: PushRuleConditionEditorProps) => {
+const PushRuleConditionEditor = ({ cond, index, onChange, readOnly }: PushRuleConditionEditorProps) => {
 	const renderKind = knownConditionKinds.includes(cond.kind) ? cond.kind : "custom"
 	const onChangeKind = (evt: React.ChangeEvent<HTMLSelectElement>) => {
 		onChange(index, {
@@ -330,15 +332,15 @@ const PushRuleConditionEditor = ({ cond, index, onChange }: PushRuleConditionEdi
 		})
 	}
 	return <div className={`push-rule-condition kind-${renderKind}`}>
-		<select value={renderKind} onChange={onChangeKind}>
+		<select value={renderKind} onChange={onChangeKind} disabled={readOnly}>
 			{knownConditionKinds.map(kind => <option key={kind} value={kind}>
 				{knownConditionKindNames[kind]}
 			</option>)}
 		</select>
-		{renderConditionEditor(cond, index, onChange)}
-		<button onClick={() => onChange(index, null)} className="delete-condition">
+		{renderConditionEditor(cond, index, onChange, readOnly)}
+		{!readOnly ? <button onClick={() => onChange(index, null)} className="delete-condition">
 			<DeleteIcon />
-		</button>
+		</button> : null}
 	</div>
 }
 
@@ -373,7 +375,10 @@ function removeExtraFields(cond: UnknownPushRuleCondition): UnknownPushRuleCondi
 }
 
 function renderConditionEditor(
-	cond: UnknownPushRuleCondition, index: number, onChange: (index: number, newCond: UnknownPushRuleCondition) => void,
+	cond: UnknownPushRuleCondition,
+	index: number,
+	onChange: (index: number, newCond: UnknownPushRuleCondition | null) => void,
+	readOnly: boolean,
 ) {
 	switch (cond.kind) {
 	case "event_match":
@@ -388,6 +393,7 @@ function renderConditionEditor(
 					onChange={evt =>
 						onChange(index, { ...removeExtraFields(cond), key: evt.currentTarget.value })}
 					placeholder="Key"
+					disabled={readOnly}
 				/>
 			</label>
 			<label>
@@ -402,6 +408,7 @@ function renderConditionEditor(
 						value: cond.kind !== "event_match" ? evt.currentTarget.value : undefined,
 					})}
 					placeholder="Pattern"
+					disabled={readOnly}
 				/>
 			</label>
 		</>
@@ -414,6 +421,7 @@ function renderConditionEditor(
 				value={op}
 				onChange={evt =>
 					onChange(index, { ...removeExtraFields(cond), is: `${evt.currentTarget.value}${count}` })}
+				disabled={readOnly}
 			>
 				{memberCountPrefixes.map(prefix => <option key={prefix} value={prefix}>{prefix}</option>)}
 			</select>
@@ -424,6 +432,7 @@ function renderConditionEditor(
 					onChange(index, { ...removeExtraFields(cond), is: `${op}${evt.currentTarget.value}` })}
 				min={0}
 				placeholder="Count"
+				disabled={readOnly}
 			/>
 		</>
 	}
@@ -436,26 +445,22 @@ function renderConditionEditor(
 				onChange={evt =>
 					onChange(index, { ...removeExtraFields(cond), key: evt.currentTarget.value })}
 				placeholder="Permission (e.g. room)"
+				disabled={readOnly}
 			/>
 		</label>
 	default:
-		return <RawConditionEditor cond={cond} index={index} onChange={onChange} />
+		return <RawConditionEditor cond={cond} index={index} onChange={onChange} readOnly={readOnly} />
 	}
 }
 
-interface RawConditionEditorProps {
-	cond: UnknownPushRuleCondition
-	index: number
-	onChange: (index: number, cond: UnknownPushRuleCondition) => void
-}
-
-const RawConditionEditor = ({ cond, index, onChange }: RawConditionEditorProps) => {
+const RawConditionEditor = ({ cond, index, onChange, readOnly }: PushRuleConditionEditorProps) => {
 	const [value, setValue] = useState(() => JSON.stringify(cond, null, 4))
 	const [isValid, setIsValid] = useState(true)
 	return <textarea
 		value={value}
 		rows={6}
 		className={isValid ? "" : "invalid"}
+		disabled={readOnly}
 		onChange={evt => {
 			setValue(evt.target.value)
 			try {

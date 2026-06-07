@@ -423,6 +423,8 @@ func (h *JSONAPI) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePush
 		return h.Client.DeletePushRule(ctx, "global", params.Kind, params.RuleID)
 	case jsoncmd.UpdatePushRuleActionPut:
 		return h.Client.PutPushRule(ctx, "global", params.Kind, params.RuleID, params.NewContent)
+	case jsoncmd.UpdatePushRuleActionPutActions:
+		return h.Client.PutPushRuleActions(ctx, "global", params.Kind, params.RuleID, params.Actions)
 	default:
 		return fmt.Errorf("unknown action %q", params.Action)
 	}
