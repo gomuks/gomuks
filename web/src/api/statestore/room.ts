@@ -145,6 +145,7 @@ export class RoomStateStore {
 	readonly receiptsByUserID: Map<UserID, MemReceipt> = new Map()
 	readonly receiptSubs = new MultiSubscribable()
 	readonly requestedEvents: Set<EventID> = new Set()
+	readonly requestedEventRowIDs: Set<EventRowID> = new Set()
 	readonly requestedMembers: Set<UserID> = new Set()
 	readonly accountData: Map<string, UnknownEventContent> = new Map()
 	readonly accountDataSubs = new MultiSubscribable()
@@ -505,6 +506,7 @@ export class RoomStateStore {
 			}
 		}
 		this.requestedEvents.delete(memEvt.event_id)
+		this.requestedEventRowIDs.delete(memEvt.rowid)
 		if (!pending) {
 			const pendingIdx = this.pendingEvents.indexOf(memEvt.rowid)
 			if (pendingIdx !== -1) {

@@ -21,6 +21,7 @@ import {
 	Direction,
 	EventContextResponse,
 	EventID,
+	EventRowID,
 	EventType,
 	JSONValue,
 	LocalSearchParams,
@@ -305,6 +306,10 @@ export default abstract class RPCClient {
 
 	getEvent(room_id: RoomID, event_id: EventID, unredact?: boolean): Promise<RawDBEvent> {
 		return this.request("get_event", { room_id, event_id, unredact })
+	}
+
+	getEventByRowID(event_rowid: EventRowID): Promise<RawDBEvent> {
+		return this.request("get_event_by_rowid", { event_rowid })
 	}
 
 	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {

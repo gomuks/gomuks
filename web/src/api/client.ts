@@ -22,6 +22,7 @@ import {
 	ClientState,
 	ElementRecentEmoji,
 	EventID,
+	EventRowID,
 	EventType,
 	GomuksAndroidMessageToWeb,
 	ImagePackRooms,
@@ -359,6 +360,21 @@ export default class Client {
 					room.requestedEvents.delete(eventID)
 					window.alert(`Failed to get unredacted content: ${err}`)
 				}
+			},
+		)
+	}
+
+	requestEventByRowID(room: RoomStateStore, rowID: EventRowID) {
+		if (room.eventsByRowID.has(rowID) || room.requestedEventRowIDs.has(rowID)) {
+			return
+		}
+		room.requestedEventRowIDs.add(rowID)
+		this.rpc.getEventByRowID(rowID).then(
+			evt => {
+				room.applyEvent(evt, false)
+			},
+			err => {
+				console.error(`Failed to fetch event ${rowID}`, err)
 			},
 		)
 	}

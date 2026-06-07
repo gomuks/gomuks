@@ -33,6 +33,9 @@ const PinnedMessage = ({ evtID, room }: PinnedMessageProps) => {
 		use(ClientContext)!.requestEvent(room, evtID)
 		return <>Event {evtID} not found</>
 	}
+	if (evt.last_edit_rowid && !evt.last_edit) {
+		use(ClientContext)!.requestEventByRowID(room, evt.last_edit_rowid)
+	}
 	return <TimelineEvent evt={evt} prevEvt={null} viewType="pinned" />
 }
 
