@@ -81,6 +81,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetProfileEncryptionInfo.RunCtx(ctx, req.Data, h.API.GetProfileEncryptionInfo)
 	case jsoncmd.ReqGetEvent:
 		return jsoncmd.GetEvent.RunCtx(ctx, req.Data, h.API.GetEvent)
+	case jsoncmd.ReqGetEventByRowID:
+		return jsoncmd.GetEventByRowID.RunCtx(ctx, req.Data, h.API.GetEventByRowID)
 	case jsoncmd.ReqGetRelatedEvents:
 		return jsoncmd.GetRelatedEvents.RunCtx(ctx, req.Data, h.API.GetRelatedEvents)
 	case jsoncmd.ReqGetStickyEvents:
@@ -282,6 +284,17 @@ func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) 
 		return h.GetUnredactedEvent(mautrix.WithMaxRetries(ctx, 2), params.RoomID, params.EventID)
 	}
 	return h.HiClient.GetEvent(mautrix.WithMaxRetries(ctx, 2), params.RoomID, params.EventID)
+}
+
+func (h *JSONAPI) GetEventByRowID(ctx context.Context, params *jsoncmd.GetEventByRowIDParams) (*database.Event, error) {
+	evt, err := h.DB.Event.GetByRowID(ctx, params.RowID)
+	if err != nil {
+		return nil, err
+	} else if evt == nil {
+		return nil, mautrix.MNotFound.WithMessage("event %d not found", params.RowID)
+	}
+	h.ReprocessExistingEvent(ctx, evt)
+	return evt, nil
 }
 
 func (h *JSONAPI) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {

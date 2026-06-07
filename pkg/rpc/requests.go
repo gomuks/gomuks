@@ -92,6 +92,10 @@ func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParam
 	return executeRequest(gr, ctx, jsoncmd.GetEvent, params)
 }
 
+func (gr *GomuksRPC) GetEventByRowID(ctx context.Context, params *jsoncmd.GetEventByRowIDParams) (*database.Event, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetEventByRowID, params)
+}
+
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetRelatedEvents, params)
 }

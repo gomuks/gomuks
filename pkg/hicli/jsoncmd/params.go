@@ -136,6 +136,10 @@ type GetEventParams struct {
 	Unredact bool       `json:"unredact"`
 }
 
+type GetEventByRowIDParams struct {
+	RowID database.EventRowID `json:"event_rowid"`
+}
+
 type GetEventContextParams struct {
 	RoomID  id.RoomID  `json:"room_id"`
 	EventID id.EventID `json:"event_id"`

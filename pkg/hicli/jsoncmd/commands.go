@@ -48,6 +48,7 @@ const (
 	ReqTrackUserDevices         Name = "track_user_devices"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
 	ReqGetEvent                 Name = "get_event"
+	ReqGetEventByRowID          Name = "get_event_by_rowid"
 	ReqGetEventContext          Name = "get_event_context"
 	ReqPaginateManual           Name = "paginate_manual"
 	ReqSearchLocal              Name = "search_local"
@@ -159,6 +160,8 @@ var (
 	// GetEvent returns a single event in a room. This uses the database if possible,
 	// but will fetch from the homeserver if the event isn't found locally.
 	GetEvent = &CommandSpec[*GetEventParams, *database.Event]{Name: ReqGetEvent}
+	// GetEventByRowID returns a single event by its database row ID.
+	GetEventByRowID = &CommandSpec[*GetEventByRowIDParams, *database.Event]{Name: ReqGetEventByRowID}
 	// GetEventContext returns context around an event (before/after timeline slices) from the
 	// homeserver. This is used for jumping to a specific point on the timeline. Note that there is
 	// currently no safe way to merge back into the main timeline, so jumping has to be implemented
