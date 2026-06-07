@@ -92,6 +92,8 @@ func (eb *EventBuffer) Unsubscribe(listenerID uint64) {
 	defer eb.lock.Unlock()
 	delete(eb.eventListeners, listenerID)
 	delete(eb.websocketClosers, listenerID)
+	// Note: This is called for all disconnects (including unclean ones), so lastAckedID is intentionally left alone
+	// to allow reconnecting with resume later. For clean disconnects, ClearListenerLastAckedID will be called.
 }
 
 func (eb *EventBuffer) addToBuffer(evt *BufferedEvent) {
@@ -126,11 +128,14 @@ func (eb *EventBuffer) gc() {
 	neededMinID := eb.maxID
 	for lid, evtID := range eb.lastAckedID {
 		if evtID > eb.minID {
+			// If the listener is too far behind, drop it
 			delete(eb.lastAckedID, lid)
 		} else if evtID > neededMinID {
 			neededMinID = evtID
 		}
 	}
+	// We don't need the last acked event, so keep everything from the next index onwards.
+	neededMinID--
 	if neededMinID < eb.minID {
 		eb.buf = eb.buf[eb.minID-neededMinID:]
 		eb.minID = neededMinID
@@ -147,7 +152,7 @@ func (eb *EventBuffer) Subscribe(resumeFrom int64, closeForRestart WebsocketClos
 		eb.websocketClosers[id] = closeForRestart
 	}
 	var resumeData []*BufferedEvent
-	if resumeFrom < eb.minID {
+	if resumeFrom < 0 && (resumeFrom-1) <= eb.minID && resumeFrom >= eb.maxID {
 		resumeData = eb.buf[eb.minID-resumeFrom+1:]
 		eb.lastAckedID[id] = resumeFrom
 	} else {
