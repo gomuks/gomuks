@@ -13,11 +13,12 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const useCategoryUnderline = () => {
 	const emojiCategoryBarRef = useRef<HTMLDivElement>(null)
 	const emojiListRef = useRef<HTMLDivElement>(null)
+	const [emojiListWidth, setEmojiListWidth] = useState(320)
 
 	useEffect(() => {
 		const cats = emojiCategoryBarRef.current
@@ -25,6 +26,7 @@ const useCategoryUnderline = () => {
 		if (!cats || !lists) {
 			return
 		}
+		setEmojiListWidth(lists.clientWidth)
 		const observer = new IntersectionObserver(entries => {
 			for (const entry of entries) {
 				const catID = entry.target.getAttribute("data-category-id")
@@ -45,10 +47,18 @@ const useCategoryUnderline = () => {
 		for (const cat of lists.getElementsByClassName("emoji-category")) {
 			observer.observe(cat)
 		}
-		return () => observer.disconnect()
+		const resizeHandler = () => {
+			setEmojiListWidth(lists.clientWidth)
+		}
+
+		window.addEventListener("resize", resizeHandler)
+		return () => {
+			observer.disconnect()
+			window.removeEventListener("resize", resizeHandler)
+		}
 	}, [])
 
-	return [emojiCategoryBarRef, emojiListRef] as const
+	return [emojiCategoryBarRef, emojiListRef, emojiListWidth] as const
 }
 
 export default useCategoryUnderline

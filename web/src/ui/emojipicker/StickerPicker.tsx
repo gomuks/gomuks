@@ -31,7 +31,7 @@ import SearchIcon from "@/icons/search.svg?react"
 const StickerPicker = ({ style, onSelect, room }: MediaPickerProps) => {
 	const client = use(ClientContext)!
 	const [query, setQuery] = useState("")
-	const [emojiCategoryBarRef, emojiListRef] = useCategoryUnderline()
+	const [emojiCategoryBarRef, emojiListRef, emojiListWidth] = useCategoryUnderline()
 	const watchedEmojiPackKeys = client.store.getEmojiPackKeys().map(roomStateGUIDToString)
 	const customEmojiPacks = useCustomEmojis(client.store, room, "stickers")
 	const emojis = useFilteredEmojis(query, {
@@ -100,6 +100,7 @@ const StickerPicker = ({ style, onSelect, room }: MediaPickerProps) => {
 						isWatched={watchedEmojiPackKeys.includes(categoryID)}
 						onSelect={onSelectWrapped}
 						imageType="sticker"
+						listWidth={emojiListWidth}
 					/>
 				})}
 			</div>

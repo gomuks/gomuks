@@ -64,7 +64,7 @@ const EmojiPicker = ({ style, selected, onSelect, room, allowFreeform, closeOnSe
 	const client = use(ClientContext)!
 	const [query, setQuery] = useState("")
 	const [previewEmoji, setPreviewEmoji] = useState<Emoji>()
-	const [emojiCategoryBarRef, emojiListRef] = useCategoryUnderline()
+	const [emojiCategoryBarRef, emojiListRef, emojiListWidth] = useCategoryUnderline()
 	const watchedEmojiPackKeys = client.store.getEmojiPackKeys().map(roomStateGUIDToString)
 	const customEmojiPacks = useCustomEmojis(client.store, room)
 	const emojis = useFilteredEmojis(query, {
@@ -147,6 +147,7 @@ const EmojiPicker = ({ style, selected, onSelect, room, allowFreeform, closeOnSe
 						onSelect={onSelectWrapped}
 						setPreviewEmoji={setPreviewEmoji}
 						imageType="emoji"
+						listWidth={emojiListWidth}
 					/>
 				})}
 				{allowFreeform && query && <button
