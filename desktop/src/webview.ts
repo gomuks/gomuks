@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, shell, WebContentsView } from "electron"
+import { app, BaseWindow, shell, WebContentsView, desktopCapturer } from "electron"
 import path from "node:path"
 import contextMenu from "electron-context-menu"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
@@ -176,6 +176,22 @@ export class GomuksView {
 				callback()
 			}
 		})
+		view.webContents.session.setDisplayMediaRequestHandler((_, callback) => {
+			if (process.env.XDG_SESSION_TYPE === "wayland") {
+				// Wayland forces using the system picker and will always only return one source.
+				desktopCapturer.getSources({ types: ["screen", "window"] }).then(
+					sources => callback({ video: sources[0] }),
+					err => {
+						console.error("Wayland: failed to get user-selected source:", err)
+						callback({ video: { id: "", name: "" } })
+					},
+				)
+			} else {
+				// TODO add support for windows
+				console.error("Screen capture requested on non-Wayland session, which is not supported")
+				callback({ video: { id: "", name: "" } })
+			}
+		}, { useSystemPicker: true })
 		this.backend.address.then(addr => {
 			serverURL = addr
 			return view.webContents.loadURL(addr)
