@@ -42,7 +42,7 @@ const MessageSearch = () => {
 	const [searchTerm, setSearchTerm] = useState("")
 	const [rawLike, setRawLike] = useState("")
 	const [local, setLocal] = useState(!!roomCtx?.store.meta.current.encryption_event)
-	const [sortByTime, setSortByTime] = useState(false)
+	const [sortByTime, setSortByTime] = useState(true)
 	const [includeRedacted, setIncludeRedacted] = useState(true)
 	const [minDate, setMinDate] = useState("")
 	const [maxDate, setMaxDate] = useState("")
