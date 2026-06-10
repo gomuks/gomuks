@@ -2,7 +2,7 @@ module go.mau.fi/gomuks
 
 go 1.25.0
 
-toolchain go1.26.3
+toolchain go1.26.4
 
 tool go.mau.fi/util/cmd/maubuild
 
@@ -19,7 +19,7 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/lucasb-eyer/go-colorful v1.4.0
 	github.com/mattn/go-runewidth v0.0.23
-	github.com/mattn/go-sqlite3 v1.14.44
+	github.com/mattn/go-sqlite3 v1.14.45
 	github.com/rivo/uniseg v0.4.7
 	github.com/rs/zerolog v1.35.1
 	github.com/strukturag/libheif v1.21.2
@@ -32,15 +32,15 @@ require (
 	go.mau.fi/util v0.9.9
 	go.mau.fi/webp v0.3.0
 	go.mau.fi/zeroconfig v0.2.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.53.0
 	golang.org/x/image v0.41.0
-	golang.org/x/net v0.54.0
-	golang.org/x/sys v0.44.0
-	golang.org/x/text v0.37.0
+	golang.org/x/net v0.55.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/text v0.38.0
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.28.1-0.20260607164126-7629300dde5e
+	maunium.net/go/mautrix v0.28.1-0.20260609100320-b05469c34ea0
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -58,8 +58,8 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a // indirect
+	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
 	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/term v0.44.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
