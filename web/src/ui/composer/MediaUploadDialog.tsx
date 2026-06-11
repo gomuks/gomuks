@@ -66,7 +66,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 	const [jpegQuality, setJPEGQuality] = useState(80)
 	const [resizeSlider, setResizeSlider] = useState(100)
 	const [origDimensions, setOrigDimensions] = useState<dimensions | null>(null)
-	const [noEncrypt, setNoEncrypt] = useState(false)
+	const [encrypt, setEncrypt] = useState(isEncrypted)
 	const [sendAsFile, setSendAsFile] = useState(false)
 	const closeModal = use(ModalCloseContext)
 	let previewContent: JSX.Element | null = null
@@ -117,24 +117,12 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 			resize_width: resizeSlider !== 100 ? resizedWidth : undefined,
 			resize_height: resizeSlider !== 100 ? resizedHeight : undefined,
 			resize_percent: resizeSlider,
-			_no_encrypt: noEncrypt,
+			_encrypt: encrypt,
 			voice_message: isVoice,
 			force_file: sendAsFile,
 		})
 		closeModal()
 	}
-	const sendAsFileCheckbox = <>
-		<div className="meta-key">Send as file</div>
-		<div className="meta-value">
-			<input
-				type="checkbox"
-				checked={sendAsFile || isFile}
-				id="checkbox-send-as-file"
-				disabled={isFile}
-				onChange={evt => setSendAsFile(evt.target.checked)}
-			/>
-		</div>
-	</>
 	return <form className="media-upload-modal" onSubmit={submit}>
 		<h3>Upload attachment</h3>
 		<div className="attachment-preview">{previewContent}</div>
@@ -161,9 +149,30 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 				{origDimensions ? `${resizedWidth}×${resizedHeight}` : null}
 			</div>
 
+			<div className="meta-key">Send as file</div>
+			<div className="meta-value">
+				<input
+					type="checkbox"
+					checked={sendAsFile || isFile}
+					id="checkbox-send-as-file"
+					disabled={isFile}
+					onChange={evt => setSendAsFile(evt.target.checked)}
+				/>
+			</div>
+
+			<label htmlFor="checkbox-encrypt" className="meta-key">Encrypt</label>
+			<div className="meta-value">
+				<input
+					type="checkbox"
+					checked={encrypt}
+					id="checkbox-encrypt"
+					onChange={evt => setEncrypt(evt.target.checked)}
+				/>
+			</div>
+
 			{reencTargets ? <>
 				<label htmlFor="select-reenc-type" className="meta-key">Re-encode</label>
-				<div className="meta-value">
+				<div className="meta-value meta-value-long">
 					<select value={reencTarget} id="select-reenc-type" onChange={evt => {
 						setReencTarget(evt.target.value)
 						setResizeSlider(100)
@@ -172,8 +181,6 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 						{reencTargets.map(target => <option key={target} value={target}>{target}</option>)}
 					</select>
 				</div>
-
-				{sendAsFileCheckbox}
 
 				<label htmlFor="slider-resize" className="meta-key">Resize</label>
 				<div className="meta-value meta-value-long">
@@ -192,7 +199,7 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 					/>
 					<span>{resizeSlider}%</span>
 				</div>
-			</> : sendAsFileCheckbox}
+			</> : null}
 
 			{(reencTarget === "image/jpeg" || reencTarget === "image/webp") && <>
 				<label htmlFor="slider-reenc-quality" className="meta-key">Quality</label>
@@ -206,18 +213,6 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 						onChange={evt => setJPEGQuality(parseInt(evt.target.value))}
 					/>
 					<span>{jpegQuality === 101 ? "Lossless" : `${jpegQuality}%`}</span>
-				</div>
-			</>}
-
-			{isEncrypted && <>
-				<label htmlFor="checkbox-no-encrypt" className="meta-key">Don't encrypt</label>
-				<div className="meta-value meta-value-long">
-					<input
-						type="checkbox"
-						checked={noEncrypt}
-						id="checkbox-no-encrypt"
-						onChange={evt => setNoEncrypt(evt.target.checked)}
-					/>
 				</div>
 			</>}
 		</div>

@@ -318,7 +318,7 @@ export interface MediaEncodingOptions {
 	resize_width?: number
 	resize_height?: number
 	resize_percent?: number
-	_no_encrypt?: boolean
+	_encrypt?: boolean
 	voice_message?: boolean
 	force_file?: boolean
 }

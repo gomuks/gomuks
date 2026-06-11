@@ -565,7 +565,7 @@ const MessageComposer = () => {
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
-		const encryptUpload = Boolean(isEncrypted && !encodingOpts?._no_encrypt)
+		const encryptUpload = encodingOpts?._encrypt ?? isEncrypted
 		if (client.rpc.rpcMediaUpload) {
 			setLoadingMedia(0)
 			client.rpc.uploadMedia(file, filename, encryptUpload).then(
