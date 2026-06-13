@@ -38,7 +38,7 @@ div.right-panel-content {
 }
 
 div.right-panel-content.pinned-messages {
-	padding: .5rem;
+	padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 	display: flex;
 	flex-direction: column-reverse;
 
@@ -105,7 +105,7 @@ div.right-panel-content.notifications, div.right-panel-content.search {
 	}
 
 	> div.notification-panel-content, > div.search-panel-content {
-		padding: .5rem;
+		padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 		display: flex;
 		flex-direction: column;
 		overflow: auto;
@@ -132,7 +132,7 @@ div.right-panel-content.widgets {
 	display: flex;
 	flex-direction: column;
 	gap: .5rem;
-	padding: .5rem;
+	padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 
 	> button {
 		padding: .5rem;
@@ -144,8 +144,12 @@ div.right-panel-content.widgets {
 	}
 }
 
+div.right-panel-content.widget {
+	padding-bottom: var(--window-bottom-margin);
+}
+
 div.right-panel-content.user {
-	padding: 1rem;
+	padding: 1rem 1rem calc(1rem + var(--window-bottom-margin));
 
 	div.avatar-container {
 		width: calc((var(--right-panel-width) - 4rem));
@@ -363,6 +367,7 @@ div.right-panel-content.members {
 		display: flex;
 		flex-direction: column;
 		overflow: auto;
+		padding-bottom: var(--window-bottom-margin);
 
 		> div.member {
 			display: grid;
