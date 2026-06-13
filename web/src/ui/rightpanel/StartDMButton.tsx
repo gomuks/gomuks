@@ -75,19 +75,13 @@ const StartDMButton = ({ userID, client }: { userID: UserID; client: Client }) =
 					is_direct: true,
 					preset: "trusted_private_chat",
 					initial_state: initialState,
+					invite: [userID],
 				}
-				if (!reason) {
-					args.invite = [userID]
+				if (reason) {
+					args["uk.timedout.msc4491.invite_reason"] = reason
 				}
 				const response = await client.rpc.createRoom(args)
 				console.log("Created DM room:", response.room_id)
-				if (reason) {
-					// TODO: Manually sending the invite here means the invitee doesn't have their power level
-					// automatically raised, and it's impossible to make them a creator.
-					// Gomuks could do this manually after sending the reason-populated invite, but that depends on
-					// being able to pull capabilities.
-					await client.rpc.setMembership(response.room_id, userID, "invite", reason)
-				}
 
 				// FIXME this is a hacky way to work around the room taking time to come down /sync
 				setTimeout(() => {

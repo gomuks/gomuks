@@ -467,6 +467,7 @@ export interface ReqCreateRoom {
 	name?: string
 	topic?: string
 	invite?: UserID[]
+	"uk.timedout.msc4491.invite_reason"?: string,
 	preset?: RoomPreset
 	is_direct?: boolean
 	initial_state?: CreateRoomInitialState[]
