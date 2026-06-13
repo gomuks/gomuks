@@ -62,6 +62,16 @@ export default class WSClient extends RPCClient {
 
 	constructor(readonly addr: string, readonly compress: boolean = false) {
 		super()
+		window.addEventListener("focus", this.#onFocus)
+	}
+
+	#onFocus = () => {
+		if (this.#reconnectTimeout !== null) {
+			console.log("Window focused, reconnecting immediately")
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
+			this.start()
+		}
 	}
 
 	start() {
