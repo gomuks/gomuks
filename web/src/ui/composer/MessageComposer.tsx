@@ -503,18 +503,26 @@ const MessageComposer = () => {
 				evt.preventDefault()
 			}
 		} else if (
-			!editing && fullKey === "Ctrl+ArrowDown" && replyToEvt !== null && room.preferences.ctrl_arrow_reply
+			!editing && replyToEvt !== null
 		) {
-			const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
-			if (replyToIdx >= room.timeline.length - 1) {
-				roomCtx.setReplyTo(null)
-				evt.preventDefault()
-			} else if (replyToIdx >= 0) {
-				const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
-				if (newReplyEvt) {
-					roomCtx.setReplyTo(newReplyEvt.event_id)
+			// Actively Replying
+			if (
+				fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply
+			) {
+				const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
+				if (replyToIdx >= room.timeline.length - 1) {
+					roomCtx.setReplyTo(null)
 					evt.preventDefault()
+				} else if (replyToIdx >= 0) {
+					const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
+					if (newReplyEvt) {
+						roomCtx.setReplyTo(newReplyEvt.event_id)
+						evt.preventDefault()
+					}
 				}
+			} else if (fullKey === "Escape") {
+				evt.stopPropagation()
+				roomCtx.setReplyTo(null)
 			}
 		}
 	}
