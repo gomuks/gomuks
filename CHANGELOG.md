@@ -19,7 +19,8 @@
   * Linux builds now have an actually usable browser engine,
     and macOS builds are signed to allow installing without workarounds.
   * The new wrapper supports both embedded and remote backends and can have
-    multiple backends at once.
+    multiple backends at once. Extra backends have to be added manually for now,
+    management UI will be added later.
 * Added message search panel.
 * Added separate message context menu button to open thread panel.
 * Added undo button to move a failed message send back into the composer.
@@ -27,6 +28,10 @@
 * Fixed reaction images not having a maximum width.
 * Fixed successfully decrypted events with an empty `type` showing up as waiting
   for decryption.
+* Fixed pinned messages view not showing edits of old messages.
+* Fixed emoji/sticker picker categories not adjusting to picker width properly.
+* Fixed bottom safe area inset not being applied properly when using Android
+  wrapper.
 
 # v26.05
 
