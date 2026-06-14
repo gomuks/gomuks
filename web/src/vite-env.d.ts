@@ -23,6 +23,7 @@ declare global {
 		gomuksDesktop?: {
 			isDesktop: true
 			getTabID(): string
+			isEmbedded(): boolean
 			getDisableNotifications(): boolean
 			setNotificationCount: (count: number) => void
 			subscribeToTabs: (listener: (tabs: TabInfo[]) => void) => void

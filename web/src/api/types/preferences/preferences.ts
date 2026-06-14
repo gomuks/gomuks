@@ -251,6 +251,7 @@ export const preferences = {
 		description: "The mxc:// URI to a custom notification sound.",
 		allowedContexts: anyContext,
 		defaultValue: "sounds/bright.flac",
+		hidden: window.gomuksAndroid,
 	}),
 	notification_sound_volume: new Preference<number>({
 		displayName: "Notification sound volume",
@@ -260,24 +261,28 @@ export const preferences = {
 		minValue: 0,
 		maxValue: 100,
 		numberType: "range",
+		hidden: window.gomuksAndroid,
 	}),
 	room_window_title: new Preference<string>({
 		displayName: "In-room window title",
 		description: "The title to use for the window when viewing a room. $room will be replaced with the room name",
 		allowedContexts: anyContext,
 		defaultValue: "$room - gomuks web",
+		hidden: window.gomuksAndroid,
 	}),
 	window_title: new Preference<string>({
 		displayName: "Default window title",
 		description: "The title to use for the window when not in a room.",
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks web",
+		hidden: window.gomuksAndroid,
 	}),
 	favicon: new Preference<string>({
 		displayName: "Favicon",
 		description: "The URL to use for the favicon.",
 		allowedContexts: anyContext,
 		defaultValue: "gomuks.png",
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
 	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",
@@ -292,14 +297,14 @@ export const preferences = {
 		description: "Whether to enable bandwidth saving features. Refresh to apply changes.",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: !!window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksDesktop?.isEmbedded() || window.gomuksWebWasm),
 	}),
 	web_push: new Preference<boolean>({
 		displayName: "Web push notifications",
 		description: "Whether to enable web push for background notifications. Refresh to apply changes.",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: window.gomuksAndroid || !!window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm),
 	}),
 } as const
 

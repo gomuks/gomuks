@@ -20,11 +20,15 @@ let subscriber = (_tabs: TabInfo[]) => {}
 let cache: TabInfo[] | null  = null
 let currentTabID: string = ""
 let disableNotifications: boolean = false
+let isEmbedded: boolean = false
 
 contextBridge.exposeInMainWorld("gomuksDesktop", {
 	isDesktop: true,
 	getTabID() {
 		return currentTabID
+	},
+	isEmbedded() {
+		return isEmbedded
 	},
 	getDisableNotifications() {
 		return disableNotifications
@@ -64,8 +68,9 @@ ipcRenderer.on("disable-notifications", () => {
 	disableNotifications = true
 })
 
-ipcRenderer.on("tab-id", (_evt, name: string) => {
-	currentTabID = name
+ipcRenderer.on("tab-id", (_evt, data) => {
+	currentTabID = data.name
+	isEmbedded = data.embedded
 })
 
 ipcRenderer.on("update-tabs", (_evt, tabs) => {

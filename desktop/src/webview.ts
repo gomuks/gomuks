@@ -201,7 +201,10 @@ export class GomuksView {
 		if (this.backend instanceof EmbeddedBackend || process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true") {
 			view.webContents.send("disable-notifications")
 		}
-		view.webContents.send("tab-id", this.config.name)
+		view.webContents.send("tab-id", {
+			name: this.config.name,
+			embedded: this.backend instanceof EmbeddedBackend,
+		})
 
 		if (process.env.NODE_ENV === "development") {
 			view.webContents.openDevTools()
