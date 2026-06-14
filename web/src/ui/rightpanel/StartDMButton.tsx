@@ -15,13 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useMemo, useState } from "react"
 import Client from "@/api/client.ts"
-import { UserID } from "@/api/types"
+import { ReqCreateRoom, UserID } from "@/api/types"
+import { ConfirmWithMessageModal, ModalContext } from "@/ui/modal"
 import MainScreenContext from "../MainScreenContext.ts"
 import ChatIcon from "@/icons/chat.svg?react"
 
 const StartDMButton = ({ userID, client }: { userID: UserID; client: Client }) => {
 	const mainScreen = use(MainScreenContext)!
 	const [isCreating, setIsCreating] = useState(false)
+	const openModal = use(ModalContext)
 
 	const findExistingRoom = () => {
 		for (const room of client.store.rooms.values()) {
@@ -38,56 +40,72 @@ const StartDMButton = ({ userID, client }: { userID: UserID; client: Client }) =
 			mainScreen.setActiveRoom(existingRoom)
 			return
 		}
-		if (!window.confirm(`Are you sure you want to start a chat with ${userID}?`)) {
-			return
-		}
-		const existingRoomRelookup = findExistingRoom()
-		if (existingRoomRelookup) {
-			mainScreen.setActiveRoom(existingRoomRelookup)
-			return
-		}
 
-		try {
-			setIsCreating(true)
-
-			let shouldEncrypt = false
-			const initialState = []
-
-			try {
-				shouldEncrypt = (await client.rpc.trackUserDevices(userID)).devices.length > 0
-
-				if (shouldEncrypt) {
-					console.log("User has encryption devices, creating encrypted room")
-					initialState.push({
-						type: "m.room.encryption",
-						content: {
-							algorithm: "m.megolm.v1.aes-sha2",
-						},
-					})
-				}
-			} catch (err) {
-				console.warn("Failed to check user encryption status:", err)
+		const createDMCallback = async (reason?: string) => {
+			const existingRoomRelookup = findExistingRoom()
+			if (existingRoomRelookup) {
+				mainScreen.setActiveRoom(existingRoomRelookup)
+				return
 			}
 
-			// Create the room with encryption if needed
-			const response = await client.rpc.createRoom({
-				is_direct: true,
-				preset: "trusted_private_chat",
-				invite: [userID],
-				initial_state: initialState,
-			})
-			console.log("Created DM room:", response.room_id)
+			try {
+				setIsCreating(true)
 
-			// FIXME this is a hacky way to work around the room taking time to come down /sync
-			setTimeout(() => {
-				mainScreen.setActiveRoom(response.room_id)
-			}, 1000)
-		} catch (err) {
-			console.error("Failed to create DM room:", err)
-			window.alert(`Failed to create DM room: ${err}`)
-		} finally {
-			setIsCreating(false)
+				let shouldEncrypt = false
+				const initialState = []
+
+				try {
+					shouldEncrypt = (await client.rpc.trackUserDevices(userID)).devices.length > 0
+
+					if (shouldEncrypt) {
+						console.log("User has encryption devices, creating encrypted room")
+						initialState.push({
+							type: "m.room.encryption",
+							content: {
+								algorithm: "m.megolm.v1.aes-sha2",
+							},
+						})
+					}
+				} catch (err) {
+					console.warn("Failed to check user encryption status:", err)
+				}
+
+				// Create the room with encryption if needed
+				const args: ReqCreateRoom = {
+					is_direct: true,
+					preset: "trusted_private_chat",
+					initial_state: initialState,
+					invite: [userID],
+				}
+				if (reason) {
+					args["uk.timedout.msc4491.invite_reason"] = reason
+				}
+				const response = await client.rpc.createRoom(args)
+				console.log("Created DM room:", response.room_id)
+
+				// FIXME this is a hacky way to work around the room taking time to come down /sync
+				setTimeout(() => {
+					mainScreen.setActiveRoom(response.room_id)
+				}, 1000)
+			} catch (err) {
+				console.error("Failed to create DM room:", err)
+				window.alert(`Failed to create DM room: ${err}`)
+			} finally {
+				setIsCreating(false)
+			}
 		}
+
+		openModal({
+			dimmed: true,
+			boxed: true,
+			content: <ConfirmWithMessageModal
+				title={`Start a new DM`}
+				description={<>Are you sure you want to start a new DM with <code>{userID}</code>?</>}
+				placeholder="Reason (optional)"
+				confirmButton={"Create DM"}
+				onConfirm={createDMCallback}
+			/>,
+		})
 	}
 
 	return <button
