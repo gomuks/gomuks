@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { isMobileDevice } from "@/util/ismobile.ts"
 import type { ContentURI, RoomType } from "../../types"
 import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
 
@@ -213,13 +214,13 @@ export const preferences = {
 		displayName: "Right-click menu on messages",
 		description: "Show a context menu when right-clicking on messages.",
 		allowedContexts: anyContext,
-		defaultValue: true,
+		defaultValue: !isMobileDevice,
 	}),
 	ctrl_enter_send: new Preference<boolean>({
 		displayName: "Use Ctrl+Enter to send",
 		description: "Disable sending on enter and use Ctrl+Enter for sending instead",
 		allowedContexts: anyContext,
-		defaultValue: false,
+		defaultValue: isMobileDevice,
 	}),
 	refocus_input_after_send: new Preference<boolean>({
 		displayName: "Re-focus composer after send",
