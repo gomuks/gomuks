@@ -494,6 +494,8 @@ func (h *HiClient) GetEventContext(ctx context.Context, roomID id.RoomID, eventI
 	resp, err := h.Client.Context(ctx, roomID, eventID, filter, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event context: %w", err)
+	} else if resp.Event == nil {
+		return nil, fmt.Errorf("server didn't return response for context request")
 	}
 	wrappedResp := &jsoncmd.EventContextResponse{
 		Start:  resp.Start,
