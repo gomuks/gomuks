@@ -161,6 +161,23 @@ macos/arm64:
   - install_name_tool -add_rpath /opt/homebrew/opt/libolm/lib gomuks
   - install_name_tool -add_rpath /usr/local/opt/libolm/lib gomuks
   - cp $(brew --prefix)/opt/libolm/lib/libolm.3.dylib .
+  - |
+    if [ -n "${APPLE_API_KEY_PATH:-}" ]; then
+      codesign --force --timestamp --options runtime --sign "$APPLE_CODESIGN_IDENTITY" libolm.3.dylib gomuks gomuks-terminal
+      codesign --verify --strict --verbose=2 libolm.3.dylib gomuks gomuks-terminal
+
+      zip -9 gomuks-cli-macos-arm64-notary.zip gomuks gomuks-terminal libolm.3.dylib
+
+      xcrun notarytool submit gomuks-cli-macos-arm64-notary.zip \
+        --key "$APPLE_API_KEY_PATH" \
+        --key-id "$APPLE_API_KEY_ID" \
+        --issuer "$APPLE_API_ISSUER" \
+        --wait
+
+      rm -f gomuks-cli-macos-arm64-notary.zip
+    else
+      echo "Skipping raw macOS binary notarization because APPLE_API_KEY_PATH is not set"
+    fi
   artifacts:
     paths:
     - gomuks
