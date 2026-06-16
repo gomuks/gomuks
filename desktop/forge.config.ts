@@ -24,6 +24,9 @@ const ci = process.env.CI === "true"
 if (ci && !process.env.GIT_DESCRIBE) {
 	throw new Error("Missing GIT_DESCRIBE in CI")
 }
+if (ci && tag && !process.env.APPLE_API_KEY_PATH) {
+	throw new Error("Missing APPLE_API_KEY_PATH")
+}
 
 if (!tag && process.env.GIT_DESCRIBE) {
 	const descRegex = /^v0\.(\d{2})(\d{2})\.(\d+)(?:-(\d+)-g([0-9a-f]+))?$/
