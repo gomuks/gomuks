@@ -1,4 +1,4 @@
-# v26.06 (unreleased)
+# v26.06
 
 ### Backend
 * Added local full-text search support.
