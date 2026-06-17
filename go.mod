@@ -9,8 +9,7 @@ tool go.mau.fi/util/cmd/maubuild
 require (
 	codeberg.org/tslocum/cbind v0.1.6
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	// Do not update until https://github.com/alecthomas/chroma/issues/1287 is fixed
-	github.com/alecthomas/chroma/v2 v2.24.1
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/buckket/go-blurhash v1.1.0
 	github.com/chzyer/readline v1.5.1
 	github.com/coder/websocket v1.8.15
@@ -49,7 +48,7 @@ require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
