@@ -428,11 +428,11 @@ const MainScreen = () => {
 	}, [context, client])
 	useEffect(() => context.keybindings.listen(), [context])
 	const [roomListWidth, resizeHandle1] = useResizeHandle(
-		350, 96, Math.min(900, window.innerWidth * 0.4),
+		350, 96, Math.min(900, Math.max(window.innerWidth * 0.4, 350)),
 		"roomListWidth", { className: "room-list-resizer" },
 	)
 	const [rightPanelWidth, resizeHandle2] = useResizeHandle(
-		300, 100, Math.min(900, window.innerWidth * 0.4),
+		300, 100, Math.min(900, Math.max(window.innerWidth * 0.4, 300)),
 		"rightPanelWidth", { className: "right-panel-resizer", inverted: true },
 	)
 	const extraStyle = {
