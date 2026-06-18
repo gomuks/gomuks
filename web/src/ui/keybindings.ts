@@ -41,7 +41,13 @@ export default class Keybindings {
 	constructor(private store: StateStore, private context: MainScreenContextFields) {}
 
 	private keyDownMap: KeyMap = {
-		"Escape": () => this.context.clearActiveRoom(),
+		"Escape": () => {
+			if (this.context.currentRightPanel) {
+				this.context.closeRightPanel()
+			} else {
+				this.context.clearActiveRoom()
+			}
+		},
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
 		"Alt+ArrowUp": () => {
 			if (!this.activeRoom) {

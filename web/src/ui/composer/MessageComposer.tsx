@@ -502,13 +502,8 @@ const MessageComposer = () => {
 				roomCtx.setReplyTo(newReplyEvt.event_id)
 				evt.preventDefault()
 			}
-		} else if (
-			!editing && replyToEvt !== null
-		) {
-			// Actively Replying
-			if (
-				fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply
-			) {
+		} else if (!editing && replyToEvt !== null) {
+			if (fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply) {
 				const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
 				if (replyToIdx >= room.timeline.length - 1) {
 					roomCtx.setReplyTo(null)
