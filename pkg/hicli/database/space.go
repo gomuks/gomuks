@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 
 	"go.mau.fi/util/dbutil"
 	"maunium.net/go/mautrix/id"
@@ -173,8 +174,14 @@ func (seq *SpaceEdgeQuery) SetChildren(ctx context.Context, spaceID id.RoomID, c
 	if len(children) == 0 {
 		return nil
 	}
-	query, params := massInsertSpaceChildBuilder.Build([1]any{spaceID}, children)
-	return seq.Exec(ctx, query, params...)
+	for chunk := range slices.Chunk(children, 1000) {
+		query, params := massInsertSpaceChildBuilder.Build([1]any{spaceID}, chunk)
+		err := seq.Exec(ctx, query, params...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (seq *SpaceEdgeQuery) SetParents(ctx context.Context, childID id.RoomID, parents []SpaceParentEntry, removedParents []id.RoomID, clear bool) error {
@@ -200,8 +207,14 @@ func (seq *SpaceEdgeQuery) SetParents(ctx context.Context, childID id.RoomID, pa
 	if len(parents) == 0 {
 		return nil
 	}
-	query, params := massInsertSpaceParentBuilder.Build([1]any{childID}, parents)
-	return seq.Exec(ctx, query, params...)
+	for chunk := range slices.Chunk(parents, 1000) {
+		query, params := massInsertSpaceParentBuilder.Build([1]any{childID}, chunk)
+		err := seq.Exec(ctx, query, params...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (seq *SpaceEdgeQuery) RevalidateAllChildrenOfParentValidity(ctx context.Context, spaceID id.RoomID) error {
