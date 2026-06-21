@@ -287,6 +287,7 @@ func (h *HiClient) loadOwnProfile(ctx context.Context) {
 		zerolog.Ctx(ctx).Err(err).Msg("Failed to get own profile")
 		return
 	}
+	h.lastOwnProfileFetch = time.Now()
 	if profile.DisplayName != h.Account.DisplayName || profile.AvatarURL != h.Account.AvatarURL {
 		h.Account.DisplayName = profile.DisplayName
 		h.Account.AvatarURL = profile.AvatarURL
