@@ -75,9 +75,10 @@ class ContextFields implements MainScreenContextFields {
 			this.directSetRightPanel(props)
 			for (let i = this.rightPanelStack.length - 1; i >= 0; i--) {
 				if (equal(this.rightPanelStack[i], props)) {
+					const length = this.rightPanelStack.length
 					this.rightPanelStack = this.rightPanelStack.slice(0, i + 1)
 					if (pushState) {
-						history.go(i - this.rightPanelStack.length)
+						history.go(i + 1 - length)
 					}
 					return
 				}
