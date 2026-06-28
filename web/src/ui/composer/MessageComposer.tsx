@@ -370,7 +370,10 @@ const MessageComposer = () => {
 			url_previews: state.previews,
 		}).catch(err => window.alert("Failed to send message: " + err))
 	}
-	const onComposerCaretChange = (evt: CaretEvent<HTMLTextAreaElement>, newText?: string) => {
+	const onComposerCaretChange = (
+		evt: CaretEvent<HTMLTextAreaElement>, newText?: string, newCommand?: CommandState | null,
+	) => {
+		const command = newCommand !== undefined ? newCommand : state.command
 		const area = evt.currentTarget
 		if (area.selectionStart <= (autocomplete?.startPos ?? 0)) {
 			if (
@@ -400,7 +403,7 @@ const MessageComposer = () => {
 				setAutocomplete({ ...autocomplete, query: newQuery, endPos: newEndPos })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
-			if (newText && !state.command && canAutocompleteCommand(newText)) {
+			if (newText && !command && canAutocompleteCommand(newText)) {
 				setAutocomplete({
 					type: "command",
 					query: newText,
@@ -539,6 +542,11 @@ const MessageComposer = () => {
 			} else {
 				newState.command = { ...state.command, inputArgs }
 			}
+		} else if (canAutocompleteCommand(newText) && newText === (evt.nativeEvent as InputEvent).data) {
+			const command = findCommandForPaste(newText)
+			if (command) {
+				newState.command = command
+			}
 		}
 		setState(newState)
 		const now = Date.now()
@@ -561,7 +569,7 @@ const MessageComposer = () => {
 					.catch(err => console.error("Failed to send stop typing notification:", err))
 			}
 		}
-		onComposerCaretChange(evt, evt.target.value)
+		onComposerCaretChange(evt, newState.text, newState.command)
 	}
 	const doUploadFile = useCallback((
 		file: Blob,
@@ -641,6 +649,22 @@ const MessageComposer = () => {
 			doUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
 		}
 	}
+	const findCommandForPaste = (text: string): CommandState | undefined => {
+		let matches: CommandState[] = []
+		let longestMatch = 0
+		for (const spec of room.getAllBotCommands()) {
+			const inputArgs = stringToCommandArgs(spec, text)
+			if (inputArgs !== null) {
+				if (spec.command.length > longestMatch) {
+					longestMatch = spec.command.length
+					matches = [{ spec, inputArgs }]
+				} else {
+					matches.push({ spec, inputArgs })
+				}
+			}
+		}
+		return matches[0]
+	}
 	const onPaste = (evt: React.ClipboardEvent<HTMLTextAreaElement>) => {
 		const file = evt.clipboardData?.files?.[0]
 		const text = evt.clipboardData.getData("text/plain")
@@ -658,24 +682,9 @@ const MessageComposer = () => {
 		} else if (
 			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
 		) {
-			let matches: CommandState[] = []
-			let longestMatch = 0
-			for (const spec of room.getAllBotCommands()) {
-				const inputArgs = stringToCommandArgs(spec, text)
-				if (inputArgs !== null) {
-					if (spec.command.length > longestMatch) {
-						longestMatch = spec.command.length
-						matches = [{ spec, inputArgs }]
-					} else {
-						matches.push({ spec, inputArgs })
-					}
-				}
-			}
-			if (matches.length) {
-				setState({
-					text,
-					command: matches[0],
-				})
+			const command = findCommandForPaste(text)
+			if (command) {
+				setState({ text, command })
 				evt.preventDefault()
 			}
 			return
