@@ -245,13 +245,13 @@ export function stringToRoomStateGUID(str?: string | null): RoomStateGUID | unde
 		return
 	}
 	const [roomID, type, stateKey] = str.split("/")
-	if (!roomID || !type || !stateKey) {
+	if (!roomID || !type) {
 		return
 	}
 	return {
 		room_id: decodeURIComponent(roomID) as RoomID,
 		type: type as EventType,
-		state_key: decodeURIComponent(stateKey),
+		state_key: decodeURIComponent(stateKey ?? ""),
 	}
 }
 
