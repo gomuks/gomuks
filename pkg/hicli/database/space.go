@@ -122,14 +122,6 @@ type SpaceEdgeQuery struct {
 	*dbutil.QueryHelper[*SpaceEdge]
 }
 
-func (seq *SpaceEdgeQuery) AddChild(ctx context.Context, spaceID, childID id.RoomID, childEventRowID EventRowID, order string, suggested bool) error {
-	return seq.Exec(ctx, addSpaceChildQuery, spaceID, childID, childEventRowID, order, suggested)
-}
-
-func (seq *SpaceEdgeQuery) AddParent(ctx context.Context, spaceID, childID id.RoomID, parentEventRowID EventRowID, canonical bool) error {
-	return seq.Exec(ctx, addSpaceParentQuery, spaceID, childID, parentEventRowID, canonical)
-}
-
 type SpaceParentEntry struct {
 	ParentID   id.RoomID
 	EventRowID EventRowID

@@ -1183,7 +1183,7 @@ func (h *HiClient) processStateAndTimeline(
 			return fmt.Errorf("failed to save room data: %w", err)
 		}
 	}
-	err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
+	err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 	if err != nil {
 		return err
 	}
@@ -1367,7 +1367,7 @@ func splitMapValues[T any](m map[id.RoomID]*T) (added []T, removed []id.RoomID) 
 	return
 }
 
-func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, seq *database.SpaceEdgeQuery) error {
+func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, rdb *database.RoomQuery, seq *database.SpaceEdgeQuery) error {
 	if room.CreationContent == nil || room.CreationContent.Type != event.RoomTypeSpace {
 		sdc.Children = nil
 		sdc.PowerLevelChanged = false
@@ -1380,7 +1380,9 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 		return nil
 	}
 	return seq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
+		var modTimestampBumps []id.RoomID
 		if len(sdc.Children) > 0 {
+			modTimestampBumps = append(modTimestampBumps, room.ID)
 			children, removedChildren := splitMapValues(sdc.Children)
 			err := seq.SetChildren(ctx, room.ID, children, removedChildren, sdc.IsFullState)
 			if err != nil {
@@ -1393,6 +1395,7 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 			syncCtx.changedSpaces = append(syncCtx.changedSpaces, room.ID)
 		}
 		if len(sdc.Parents) > 0 {
+			modTimestampBumps = slices.AppendSeq(modTimestampBumps, maps.Keys(sdc.Parents))
 			parents, removedParents := splitMapValues(sdc.Parents)
 			err := seq.SetParents(ctx, room.ID, parents, removedParents, sdc.IsFullState)
 			if err != nil {
@@ -1416,7 +1419,7 @@ func (sdc *spaceDataCollector) Apply(ctx context.Context, room *database.Room, s
 				return fmt.Errorf("failed to revalidate child parent references to self: %w", err)
 			}
 		}
-		return nil
+		return rdb.BumpModTimestamp(ctx, modTimestampBumps...)
 	})
 }
 

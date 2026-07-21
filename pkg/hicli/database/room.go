@@ -10,9 +10,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"go.mau.fi/util/dbutil"
+	"go.mau.fi/util/exslices"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -60,6 +63,9 @@ const (
 			marked_unread = COALESCE($19, room.marked_unread),
 			prev_batch = COALESCE($20, room.prev_batch)
 		WHERE room_id = $1
+	`
+	bumpRoomModTimestampQuery = `
+		UPDATE room SET mod_timestamp = unixepoch('subsec')*1000 WHERE room_id IN (%s)
 	`
 	// TODO this might not need to bump mod timestamp
 	setRoomPrevBatchQuery = `
@@ -139,6 +145,16 @@ func (rq *RoomQuery) CreateRow(ctx context.Context, roomID id.RoomID) error {
 
 func (rq *RoomQuery) SetPrevBatch(ctx context.Context, roomID id.RoomID, prevBatch string) error {
 	return rq.Exec(ctx, setRoomPrevBatchQuery, roomID, prevBatch)
+}
+
+func (rq *RoomQuery) BumpModTimestamp(ctx context.Context, roomIDs ...id.RoomID) error {
+	if len(roomIDs) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(roomIDs))
+	placeholders = placeholders[:len(placeholders)-1]
+	query := fmt.Sprintf(bumpRoomModTimestampQuery, placeholders)
+	return rq.Exec(ctx, query, exslices.CastToAny(roomIDs)...)
 }
 
 func (rq *RoomQuery) UpdatePreviewIfLaterOnTimeline(ctx context.Context, roomID id.RoomID, rowID EventRowID) (previewChanged bool, err error) {

@@ -239,7 +239,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 		}
 		roomChanged, syncRoomChanged := updatedRoom.CheckChangesAndCopyInto(room)
 		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
-		err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
+		err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 		if err != nil {
 			return err
 		}

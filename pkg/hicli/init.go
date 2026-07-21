@@ -104,14 +104,6 @@ func (h *HiClient) GetCatchupSync(ctx context.Context, since int64) (*jsoncmd.Sy
 	for _, item := range ad {
 		payload.AccountData[event.Type{Type: item.Type, Class: event.AccountDataEventType}] = item
 	}
-	payload.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get top-level spaces: %w", err)
-	}
-	payload.SpaceEdges, err = h.DB.SpaceEdge.GetAll(ctx, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get space edges: %w", err)
-	}
 	payload.InvitedRooms, err = h.DB.InvitedRoom.GetAllSince(ctx, since)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invited rooms: %w", err)
@@ -135,11 +127,29 @@ func (h *HiClient) GetCatchupSync(ctx context.Context, since int64) (*jsoncmd.Sy
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rooms changed since %d: %w", since, err)
 	}
+	spaceEdges, err := h.DB.SpaceEdge.GetAll(ctx, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get space edges: %w", err)
+	}
+	payload.SpaceEdges = make(map[id.RoomID][]*database.SpaceEdge, 0)
 	for _, room := range rooms {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		payload.Rooms[room.ID] = h.getInitialSyncRoom(ctx, room)
+		if room.GetType() == event.RoomTypeSpace {
+			edges, ok := spaceEdges[room.ID]
+			if !ok {
+				edges = []*database.SpaceEdge{}
+			}
+			payload.SpaceEdges[room.ID] = edges
+		}
+	}
+	if len(payload.SpaceEdges) > 0 || len(payload.LeftRooms) > 0 {
+		payload.TopLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get top-level spaces: %w", err)
+		}
 	}
 	for roomID, adRoom := range roomADByRoom {
 		_, exists := payload.Rooms[roomID]
