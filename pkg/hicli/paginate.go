@@ -238,17 +238,32 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 			}
 		}
 		roomChanged, syncRoomChanged := updatedRoom.CheckChangesAndCopyInto(room)
-		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
 		err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 		if err != nil {
 			return err
 		}
-		if roomChanged {
+		if roomChanged || len(sdc.Children) > 0 {
 			// Only set this here so it doesn't unconditionally flag the room as changed
 			updatedRoom.LazyLoadSummary = llSummary
 			err = h.DB.Room.Update(ctx, updatedRoom)
 			if err != nil {
 				return fmt.Errorf("failed to save room data: %w", err)
+			}
+			// TODO also dispatch parent spaces? those are usually less important though
+			var spaceEdges map[id.RoomID][]*database.SpaceEdge
+			var topLevelSpaces []id.RoomID
+			if room.GetType() == event.RoomTypeSpace {
+				spaceEdges, err = h.DB.SpaceEdge.GetAll(ctx, room.ID)
+				if err != nil {
+					return fmt.Errorf("failed to get space edges: %w", err)
+				}
+				topLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+				if err != nil {
+					return fmt.Errorf("failed to get top-level spaces: %w", err)
+				}
+				if _, edgesFound := spaceEdges[room.ID]; !edgesFound {
+					spaceEdges[room.ID] = []*database.SpaceEdge{}
+				}
 			}
 			if dispatchEvt && syncRoomChanged {
 				h.EventHandler(&jsoncmd.SyncComplete{
@@ -257,6 +272,8 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 							Meta: room,
 						},
 					},
+					SpaceEdges:     spaceEdges,
+					TopLevelSpaces: topLevelSpaces,
 				})
 			}
 		}
