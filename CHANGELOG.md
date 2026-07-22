@@ -1,3 +1,24 @@
+# v26.08 (unreleased)
+
+### Backend
+* Added server-sent events as an alternative for websockets.
+* Added support for room list catch-up syncs for frontends.
+* Changed sync responses to allow omitting any field in room entries.
+* Changed HTML sanitizer to only allow checkboxes inside unordered list items.
+* Changed room state resync to send space edges to clients if the room being
+  resynced is a space.
+* Fixed `prev_batch` token not being saved when paginating messages from the
+  server returns no new messages.
+* Fixed `prev_batch` not being reset on limited syncs.
+
+### Web
+* Added option to use server-sent events instead of websockets.
+* Added optional client-side room list cache, which is used to reduce the
+  initial payload size when reloading the page. The cache is enabled when both
+  SSE and low-bandwidth mode are enabled.
+* Added knocked users to room user list.
+* Fixed websocket auto-reconnection getting throttled by browsers.
+
 # v26.07
 
 ### Backend
