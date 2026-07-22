@@ -421,6 +421,11 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 	if err != nil {
 		return nil, fmt.Errorf("failed to get messages from server: %w", err)
 	}
+	zerolog.Ctx(ctx).Debug().
+		Int("event_count", len(resp.Chunk)).
+		Str("start", resp.Start).
+		Str("end", resp.End).
+		Msg("Got pagination response from server")
 	events := make([]*database.Event, len(resp.Chunk))
 	if resp.End == "" {
 		resp.End = database.PrevBatchPaginationComplete
@@ -463,6 +468,10 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}
 		if iOffset >= len(events) {
 			events = events[:0]
+			err = h.DB.Room.SetPrevBatch(ctx, room.ID, resp.End)
+			if err != nil {
+				return fmt.Errorf("failed to set prev_batch: %w", err)
+			}
 			return nil
 		}
 		events = events[:len(events)-iOffset]
