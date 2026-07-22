@@ -57,6 +57,7 @@ import {
 	RespCreateRoom,
 	RespMediaConfig,
 	RespOpenIDToken,
+	RespRTCTransports,
 	RespRoomJoin,
 	RespSpaceHierarchy,
 	RespTurnServer,
@@ -498,6 +499,10 @@ export default abstract class RPCClient {
 
 	getTurnServers(): Promise<RespTurnServer> {
 		return this.request("get_turn_servers", {})
+	}
+
+	getRTCTransports(): Promise<RespRTCTransports> {
+		return this.request("get_rtc_transports", {})
 	}
 
 	getMediaConfig(): Promise<RespMediaConfig> {

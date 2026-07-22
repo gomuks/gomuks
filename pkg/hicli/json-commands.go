@@ -166,6 +166,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.ListenToDevice.RunCtx(ctx, req.Data, h.API.ListenToDevice)
 	case jsoncmd.ReqGetTurnServers:
 		return jsoncmd.GetTurnServers.RunCtx(ctx, req.Data, h.API.GetTurnServers)
+	case jsoncmd.ReqGetRTCTransports:
+		return jsoncmd.GetRTCTransports.RunCtx(ctx, req.Data, h.API.GetRTCTransports)
 	case jsoncmd.ReqGetMediaConfig:
 		return jsoncmd.GetMediaConfig.RunCtx(ctx, req.Data, h.API.GetMediaConfig)
 	case jsoncmd.ReqCalculateRoomID:
@@ -617,6 +619,10 @@ func (h *JSONAPI) ListenToDevice(ctx context.Context, listen bool) (bool, error)
 
 func (h *JSONAPI) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error) {
 	return h.Client.TurnServer(ctx)
+}
+
+func (h *JSONAPI) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
+	return h.Client.RTCTransports(ctx)
 }
 
 func (h *JSONAPI) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {
