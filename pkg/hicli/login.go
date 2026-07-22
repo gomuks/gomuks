@@ -37,15 +37,21 @@ func (h *HiClient) LoginPassword(ctx context.Context, homeserverURL, username, p
 	})
 }
 
-func (h *HiClient) ensureHomeserverURL(homeserverURL string) (err error) {
+func (h *HiClient) ensureHomeserverURL(homeserverURL string) error {
 	if homeserverURL == "" {
 		if h.Client.HomeserverURL == nil {
 			return fmt.Errorf("no homeserver URL provided")
 		}
 		return nil
 	}
-	h.Client.HomeserverURL, err = url.Parse(homeserverURL)
-	return
+	newURL, err := url.Parse(homeserverURL)
+	if err != nil {
+		return err
+	} else if h.Client.HomeserverURL == nil || *newURL != *h.Client.HomeserverURL {
+		h.Client.HomeserverURL = newURL
+		h.Client.OAuthSetServerMetadata(nil)
+	}
+	return nil
 }
 
 func loginOAuthPrepare[T any](h *HiClient, homeserverURL string, cb func() (*T, error)) (*T, error) {
