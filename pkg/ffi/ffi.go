@@ -146,7 +146,7 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 	gmx.Log.Info().Msg("Sending initial state to client")
 	sendBufferedEvent(callback, jsoncmd.SpecClientState.Format(gmx.Client.State()))
 	sendBufferedEvent(callback, jsoncmd.SpecSyncStatus.Format(gmx.Client.SyncStatus.Load()))
-	if gmx.Client.IsLoggedIn() {
+	if gmx.Client.IsLoggedInAndVerified() {
 		go func() {
 			var roomCount int
 			// TODO allow catchup sync?

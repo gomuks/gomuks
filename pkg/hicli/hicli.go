@@ -214,6 +214,10 @@ func (h *HiClient) IsLoggedIn() bool {
 	return h.Account != nil
 }
 
+func (h *HiClient) IsLoggedInAndVerified() bool {
+	return h.IsLoggedIn() && h.VerificationState.IsVerified
+}
+
 func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount *database.Account) error {
 	if expectedAccount != nil && userID != expectedAccount.UserID {
 		panic(fmt.Errorf("invalid parameters: different user ID in expected account and user ID"))
