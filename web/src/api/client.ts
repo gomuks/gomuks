@@ -56,7 +56,10 @@ export default class Client {
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
 		this.rpc.event.listen(this.#handleEvent)
-		this.rpc.connect.listen(() => this.initComplete.emit(false))
+		this.rpc.connect.listen(() => {
+			this.initComplete.emit(false)
+			this.store.clearTyping()
+		})
 		this.store.accountDataSubs.getSubscriber("im.ponies.emote_rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>

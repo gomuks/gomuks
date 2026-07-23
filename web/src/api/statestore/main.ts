@@ -715,6 +715,12 @@ export class StateStore {
 		room.applyTyping(typing.user_ids)
 	}
 
+	clearTyping() {
+		for (const room of this.rooms.values()) {
+			room.clearTyping()
+		}
+	}
+
 	doGarbageCollection() {
 		const maxLastOpened = Date.now() - window.gcSettings.lastOpenedCutoff
 		let deletedEvents = 0

@@ -790,6 +790,12 @@ export class RoomStateStore {
 		this.typingSub.notify()
 	}
 
+	clearTyping() {
+		if (this.typing.length) {
+			this.applyTyping([])
+		}
+	}
+
 	doGarbageCollection() {
 		const memberEventsToKeep = new Set<UserID>()
 		const eventsToKeep = new Set<EventRowID>()
