@@ -21,7 +21,7 @@ type JSONCommand = jsoncmd.Container[json.RawMessage]
 
 func (h *HiClient) State() *jsoncmd.ClientState {
 	state := &jsoncmd.ClientState{
-		Initialized: h.Initialized,
+		Initialized: h.Initialized.IsSet(),
 	}
 	if acc := h.Account; acc != nil {
 		state.IsLoggedIn = true

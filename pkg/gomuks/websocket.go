@@ -75,7 +75,9 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 				logEvt = logEvt.Any(zerolog.ErrorFieldName, err)
 			}
 			logEvt.Msg("Panic in websocket handler")
-			callback()
+			if callback != nil {
+				callback()
+			}
 		}
 	}
 	defer recoverPanic("read loop", nil)
@@ -287,8 +289,14 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	go sendImageAuthToken()
-	if gmx.Client.IsLoggedInAndVerified() && !didResume {
-		go gmx.sendInitialData(ctx, fp, conn, lastServerTS)
+	if !didResume {
+		err := gmx.Client.Initialized.Wait(ctx)
+		if err != nil {
+			return
+		}
+		if gmx.Client.IsLoggedInAndVerified() {
+			go gmx.sendInitialData(ctx, fp, conn, lastServerTS)
+		}
 	}
 	log.Debug().Bool("did_resume", didResume).Msg("Connection initialization complete")
 	var closeErr websocket.CloseError
@@ -356,5 +364,6 @@ func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *we
 	log.Info().
 		Int("room_count", roomCount).
 		Int("total_payload_size", totalSize).
+		Int64("catchup_since", lastServerTS).
 		Msg("Sent initial rooms to client")
 }

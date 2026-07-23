@@ -85,34 +85,48 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	sendImageAuthToken()
+	err := sw.rc.Flush()
+	if err != nil {
+		log.Err(err).Msg("Failed to flush initial messages to client")
+		return
+	}
 	var inited bool
 	if resumeData != nil {
-		err := sw.writeMany(resumeData...)
+		err = sw.writeMany(resumeData...)
 		if err != nil {
 			log.Err(err).Msg("Failed to write resume data to client")
 			return
 		}
 		resumeData = nil
 		inited = true
-	} else if gmx.Client.IsLoggedInAndVerified() {
-		for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
-			err := sw.writeAndFlush(jsoncmd.SpecSyncComplete.Format(payload).AsAny(), nil)
-			if err != nil {
-				log.Err(err).Msg("Failed to send initial rooms to client")
-				return
-			}
+	} else {
+		err = gmx.Client.Initialized.Wait(ctx)
+		if err != nil {
+			return
 		}
-		inited = true
+		if gmx.Client.IsLoggedInAndVerified() {
+			var roomCount int
+			for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
+				roomCount += len(payload.Rooms)
+				err = sw.writeAndFlush(jsoncmd.SpecSyncComplete.Format(payload).AsAny(), nil)
+				if err != nil {
+					log.Err(err).Msg("Failed to send initial rooms to client")
+					return
+				}
+			}
+			log.Info().
+				Int("room_count", roomCount).
+				Int64("catchup_since", lastServerTS).
+				Msg("Sent initial rooms to client")
+			inited = true
+		}
 	}
-	var err error
 	if inited {
 		err = sw.writeAndFlush(jsoncmd.SpecInitComplete.Format(jsoncmd.InitComplete{}).AsAny(), nil)
-	} else {
-		err = sw.rc.Flush()
-	}
-	if err != nil {
-		log.Err(err).Msg("Failed to write init complete message")
-		return
+		if err != nil {
+			log.Err(err).Msg("Failed to write init complete message")
+			return
+		}
 	}
 	log.Debug().Bool("did_resume", resumeData != nil).Msg("Connection initialization complete")
 	imageAuthTicker := time.NewTicker(30 * time.Minute)

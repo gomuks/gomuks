@@ -24,6 +24,7 @@ import (
 	"go.mau.fi/util/dbutil"
 	_ "go.mau.fi/util/dbutil/litestream"
 	"go.mau.fi/util/exerrors"
+	"go.mau.fi/util/exsync"
 	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto"
@@ -46,7 +47,7 @@ type HiClient struct {
 	ClientStore *database.ClientStateStore
 	Log         zerolog.Logger
 
-	Initialized       bool
+	Initialized       *exsync.Event
 	VerificationState jsoncmd.VerificationState
 
 	KeyBackupVersion id.KeyBackupVersion
@@ -124,6 +125,8 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 		jsonRequests:          make(map[int64]context.CancelCauseFunc),
 		paginationInterrupter: make(map[id.RoomID]context.CancelCauseFunc),
 		sendLock:              make(map[id.RoomID]*sync.Mutex),
+
+		Initialized: exsync.NewEvent(),
 
 		EventHandler: evtHandler,
 	}
@@ -282,7 +285,7 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 	} else {
 		h.sendInitSyncToClients = true
 	}
-	h.Initialized = true
+	h.Initialized.Set()
 	h.dispatchCurrentState()
 	return nil
 }
