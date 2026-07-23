@@ -94,7 +94,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		}
 		resumeData = nil
 		inited = true
-	} else if gmx.Client.IsLoggedIn() {
+	} else if gmx.Client.IsLoggedInAndVerified() {
 		for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
 			err := sw.writeAndFlush(jsoncmd.SpecSyncComplete.Format(payload).AsAny(), nil)
 			if err != nil {

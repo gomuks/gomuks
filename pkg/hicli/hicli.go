@@ -62,12 +62,13 @@ type HiClient struct {
 	EventHandler func(evt any)
 	LogoutFunc   func(context.Context) error
 
-	firstSyncReceived bool
-	syncingID         int
-	syncLock          sync.Mutex
-	stopSync          atomic.Pointer[context.CancelFunc]
-	encryptLock       sync.Mutex
-	loginLock         sync.Mutex
+	firstSyncReceived     bool
+	sendInitSyncToClients bool
+	syncingID             int
+	syncLock              sync.Mutex
+	stopSync              atomic.Pointer[context.CancelFunc]
+	encryptLock           sync.Mutex
+	loginLock             sync.Mutex
 
 	eventDecryptionLock sync.Mutex
 
@@ -272,9 +273,14 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 			Any("verification_state", h.VerificationState).
 			Msg("Checked current device verification status")
 		if h.VerificationState.IsVerified {
+			h.sendInitSyncToClients = false
 			go h.Sync()
+		} else {
+			h.sendInitSyncToClients = true
 		}
 		go h.loadOwnProfile(ctx)
+	} else {
+		h.sendInitSyncToClients = true
 	}
 	h.Initialized = true
 	h.dispatchCurrentState()

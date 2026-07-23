@@ -197,10 +197,11 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 		}
 		h.Client.Client.Timeout = 180 * time.Second
 	}
-	if since == "" {
+	if since == "" || h.sendInitSyncToClients {
+		h.sendInitSyncToClients = false
 		zerolog.Ctx(ctx).Info().Msg("Init sync complete, dispatching chunked room list to clients")
 		for payload := range h.GetInitialSync(ctx, 100, 0) {
-			payload.Since = &since
+			payload.Since = ptr.Ptr("")
 			h.EventHandler(payload)
 		}
 		zerolog.Ctx(ctx).Debug().Msg("Finished sending chunked room list to clients after init sync")
