@@ -112,7 +112,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	if (hidden) {
 		classNames.push("hidden")
 	}
-	if (room.favorite_order) {
+	if (room.favorite_order !== undefined) {
 		classNames.push("favorite")
 	}
 	if (room.low_priority) {
