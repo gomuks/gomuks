@@ -30,12 +30,14 @@ import "./RoomMenu.css"
 interface ChildSpaceProps {
 	client: Client
 	child: SpaceEdgeStore
+	onClick: (evt: React.MouseEvent<HTMLDivElement>) => void
 }
 
-const ChildSpace = ({ client, child }: ChildSpaceProps) => {
+const ChildSpace = ({ client, child, onClick }: ChildSpaceProps) => {
 	const [openStyle, setOpenStyle] = useState<CSSProperties | null>(null)
 	const [focused, setFocused] = useState(false)
 	const [mouseOver, setMouseOver] = useState(false)
+	const closeModal = use(ModalCloseContext)
 	const room = client.store.rooms.get(child.id)
 	const roomMeta = useEventAsState(room?.meta)
 	if (!room || !roomMeta) {
@@ -55,10 +57,15 @@ const ChildSpace = ({ client, child }: ChildSpaceProps) => {
 	}
 	return <div
 		className="context-menu-item space-list-child"
+		data-target-space={child.id}
 		onMouseEnter={onMouseEnter}
 		onFocus={onFocus}
 		onMouseLeave={() => setMouseOver(false)}
 		onBlur={() => setFocused(false)}
+		onClick={evt => {
+			closeModal()
+			onClick(evt)
+		}}
 		tabIndex={0}
 	>
 		<img
@@ -68,7 +75,9 @@ const ChildSpace = ({ client, child }: ChildSpaceProps) => {
 			alt=""
 		/>
 		<div className="room-name">{roomMeta.name}</div>
-		{openStyle && (focused || mouseOver) ? <SpaceMenu room={room} space={child} style={openStyle} /> : null}
+		{openStyle && (focused || mouseOver) ?
+			<SpaceMenu room={room} space={child} style={openStyle} onClick={onClick} />
+			: null}
 	</div>
 }
 
@@ -76,9 +85,10 @@ interface SpaceMenuProps {
 	room: RoomStateStore
 	space: SpaceEdgeStore
 	style: CSSProperties
+	onClick: (evt: React.MouseEvent<HTMLDivElement>) => void
 }
 
-export const SpaceMenu = ({ room, space, style }: SpaceMenuProps) => {
+export const SpaceMenu = ({ room, space, style, onClick }: SpaceMenuProps) => {
 	const openModal = use(ModalContext)
 	const closeModal = use(ModalCloseContext)
 	const mainScreen = use(MainScreenContext)!
@@ -99,8 +109,9 @@ export const SpaceMenu = ({ room, space, style }: SpaceMenuProps) => {
 		<button className="context-menu-item" onClick={openSettings}><SettingsIcon /> Settings</button>
 		<button onClick={onClickShare}><ShareIcon /> Share</button>
 		<button className="context-menu-item" onClick={openTimeline}><ChatIcon /> View timeline</button>
-		{space.childSpaces.values().map(child =>
-			<ChildSpace client={client} child={child} key={child.id} />)}
+		{space.childSpaces.values()
+			.map(child => <ChildSpace client={client} child={child} key={child.id} onClick={onClick} />)
+			.toArray()}
 	</div>
 }
 
