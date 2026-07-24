@@ -89,6 +89,16 @@ function favoriteSort(r1: RoomListEntry, r2: RoomListEntry): number {
 	}
 }
 
+function lowPrioritySort(r1: RoomListEntry, r2: RoomListEntry): number {
+	if (r1.low_priority && !r2.low_priority) {
+		return -1
+	} else if (!r1.low_priority && r2.low_priority) {
+		return 1
+	} else {
+		return 0
+	}
+}
+
 type SortFunc = (r1: RoomListEntry, r2: RoomListEntry) => number
 
 function chainedSort(f1: SortFunc, f2: SortFunc): SortFunc {
@@ -486,6 +496,9 @@ export class StateStore {
 		}
 		if (this.preferences.pin_favorites) {
 			sortFunc = chainedSort(favoriteSort, sortFunc)
+		}
+		if (this.preferences.pin_low_priority) {
+			sortFunc = chainedSort(lowPrioritySort, sortFunc)
 		}
 
 		if (sync.space_edges) {

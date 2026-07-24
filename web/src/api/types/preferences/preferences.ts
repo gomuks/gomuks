@@ -240,6 +240,12 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
+	pin_low_priority: new Preference<boolean>({
+		displayName: "Pin low priority to bottom",
+		description: "Always keep low priority at the bottom of the room list, ignoring recent activity.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
 	mute_low_priority: new Preference<boolean>({
 		displayName: "No unreads in low priority",
 		description: "Disable the unread message counter in low priority rooms. Notifications and highlights are still counted.",
