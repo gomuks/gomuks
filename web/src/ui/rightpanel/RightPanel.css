@@ -250,6 +250,10 @@ div.right-panel-content.user {
 		&.tofu-broken {
 			color: darkorange;
 		}
+
+		> button {
+			padding: 0 .25rem;
+		}
 	}
 
 	div.devices > details > summary > h4 {
@@ -257,10 +261,14 @@ div.right-panel-content.user {
 	}
 
 	button.action {
-		padding: .5rem 1rem;
+		padding: .5rem;
 		width: 100%;
 		gap: .25rem;
 		justify-content: left;
+	}
+
+	div.devices > details:open {
+		margin-bottom: .5rem;
 	}
 
 	div.devices > details > ul {

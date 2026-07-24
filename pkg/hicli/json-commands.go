@@ -78,6 +78,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetMutualRooms.RunCtx(ctx, req.Data, h.API.GetMutualRooms)
 	case jsoncmd.ReqTrackUserDevices:
 		return jsoncmd.TrackUserDevices.RunCtx(ctx, req.Data, h.API.TrackUserDevices)
+	case jsoncmd.ReqResetMasterKeyTOFU:
+		return jsoncmd.ResetMasterKeyTOFU.RunCtx(ctx, req.Data, h.API.ResetMasterKeyTOFU)
 	case jsoncmd.ReqGetProfileEncryptionInfo:
 		return jsoncmd.GetProfileEncryptionInfo.RunCtx(ctx, req.Data, h.API.GetProfileEncryptionInfo)
 	case jsoncmd.ReqGetOwnDevices:
@@ -281,7 +283,16 @@ func (h *JSONAPI) GetMutualRooms(ctx context.Context, params *jsoncmd.GetMutualR
 }
 
 func (h *JSONAPI) TrackUserDevices(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
-	err := h.HiClient.TrackUserDevices(ctx, params.UserID)
+	_, err := h.Crypto.FetchKeys(ctx, []id.UserID{params.UserID}, true)
+	if err != nil {
+		return nil, err
+	}
+	return h.HiClient.GetProfileEncryptionInfo(ctx, params.UserID)
+}
+
+func (h *JSONAPI) ResetMasterKeyTOFU(ctx context.Context, params *jsoncmd.ResetMasterKeyTOFUParams) (*jsoncmd.ProfileEncryptionInfo, error) {
+	masterKey := id.Ed25519(strings.ReplaceAll(params.MasterKey, " ", ""))
+	err := h.CryptoStore.ResetMasterKeyTOFU(ctx, params.UserID, masterKey)
 	if err != nil {
 		return nil, err
 	}

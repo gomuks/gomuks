@@ -121,6 +121,11 @@ type GetProfileParams struct {
 	UserID id.UserID `json:"user_id"`
 }
 
+type ResetMasterKeyTOFUParams struct {
+	UserID    id.UserID `json:"user_id"`
+	MasterKey string    `json:"master_key"`
+}
+
 type GetMutualRoomsParams struct {
 	UserID    id.UserID `json:"user_id"`
 	NextBatch string    `json:"next_batch,omitempty"`

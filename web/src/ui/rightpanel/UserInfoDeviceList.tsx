@@ -23,6 +23,7 @@ import DevicesIcon from "@/icons/devices.svg?react"
 import EncryptedOffIcon from "@/icons/encrypted-off.svg?react"
 import EncryptedQuestionIcon from "@/icons/encrypted-question.svg?react"
 import EncryptedIcon from "@/icons/encrypted.svg?react"
+import RefreshIcon from "@/icons/refresh.svg?react"
 
 interface DeviceListProps {
 	client: Client
@@ -34,10 +35,12 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 	const [view, setEncryptionInfo] = useState<ProfileEncryptionInfo | null>(null)
 	const [errors, setErrors] = useState<string[] | null>(null)
 	const [trackChangePending, startTransition] = useTransition()
-	const doTrackDeviceList = () => {
+	const doTrackDeviceList = (trustKey?: string) => {
 		startTransition(async () => {
 			try {
-				const resp = await client.rpc.trackUserDevices(userID)
+				const resp = trustKey
+					? await client.rpc.resetMasterKeyTOFU(userID, trustKey)
+					: await client.rpc.trackUserDevices(userID)
 				startTransition(() => {
 					setEncryptionInfo(resp)
 					setErrors(resp.errors)
@@ -75,7 +78,7 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 			<h4>Security</h4>
 			<p>{encryptionMessage}</p>
 			<p>This user's device list is not being tracked.</p>
-			<button className="action" onClick={doTrackDeviceList} disabled={trackChangePending}>
+			<button className="action" onClick={() => doTrackDeviceList()} disabled={trackChangePending}>
 				<DevicesIcon /> Start tracking device list
 			</button>
 			<UserInfoError errors={errors}/>
@@ -94,6 +97,9 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 		} else {
 			verifiedMessage = <p className="verified-message tofu-broken" title={view.master_key}>
 				<EncryptedQuestionIcon/> Master key has changed
+				<button onClick={() => doTrackDeviceList(view.master_key)} disabled={trackChangePending}>
+					Trust
+				</button>
 			</p>
 		}
 	}
@@ -101,9 +107,17 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 		<h4>Security</h4>
 		<p>{encryptionMessage}</p>
 		{verifiedMessage}
+		{view.master_key && <p className="master-key">Master key: <code>{view.master_key}</code></p>}
 		<details>
 			<summary><h4>{view.devices.length} devices</h4></summary>
-			<ul>{view.devices.map(dev => renderDevice(dev, view.master_key !== ""))}</ul>
+			<ul>
+				{view.devices.map(dev => renderDevice(dev, view.master_key !== ""))}
+				<li className="action">
+					<button className="action" onClick={() => doTrackDeviceList()} disabled={trackChangePending}>
+						<RefreshIcon /> Reload device list
+					</button>
+				</li>
+			</ul>
 		</details>
 		<UserInfoError errors={errors}/>
 	</div>

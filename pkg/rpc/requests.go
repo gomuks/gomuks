@@ -87,6 +87,10 @@ func (gr *GomuksRPC) TrackUserDevices(ctx context.Context, params *jsoncmd.GetPr
 	return executeRequest(gr, ctx, jsoncmd.TrackUserDevices, params)
 }
 
+func (gr *GomuksRPC) ResetMasterKeyTOFU(ctx context.Context, params *jsoncmd.ResetMasterKeyTOFUParams) (*jsoncmd.ProfileEncryptionInfo, error) {
+	return executeRequest(gr, ctx, jsoncmd.ResetMasterKeyTOFU, params)
+}
+
 func (gr *GomuksRPC) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfileEncryptionInfo, params)
 }

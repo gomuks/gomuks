@@ -300,6 +300,10 @@ export default abstract class RPCClient {
 		return this.request("track_user_devices", { user_id })
 	}
 
+	resetMasterKeyTOFU(user_id: UserID, master_key: string): Promise<ProfileEncryptionInfo> {
+		return this.request("reset_master_key_tofu", { user_id, master_key })
+	}
+
 	ensureGroupSessionShared(room_id: RoomID): Promise<void> {
 		return this.request("ensure_group_session_shared", { room_id })
 	}

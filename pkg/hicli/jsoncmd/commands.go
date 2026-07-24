@@ -55,6 +55,7 @@ const (
 	ReqSetProfileField          Name = "set_profile_field"
 	ReqGetMutualRooms           Name = "get_mutual_rooms"
 	ReqTrackUserDevices         Name = "track_user_devices"
+	ReqResetMasterKeyTOFU       Name = "reset_master_key_tofu"
 	ReqGetProfileEncryptionInfo Name = "get_profile_encryption_info"
 	ReqGetOwnDevices            Name = "get_own_devices"
 	ReqGetEvent                 Name = "get_event"
@@ -170,6 +171,9 @@ var (
 	// TrackUserDevices start tracking a user’s e2ee device list if it's not already tracked, then returns
 	// encryption info (same result as `get_profile_encryption_info`).
 	TrackUserDevices = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqTrackUserDevices}
+	// ResetMasterKeyTOFU marks a user's changed master key as trusted.
+	// This is NOT meant for user verification, it just flips from untrusted back to trusted-on-first-use.
+	ResetMasterKeyTOFU = &CommandSpec[*ResetMasterKeyTOFUParams, *ProfileEncryptionInfo]{Name: ReqResetMasterKeyTOFU}
 	// GetProfileEncryptionInfo returns the device list and trust state information for a user.
 	GetProfileEncryptionInfo = &CommandSpec[*GetProfileParams, *ProfileEncryptionInfo]{Name: ReqGetProfileEncryptionInfo}
 	// GetOwnDevices returns the current user's full device list and other details.

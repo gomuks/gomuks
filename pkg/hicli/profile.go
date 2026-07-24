@@ -83,11 +83,6 @@ func (h *HiClient) GetProfileEncryptionInfo(ctx context.Context, userID id.UserI
 	return &resp, nil
 }
 
-func (h *HiClient) TrackUserDevices(ctx context.Context, userID id.UserID) error {
-	_, err := h.Crypto.FetchKeys(ctx, []id.UserID{userID}, true)
-	return err
-}
-
 func (h *HiClient) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
 	enc, err := h.GetProfileEncryptionInfo(ctx, h.Account.UserID)
 	if err != nil {
