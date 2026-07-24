@@ -66,6 +66,7 @@ export interface RoomListEntry {
 	marked_unread: boolean
 	is_invite?: boolean
 	favorite_order?: number
+	low_priority?: boolean
 }
 
 function alphabeticalSort(r1: RoomListEntry, r2: RoomListEntry): number {
@@ -326,7 +327,9 @@ export class StateStore {
 		}
 		const preview_event = room?.eventsByRowID.get(entry.meta.preview_event_rowid)
 		const name = entry.meta.name ?? "Unnamed room"
-		const favoriteTag = room?.accountData.get("m.tag")?.tags?.["m.favourite"]
+		const tags = room?.accountData.get("m.tag")?.tags
+		const favoriteTag = tags?.["m.favourite"]
+		const lowPriority = !!tags?.["m.lowpriority"]
 		return {
 			room_id: entry.meta.room_id,
 			dm_user_id: entry.meta.dm_user_id,
@@ -335,11 +338,12 @@ export class StateStore {
 			name,
 			search_name: toSearchableString(name),
 			avatar: entry.meta.avatar,
-			unread_messages: entry.meta.unread_messages,
+			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : entry.meta.unread_messages,
 			unread_notifications: entry.meta.unread_notifications,
 			unread_highlights: entry.meta.unread_highlights,
 			marked_unread: entry.meta.marked_unread,
 			favorite_order: favoriteTag ? (+favoriteTag.order || 0) : undefined,
+			low_priority: lowPriority,
 		}
 	}
 

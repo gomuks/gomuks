@@ -52,6 +52,7 @@ const MutualRooms = ({ client, userID }: MutualRoomsProps) => {
 						unread_notifications: 0,
 						unread_highlights: 0,
 						marked_unread: false,
+						low_priority: false,
 					}
 				}).filter((data): data is RoomListEntry => !!data))
 				setTotalCount(resp.count ?? 0)

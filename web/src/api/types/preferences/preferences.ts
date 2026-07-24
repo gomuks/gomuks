@@ -240,6 +240,12 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
+	mute_low_priority: new Preference<boolean>({
+		displayName: "No unreads in low priority",
+		description: "Disable the unread message counter in low priority rooms. Notifications and highlights are still counted.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
 	alphabetical_order: new Preference<boolean>({
 		displayName: "Alphabetical room list",
 		description: "Sort rooms by name instead of recent activity.",
