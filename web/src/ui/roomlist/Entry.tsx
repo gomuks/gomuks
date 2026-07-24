@@ -105,9 +105,28 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		})
 		evt.preventDefault()
 	}
+	const classNames = ["room-entry"]
+	if (isActive) {
+		classNames.push("active")
+	}
+	if (hidden) {
+		classNames.push("hidden")
+	}
+	if (room.favorite_order) {
+		classNames.push("favorite")
+	}
+	if (room.low_priority) {
+		classNames.push("low-priority")
+	}
+	if (room.dm_user_id) {
+		classNames.push("direct-chat")
+	}
+	if (room.is_invite) {
+		classNames.push("invite")
+	}
 	return <div
 		ref={divRef}
-		className={`room-entry ${isActive ? "active" : ""} ${hidden ? "hidden" : ""}`}
+		className={classNames.join(" ")}
 		onClick={mainScreen.clickRoom}
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
