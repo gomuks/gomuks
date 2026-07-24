@@ -101,6 +101,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 				entry={room}
 				style={getModalStyleFromMouse(evt, RoomMenu.height)}
 			/>,
+			noHistory: true,
 		})
 		evt.preventDefault()
 	}

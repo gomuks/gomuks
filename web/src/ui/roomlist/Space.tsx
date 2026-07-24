@@ -58,6 +58,7 @@ const Space = ({
 				space={edgeStore}
 				style={getModalStyleFromMouse(evt, SpaceMenu.height + edgeStore.childSpaces.size * 40)}
 			/>,
+			noHistory: true,
 		})
 		evt.preventDefault()
 	}

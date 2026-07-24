@@ -38,21 +38,21 @@ const ModalWrapper = ({ children, ContextType, historyStateKey }: ModalWrapperPr
 		}
 		evt?.stopPropagation()
 		setState(null)
-		if (history.state?.[historyStateKey] && hackyIsFirefox) {
+		if (history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
 			history.back()
 		}
 	}, [historyStateKey, state])
 	const onKeyWrapper = (evt: React.KeyboardEvent<HTMLDivElement>) => {
 		if (evt.key === "Escape" && !state?.noDismiss) {
 			setState(null)
-			if (history.state?.[historyStateKey] && hackyIsFirefox) {
+			if (history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
 				history.back()
 			}
 		}
 		evt.stopPropagation()
 	}
 	const openModal = useCallback((newState: ModalState) => {
-		if (!history.state?.[historyStateKey] && newState.captureInput !== false) {
+		if (!history.state?.[historyStateKey] && newState.captureInput !== false && !newState.noHistory) {
 			history.pushState({ ...(history.state ?? {}), [historyStateKey]: true }, "")
 		}
 		setState(newState)

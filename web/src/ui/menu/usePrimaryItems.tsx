@@ -120,6 +120,7 @@ export const usePrimaryItems = (
 				style={getModalStyleFromButton(mevt.currentTarget, moreMenuHeight)}
 			/>,
 			onClose: () => setForceOpen!(false),
+			noHistory: true,
 		})
 	}
 	const isEditing = useEventAsState(roomCtx.isEditing)
