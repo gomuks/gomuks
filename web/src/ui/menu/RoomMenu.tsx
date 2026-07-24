@@ -13,19 +13,23 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { CSSProperties, use } from "react"
+import { CSSProperties, JSX, use } from "react"
 import { RoomListEntry, RoomStateStore, useAccountData } from "@/api/statestore"
 import { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import ClientContext from "../ClientContext.ts"
 import { ModalCloseContext, ModalContext, modals } from "../modal"
 import DoorOpenIcon from "@/icons/door-open.svg?react"
+import FavoriteIcon from "@/icons/favorite.svg?react"
 import MarkReadIcon from "@/icons/mark-read.svg?react"
 import MarkUnreadIcon from "@/icons/mark-unread.svg?react"
 import NotificationsOffIcon from "@/icons/notifications-off.svg?react"
 import NotificationsIcon from "@/icons/notifications.svg?react"
+import SetLowPriorityIcon from "@/icons/set-low-priority.svg?react"
 import SettingsIcon from "@/icons/settings.svg?react"
 import ShareIcon from "@/icons/share.svg?react"
+import UnfavoriteIcon from "@/icons/unfavorite.svg?react"
+import UnsetLowPriorityIcon from "@/icons/unset-low-priority.svg?react"
 import "./RoomMenu.css"
 
 interface RoomMenuProps {
@@ -54,6 +58,34 @@ const MuteButton = ({ roomID }: { roomID: RoomID }) => {
 	return <button onClick={toggleMute}>
 		{muted ? <NotificationsIcon/> : <NotificationsOffIcon/>}
 		{muted ? "Unmute" : "Mute"}
+	</button>
+}
+
+interface TagButtonProps {
+	room: RoomStateStore
+	tag: string
+	taggedElem: JSX.Element
+	untaggedElem: JSX.Element
+}
+
+const TagButton = ({ room, tag, taggedElem, untaggedElem }: TagButtonProps) => {
+	const client = use(ClientContext)!
+	const closeModal = use(ModalCloseContext)
+	const tags = room?.accountData.get("m.tag")?.tags ?? {}
+	const tagged = !!tags[tag]
+	const toggleTag = () => {
+		const newTags = {
+			...tags,
+			[tag]: tagged ? undefined : {},
+		}
+		client.rpc.setAccountData("m.tag", { tags: newTags }, room.roomID).catch(err => {
+			console.error("Failed to tag room", err)
+			window.alert(`Failed to ${tagged ? "untag" : "tag"} room: ${err}`)
+		})
+		closeModal()
+	}
+	return <button onClick={toggleTag}>
+		{tagged ? taggedElem : untaggedElem}
 	</button>
 }
 
@@ -111,13 +143,27 @@ export const RoomMenu = ({ room, style }: RoomMenuProps) => {
 	const onClickShare = () => {
 		openModal(modals.shareRoom(room))
 	}
+	const showLowPriority = client.store.preferences.pin_low_priority || client.store.preferences.mute_low_priority
+	const showFavorite = client.store.preferences.pin_favorites
 	return <div className="context-menu room-list-menu" style={style}>
 		<MarkReadButton room={room} />
 		<MuteButton roomID={room.roomID}/>
+		{showFavorite ? <TagButton
+			room={room}
+			tag="m.favourite"
+			taggedElem={<><UnfavoriteIcon /> Unfavorite</>}
+			untaggedElem={<><FavoriteIcon /> Favorite</>}
+		/> : null}
+		{showLowPriority ? <TagButton
+			room={room}
+			tag="m.lowpriority"
+			taggedElem={<><UnsetLowPriorityIcon /> Unset low priority</>}
+			untaggedElem={<><SetLowPriorityIcon /> Set low priority</>}
+		/> : null}
 		<button onClick={onClickShare}><ShareIcon /> Share</button>
 		<button onClick={openSettings}><SettingsIcon /> Settings</button>
 		<button onClick={leaveRoom}><DoorOpenIcon /> Leave room</button>
 	</div>
 }
 
-RoomMenu.height = 4 * 40
+RoomMenu.height = 7 * 40

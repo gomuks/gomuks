@@ -85,6 +85,6 @@ div.context-menu {
 	}
 
 	&.event-context-menu, &.room-list-menu {
-		width: 10rem;
+		width: auto;
 	}
 }

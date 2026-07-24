@@ -303,7 +303,7 @@ export class StateStore {
 
 	#roomListEntryChanged(entry: SyncRoom, oldEntry: RoomStateStore): boolean {
 		if (!entry.meta) {
-			return false
+			return (!!entry.account_data && "m.tag" in entry.account_data)
 		}
 		return entry.meta.sorting_timestamp !== oldEntry.meta.current.sorting_timestamp ||
 			entry.meta.unread_messages !== oldEntry.meta.current.unread_messages ||
@@ -319,14 +319,15 @@ export class StateStore {
 	}
 
 	#makeRoomListEntry(entry: SyncRoom, room?: RoomStateStore): RoomListEntry | null {
-		if (!entry.meta) {
+		const meta = entry.meta ?? room?.meta.current
+		if (!meta) {
 			return null
 		}
 		if (!room) {
-			room = this.rooms.get(entry.meta.room_id)
+			room = this.rooms.get(meta.room_id)
 		}
-		const isTombstoned = this.#isTombstoned(entry.meta)
-		const showInRoomList = this.#showTypeInRoomList(entry.meta)
+		const isTombstoned = this.#isTombstoned(meta)
+		const showInRoomList = this.#showTypeInRoomList(meta)
 		const hidden = isTombstoned || !showInRoomList
 		if (room) {
 			room.tombstoned = isTombstoned
@@ -335,23 +336,23 @@ export class StateStore {
 		if (hidden) {
 			return null
 		}
-		const preview_event = room?.eventsByRowID.get(entry.meta.preview_event_rowid)
-		const name = entry.meta.name ?? "Unnamed room"
+		const preview_event = room?.eventsByRowID.get(meta.preview_event_rowid)
+		const name = meta.name ?? "Unnamed room"
 		const tags = room?.accountData.get("m.tag")?.tags
 		const favoriteTag = tags?.["m.favourite"]
 		const lowPriority = !!tags?.["m.lowpriority"]
 		return {
-			room_id: entry.meta.room_id,
-			dm_user_id: entry.meta.dm_user_id,
-			sorting_timestamp: entry.meta.sorting_timestamp,
+			room_id: meta.room_id,
+			dm_user_id: meta.dm_user_id,
+			sorting_timestamp: meta.sorting_timestamp,
 			preview_event,
 			name,
 			search_name: toSearchableString(name),
-			avatar: entry.meta.avatar,
-			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : entry.meta.unread_messages,
-			unread_notifications: entry.meta.unread_notifications,
-			unread_highlights: entry.meta.unread_highlights,
-			marked_unread: entry.meta.marked_unread,
+			avatar: meta.avatar,
+			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : meta.unread_messages,
+			unread_notifications: meta.unread_notifications,
+			unread_highlights: meta.unread_highlights,
+			marked_unread: meta.marked_unread,
 			favorite_order: favoriteTag ? (+favoriteTag.order || 0) : undefined,
 			low_priority: lowPriority,
 		}
