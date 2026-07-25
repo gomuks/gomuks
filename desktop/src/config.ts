@@ -20,6 +20,7 @@ import { type BackendConfig } from "./webview.ts"
 
 export interface GomuksConfig {
 	backends: BackendConfig[]
+	disable_tray?: boolean
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -42,6 +43,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 				name: "backend",
 				displayname: "Default Profile",
 			}],
+			disable_tray: false,
 		}
 		await saveConfig(config)
 		return config

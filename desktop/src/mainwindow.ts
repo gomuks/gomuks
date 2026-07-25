@@ -63,6 +63,10 @@ export class GomuksWindow {
 		this.updateTrayMenu()
 	}
 
+	hasTray() {
+		return !this.config?.disable_tray
+	}
+
 	updateTrayMenu() {
 		const items: MenuItemConstructorOptions[] = this.views.entries().map(([id, view]) => ({
 			label: this.views.size === 1 ? "Open gomuks" : `Open: ${view.config.displayname || id}`,

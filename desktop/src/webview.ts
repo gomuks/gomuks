@@ -48,7 +48,9 @@ export class GomuksView {
 	constructor(public config: BackendConfig, private parent: GomuksWindow) {
 		this.partition = `persist:${config.name}`
 		if (config.type === "embedded") {
-			this.backend = new EmbeddedBackend(config.name, config.env, this.onBackendQuit, this.handleMatrixURI)
+			this.backend = new EmbeddedBackend(
+				config.name, config.env, this.onBackendQuit, this.handleMatrixURI, this.parent.hasTray(),
+			)
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
 		}
@@ -198,7 +200,10 @@ export class GomuksView {
 		}, err => {
 			console.error("Failed to get backend address:", err)
 		})
-		if (this.backend instanceof EmbeddedBackend || process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true") {
+		if (
+			(this.backend instanceof EmbeddedBackend && !this.parent.hasTray())
+			|| process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
+		) {
 			view.webContents.send("disable-notifications")
 		}
 		view.webContents.send("tab-id", {

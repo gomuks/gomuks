@@ -75,6 +75,8 @@ function prepareMenu() {
 app.on("window-all-closed", () => {
 	if (!EmbeddedBackend.runningInstances) {
 		app.quit()
+	} else if (!mainWindow.hasTray()) {
+		EmbeddedBackend.stopAll().then(() => app.quit())
 	}
 })
 
@@ -95,7 +97,9 @@ app.whenReady().then(async () => {
 	mainWindow.initialize()
 	prepareMenu()
 	mainWindow.open()
-	mainWindow.createTray()
+	if (!mainWindow.config.disable_tray) {
+		mainWindow.createTray()
+	}
 	const lastArg = process.argv[process.argv.length - 1]
 	if (lastArg.startsWith("matrix:")) {
 		mainWindow.handleMatrixURI(lastArg)
