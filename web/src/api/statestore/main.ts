@@ -427,6 +427,7 @@ export class StateStore {
 				this.rooms.set(roomID, room)
 				if (hasInvites) {
 					this.inviteRooms.delete(roomID)
+					this.stateCache?.deleteInvitedRoom(roomID)
 				}
 				isNewRoom = true
 			}
@@ -489,6 +490,7 @@ export class StateStore {
 			changedRoomListEntries.set(roomID, null)
 			this.#applyUnreadModification(null, this.roomListEntries.get(roomID))
 			this.stateCache?.deleteRoom(roomID)
+			this.stateCache?.deleteInvitedRoom(roomID)
 		}
 
 		let sortFunc: SortFunc = timestampSort

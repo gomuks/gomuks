@@ -247,6 +247,10 @@ export default class StateCache {
 		this.addToQueue(`invite:${evt.room_id}`, txn => txn.objectStore(INVITED_ROOM_STORE).put(evt))
 	}
 
+	deleteInvitedRoom(roomID: RoomID) {
+		this.addToQueue(`invite:${roomID}`, txn => txn.objectStore(INVITED_ROOM_STORE).delete(roomID))
+	}
+
 	setRoom(evt: indexedDBRoom) {
 		this.addToQueue(`room:${evt.meta.room_id}`, txn => txn.objectStore(ROOM_STORE).put(evt, evt.meta.room_id))
 	}
