@@ -65,6 +65,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 					displayname: backend.displayname,
 					icon: backend.icon,
 					env: backend.env,
+					disable_notifications: Boolean(backend.disable_notifications),
 				} as BackendConfig
 			} else if (backend.type === "remote") {
 				if (
@@ -91,11 +92,13 @@ export async function loadConfig(): Promise<GomuksConfig> {
 					address: backend.address,
 					username: backend.username,
 					password,
+					disable_notifications: Boolean(backend.disable_notifications),
 				} as BackendConfig
 			} else {
 				throw new Error(`Invalid backend config: unknown type ${backend.type}`)
 			}
 		})),
+		disable_tray: Boolean(parsed.disable_tray),
 	}
 	if (doSave) {
 		await saveConfig(config)
