@@ -26,6 +26,7 @@ interface BaseBackendConfig {
 	name: string
 	displayname?: string
 	icon?: string
+	disable_notifications?: boolean
 }
 
 export type BackendConfig = BaseBackendConfig & ({
@@ -38,6 +39,8 @@ export type BackendConfig = BaseBackendConfig & ({
 	password: string
 })
 
+const globalDisableNotifications = process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
+
 export class GomuksView {
 	public unreadCount: number = 0
 	public exited = false
@@ -49,7 +52,11 @@ export class GomuksView {
 		this.partition = `persist:${config.name}`
 		if (config.type === "embedded") {
 			this.backend = new EmbeddedBackend(
-				config.name, config.env, this.onBackendQuit, this.handleMatrixURI, this.parent.hasTray(),
+				config.name,
+				config.env,
+				config.disable_notifications || globalDisableNotifications || !this.parent.hasTray(),
+				this.onBackendQuit,
+				this.handleMatrixURI,
 			)
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
@@ -202,7 +209,8 @@ export class GomuksView {
 		})
 		if (
 			(this.backend instanceof EmbeddedBackend && !this.parent.hasTray())
-			|| process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
+			|| this.config.disable_notifications
+			|| globalDisableNotifications
 		) {
 			view.webContents.send("disable-notifications")
 		}

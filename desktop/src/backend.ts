@@ -54,9 +54,9 @@ export class EmbeddedBackend implements GomuksBackend {
 	constructor(
 		private profileName = "backend",
 		private env: Record<string, string> = {},
+		private disableNotifications: boolean,
 		private onQuit: () => void,
 		private handleMatrixURI: (uri: string) => void,
-		private hasTray: boolean,
 	) {}
 
 	get username() {
@@ -179,7 +179,7 @@ export class EmbeddedBackend implements GomuksBackend {
 	}
 
 	private onPushNotification(data: PushNewMessage) {
-		if (process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true" || !this.hasTray) {
+		if (this.disableNotifications) {
 			return
 		}
 		const notif = new Notification({
