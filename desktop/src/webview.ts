@@ -208,7 +208,7 @@ export class GomuksView {
 			console.error("Failed to get backend address:", err)
 		})
 		if (
-			(this.backend instanceof EmbeddedBackend && !this.parent.hasTray())
+			(this.backend instanceof EmbeddedBackend && this.parent.hasTray())
 			|| this.config.disable_notifications
 			|| globalDisableNotifications
 		) {
