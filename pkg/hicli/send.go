@@ -213,6 +213,9 @@ Loop:
 			base.Mentions = content.Mentions
 		}
 		content = *base
+		if text == "" && content.MsgType.IsText() && content.FormattedBody != "" && content.Body == "" {
+			content.Body, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, content.FormattedBody)
+		}
 	}
 	if perMessageProfile != nil {
 		content.BeeperPerMessageProfile = perMessageProfile

@@ -660,7 +660,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 		var inlineImages []id.ContentURI
 		if content.Format == event.FormatHTML && content.FormattedBody != "" {
 			var err error
-			sanitizedHTML, inlineImages, err = sanitizeAndLinkifyHTML(content.FormattedBody)
+			sanitizedHTML, inlineImages, err = sanitizeAndLinkifyHTML(content.FormattedBody, evt.Sender == h.Account.UserID)
 			if err != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).
 					Stringer("event_id", dbEvt.ID).
@@ -720,7 +720,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 	return dbEvt.LocalContent, nil
 }
 
-const CurrentHTMLSanitizerVersion = 13
+const CurrentHTMLSanitizerVersion = 14
 
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
 	if (evt.Type != event.EventMessage.Type && evt.DecryptedType != event.EventMessage.Type) ||

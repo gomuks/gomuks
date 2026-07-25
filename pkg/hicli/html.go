@@ -550,13 +550,14 @@ func getCodeBlockLanguage(token html.Token) string {
 
 const builderPreallocBuffer = 100
 
-func sanitizeAndLinkifyHTML(body string) (string, []id.ContentURI, error) {
+func sanitizeAndLinkifyHTML(body string, ownMessage bool) (string, []id.ContentURI, error) {
 	tz := html.NewTokenizer(strings.NewReader(body))
 	var built strings.Builder
 	built.Grow(len(body) + builderPreallocBuffer)
 	var codeBlock *strings.Builder
 	var codeBlockLanguage string
 	var inlineImages []id.ContentURI
+	var checkboxIdx int
 	ts := make(tagStack, 0, 2)
 Loop:
 	for {
@@ -627,8 +628,13 @@ Loop:
 					continue
 				}
 				_, checked := getAttribute(token.Attr, "checked")
-				// TODO allow checking checkboxes on own events
-				built.WriteString(`<input type="checkbox" class="hicli-checkbox" disabled`)
+				built.WriteString(`<input type="checkbox" class="hicli-checkbox"`)
+				if !ownMessage {
+					built.WriteString(" disabled")
+				} else {
+					writeAttribute(&built, "data-checkbox-index", strconv.Itoa(checkboxIdx))
+					checkboxIdx++
+				}
 				if checked {
 					built.WriteString(" checked")
 				}
