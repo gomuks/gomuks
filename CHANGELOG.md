@@ -10,6 +10,8 @@
 * Fixed `prev_batch` token not being saved when paginating messages from the
   server returns no new messages.
 * Fixed `prev_batch` not being reset on limited syncs.
+* Fixed clients never receiving initial sync payload if they connect during
+  database initialization.
 
 ### Web
 * Added option to use server-sent events instead of websockets.
@@ -17,7 +19,17 @@
   initial payload size when reloading the page. The cache is enabled when both
   SSE and low-bandwidth mode are enabled.
 * Added knocked users to room user list.
+* Added option to pin low priority rooms to bottom of room list.
+* Added option to stop counting unread messages in low priority rooms.
+* Added button to reset TOFU status after another user's master key changed.
+* Added hacky support for checking/unchecking todo list items in own messages.
 * Fixed websocket auto-reconnection getting throttled by browsers.
+* Fixed typing notifications getting stuck when the websocket reconnects.
+
+### Desktop
+* Added option to disable tray icon.
+  * Closing the main window will stop the backend too when the tray is disabled.
+* Added option to disable notifications per backend.
 
 # v26.07
 
