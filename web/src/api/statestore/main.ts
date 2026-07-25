@@ -213,9 +213,11 @@ export class StateStore {
 				this.stateCacheStatus = "no data"
 			} else {
 				console.info(
-					"Applying state cache from", new Date(data.server_timestamp!),
+					"Applying state cache for", data.user_id,
+					"from", new Date(data.server_timestamp!),
 					"with", Object.keys(data.rooms ?? {}).length, "rooms",
 				)
+				this.userID = data.user_id
 				this.applySync(data)
 				this.stateCacheStatus = "enabled"
 			}

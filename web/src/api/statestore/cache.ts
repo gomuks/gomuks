@@ -21,12 +21,14 @@ import {
 	RoomID,
 	SyncCompleteData,
 	SyncRoom,
+	UserID,
 } from "@/api/types"
 
 const CACHE_DB = "gomuks-cache"
 
 const KEY_TOP_LEVEL_SPACES = "top_level_spaces"
 const KEY_SERVER_TIMESTAMP = "server_timestamp"
+const KEY_USER_ID = "user_id"
 
 const KV_STORE = "kv_store"
 const INVITED_ROOM_STORE = "invited_room"
@@ -48,6 +50,10 @@ interface indexedDBSpaceEdges {
 }
 
 type Update = (txn: IDBTransaction) => void
+
+interface SyncCompleteWithUserID extends SyncCompleteData {
+	user_id: UserID
+}
 
 export default class StateCache {
 	private db?: IDBDatabase
@@ -113,18 +119,19 @@ export default class StateCache {
 		})
 	}
 
-	private loadData = (db: IDBDatabase) => new Promise<SyncCompleteData | null>((resolve, reject) => {
+	private loadData = (db: IDBDatabase) => new Promise<SyncCompleteWithUserID | null>((resolve, reject) => {
 		const txn = db.transaction(allStores, "readonly")
 		const kv = txn.objectStore(KV_STORE)
 		const serverTimestamp = kv.get(KEY_SERVER_TIMESTAMP)
 		const topLevelSpaces = kv.get(KEY_TOP_LEVEL_SPACES)
+		const userID = kv.get(KEY_USER_ID)
 		const invitedRooms = txn.objectStore(INVITED_ROOM_STORE).getAll()
 		const roomsQuery = txn.objectStore(ROOM_STORE).getAll()
 		const spaceEdges = txn.objectStore(SPACE_EDGE_STORE).getAll()
 		const accountData = txn.objectStore(ACCOUNT_DATA_STORE).getAll()
 		const roomAccountData = txn.objectStore(ROOM_ACCOUNT_DATA_STORE).getAll()
 		txn.oncomplete = () => {
-			if (!serverTimestamp.result || !topLevelSpaces.result
+			if (!serverTimestamp.result || !topLevelSpaces.result || !userID.result
 				|| !roomsQuery.result.length && !accountData.result.length) {
 				resolve(null)
 				return
@@ -139,6 +146,7 @@ export default class StateCache {
 				}
 			}
 			resolve({
+				user_id: userID.result.value as UserID,
 				server_timestamp: serverTimestamp.result.value as number,
 				top_level_spaces: topLevelSpaces.result.value as RoomID[],
 				invited_rooms: invitedRooms.result as DBInvitedRoom[],
@@ -221,6 +229,10 @@ export default class StateCache {
 
 	private setKV(key: string, value: unknown) {
 		this.addToQueue(key, txn => txn.objectStore(KV_STORE).put({ key, value }))
+	}
+
+	setUserID(userID: UserID) {
+		this.setKV(KEY_USER_ID, userID)
 	}
 
 	setServerTimestamp(timestamp: number) {

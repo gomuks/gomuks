@@ -304,7 +304,11 @@ export default class Client {
 	#handleEvent = (ev: RPCEvent) => {
 		if (ev.command === "client_state") {
 			this.state.emit(ev.data)
-			this.store.userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			const userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			if (userID !== this.store.userID) {
+				this.store.userID = userID
+				this.store.stateCache?.setUserID(userID)
+			}
 			if (ev.data.is_verified) {
 				this.registerWebPush(true)
 			}
