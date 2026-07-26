@@ -249,7 +249,7 @@ func (gmx *Gomuks) UploadMedia(
 		}
 		content.MSC3245Voice = &event.MSC3245Voice{}
 	}
-	content.File, content.URL, err = gmx.uploadFileDirect(
+	content.File, content.URL, err = gmx.UploadFileDirect(
 		ctx, checksum, cacheFile, params.Encrypt, int64(info.Size), info.MimeType, params.Filename, progressCallback,
 	)
 	if err != nil {
@@ -291,7 +291,7 @@ func (pr *progressReader) Close() error {
 	return pr.r.Close()
 }
 
-func (gmx *Gomuks) uploadFileDirect(
+func (gmx *Gomuks) UploadFileDirect(
 	ctx context.Context,
 	checksum []byte,
 	cacheReader io.Reader,
@@ -667,7 +667,7 @@ func (gmx *Gomuks) generateVideoThumbnail(ctx context.Context, filePath string, 
 	if err != nil {
 		return fmt.Errorf("failed to open renamed file: %w", err)
 	}
-	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.uploadFileDirect(
+	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.UploadFileDirect(
 		ctx, checksum, tempFile, encrypt, fileInfo.Size(), "image/jpeg", "thumbnail.jpeg", func(_ float64) {},
 	)
 	if err != nil {
