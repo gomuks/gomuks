@@ -56,7 +56,6 @@ func (gmx *Gomuks) DownloadMediaHTTP(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	encrypted, _ := strconv.ParseBool(query.Get("encrypted"))
 	fallback := query.Get("fallback")
-	useThumbnail := query.Get("thumbnail") == "avatar"
 	if fallback != "" {
 		fallbackParts := strings.Split(fallback, ":")
 		if len(fallbackParts) == 2 {
@@ -73,18 +72,19 @@ func (gmx *Gomuks) DownloadMediaHTTP(w http.ResponseWriter, r *http.Request) {
 			FileID:     r.PathValue("media_id"),
 		},
 		Encrypted:       encrypted,
-		AllowMIMEDetect: fallback != "",
+		IsAvatar:        fallback != "",
+		ThumbnailAvatar: query.Get("thumbnail") == "avatar",
 	}
 	entry, err := gmx.GetMediaCacheEntry(r.Context(), params)
 	if err != nil {
 		writeDownloadError(w, r, err)
 		return
 	}
-	if gmx.downloadMediaFromCache(w, r, entry, false, useThumbnail, fallback != "") {
+	if gmx.downloadMediaFromCache(w, r, entry, params, false) {
 		return
 	}
 	getStreamWriter := func(cacheEntry *database.Media) io.Writer {
-		if r.Header.Get("Range") != "" || useThumbnail {
+		if r.Header.Get("Range") != "" || params.ThumbnailAvatar {
 			return nil
 		}
 		cacheEntry.ToHeaders(w.Header(), false)
@@ -100,15 +100,15 @@ func (gmx *Gomuks) DownloadMediaHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeDownloadError(w, r, err)
 	} else {
-		gmx.downloadMediaFromCache(w, r, entry, true, useThumbnail, fallback != "")
+		gmx.downloadMediaFromCache(w, r, entry, params, true)
 	}
 }
 
-func (gmx *Gomuks) downloadMediaFromCache(w http.ResponseWriter, r *http.Request, entry *database.Media, force, useThumbnail, useFallback bool) bool {
+func (gmx *Gomuks) downloadMediaFromCache(w http.ResponseWriter, r *http.Request, entry *database.Media, params jsoncmd.DownloadMediaParams, force bool) bool {
 	if w == nil {
 		return true
 	}
-	cacheFile, err := gmx.OpenCacheFile(r.Context(), entry, force, useThumbnail, useFallback, r.Header.Get("If-None-Match"))
+	cacheFile, err := gmx.OpenCacheFile(r.Context(), entry, params, force, r.Header.Get("If-None-Match"))
 	if errors.Is(err, ErrNotModified) {
 		w.WriteHeader(http.StatusNotModified)
 	} else if errors.Is(err, ErrUnsupportedMediaType) {
@@ -124,7 +124,7 @@ func (gmx *Gomuks) downloadMediaFromCache(w http.ResponseWriter, r *http.Request
 		defer func() {
 			_ = cacheFile.Close()
 		}()
-		entry.ToHeaders(w.Header(), useThumbnail)
+		entry.ToHeaders(w.Header(), params.ThumbnailAvatar)
 		http.ServeContent(w, r, "", time.Time{}, cacheFile)
 	}
 	return true
@@ -292,7 +292,7 @@ func (gmx *Gomuks) DownloadMedia(
 		return nil, addErrorToCacheEntry(err)
 	}
 	// This is a hack for Beeper as some buckets (wasabi?) apparently don't respect the content-type header in uploads
-	if (cacheEntry.MimeType == "application/octet-stream" || cacheEntry.MimeType == "binary/octet-stream") && params.AllowMIMEDetect {
+	if (cacheEntry.MimeType == "application/octet-stream" || cacheEntry.MimeType == "binary/octet-stream") && params.IsAvatar {
 		if _, err = tempFile.Seek(0, io.SeekStart); err != nil {
 			log.Err(err).Msg("Failed to seek to start of temp file to find mime type")
 		} else if overrideMime, err := mimetype.DetectReader(tempFile); err != nil {
@@ -312,7 +312,7 @@ func (gmx *Gomuks) DownloadMedia(
 		log.Err(err).Msg("Failed to save cache entry")
 		return nil, mautrix.MUnknown.WithMessage(fmt.Sprintf("Failed to save cache entry: %v", err))
 	}
-	cachePath := gmx.cacheEntryToPath(cacheEntry.Hash[:])
+	cachePath := gmx.CacheEntryToPath(cacheEntry.Hash)
 	err = os.MkdirAll(filepath.Dir(cachePath), 0700)
 	if err != nil {
 		log.Err(err).Msg("Failed to create cache directory")
@@ -400,7 +400,8 @@ var ErrThumbnailGenerationError = mautrix.RespError{
 func (gmx *Gomuks) OpenCacheFile(
 	ctx context.Context,
 	entry *database.Media,
-	force, useThumbnail, useFallback bool,
+	params jsoncmd.DownloadMediaParams,
+	force bool,
 	ifNoneMatch string,
 ) (*os.File, error) {
 	if ctx.Err() != nil {
@@ -412,17 +413,17 @@ func (gmx *Gomuks) OpenCacheFile(
 		}
 		return nil, nil
 	}
-	etag := entry.ETag(useThumbnail)
+	etag := entry.ETag(params.ThumbnailAvatar)
 	if entry.Error != nil {
 		return nil, entry.Error.AsRespError().WithExtraHeader("Mau-Cached-Error", "true")
 	} else if etag != "" && ifNoneMatch == etag {
 		return nil, ErrNotModified
-	} else if entry.MimeType != "" && useFallback && !isAllowedAvatarMime(entry.MimeType) {
-		return nil, ErrUnsupportedMediaType
+	} else if entry.MimeType != "" && params.IsAvatar && !isAllowedAvatarMime(entry.MimeType) {
+		return nil, fmt.Errorf("%w %s", ErrUnsupportedMediaType, entry.MimeType)
 	}
 	log := zerolog.Ctx(ctx)
 	hash := entry.Hash
-	if useThumbnail {
+	if params.ThumbnailAvatar {
 		if entry.ThumbnailError != "" {
 			log.Debug().Str(zerolog.ErrorFieldName, entry.ThumbnailError).Msg("Returning cached thumbnail error")
 			return nil, ErrThumbnailGenerationError.
@@ -442,8 +443,8 @@ func (gmx *Gomuks) OpenCacheFile(
 		}
 		hash = entry.ThumbnailHash
 	}
-	cacheFile, err := os.Open(gmx.cacheEntryToPath(hash[:]))
-	if useThumbnail && errors.Is(err, os.ErrNotExist) {
+	cacheFile, err := os.Open(gmx.CacheEntryToPath(hash))
+	if params.ThumbnailAvatar && errors.Is(err, os.ErrNotExist) {
 		err = gmx.generateAvatarThumbnail(entry, gmx.Config.Media.ThumbnailSize)
 		if errors.Is(err, os.ErrNotExist) && !force {
 			return nil, nil
@@ -453,7 +454,7 @@ func (gmx *Gomuks) OpenCacheFile(
 			return nil, ErrThumbnailGenerationError.WithMessage(err.Error())
 		}
 		gmx.saveMediaCacheEntryWithThumbnail(ctx, entry, nil)
-		cacheFile, err = os.Open(gmx.cacheEntryToPath(hash[:]))
+		cacheFile, err = os.Open(gmx.CacheEntryToPath(hash))
 	}
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) && !force {
@@ -465,7 +466,10 @@ func (gmx *Gomuks) OpenCacheFile(
 	return cacheFile, nil
 }
 
-func (gmx *Gomuks) cacheEntryToPath(hash []byte) string {
+func (gmx *Gomuks) CacheEntryToPath(hash *[32]byte) string {
+	if hash == nil {
+		return ""
+	}
 	hashPath := hex.EncodeToString(hash[:])
 	return filepath.Join(gmx.CacheDir, "media", hashPath[0:2], hashPath[2:4], hashPath[4:])
 }
@@ -567,7 +571,7 @@ var parseHEICEXIF = func(data io.ReaderAt) ([]byte, error) {
 const maxAvatarDecodeMemory = 128 * 1024 * 1024
 
 func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) error {
-	cacheFile, err := os.Open(gmx.cacheEntryToPath(entry.Hash[:]))
+	cacheFile, err := os.Open(gmx.CacheEntryToPath(entry.Hash))
 	if err != nil {
 		return fmt.Errorf("failed to open full file: %w", err)
 	}
@@ -599,7 +603,7 @@ func (gmx *Gomuks) generateAvatarThumbnail(entry *database.Media, size int) erro
 	entry.ThumbnailHash = (*[32]byte)(fileHasher.Sum(nil))
 	entry.ThumbnailError = ""
 	entry.ThumbnailSize = fileInfo.Size()
-	cachePath := gmx.cacheEntryToPath(entry.ThumbnailHash[:])
+	cachePath := gmx.CacheEntryToPath(entry.ThumbnailHash)
 	err = os.MkdirAll(filepath.Dir(cachePath), 0700)
 	if err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)

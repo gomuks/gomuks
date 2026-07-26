@@ -105,6 +105,7 @@ const (
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
+	ReqDownloadMedia  Name = "download_media"
 	ReqExportKeys     Name = "export_keys"
 
 	RespError   Name = "error"
@@ -318,6 +319,9 @@ var (
 	// UploadMedia uploads a file on the local disk to the server and returns the m.room.message to use in `send_message`.
 	// This is only available in the C FFI. HTTP clients must use the /upload API.
 	UploadMedia = &CommandSpec[*UploadMediaParams, *event.MessageEventContent]{Name: ReqUploadMedia}
+	// DownloadMedia downloads a file from the server and returns the file path on the local disk.
+	// This is only available in the C FFI. HTTP clients must use the /download API.
+	DownloadMedia = &CommandSpec[*DownloadMediaParams, *DownloadMediaResponse]{Name: ReqDownloadMedia}
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
 	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}

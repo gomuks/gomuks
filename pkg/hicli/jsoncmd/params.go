@@ -404,7 +404,11 @@ type DownloadMediaParams struct {
 	// Whether the media is encrypted. The keys are fetched from the local database.
 	Encrypted bool `json:"encrypted,omitempty"`
 
-	AllowMIMEDetect bool `json:"allow_mime_detect,omitempty"`
+	// If the media is an avatar, the backend will ensure that the mime type is acceptable.
+	// It will also ignore the server returning application/octet-stream and detect the mime from the data instead.
+	IsAvatar bool `json:"is_avatar,omitempty"`
+	// Whether the client wants a thumbnail of the avatar. This will always return a square webp image.
+	ThumbnailAvatar bool `json:"thumbnail_avatar,omitempty"`
 }
 
 type ExportKeysParams struct {

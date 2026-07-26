@@ -69,3 +69,9 @@ type LoginFlowsResponse struct {
 	*mautrix.RespLoginFlows
 	OAuth *oauth.ServerMetadata `json:"oauth,omitempty"`
 }
+
+type DownloadMediaResponse struct {
+	*database.Media
+	Path          string `json:"path"`
+	ThumbnailPath string `json:"thumbnail_path,omitempty"`
+}

@@ -194,7 +194,7 @@ func (gmx *Gomuks) UploadMedia(
 		checksum = newHash
 	}
 
-	cachePath := gmx.cacheEntryToPath(checksum)
+	cachePath := gmx.CacheEntryToPath((*[32]byte)(checksum))
 	if _, err = os.Stat(cachePath); err == nil {
 		log.Debug().Str("path", cachePath).Msg("Media already exists in cache, removing temp file")
 	} else {
@@ -650,7 +650,7 @@ func (gmx *Gomuks) generateVideoThumbnail(ctx context.Context, filePath string, 
 	}
 	_ = tempFile.Close()
 	checksum := hasher.Sum(nil)
-	cachePath := gmx.cacheEntryToPath(checksum)
+	cachePath := gmx.CacheEntryToPath((*[32]byte)(checksum))
 	if _, err = os.Stat(cachePath); err == nil {
 		zerolog.Ctx(ctx).Debug().Str("path", cachePath).Msg("Media already exists in cache, removing temp file")
 	} else {

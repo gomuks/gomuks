@@ -137,17 +137,17 @@ func (me *MediaError) Write(w http.ResponseWriter) {
 }
 
 type Media struct {
-	MXC      id.ContentURI
-	EncFile  *attachment.EncryptedFile
-	FileName string
-	MimeType string
-	Size     int64
-	Hash     *[32]byte
-	Error    *MediaError
+	MXC      id.ContentURI             `json:"-"`
+	EncFile  *attachment.EncryptedFile `json:"-"`
+	FileName string                    `json:"file_name"`
+	MimeType string                    `json:"mime_type"`
+	Size     int64                     `json:"size"`
+	Hash     *[32]byte                 `json:"-"`
+	Error    *MediaError               `json:"-"`
 
-	ThumbnailError string
-	ThumbnailSize  int64
-	ThumbnailHash  *[32]byte
+	ThumbnailError string    `json:"thumbnail_error,omitempty"`
+	ThumbnailSize  int64     `json:"thumbnail_size,omitempty"`
+	ThumbnailHash  *[32]byte `json:"-"`
 }
 
 func (m *Media) ETag(thumbnail bool) string {

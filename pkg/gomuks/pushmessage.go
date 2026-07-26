@@ -75,9 +75,9 @@ func (gmx *Gomuks) getFilePath(ctx context.Context, url string) string {
 		zerolog.Ctx(ctx).Err(err).Str("url", url).Msg("Failed to get media for desktop notification")
 	} else if media != nil {
 		if media.ThumbnailHash != nil {
-			return gmx.cacheEntryToPath(media.ThumbnailHash[:])
+			return gmx.CacheEntryToPath(media.ThumbnailHash)
 		} else if media.Hash != nil {
-			return gmx.cacheEntryToPath(media.Hash[:])
+			return gmx.CacheEntryToPath(media.Hash)
 		}
 	}
 	return ""

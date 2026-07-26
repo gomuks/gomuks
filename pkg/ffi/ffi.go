@@ -42,6 +42,7 @@ import (
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli"
+	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 	"go.mau.fi/gomuks/version"
 )
@@ -256,6 +257,10 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 		return wrapFFIResponse(jsoncmd.UploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
 			return gmx.UploadMedia(gmx.ctx, nil, *params, nil)
 		}))
+	case jsoncmd.ReqDownloadMedia:
+		return wrapFFIResponse(jsoncmd.DownloadMedia.Run(reqData, func(params *jsoncmd.DownloadMediaParams) (*jsoncmd.DownloadMediaResponse, error) {
+			return gmx.downloadMediaFFI(gmx.ctx, params)
+		}))
 	case jsoncmd.ReqExportKeys:
 		return wrapFFIResponse(jsoncmd.ExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {
 			var sessions dbutil.RowIter[*crypto.InboundGroupSession]
@@ -275,6 +280,38 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 	default:
 		panic(fmt.Errorf("invalid call to handleFFICommand(%s)", cmd))
 	}
+}
+
+func (gmx *gomuksHandle) returnCachedMedia(ctx context.Context, entry *database.Media, params *jsoncmd.DownloadMediaParams, force bool) (*jsoncmd.DownloadMediaResponse, error) {
+	cacheFile, err := gmx.OpenCacheFile(ctx, entry, *params, force, "")
+	if err != nil {
+		return nil, err
+	} else if cacheFile != nil {
+		_ = cacheFile.Close()
+		return &jsoncmd.DownloadMediaResponse{
+			Media:         entry,
+			Path:          gmx.CacheEntryToPath(entry.Hash),
+			ThumbnailPath: gmx.CacheEntryToPath(entry.ThumbnailHash),
+		}, nil
+	} else if force {
+		panic(fmt.Errorf("OpenCacheFile returned nil with force flag"))
+	}
+	return nil, nil
+}
+
+func (gmx *gomuksHandle) downloadMediaFFI(ctx context.Context, params *jsoncmd.DownloadMediaParams) (resp *jsoncmd.DownloadMediaResponse, err error) {
+	entry, err := gmx.GetMediaCacheEntry(ctx, *params)
+	if err != nil {
+		return nil, err
+	}
+	if resp, err = gmx.returnCachedMedia(ctx, entry, params, false); resp != nil || err != nil {
+		return resp, err
+	}
+	entry, err = gmx.DownloadMedia(ctx, entry, nil, *params)
+	if err != nil {
+		return nil, err
+	}
+	return gmx.returnCachedMedia(ctx, entry, params, true)
 }
 
 func wrapFFIResponse(res any, err error) *jsoncmd.Container[json.RawMessage] {
