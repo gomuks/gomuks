@@ -58,7 +58,7 @@ func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 	api.HandleFunc("GET /sse", gmx.HandleSSE)
 	api.HandleFunc("POST /sse/ping", gmx.HandleSSEPing)
 	api.HandleFunc("POST /auth", gmx.Authenticate)
-	api.HandleFunc("POST /upload", gmx.UploadMedia)
+	api.HandleFunc("POST /upload", gmx.UploadMediaHTTP)
 	api.HandleFunc("GET /media/{server}/{media_id}", gmx.DownloadMedia)
 	api.HandleFunc("POST /exec/{command}", gmx.ExecCommand)
 	api.HandleFunc("POST /keys/export", gmx.ExportKeys)

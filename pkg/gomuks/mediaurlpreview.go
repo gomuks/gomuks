@@ -75,7 +75,7 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 			}
 			defer resp.Body.Close()
 
-			content, err = gmx.CacheAndUploadMedia(r.Context(), resp.Body, jsoncmd.UploadMediaParams{Encrypt: encrypt}, nil)
+			content, err = gmx.UploadMedia(r.Context(), resp.Body, jsoncmd.UploadMediaParams{Encrypt: encrypt}, nil)
 			if err != nil {
 				log.Err(err).Msg("Failed to upload URL preview image")
 				writeMaybeRespError(err, w)

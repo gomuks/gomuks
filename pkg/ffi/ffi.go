@@ -242,7 +242,7 @@ func gomuksUploadMediaAny(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, 
 		if params.Path != "" && params.Filename == "" {
 			params.Filename = filepath.Base(params.Path)
 		}
-		return gmx.CacheAndUploadMedia(gmx.ctx, reader, *params, func(progress float64) {
+		return gmx.UploadMedia(gmx.ctx, reader, *params, func(progress float64) {
 			C._gomuks_callProgressCallback(cb, C.double(progress))
 		})
 	})))
@@ -254,7 +254,7 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 		return wrapFFIResponse(gmx.Client.Account, nil)
 	case jsoncmd.ReqUploadMedia:
 		return wrapFFIResponse(jsoncmd.UploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
-			return gmx.CacheAndUploadMedia(gmx.ctx, nil, *params, nil)
+			return gmx.UploadMedia(gmx.ctx, nil, *params, nil)
 		}))
 	case jsoncmd.ReqExportKeys:
 		return wrapFFIResponse(jsoncmd.ExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {

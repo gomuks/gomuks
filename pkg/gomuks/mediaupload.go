@@ -59,7 +59,7 @@ import (
 
 const progressMime = "application/x-mau-progress-stream+json"
 
-func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
+func (gmx *Gomuks) UploadMediaHTTP(w http.ResponseWriter, r *http.Request) {
 	log := hlog.FromRequest(r)
 	progress, _ := strconv.ParseBool(r.URL.Query().Get("progress"))
 	progress = progress || r.Header.Get("Accept") == progressMime
@@ -139,7 +139,7 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	content, err := gmx.CacheAndUploadMedia(r.Context(), r.Body, params, progressCallback)
+	content, err := gmx.UploadMedia(r.Context(), r.Body, params, progressCallback)
 	if err != nil {
 		log.Err(err).Msg("Failed to upload media")
 		if respEnc != nil {
@@ -156,7 +156,7 @@ func (gmx *Gomuks) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (gmx *Gomuks) CacheAndUploadMedia(
+func (gmx *Gomuks) UploadMedia(
 	ctx context.Context,
 	reader io.Reader,
 	params jsoncmd.UploadMediaParams,
@@ -249,7 +249,7 @@ func (gmx *Gomuks) CacheAndUploadMedia(
 		}
 		content.MSC3245Voice = &event.MSC3245Voice{}
 	}
-	content.File, content.URL, err = gmx.UploadFile(
+	content.File, content.URL, err = gmx.uploadFileDirect(
 		ctx, checksum, cacheFile, params.Encrypt, int64(info.Size), info.MimeType, params.Filename, progressCallback,
 	)
 	if err != nil {
@@ -291,7 +291,7 @@ func (pr *progressReader) Close() error {
 	return pr.r.Close()
 }
 
-func (gmx *Gomuks) UploadFile(
+func (gmx *Gomuks) uploadFileDirect(
 	ctx context.Context,
 	checksum []byte,
 	cacheReader io.Reader,
@@ -667,7 +667,7 @@ func (gmx *Gomuks) generateVideoThumbnail(ctx context.Context, filePath string, 
 	if err != nil {
 		return fmt.Errorf("failed to open renamed file: %w", err)
 	}
-	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.UploadFile(
+	saveInto.ThumbnailFile, saveInto.ThumbnailURL, err = gmx.uploadFileDirect(
 		ctx, checksum, tempFile, encrypt, fileInfo.Size(), "image/jpeg", "thumbnail.jpeg", func(_ float64) {},
 	)
 	if err != nil {
