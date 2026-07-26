@@ -399,6 +399,14 @@ type UploadMediaParams struct {
 	Quality int `json:"quality,omitempty"`
 }
 
+type DownloadMediaParams struct {
+	MXC id.ContentURI `json:"mxc"`
+	// Whether the media is encrypted. The keys are fetched from the local database.
+	Encrypted bool `json:"encrypted,omitempty"`
+
+	AllowMIMEDetect bool `json:"allow_mime_detect,omitempty"`
+}
+
 type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`

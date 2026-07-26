@@ -10,8 +10,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"mime"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	"go.mau.fi/util/dbutil"
@@ -121,15 +123,17 @@ func (me *MediaError) UseCache() bool {
 	return me != nil && time.Since(me.ReceivedAt.Time) < me.backoff()
 }
 
+func (me *MediaError) AsRespError() mautrix.RespError {
+	return me.Matrix.
+		WithExtraField("fi.mau.hicli.error_ts", me.ReceivedAt.UnixMilli()).
+		WithExtraField("fi.mau.hicli.next_retry_ts", me.ReceivedAt.Add(me.backoff()).UnixMilli()).
+		WithExtraHeader("Mau-Errored-At", me.ReceivedAt.Format(http.TimeFormat)).
+		WithExtraHeader("Cache-Control", fmt.Sprintf("max-age=%d", max(int(time.Until(me.ReceivedAt.Add(me.backoff())).Seconds()), 0))).
+		WithStatus(me.StatusCode)
+}
+
 func (me *MediaError) Write(w http.ResponseWriter) {
-	if me.Matrix.ExtraData == nil {
-		me.Matrix.ExtraData = make(map[string]any)
-	}
-	me.Matrix.ExtraData["fi.mau.hicli.error_ts"] = me.ReceivedAt.UnixMilli()
-	me.Matrix.ExtraData["fi.mau.hicli.next_retry_ts"] = me.ReceivedAt.Add(me.backoff()).UnixMilli()
-	w.Header().Set("Mau-Errored-At", me.ReceivedAt.Format(http.TimeFormat))
-	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", max(int(time.Until(me.ReceivedAt.Add(me.backoff())).Seconds()), 0)))
-	me.Matrix.WithStatus(me.StatusCode).Write(w)
+	me.AsRespError().Write(w)
 }
 
 type Media struct {
@@ -180,6 +184,21 @@ func (m *Media) sqlVariables() []any {
 		hash, dbutil.JSONPtr(m.Error),
 		dbutil.NumPtr(m.ThumbnailSize), thumbnailHash, dbutil.StrPtr(m.ThumbnailError),
 	}
+}
+
+func (m *Media) ToHeaders(h http.Header, thumbnail bool) {
+	if thumbnail {
+		h.Set("Content-Type", "image/webp")
+		h.Set("Content-Length", strconv.FormatInt(m.ThumbnailSize, 10))
+		h.Set("Content-Disposition", "inline; filename=thumbnail.webp")
+	} else {
+		h.Set("Content-Type", m.MimeType)
+		h.Set("Content-Length", strconv.FormatInt(m.Size, 10))
+		h.Set("Content-Disposition", mime.FormatMediaType(m.ContentDisposition(), map[string]string{"filename": m.FileName}))
+	}
+	h.Set("Content-Security-Policy", "sandbox; default-src 'none'; script-src 'none'; media-src 'self';")
+	h.Set("Cache-Control", "max-age=2592000, immutable")
+	h.Set("ETag", m.ETag(thumbnail))
 }
 
 var safeMimes = []string{
