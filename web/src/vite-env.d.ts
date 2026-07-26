@@ -3,6 +3,7 @@
 
 import type Client from "@/api/client.ts"
 import type { GCSettings } from "@/api/statestore"
+import type { TabInfo, TabInfoUpdate } from "@/api/tabs.ts"
 import type { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
 import type { openNestableModal, openNonNestableModal } from "@/ui/modal/contexts.ts"
 import type { RoomContextData } from "@/ui/roomview/roomcontext.ts"
@@ -28,6 +29,8 @@ declare global {
 			setNotificationCount: (count: number) => void
 			subscribeToTabs: (listener: (tabs: TabInfo[]) => void) => void
 			switchTab: (tab: string) => void
+			updateTab: (tab: TabInfoUpdate) => Promise<void>
+			deleteTab: (tab: string) => Promise<void>
 			restartBackend: () => void
 			quitApp: () => void
 		}

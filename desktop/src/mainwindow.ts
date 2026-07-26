@@ -15,10 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import path from "node:path"
 import {
-	BaseWindow, Menu, MenuItemConstructorOptions, Tray, app, autoUpdater, dialog, ipcMain, nativeImage,
+	BaseWindow, Menu, MenuItemConstructorOptions, Tray, WebContentsView, app, autoUpdater, dialog, ipcMain, nativeImage,
 } from "electron"
-import { GomuksConfig } from "./config.ts"
-import { GomuksView, TabInfo } from "./webview.ts"
+import { EmbeddedBackend } from "./backend.ts"
+import { GomuksConfig, isValidTabID, saveConfig, tabInfoToConfig } from "./config.ts"
+import { GomuksView, TabInfo, TabInfoUpdate } from "./webview.ts"
 
 export class GomuksWindow {
 	private window: BaseWindow | null = null
@@ -29,7 +30,11 @@ export class GomuksWindow {
 	public quitting = false
 
 	constructor() {
-		ipcMain.on("switch-tab", (_evt, tab) => {
+		ipcMain.on("switch-tab", (_evt, tab: string) => {
+			if (!isValidTabID(tab)) {
+				console.log("Received switch tab request for invalid tab", tab)
+				return
+			}
 			const view = this.views.get(tab)
 			if (!view) {
 				console.log("Received switch tab request for unknown tab", tab)
@@ -38,6 +43,8 @@ export class GomuksWindow {
 				view.focus()
 			}
 		})
+		ipcMain.handle("delete-tab", (_evt, tab: string) => this.deleteTab(tab))
+		ipcMain.handle("update-tab", (_evt, tab: TabInfoUpdate) => this.updateTab(tab))
 		app.on("activate", this.open)
 		app.on("second-instance", (_event, commandLine) => {
 			console.log("Got second instance with", commandLine)
@@ -51,6 +58,55 @@ export class GomuksWindow {
 		app.on("open-url", (_event, url) => {
 			this.handleMatrixURI(url)
 		})
+	}
+
+	private async deleteTab(tab: string) {
+		if (!this.config) {
+			throw new Error("Config not loaded")
+		} else if (!isValidTabID(tab)) {
+			throw new Error("Invalid tab ID")
+		}
+		const view = this.views.get(tab)
+		if (view) {
+			view.destroy()
+			this.views.delete(tab)
+		}
+		this.config.backends = this.config.backends.filter(b => b.id !== tab)
+		await saveConfig(this.config)
+		this.emitTabs()
+		await EmbeddedBackend.deleteData(tab)
+	}
+
+	private async updateTab(tab: TabInfoUpdate) {
+		const config = this.config
+		if (!config) {
+			throw new Error("Config not loaded")
+		}
+
+		const backendIdx = config.backends.findIndex(b => b.id === tab.id)
+		const backend = backendIdx !== -1 ? config.backends[backendIdx] : undefined
+		const newCfg = tabInfoToConfig(tab, backend)
+
+		const view = this.views.get(tab.id)
+		if (view) {
+			view.destroy()
+		}
+		if (backendIdx === -1) {
+			config.backends.push(newCfg)
+		} else {
+			config.backends[backendIdx] = newCfg
+		}
+		const newView = new GomuksView(newCfg, this)
+		this.views.set(tab.id, newView)
+		if (this.window) {
+			newView.onWindowCreated(this.window)
+		}
+		await saveConfig(config)
+		this.emitTabs()
+	}
+
+	removeView(view: WebContentsView) {
+		this.window?.contentView.removeChildView(view)
 	}
 
 	createTray() {

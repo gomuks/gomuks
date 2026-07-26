@@ -46,8 +46,10 @@ export interface TabInfo extends BaseBackendConfig {
 	unread: number
 	exited: boolean
 
-	env?: never
+	env?: Record<string, string>
 }
+
+export type TabInfoUpdate = Omit<TabInfo, "unread" | "exited">
 
 const globalDisableNotifications = process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
 
@@ -78,7 +80,6 @@ export class GomuksView {
 			...this.config,
 			unread: this.unreadCount,
 			exited: this.exited,
-			env: undefined,
 		}
 		delete info.env
 		info.password = info.password ? "***" : ""
@@ -111,6 +112,15 @@ export class GomuksView {
 		if (this.webContentsView) {
 			this.webContentsView.webContents.toggleDevTools()
 		}
+	}
+
+	public destroy() {
+		if (this.webContentsView) {
+			this.webContentsView.webContents.close({ waitForBeforeUnload: false })
+			this.parent.removeView(this.webContentsView)
+			this.webContentsView = null
+		}
+		this.backend.stop()
 	}
 
 	public onWindowCreated(window: BaseWindow) {

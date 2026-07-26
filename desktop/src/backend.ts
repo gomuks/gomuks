@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { ChildProcess, spawn } from "node:child_process"
 import { randomBytes } from "node:crypto"
+import fs from "node:fs/promises"
 import path from "node:path"
 import { Notification, app } from "electron"
 
@@ -72,6 +73,11 @@ export class EmbeddedBackend implements GomuksBackend {
 			return Promise.reject(new Error("Backend not started"))
 		}
 		return this.addressPromise
+	}
+
+	static async deleteData(profileName: string) {
+		await fs.rm(path.join(app.getPath("sessionData"), profileName), { recursive: true })
+		await fs.rm(path.join(app.getPath("logs"), profileName), { recursive: true })
 	}
 
 	start() {

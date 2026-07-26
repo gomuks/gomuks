@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { contextBridge, ipcRenderer } from "electron"
-import type { TabInfo } from "./webview.ts"
+import type { TabInfo, TabInfoUpdate } from "./webview.ts"
 
 let subscriber: (tabs: TabInfo[]) => void = () => {}
 let cache: TabInfo[] | null  = null
@@ -46,6 +46,18 @@ contextBridge.exposeInMainWorld("gomuksDesktop", {
 	switchTab: (tab: string) => {
 		console.log("Sending tab switch request", tab)
 		ipcRenderer.send("switch-tab", tab)
+	},
+	updateTab: async (tab: TabInfoUpdate) => {
+		if (tab.id === currentTabID) {
+			throw new Error("Cannot update the current tab")
+		}
+		return await ipcRenderer.invoke("update-tab", tab)
+	},
+	deleteTab: async (tab: string) => {
+		if (tab === currentTabID) {
+			throw new Error("Cannot delete the current tab")
+		}
+		return await ipcRenderer.invoke("delete-tab", tab)
 	},
 	restartBackend: () => {
 		ipcRenderer.send("restart-backend")

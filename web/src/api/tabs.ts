@@ -31,6 +31,8 @@ export interface TabInfo {
 	exited: boolean
 }
 
+export type TabInfoUpdate = Omit<TabInfo, "unread" | "exited">
+
 let tabsCache: readonly TabInfo[] = []
 let tabListeners: (() => void)[] = []
 

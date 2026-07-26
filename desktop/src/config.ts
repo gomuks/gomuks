@@ -16,7 +16,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import { app, safeStorage } from "electron"
-import { type BackendConfig } from "./webview.ts"
+import type { BackendConfig, TabInfoUpdate } from "./webview.ts"
 
 export interface GomuksConfig {
 	backends: BackendConfig[]
@@ -33,6 +33,11 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 const configPath = path.join(app.getPath("userData"), "gomuks-desktop.json")
+const validTabIDRegex = /^[a-zA-Z0-9_-]{1,32}$/
+
+export function isValidTabID(id: unknown): id is string {
+	return typeof id === "string" && !!id && validTabIDRegex.test(id)
+}
 
 export async function loadConfig(): Promise<GomuksConfig> {
 	if (!await fileExists(configPath)) {
@@ -56,14 +61,15 @@ export async function loadConfig(): Promise<GomuksConfig> {
 	const config = {
 		//eslint-disable-next-line @typescript-eslint/no-explicit-any
 		backends: await Promise.all(parsed.backends.map(async (backend: any) => {
-			if (typeof backend.name !== "string") {
-				throw new Error("Invalid backend config: name must be a string")
+			const backendID = backend.id ?? backend.name
+			if (!isValidTabID(backendID)) {
+				throw new Error(`Invalid backend config: name must match ${validTabIDRegex}`)
 			}
 			if (backend.type === "embedded") {
 				return {
 					type: "embedded",
-					id: backend.id ?? backend.name,
-					displayname: backend.displayname ?? backend.id ?? backend.name,
+					id: backendID,
+					displayname: backend.displayname ?? backendID,
 					icon: backend.icon,
 					env: backend.env,
 					disable_notifications: Boolean(backend.disable_notifications),
@@ -87,8 +93,8 @@ export async function loadConfig(): Promise<GomuksConfig> {
 				}
 				return {
 					type: "remote",
-					id: backend.id ?? backend.name,
-					displayname: backend.displayname ?? backend.id ?? backend.name,
+					id: backendID,
+					displayname: backend.displayname ?? backendID,
 					icon: backend.icon,
 					address: backend.address,
 					username: backend.username,
@@ -129,4 +135,69 @@ export async function saveConfig(config: GomuksConfig) {
 		}, null, 2),
 		{ encoding: "utf8", mode: 0o600 },
 	)
+}
+
+function isValidEnv(env: unknown): env is Record<string, string> {
+	if (typeof env !== "object" || env === null) {
+		return false
+	}
+	for (const [key, value] of Object.entries(env)) {
+		if (typeof key !== "string" || typeof value !== "string") {
+			return false
+		}
+	}
+	return true
+}
+
+export function tabInfoToConfig(
+	tab: TabInfoUpdate,
+	oldConfig?: BackendConfig,
+): BackendConfig {
+	if (!isValidTabID(tab.id)) {
+		throw new Error("Invalid tab ID")
+	} else if (typeof tab.displayname !== "string" || !tab.displayname) {
+		throw new Error("Invalid tab displayname")
+	} else if (tab.icon !== undefined && typeof tab.icon !== "string") {
+		throw new Error("Invalid tab icon")
+	} else if (typeof tab.disable_notifications !== "boolean") {
+		throw new Error("Invalid tab disable_notifications")
+	}
+	const baseTab = {
+		disable_notifications: tab.disable_notifications,
+		id: tab.id,
+		displayname: tab.displayname,
+		icon: tab.icon,
+	}
+	if (tab.type === "embedded") {
+		if (tab.env !== undefined && !isValidEnv(tab.env)) {
+			throw new Error("Invalid tab env")
+		}
+		return {
+			type: "embedded",
+			...baseTab,
+			env: tab.env,
+		}
+	} else if (tab.type === "remote") {
+		if (tab.password === undefined) {
+			if (oldConfig?.type === "remote") {
+				tab.password = oldConfig.password
+			}
+		}
+		if (typeof tab.address !== "string" || !tab.address) {
+			throw new Error("Invalid tab address")
+		} else if (typeof tab.username !== "string") {
+			throw new Error("Invalid tab username")
+		} else if (typeof tab.password !== "string") {
+			throw new Error("Invalid tab password")
+		}
+		return {
+			type: "remote",
+			...baseTab,
+			address: tab.address,
+			username: tab.username,
+			password: tab.password,
+		}
+	} else {
+		throw new Error("Invalid tab type")
+	}
 }
