@@ -19,14 +19,13 @@ import contextMenu from "electron-context-menu"
 import { EmbeddedBackend, GomuksBackend, RemoteBackend } from "./backend.ts"
 import { loadPage } from "./html.ts"
 import { type GomuksWindow } from "./mainwindow.ts"
-import { TabInfo } from "./tabinfo.ts"
 
 interface BaseBackendConfig {
 	type: "embedded" | "remote"
-	name: string
-	displayname?: string
+	id: string
+	displayname: string
 	icon?: string
-	disable_notifications?: boolean
+	disable_notifications: boolean
 }
 
 export type BackendConfig = BaseBackendConfig & ({
@@ -39,6 +38,17 @@ export type BackendConfig = BaseBackendConfig & ({
 	password: string
 })
 
+export interface TabInfo extends BaseBackendConfig {
+	address?: string
+	username?: string
+	password?: string
+
+	unread: number
+	exited: boolean
+
+	env?: never
+}
+
 const globalDisableNotifications = process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
 
 export class GomuksView {
@@ -49,10 +59,10 @@ export class GomuksView {
 	private readonly partition: string
 
 	constructor(public config: BackendConfig, private parent: GomuksWindow) {
-		this.partition = `persist:${config.name}`
+		this.partition = `persist:${config.id}`
 		if (config.type === "embedded") {
 			this.backend = new EmbeddedBackend(
-				config.name,
+				config.id,
 				config.env,
 				config.disable_notifications || globalDisableNotifications || !this.parent.hasTray(),
 				this.onBackendQuit,
@@ -61,6 +71,18 @@ export class GomuksView {
 		} else {
 			this.backend = new RemoteBackend(config.address, config.username, config.password)
 		}
+	}
+
+	get tabInfo(): TabInfo {
+		const info: TabInfo = {
+			...this.config,
+			unread: this.unreadCount,
+			exited: this.exited,
+			env: undefined,
+		}
+		delete info.env
+		info.password = info.password ? "***" : ""
+		return info
 	}
 
 	private onBackendQuit = () => {
@@ -215,7 +237,7 @@ export class GomuksView {
 			view.webContents.send("disable-notifications")
 		}
 		view.webContents.send("tab-id", {
-			name: this.config.name,
+			id: this.config.id,
 			embedded: this.backend instanceof EmbeddedBackend,
 		})
 

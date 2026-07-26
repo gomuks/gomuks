@@ -15,11 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useSyncExternalStore } from "react"
 
-// This should match desktop/src/tabinfo.ts
+// This should match desktop/src/webview.ts
 export interface TabInfo {
+	type: "embedded" | "remote"
 	id: string
 	displayname: string
 	icon?: string
+	disable_notifications: boolean
+
+	address?: string
+	username?: string
+	password?: string
+
 	unread: number
 	exited: boolean
 }

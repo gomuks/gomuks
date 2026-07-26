@@ -18,8 +18,7 @@ import {
 	BaseWindow, Menu, MenuItemConstructorOptions, Tray, app, autoUpdater, dialog, ipcMain, nativeImage,
 } from "electron"
 import { GomuksConfig } from "./config.ts"
-import { TabInfo } from "./tabinfo.ts"
-import { GomuksView } from "./webview.ts"
+import { GomuksView, TabInfo } from "./webview.ts"
 
 export class GomuksWindow {
 	private window: BaseWindow | null = null
@@ -98,13 +97,7 @@ export class GomuksWindow {
 	}
 
 	public getTabs(): TabInfo[] {
-		return this.views.entries().map(([id, view]): TabInfo => ({
-			id,
-			displayname: view.config.displayname || id,
-			icon: view.config.icon,
-			unread: view.unreadCount,
-			exited: view.exited,
-		})).toArray()
+		return this.views.values().map(view => view.tabInfo).toArray()
 	}
 
 	public emitTabs() {
@@ -120,11 +113,11 @@ export class GomuksWindow {
 			throw new Error("Config not loaded")
 		}
 		for (const backend of this.config.backends) {
-			if (this.views.has(backend.name)) {
-				throw new Error(`Duplicate backend name: ${backend.name}`)
+			if (this.views.has(backend.id)) {
+				throw new Error(`Duplicate backend name: ${backend.id}`)
 			}
 			const view = new GomuksView(backend, this)
-			this.views.set(backend.name, view)
+			this.views.set(backend.id, view)
 		}
 	}
 

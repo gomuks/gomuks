@@ -40,8 +40,9 @@ export async function loadConfig(): Promise<GomuksConfig> {
 		const config: GomuksConfig = {
 			backends: [{
 				type: "embedded",
-				name: "backend",
+				id: "backend",
 				displayname: "Default Profile",
+				disable_notifications: false,
 			}],
 			disable_tray: false,
 		}
@@ -61,8 +62,8 @@ export async function loadConfig(): Promise<GomuksConfig> {
 			if (backend.type === "embedded") {
 				return {
 					type: "embedded",
-					name: backend.name,
-					displayname: backend.displayname,
+					id: backend.id ?? backend.name,
+					displayname: backend.displayname ?? backend.id ?? backend.name,
 					icon: backend.icon,
 					env: backend.env,
 					disable_notifications: Boolean(backend.disable_notifications),
@@ -86,8 +87,8 @@ export async function loadConfig(): Promise<GomuksConfig> {
 				}
 				return {
 					type: "remote",
-					name: backend.name,
-					displayname: backend.displayname,
+					id: backend.id ?? backend.name,
+					displayname: backend.displayname ?? backend.id ?? backend.name,
 					icon: backend.icon,
 					address: backend.address,
 					username: backend.username,

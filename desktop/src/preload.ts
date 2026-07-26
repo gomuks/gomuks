@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { contextBridge, ipcRenderer } from "electron"
-import { TabInfo } from "./tabinfo.ts"
+import type { TabInfo } from "./webview.ts"
 
 let subscriber: (tabs: TabInfo[]) => void = () => {}
 let cache: TabInfo[] | null  = null
@@ -69,7 +69,7 @@ ipcRenderer.on("disable-notifications", () => {
 })
 
 ipcRenderer.on("tab-id", (_evt, data) => {
-	currentTabID = data.name
+	currentTabID = data.id
 	isEmbedded = data.embedded
 })
 
