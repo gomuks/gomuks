@@ -32,7 +32,10 @@ typedef struct {
 	const char* command;
 } GomuksResponse;
 
+// GomuksHandle is an internal pointer to a gomuks instance.
+// The actual value has no meaning outside of the Gomuks* functions (it is not a real memory pointer).
 typedef uintptr_t GomuksHandle;
+
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 typedef void (*ProgressCallback)(double progress);
 typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
@@ -49,19 +52,27 @@ GomuksHandle GomuksInit(char* root);
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 // GomuksDestroy stops the given gomuks instance and removes references to it.
 void GomuksDestroy(GomuksHandle handle);
+
 // GomuksSubmitCommand sends a command to gomuks and returns the response.
+// The caller is responsible for memory management of the command string.
+// A good approach is creating one string for each command and reusing them forever.
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
+
 // GomuksUploadMediaPath is equivalent to GomuksSubmitCommand with the upload_media command
 // with an additional progress callback that will be called to report upload progress as a float64 between 0 and 100.
 // The JSON in the params buffer must contain a "path" field with the file path to upload.
+// The callback is optional, though without it this is equivalent to the upload_media command.
 GomuksResponse GomuksUploadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, ProgressCallback cb);
 // GomuksMediaUploadBytes is an alternate media upload method which takes raw bytes instead of a file path.
+// The callback is optional.
 GomuksResponse GomuksUploadMediaBytes(GomuksHandle handle, GomuksBorrowedBuffer params, GomuksBorrowedBuffer mediaBytes, ProgressCallback cb);
 // GomuksMediaDownloadPath is equivalent to GomuksSubmitCommand with the download_media command
 // with an additional stream callback. When downloading an unencrypted file that isn't cached locally,
 // the stream callback will receive chunks of the file as they are downloaded, followed by a final chunk
 // with length 0. The callback is not used for encrypted files nor if the file is already downloaded.
+// The callback is optional, though without it this is equivalent to the download_media command.
 GomuksResponse GomuksDownloadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, StreamCallback cb);
+
 // GomuksFreeBuffer frees an owned buffer returned from gomuks.
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
 
