@@ -6,6 +6,14 @@ div.backend-manager {
 	}
 }
 
+div.backend-manager-modal {
+	width: 100%;
+
+	> div.modal-box-inner {
+		width: 100%;
+	}
+}
+
 form.backend {
 	> div.fields {
 		display: grid;

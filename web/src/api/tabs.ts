@@ -77,6 +77,10 @@ const noTabs: NoTabs = {
 	hasTabs: false,
 }
 
+export function hasTabs(): boolean {
+	return Boolean(window.gomuksDesktop)
+}
+
 export function useTabs(): HasTabs | NoTabs {
 	const tabs = useSyncExternalStore(subscribeTabs, getTabs)
 	if (!window.gomuksDesktop) {

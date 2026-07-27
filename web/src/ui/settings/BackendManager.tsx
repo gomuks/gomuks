@@ -168,14 +168,14 @@ const BackendManager = () => {
 	}
 	return <div className="backend-manager">
 		<button onClick={onClickNewBackend} className="new-backend">New backend</button>
-		{tabs.map((tab, idx) => <Fragment key={tab.id}>
+		{tabs.map(tab => <Fragment key={tab.id}>
+			<hr/>
 			<BackendInfo
 				isCurrent={tab.id === currentTabID}
 				tab={tab}
 				updateTab={updateTab}
 				deleteTab={deleteTab}
 			/>
-			{idx !== tabs.length - 1 ? <hr/> : null}
 		</Fragment>)}
 	</div>
 }

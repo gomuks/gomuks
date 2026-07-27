@@ -13,14 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { use, useCallback, useEffect, useRef, useState } from "react"
 import type Client from "@/api/client.ts"
+import { hasTabs } from "@/api/tabs.ts"
 import type {
 	ClientState,
 	OAuthClientMetadataRequest,
 	OAuthDeviceCodeResponse,
 	OAuthServerMetadata,
 } from "@/api/types"
+import { NestableModalContext } from "../modal"
+import BackendManager from "../settings/BackendManager.tsx"
 import BeeperLogin from "./BeeperLogin.tsx"
 import CheckIcon from "@/icons/check.svg?react"
 import CopyIcon from "@/icons/copy.svg?react"
@@ -77,6 +80,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const skipServerResolution = useRef(false)
 	const [loading, setLoading] = useState<boolean>(false)
 	const [error, setError] = useState("")
+	const openNestableModal = use(NestableModalContext)
 
 	const loginSSOAsync = async () => {
 		const clientMeta = await client.rpc.oauthRegisterClient(homeserverURL, standardClientRegistrationParams)
@@ -298,6 +302,14 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 			err => console.error("Failed to copy to clipboard", err),
 		)
 	}
+	const openBackendManager = () => {
+		openNestableModal({
+			boxed: true,
+			dimmed: true,
+			boxClass: "backend-manager-modal",
+			content: <BackendManager />,
+		})
+	}
 
 	const supportsPassword = loginFlows?.includes("m.login.password")
 	const beeperDomain = homeserverURL.match(beeperServerRegex)?.[1]
@@ -395,6 +407,11 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		{beeperDomain && <>
 			<hr/>
 			<BeeperLogin domain={beeperDomain} client={client}/>
+		</>}
+
+		{hasTabs() && <>
+			<hr/>
+			<button onClick={openBackendManager} className="mx-login-button">Open backend manager</button>
 		</>}
 	</main>
 }

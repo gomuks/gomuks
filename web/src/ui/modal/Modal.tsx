@@ -20,7 +20,7 @@ import { ModalCloseContext, ModalState, openModal } from "./contexts.ts"
 interface ModalWrapperProps {
 	children: React.ReactNode
 	ContextType: Context<openModal>
-	historyStateKey: string
+	historyStateKey?: string
 }
 
 // Hacky hack to stop using history.back() on chrome, because the popstate event fires in the wrong order
@@ -38,21 +38,22 @@ const ModalWrapper = ({ children, ContextType, historyStateKey }: ModalWrapperPr
 		}
 		evt?.stopPropagation()
 		setState(null)
-		if (history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
+		if (historyStateKey && history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
 			history.back()
 		}
 	}, [historyStateKey, state])
 	const onKeyWrapper = (evt: React.KeyboardEvent<HTMLDivElement>) => {
 		if (evt.key === "Escape" && !state?.noDismiss) {
 			setState(null)
-			if (history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
+			if (historyStateKey && history.state?.[historyStateKey] && hackyIsFirefox && !state?.noHistory) {
 				history.back()
 			}
 		}
 		evt.stopPropagation()
 	}
 	const openModal = useCallback((newState: ModalState) => {
-		if (!history.state?.[historyStateKey] && newState.captureInput !== false && !newState.noHistory) {
+		if (historyStateKey && !history.state?.[historyStateKey]
+			&& newState.captureInput !== false && !newState.noHistory) {
 			history.pushState({ ...(history.state ?? {}), [historyStateKey]: true }, "")
 		}
 		setState(newState)
@@ -72,7 +73,7 @@ const ModalWrapper = ({ children, ContextType, historyStateKey }: ModalWrapperPr
 	}, [state, onClickWrapper, historyStateKey, openModal])
 	useEffect(() => {
 		const listener = (evt: PopStateEvent) => {
-			if (!evt.state?.[historyStateKey]) {
+			if (historyStateKey && !evt.state?.[historyStateKey]) {
 				setState(null)
 			}
 		}

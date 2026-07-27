@@ -24,7 +24,7 @@ import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
 import MainScreen from "./ui/MainScreen.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
-import { LightboxWrapper } from "./ui/modal"
+import { LightboxWrapper, ModalContext, ModalWrapper, NestableModalContext } from "./ui/modal"
 import { useEventAsState } from "./util/eventdispatcher.ts"
 
 function makeRPCClient(): RPCClient {
@@ -88,9 +88,17 @@ function App() {
 			{msg}
 		</div>
 	} else if (!clientState.is_logged_in) {
-		return <div className="pre-main"><LoginScreen client={client} clientState={clientState}/></div>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<div className="pre-main"><LoginScreen client={client} clientState={clientState}/></div>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else if (!clientState.is_verified) {
-		return <div className="pre-main"><VerificationScreen client={client} clientState={clientState}/></div>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<div className="pre-main"><VerificationScreen client={client} clientState={clientState}/></div>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else {
 		return <ClientContext value={client}>
 			<LightboxWrapper>
