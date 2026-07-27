@@ -6,7 +6,7 @@ The main method of connecting is using the websocket. The websocket is at
 However, the RPC API is intentionally just JSON, so it can be sent over other
 transports as well. In particular, when bundling the backend with the frontend,
 it is recommended to use a direct in-process channel rather than the websocket.
-If writing a frontend in a language other than Go, the [C FFI bindings](https://github.com/gomuks/gomuks/tree/main/pkg/ffi)
+If writing a frontend in a language other than Go, the [C FFI](https://docs.mau.fi/gomuks/ffi.html)
 may be useful.
 
 ### Compression
