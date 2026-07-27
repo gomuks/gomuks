@@ -106,6 +106,7 @@ const (
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
 	ReqDownloadMedia  Name = "download_media"
+	ReqGetURLPreview  Name = "get_url_preview"
 	ReqExportKeys     Name = "export_keys"
 
 	RespError   Name = "error"
@@ -322,6 +323,10 @@ var (
 	// DownloadMedia downloads a file from the server and returns the file path on the local disk.
 	// This is only available in the C FFI. HTTP clients must use the /download API.
 	DownloadMedia = &CommandSpec[*DownloadMediaParams, *DownloadMediaResponse]{Name: ReqDownloadMedia}
+	// GetURLPreview generates a URL preview for the given URL. This should be used
+	// when sending a message to attach bundled URL previews, not when receiving messages.
+	// This is only available in the C FFI. HTTP clients must use the /url_preview API.
+	GetURLPreview = &CommandSpec[*GetURLPreviewParams, *event.BeeperLinkPreview]{Name: ReqGetURLPreview}
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
 	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
@@ -375,12 +380,18 @@ var AllNames = []Name{
 	ReqSetProfileField,
 	ReqGetMutualRooms,
 	ReqTrackUserDevices,
+	ReqResetMasterKeyTOFU,
 	ReqGetProfileEncryptionInfo,
+	ReqGetOwnDevices,
 	ReqGetEvent,
+	ReqGetEventByRowID,
 	ReqGetEventContext,
 	ReqPaginateManual,
+	ReqSearchLocal,
+	ReqSearchServer,
 	ReqGetMentions,
 	ReqGetRelatedEvents,
+	ReqGetStickyEvents,
 	ReqGetRoomState,
 	ReqGetSpecificRoomState,
 	ReqGetReceipts,
@@ -392,6 +403,7 @@ var AllNames = []Name{
 	ReqLeaveRoom,
 	ReqCreateRoom,
 	ReqMuteRoom,
+	ReqUpdatePushRule,
 	ReqEnsureGroupSessionShared,
 	ReqSendToDevice,
 	ReqResolveAlias,
@@ -399,6 +411,11 @@ var AllNames = []Name{
 	ReqLogout,
 	ReqLogin,
 	ReqLoginCustom,
+	ReqOAuthRegisterClient,
+	ReqOAuthGetAuthorizationURL,
+	ReqOAuthExchangeToken,
+	ReqOAuthGenerateDeviceCode,
+	ReqOAuthPollDeviceCode,
 	ReqVerify,
 	ReqGenerateRecoveryKey,
 	ReqResetEncryption,
@@ -412,6 +429,9 @@ var AllNames = []Name{
 	ReqRerequestSession,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
+	ReqDownloadMedia,
+	ReqGetURLPreview,
+	ReqExportKeys,
 	RespError,
 	RespSuccess,
 	ReqPing,
