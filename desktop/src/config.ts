@@ -149,6 +149,20 @@ function isValidEnv(env: unknown): env is Record<string, string> {
 	return true
 }
 
+export function configNeedsRecreate(oldConfig: BackendConfig | undefined, newConfig: BackendConfig): boolean {
+	if (!oldConfig || oldConfig.id !== newConfig.id) {
+		return true
+	}
+	if (oldConfig.type === "embedded" && newConfig.type === "embedded") {
+		return JSON.stringify(oldConfig.env ?? {}) !== JSON.stringify(newConfig.env ?? {})
+	} else if (oldConfig.type === "remote" && newConfig.type === "remote") {
+		return oldConfig.address !== newConfig.address
+			|| oldConfig.username !== newConfig.username
+			|| oldConfig.password !== newConfig.password
+	}
+	return false
+}
+
 export function tabInfoToConfig(
 	tab: TabInfoUpdate,
 	oldConfig?: BackendConfig,

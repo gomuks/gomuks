@@ -52,7 +52,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
-	const [tabs, currentTabID, totalUnreads, switchTab] = useTabs()
+	const { tabs, currentTabID, totalUnreads, switchTab } = useTabs()
 	const currentTabIndex = tabs.findIndex(t => t.id === currentTabID)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {

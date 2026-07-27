@@ -52,16 +52,45 @@ function getTabs() {
 	return tabsCache
 }
 
-const noTabs = [[], "", 0, () => {}] as const
+interface UseTabsValue {
+	tabs: readonly TabInfo[]
+	currentTabID: string
+	totalUnreads: number
+	switchTab: (id: string) => void
+}
 
-export function useTabs() {
+interface NoTabs extends UseTabsValue {
+	hasTabs: false
+}
+
+interface HasTabs extends UseTabsValue {
+	updateTab: (update: TabInfoUpdate) => Promise<void>
+	deleteTab: (id: string) => Promise<void>
+	hasTabs: true
+}
+
+const noTabs: NoTabs = {
+	tabs: [],
+	currentTabID: "",
+	totalUnreads: 0,
+	switchTab: () => {},
+	hasTabs: false,
+}
+
+export function useTabs(): HasTabs | NoTabs {
 	const tabs = useSyncExternalStore(subscribeTabs, getTabs)
 	if (!window.gomuksDesktop) {
 		return noTabs
 	}
 	const currentTabID = window.gomuksDesktop.getTabID() ?? ""
 	const totalUnreads = tabs.reduce((acc, t) => acc + (t.id !== currentTabID ? t.unread : 0), 0)
-	return [tabs, currentTabID, totalUnreads, window.gomuksDesktop.switchTab] as const
+	return {
+		tabs, currentTabID, totalUnreads,
+		hasTabs: true,
+		switchTab: window.gomuksDesktop.switchTab,
+		updateTab: window.gomuksDesktop.updateTab,
+		deleteTab: window.gomuksDesktop.deleteTab,
+	}
 }
 
 window.gomuksDesktop?.subscribeToTabs((tabs: TabInfo[]) => {

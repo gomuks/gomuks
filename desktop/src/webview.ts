@@ -51,6 +51,12 @@ export interface TabInfo extends BaseBackendConfig {
 
 export type TabInfoUpdate = Omit<TabInfo, "unread" | "exited">
 
+export interface TabState {
+	tab_id: string
+	embedded: boolean
+	disable_notifications: boolean
+}
+
 const globalDisableNotifications = process.env.GOMUKS_DESKTOP_DISABLE_NOTIFICATIONS === "true"
 
 export class GomuksView {
@@ -82,7 +88,7 @@ export class GomuksView {
 			exited: this.exited,
 		}
 		delete info.env
-		info.password = info.password ? "***" : ""
+		delete info.password
 		return info
 	}
 
@@ -160,6 +166,11 @@ export class GomuksView {
 		this.parent.setFocused(this)
 
 		let serverURL: string | null = null
+		view.webContents.ipc.handle("get-state", (): TabState => ({
+			disable_notifications: this.notificationsDisabled,
+			tab_id: this.config.id,
+			embedded: this.backend instanceof EmbeddedBackend,
+		}))
 		view.webContents.ipc.on("set-notification-count", (_evt, count) => {
 			this.unreadCount = count
 			this.parent.emitTabs()
@@ -239,22 +250,25 @@ export class GomuksView {
 		}, err => {
 			console.error("Failed to get backend address:", err)
 		})
-		if (
-			(this.backend instanceof EmbeddedBackend && this.parent.hasTray())
-			|| this.config.disable_notifications
-			|| globalDisableNotifications
-		) {
-			view.webContents.send("disable-notifications")
-		}
-		view.webContents.send("tab-id", {
-			id: this.config.id,
-			embedded: this.backend instanceof EmbeddedBackend,
-		})
 
 		if (process.env.NODE_ENV === "development") {
 			view.webContents.openDevTools()
 		}
 
 		this.webContentsView = view
+		this.sendDisableNotifications()
+	}
+
+	private get notificationsDisabled() {
+		return (this.backend instanceof EmbeddedBackend && this.parent.hasTray())
+			|| this.config.disable_notifications
+			|| globalDisableNotifications
+	}
+
+	sendDisableNotifications() {
+		this.webContentsView?.webContents.send(
+			"disable-notifications",
+			this.notificationsDisabled,
+		)
 	}
 }

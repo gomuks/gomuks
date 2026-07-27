@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { contextBridge, ipcRenderer } from "electron"
-import type { TabInfo, TabInfoUpdate } from "./webview.ts"
+import type { TabInfo, TabInfoUpdate, TabState } from "./webview.ts"
 
 let subscriber: (tabs: TabInfo[]) => void = () => {}
 let cache: TabInfo[] | null  = null
@@ -48,9 +48,6 @@ contextBridge.exposeInMainWorld("gomuksDesktop", {
 		ipcRenderer.send("switch-tab", tab)
 	},
 	updateTab: async (tab: TabInfoUpdate) => {
-		if (tab.id === currentTabID) {
-			throw new Error("Cannot update the current tab")
-		}
 		return await ipcRenderer.invoke("update-tab", tab)
 	},
 	deleteTab: async (tab: string) => {
@@ -76,17 +73,18 @@ ipcRenderer.on("open-matrix-uri", (_evt, url: string) => {
 	location.hash = `#/uri/${encodeURIComponent(url)}`
 })
 
-ipcRenderer.on("disable-notifications", () => {
-	disableNotifications = true
-})
-
-ipcRenderer.on("tab-id", (_evt, data) => {
-	currentTabID = data.id
-	isEmbedded = data.embedded
+ipcRenderer.on("disable-notifications", (_evt, disable: boolean) => {
+	disableNotifications = disable
 })
 
 ipcRenderer.on("update-tabs", (_evt, tabs) => {
 	console.log("Received tab update", tabs)
 	cache = tabs
 	subscriber(tabs)
+})
+
+ipcRenderer.invoke("get-state").then((res: TabState) => {
+	currentTabID = res.tab_id
+	isEmbedded = res.embedded
+	disableNotifications = res.disable_notifications
 })

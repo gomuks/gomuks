@@ -1,0 +1,48 @@
+div.backend-manager {
+	> button.new-backend {
+		padding: .5rem;
+		width: 100%;
+		margin-bottom: .5rem;
+	}
+}
+
+form.backend {
+	> div.fields {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: .25rem .5rem;
+		align-items: center;
+
+		> input, > select {
+			padding: .5rem;
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+			justify-self: left;
+			width: 100%;
+			box-sizing: border-box;
+		}
+
+		> input[type="checkbox"]  {
+			margin: 0;
+			width: 1.75rem;
+			height: 1.75rem;
+			accent-color: var(--primary-color-dark);
+		}
+	}
+
+	> div.buttons {
+		display: flex;
+		justify-content: right;
+		margin-top: .5rem;
+		gap: .5rem;
+
+		> button {
+			padding: .5rem 1rem;
+
+			&.delete-button:hover, &.delete-button:focus {
+				background-color: var(--error-color);
+				color: var(--inverted-text-color);
+			}
+		}
+	}
+}

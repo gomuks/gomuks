@@ -21,6 +21,7 @@ import {
 	Preferences,
 } from "@/api/types/preferences"
 import ClientContext from "../ClientContext.ts"
+import BackendManager from "./BackendManager.tsx"
 import CustomCSSInput from "./CustomCSSInput.tsx"
 import EncryptionSettings from "./EncryptionSettings.tsx"
 import MiscButtons from "./MiscButtons.tsx"
@@ -41,6 +42,7 @@ enum SettingsTab {
 	CustomCSS,
 	Encryption,
 	MiscButtons,
+	BackendManager
 }
 
 function getContent(tab: SettingsTab, setPref: SetPrefFunc, room?: RoomStateStore): JSX.Element {
@@ -58,6 +60,8 @@ function getContent(tab: SettingsTab, setPref: SetPrefFunc, room?: RoomStateStor
 		return <EncryptionSettings room={room} />
 	case SettingsTab.MiscButtons:
 		return <MiscButtons />
+	case SettingsTab.BackendManager:
+		return <BackendManager />
 	default:
 		return <div className="settings-tab">Unknown tab</div>
 	}
@@ -114,6 +118,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			{makeTabButton(SettingsTab.CustomCSS, "Custom CSS")}
 			{makeTabButton(SettingsTab.Encryption, "Encryption")}
 			{makeTabButton(SettingsTab.MiscButtons, "Misc buttons")}
+			{window.gomuksDesktop && makeTabButton(SettingsTab.BackendManager, "Backend manager")}
 		</nav>
 		<div className="settings-tab">
 			{getContent(tab, setPref, room)}

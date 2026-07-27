@@ -18,7 +18,7 @@ import {
 	BaseWindow, Menu, MenuItemConstructorOptions, Tray, WebContentsView, app, autoUpdater, dialog, ipcMain, nativeImage,
 } from "electron"
 import { EmbeddedBackend } from "./backend.ts"
-import { GomuksConfig, isValidTabID, saveConfig, tabInfoToConfig } from "./config.ts"
+import { GomuksConfig, configNeedsRecreate, isValidTabID, saveConfig, tabInfoToConfig } from "./config.ts"
 import { GomuksView, TabInfo, TabInfoUpdate } from "./webview.ts"
 
 export class GomuksWindow {
@@ -66,6 +66,7 @@ export class GomuksWindow {
 		} else if (!isValidTabID(tab)) {
 			throw new Error("Invalid tab ID")
 		}
+		console.log("Deleting tab", tab)
 		const view = this.views.get(tab)
 		if (view) {
 			view.destroy()
@@ -73,8 +74,9 @@ export class GomuksWindow {
 		}
 		this.config.backends = this.config.backends.filter(b => b.id !== tab)
 		await saveConfig(this.config)
-		this.emitTabs()
 		await EmbeddedBackend.deleteData(tab)
+		this.emitTabs()
+		this.updateTrayMenu()
 	}
 
 	private async updateTab(tab: TabInfoUpdate) {
@@ -82,27 +84,43 @@ export class GomuksWindow {
 		if (!config) {
 			throw new Error("Config not loaded")
 		}
+		console.log("Updating tab:", { ...tab, password: undefined })
 
 		const backendIdx = config.backends.findIndex(b => b.id === tab.id)
 		const backend = backendIdx !== -1 ? config.backends[backendIdx] : undefined
 		const newCfg = tabInfoToConfig(tab, backend)
+		const needRecreate = configNeedsRecreate(backend, newCfg)
 
-		const view = this.views.get(tab.id)
-		if (view) {
+		let view = this.views.get(tab.id)
+		if (view && needRecreate) {
 			view.destroy()
+			view = undefined
 		}
 		if (backendIdx === -1) {
 			config.backends.push(newCfg)
 		} else {
 			config.backends[backendIdx] = newCfg
 		}
-		const newView = new GomuksView(newCfg, this)
-		this.views.set(tab.id, newView)
-		if (this.window) {
-			newView.onWindowCreated(this.window)
+		const prevFocused = this.activeView
+		if (!view) {
+			const newView = new GomuksView(newCfg, this)
+			this.views.set(tab.id, newView)
+			if (this.window) {
+				newView.onWindowCreated(this.window)
+			}
+			if (prevFocused) {
+				prevFocused.focus()
+			}
+		} else {
+			const oldCfg = view.config
+			view.config = newCfg
+			if (newCfg.disable_notifications !== oldCfg.disable_notifications) {
+				view.sendDisableNotifications()
+			}
 		}
 		await saveConfig(config)
 		this.emitTabs()
+		this.updateTrayMenu()
 	}
 
 	removeView(view: WebContentsView) {
