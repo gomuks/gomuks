@@ -23,9 +23,10 @@ interface BackendInfoProps {
 	isCurrent?: boolean
 	updateTab: (tab: TabInfoUpdate) => Promise<void>
 	deleteTab: (tabID: string) => Promise<void>
+	switchTab: (tabID: string) => void
 }
 
-const BackendInfo = ({ tab, isCurrent, updateTab, deleteTab }: BackendInfoProps) => {
+const BackendInfo = ({ tab, isCurrent, updateTab, deleteTab, switchTab }: BackendInfoProps) => {
 	const [type, setType] = useState(tab?.type ?? "embedded")
 	const [id, setID] = useState(tab?.id ?? "")
 	const [name, setName] = useState(tab?.displayname ?? "")
@@ -68,6 +69,9 @@ const BackendInfo = ({ tab, isCurrent, updateTab, deleteTab }: BackendInfoProps)
 			},
 			err => window.alert(`Failed to update backend: ${err}`),
 		).finally(() => setLoading(false))
+	}
+	const onClickSwitch = () => {
+		switchTab(tab!.id)
 	}
 
 	const tabID = tab?.id ?? "new-tab"
@@ -140,6 +144,12 @@ const BackendInfo = ({ tab, isCurrent, updateTab, deleteTab }: BackendInfoProps)
 		</div>
 		<div className="buttons">
 			{!isCurrent && tab && <button
+				onClick={onClickSwitch}
+				type="button"
+				className="switch-button"
+			>Switch to tab</button>}
+			<div className="spacer" />
+			{!isCurrent && tab && <button
 				onClick={onClickDelete}
 				disabled={loading}
 				type="button"
@@ -158,12 +168,12 @@ const BackendManager = () => {
 			This wrapper doesn't support multiple backends.
 		</div>
 	}
-	const { tabs, currentTabID, updateTab, deleteTab } = tabsData
+	const { tabs, currentTabID, updateTab, deleteTab, switchTab } = tabsData
 	const onClickNewBackend = () => {
 		openModal({
 			boxed: true,
 			dimmed: true,
-			content: <BackendInfo updateTab={updateTab} deleteTab={deleteTab} />,
+			content: <BackendInfo updateTab={updateTab} deleteTab={deleteTab} switchTab={switchTab} />,
 		})
 	}
 	return <div className="backend-manager">
@@ -175,6 +185,7 @@ const BackendManager = () => {
 				tab={tab}
 				updateTab={updateTab}
 				deleteTab={deleteTab}
+				switchTab={switchTab}
 			/>
 		</Fragment>)}
 	</div>

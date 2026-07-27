@@ -40,9 +40,12 @@ form.backend {
 
 	> div.buttons {
 		display: flex;
-		justify-content: right;
 		margin-top: .5rem;
 		gap: .5rem;
+
+		> div.spacer {
+			flex: 1;
+		}
 
 		> button {
 			padding: .5rem 1rem;
