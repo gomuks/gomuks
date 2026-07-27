@@ -267,6 +267,9 @@ func GomuksDownloadMediaPath(handle C.GomuksHandle, params C.GomuksBorrowedBuffe
 	reqData := borrowBufferBytes(params)
 	return containerToResponse(wrapFFIResponse(jsoncmd.DownloadMedia.Run(reqData, func(params *jsoncmd.DownloadMediaParams) (*jsoncmd.DownloadMediaResponse, error) {
 		getStreamWriter := func(_ *database.Media) io.Writer {
+			if cb == nil {
+				return nil
+			}
 			return &ffiWriter{cb: cb}
 		}
 		return gmx.downloadMediaFFI(gmx.ctx, params, getStreamWriter)
