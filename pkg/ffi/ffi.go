@@ -216,7 +216,7 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 	cmd := jsoncmd.Name(C.GoString(command))
 	reqData := borrowBufferBytes(data)
 	switch cmd {
-	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys:
+	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys, jsoncmd.ReqGetURLPreview:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
@@ -304,6 +304,10 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 	case jsoncmd.ReqDownloadMedia:
 		return wrapFFIResponse(jsoncmd.DownloadMedia.Run(reqData, func(params *jsoncmd.DownloadMediaParams) (*jsoncmd.DownloadMediaResponse, error) {
 			return gmx.downloadMediaFFI(gmx.ctx, params, nil)
+		}))
+	case jsoncmd.ReqGetURLPreview:
+		return wrapFFIResponse(jsoncmd.GetURLPreview.Run(reqData, func(params *jsoncmd.GetURLPreviewParams) (*event.BeeperLinkPreview, error) {
+			return gmx.GetURLPreview(gmx.ctx, params.URL, params.Encrypt)
 		}))
 	case jsoncmd.ReqExportKeys:
 		return wrapFFIResponse(jsoncmd.ExportKeys.Run(reqData, func(params *jsoncmd.ExportKeysParams) (string, error) {

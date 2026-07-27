@@ -18,10 +18,11 @@ package gomuks
 
 import (
 	"cmp"
+	"context"
 	"net/http"
 	"strconv"
 
-	"github.com/rs/zerolog/hlog"
+	"github.com/rs/zerolog"
 	"go.mau.fi/util/exhttp"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
@@ -29,18 +30,26 @@ import (
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
 
-func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
-	log := hlog.FromRequest(r)
+func (gmx *Gomuks) GetURLPreviewHTTP(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
-	if url == "" {
-		mautrix.MInvalidParam.WithMessage("URL must be provided to preview").Write(w)
-		return
+	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
+	resp, err := gmx.GetURLPreview(r.Context(), url, encrypt)
+	if err != nil {
+		writeMaybeRespError(err, w)
+	} else {
+		exhttp.WriteJSONResponse(w, http.StatusOK, resp)
 	}
-	linkPreview, err := gmx.Client.Client.GetURLPreview(mautrix.WithMaxRetries(r.Context(), 0), url)
+}
+
+func (gmx *Gomuks) GetURLPreview(ctx context.Context, url string, encrypt bool) (*event.BeeperLinkPreview, error) {
+	log := zerolog.Ctx(ctx)
+	if url == "" {
+		return nil, mautrix.MInvalidParam.WithMessage("URL must be provided to preview")
+	}
+	linkPreview, err := gmx.Client.Client.GetURLPreview(mautrix.WithMaxRetries(ctx, 0), url)
 	if err != nil {
 		log.Err(err).Msg("Failed to get URL preview")
-		writeMaybeRespError(err, w)
-		return
+		return nil, err
 	}
 
 	preview := event.BeeperLinkPreview{
@@ -49,8 +58,6 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if preview.ImageURL != "" {
-		encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
-
 		var content *event.MessageEventContent
 
 		if encrypt {
@@ -67,19 +74,17 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 		if content == nil && (err != nil || parsedImageURL.IsEmpty()) {
 			log.Warn().Err(err).Str("image_url", string(preview.ImageURL)).Msg("Failed to parse URL preview image mxc")
 		} else if content == nil && !parsedImageURL.IsEmpty() {
-			resp, err := gmx.Client.Client.Download(r.Context(), parsedImageURL)
+			resp, err := gmx.Client.Client.Download(ctx, parsedImageURL)
 			if err != nil {
 				log.Err(err).Msg("Failed to download URL preview image")
-				writeMaybeRespError(err, w)
-				return
+				return nil, err
 			}
 			defer resp.Body.Close()
 
-			content, err = gmx.UploadMedia(r.Context(), resp.Body, jsoncmd.UploadMediaParams{Encrypt: encrypt}, nil)
+			content, err = gmx.UploadMedia(ctx, resp.Body, jsoncmd.UploadMediaParams{Encrypt: encrypt}, nil)
 			if err != nil {
 				log.Err(err).Msg("Failed to upload URL preview image")
-				writeMaybeRespError(err, w)
-				return
+				return nil, err
 			}
 
 			if encrypt {
@@ -99,5 +104,5 @@ func (gmx *Gomuks) GetURLPreview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	exhttp.WriteJSONResponse(w, http.StatusOK, preview)
+	return &preview, nil
 }

@@ -411,6 +411,13 @@ type DownloadMediaParams struct {
 	ThumbnailAvatar bool `json:"thumbnail_avatar,omitempty"`
 }
 
+type GetURLPreviewParams struct {
+	// The URL to generate a preview for.
+	URL string `json:"url"`
+	// Whether potential preview images should be encrypted.
+	Encrypt bool `json:"encrypt,omitempty"`
+}
+
 type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`
