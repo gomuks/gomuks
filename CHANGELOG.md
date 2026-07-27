@@ -3,6 +3,7 @@
 ### Backend
 * Added server-sent events as an alternative for websockets.
 * Added support for room list catch-up syncs for frontends.
+* Added media download method to C FFI.
 * Changed sync responses to allow omitting any field in room entries.
 * Changed HTML sanitizer to only allow checkboxes inside unordered list items.
 * Changed room state resync to send space edges to clients if the room being
@@ -27,6 +28,7 @@
 * Fixed typing notifications getting stuck when the websocket reconnects.
 
 ### Desktop
+* Added UI for managing backends.
 * Added option to disable tray icon.
   * Closing the main window will stop the backend too when the tray is disabled.
 * Added option to disable notifications per backend.
