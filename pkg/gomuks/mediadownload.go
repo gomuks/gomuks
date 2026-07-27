@@ -270,7 +270,7 @@ func (gmx *Gomuks) DownloadMedia(
 	fileHasher := sha256.New()
 	wrappedReader := io.TeeReader(reader, fileHasher)
 	var sw io.Writer
-	if cacheEntry.Size > 0 && cacheEntry.EncFile == nil && !params.ThumbnailAvatar && getStreamWriter != nil {
+	if cacheEntry.EncFile == nil && !params.ThumbnailAvatar && getStreamWriter != nil {
 		sw = getStreamWriter(cacheEntry)
 		if sw != nil {
 			wrappedReader = io.TeeReader(wrappedReader, &noErrorWriter{sw})
