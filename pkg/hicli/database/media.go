@@ -193,7 +193,9 @@ func (m *Media) ToHeaders(h http.Header, thumbnail bool) {
 		h.Set("Content-Disposition", "inline; filename=thumbnail.webp")
 	} else {
 		h.Set("Content-Type", m.MimeType)
-		h.Set("Content-Length", strconv.FormatInt(m.Size, 10))
+		if m.Size >= 0 {
+			h.Set("Content-Length", strconv.FormatInt(m.Size, 10))
+		}
 		h.Set("Content-Disposition", mime.FormatMediaType(m.ContentDisposition(), map[string]string{"filename": m.FileName}))
 	}
 	h.Set("Content-Security-Policy", "sandbox; default-src 'none'; script-src 'none'; media-src 'self';")
