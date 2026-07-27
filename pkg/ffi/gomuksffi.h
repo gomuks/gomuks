@@ -35,6 +35,7 @@ typedef struct {
 typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 typedef void (*ProgressCallback)(double progress);
+typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
 
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
@@ -56,6 +57,11 @@ GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBor
 GomuksResponse GomuksUploadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, ProgressCallback cb);
 // GomuksMediaUploadBytes is an alternate media upload method which takes raw bytes instead of a file path.
 GomuksResponse GomuksUploadMediaBytes(GomuksHandle handle, GomuksBorrowedBuffer params, GomuksBorrowedBuffer mediaBytes, ProgressCallback cb);
+// GomuksMediaDownloadPath is equivalent to GomuksSubmitCommand with the download_media command
+// with an additional stream callback. When downloading an unencrypted file that isn't cached locally,
+// the stream callback will receive chunks of the file as they are downloaded, followed by a final chunk
+// with length 0. The callback is not used for encrypted files nor if the file is already downloaded.
+GomuksResponse GomuksDownloadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, StreamCallback cb);
 // GomuksFreeBuffer frees an owned buffer returned from gomuks.
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
 
