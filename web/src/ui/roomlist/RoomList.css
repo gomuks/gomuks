@@ -12,6 +12,9 @@ div.room-list-wrapper {
 		"spacebar roomlist" 1fr
 		"profile  roomlist" 3rem
 		/ 3rem    1fr;
+
+	container-type: inline-size;
+	container-name: left-panel;
 }
 
 div.room-list {
@@ -194,6 +197,40 @@ div.room-entry {
 
 			> span.preview-text {
 				display: block;
+			}
+		}
+	}
+
+	@container left-panel (max-width: 8rem) {
+		> div.room-entry-right {
+			display: none;
+		}
+
+		/* TODO this has partial duplication with the stuff below */
+		> div.room-entry-unreads {
+			z-index: 2;
+			height: 0;
+			width: 0;
+			margin-left: -.75rem;
+			margin-bottom: auto;
+			position: relative;
+
+			> div.unread-count {
+				position: absolute;
+				margin-top: 1rem;
+				margin-right: .25rem;
+				--unread-count-size: .75rem;
+				font-weight: normal;
+				font-size: .75em;
+				background-color: var(--space-unread-counter-message-bg);
+
+				&.notified {
+					background-color: var(--space-unread-counter-notification-bg);
+				}
+
+				&.highlighted {
+					background-color: var(--space-unread-counter-highlight-bg);
+				}
 			}
 		}
 	}
