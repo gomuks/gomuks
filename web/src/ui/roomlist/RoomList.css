@@ -105,6 +105,19 @@ div.room-search-wrapper {
 	grid-area: search;
 	padding-top: var(--window-top-margin);
 	contain: strict;
+	container-type: inline-size;
+	container-name: room-search;
+
+	@container room-search (max-width: 8rem) {
+		/* TODO after switching to a room search modal, bring back the search button here */
+		> button.create-room-button {
+			margin: auto;
+		}
+
+		> button.search-clear-button, > input {
+			display: none;
+		}
+	}
 
 	> input {
 		padding: 0 0 0 1rem;

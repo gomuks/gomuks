@@ -148,10 +148,10 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				ref={searchInputRef}
 				id="room-search"
 			/>
-			{query === "" && <button onClick={openCreateRoom} title="Create room">
+			{query === "" && <button onClick={openCreateRoom} title="Create room" className="create-room-button">
 				<AddCircleIcon/>
 			</button>}
-			<button onClick={clearQuery} disabled={query === ""}>
+			<button onClick={clearQuery} disabled={query === ""} className="search-clear-button">
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
