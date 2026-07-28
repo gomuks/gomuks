@@ -182,6 +182,7 @@ export class RoomStateStore {
 	readonly accountDataSubs = new MultiSubscribable()
 	readonly openNotifications: Map<EventRowID, Notification> = new Map()
 	readonly #emojiPacksCache: Map<string, CustomEmojiPack | null> = new Map()
+	readonly imagePackSub = new Subscribable()
 	readonly preferences: Required<Preferences>
 	readonly localPreferenceCache: Preferences
 	readonly preferenceSub = new NoDataSubscribable()
@@ -570,6 +571,7 @@ export class RoomStateStore {
 			this.#emojiPacksCache.delete(key)
 			this.#allPacksCache = null
 			this.parent.invalidateEmojiPacksCache()
+			this.imagePackSub.notify()
 		} else if (evtType === "m.room.member") {
 			this.#membersCache = null
 			this.#allCommandsCache = null
@@ -768,6 +770,9 @@ export class RoomStateStore {
 				this.stateSubs.notify(this.stateSubKey(evtType, key))
 			}
 			this.stateSubs.notify(evtType)
+			if (evtType === "m.room.image_pack" || evtType === "im.ponies.room_emotes") {
+				this.imagePackSub.notify()
+			}
 		}
 	}
 

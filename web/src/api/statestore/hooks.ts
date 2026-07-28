@@ -217,7 +217,7 @@ export function useCustomEmojis(
 		() => ss.getRoomEmojiPacks(),
 	)
 	const specialRoomPacks = useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.preferences.show_room_emoji_packs ? room.getAllEmojiPacks() : emptyObject,
 	)
 	return useMemo(() => {
@@ -228,7 +228,7 @@ export function useCustomEmojis(
 
 export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEmojiPack> {
 	return useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.getAllEmojiPacks(),
 	)
 }
