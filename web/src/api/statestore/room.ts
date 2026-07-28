@@ -787,6 +787,7 @@ export class RoomStateStore {
 		}
 		if (decrypted.preview_event_rowid) {
 			this.meta.current.preview_event_rowid = decrypted.preview_event_rowid
+			this.parent.stateCache?.setRoom(this.getStateForCache())
 		}
 	}
 
