@@ -61,7 +61,7 @@ const ImagePackView = () => {
 			},
 			images: {},
 		}
-		client.rpc.setState(roomCtx.store.roomID, "im.ponies.room_emotes", packID, emptyPack)
+		client.rpc.setState(roomCtx.store.roomID, "m.room.image_pack", packID, emptyPack)
 	}
 	return <div className="image-pack-view">
 		<div className="image-pack-chooser" onWheel={onWheel}>
