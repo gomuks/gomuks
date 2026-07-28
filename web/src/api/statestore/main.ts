@@ -155,6 +155,7 @@ export class StateStore {
 	readonly preferences = getPreferenceProxy(this)
 	#frequentlyUsedEmoji: Map<string, number> | null = null
 	#emojiPackKeys: RoomStateGUID[] | null = null
+	#emojiPackLegacyKeys: RoomStateGUID[] | null = null
 	#watchedRoomEmojiPacks: Record<string, CustomEmojiPack> | null = null
 	readonly preferenceSub = new NoDataSubscribable()
 	readonly localPreferenceCache: Preferences = getLocalStoragePreferences("global_prefs", this.preferenceSub.notify)
@@ -572,6 +573,7 @@ export class StateStore {
 
 	invalidateEmojiPackKeyCache() {
 		this.#emojiPackKeys = null
+		this.#emojiPackLegacyKeys = null
 		this.#watchedRoomEmojiPacks = null
 	}
 
@@ -581,28 +583,29 @@ export class StateStore {
 	}
 
 	getEmojiPackKeys(bothKeys: boolean = true): RoomStateGUID[] {
-		if (this.#emojiPackKeys === null) {
+		if (this.#emojiPackKeys === null || this.#emojiPackLegacyKeys === null) {
 			const emoteRooms = (
 				this.accountData.get("m.image_pack.rooms")
 				?? this.accountData.get("im.ponies.emote_rooms")
 			) as ImagePackRooms | undefined
 			try {
 				const emojiPacks: RoomStateGUID[] = []
+				const legacyKeys: RoomStateGUID[] = []
 				for (const [roomID, packs] of Object.entries(emoteRooms?.rooms ?? {})) {
 					for (const pack of Object.keys(packs)) {
-						if (bothKeys) {
-							emojiPacks.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
-						}
+						legacyKeys.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
 						emojiPacks.push({ room_id: roomID, type: "m.room.image_pack", state_key: pack })
 					}
 				}
 				this.#emojiPackKeys = emojiPacks
+				this.#emojiPackLegacyKeys = emojiPacks.concat(legacyKeys)
 			} catch (err) {
 				console.warn("Failed to parse emote rooms data", err, emoteRooms)
 				this.#emojiPackKeys = []
+				this.#emojiPackLegacyKeys = []
 			}
 		}
-		return this.#emojiPackKeys
+		return bothKeys ? this.#emojiPackLegacyKeys : this.#emojiPackKeys
 	}
 
 	getRoomEmojiPacks() {
@@ -771,6 +774,7 @@ export class StateStore {
 		this.currentRoomListFilter = null
 		this.#frequentlyUsedEmoji = null
 		this.#emojiPackKeys = null
+		this.#emojiPackLegacyKeys = null
 		this.#watchedRoomEmojiPacks = null
 		this.serverPreferenceCache = {}
 		this.activeRoomID = null

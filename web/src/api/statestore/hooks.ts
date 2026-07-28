@@ -24,6 +24,7 @@ import type {
 	MemDBEvent,
 	MemReceipt,
 	MemberEventContent,
+	RoomStateGUID,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -224,6 +225,13 @@ export function useCustomEmojis(
 		const allPacksObject = { ...watchedRoomPacks, ...specialRoomPacks }
 		return Object.values(allPacksObject).filter(pack => pack[usage].length > 0)
 	}, [watchedRoomPacks, specialRoomPacks, usage])
+}
+
+export function useSubscribedPacks(ss: StateStore, bothKeys: boolean = true): RoomStateGUID[] {
+	return useSyncExternalStore(
+		ss.emojiRoomsSub.subscribe,
+		() => ss.getEmojiPackKeys(bothKeys),
+	)
 }
 
 export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEmojiPack> {

@@ -84,8 +84,14 @@ div.image-pack-view > div.image-pack-editor {
 	overflow: hidden;
 	gap: .2rem;
 
-	> button.global-save {
-		padding: .5rem;
+	> div.buttons {
+		display: flex;
+		gap: .5rem;
+
+		> button {
+			padding: .5rem;
+			width: 100%;
+		}
 	}
 
 	> div.images {
