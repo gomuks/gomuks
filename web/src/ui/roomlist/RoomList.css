@@ -104,6 +104,7 @@ div.room-search-wrapper {
 	background-color: var(--room-list-search-background-overlay);
 	grid-area: search;
 	padding-top: var(--window-top-margin);
+	contain: strict;
 
 	> input {
 		padding: 0 0 0 1rem;
@@ -113,6 +114,7 @@ div.room-search-wrapper {
 		outline: none;
 		background-color: transparent;
 		flex: 1;
+		min-width: 0;
 	}
 
 	> button {
