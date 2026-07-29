@@ -341,8 +341,11 @@ func (gmx *Gomuks) AuthMiddleware(next http.Handler) http.Handler {
 		if r.URL.Path != "/auth" && !gmx.Config.Web.DisableAuthBecauseIWantMyAccountToBeHacked {
 			authCookie, err := r.Cookie("gomuks_auth")
 			if err != nil {
-				ErrMissingCookie.Write(w)
-				return
+				found, valid := gmx.doBasicAuth(r)
+				if !found || !valid {
+					ErrMissingCookie.Write(w)
+					return
+				}
 			} else if !gmx.validateAuth(authCookie.Value, false) {
 				http.SetCookie(w, &http.Cookie{
 					Name:   "gomuks_auth",
