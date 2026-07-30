@@ -321,7 +321,7 @@ div.poll-body {
 		white-space: pre-wrap;
 	}
 
-	> button.load-votes-button, > button.view-votes-button {
+	> button {
 		padding: .25rem .5rem;
 	}
 

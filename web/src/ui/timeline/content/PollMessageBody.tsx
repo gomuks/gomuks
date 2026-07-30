@@ -15,14 +15,23 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useEffect, useMemo, useState } from "react"
 import { MoonLoader } from "react-spinners"
-import { MemDBEvent, PollResponseEventContent, PollStartEventContent, UserID } from "@/api/types"
-import { getEventLevel } from "@/util/powerlevel.ts"
+import type Client from "@/api/client.ts"
+import type { RoomStateStore } from "@/api/statestore"
+import type {
+	MemDBEvent,
+	PollResponseEventContent,
+	PollStartEventContent,
+	PowerLevelEventContent,
+	UserID,
+} from "@/api/types"
+import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { ensureString, ensureStringArray, getLegacyMSC1767Text } from "@/util/validation.ts"
 import ClientContext from "../../ClientContext.ts"
 import { getPowerLevels } from "../../menu/util.ts"
 import EventContentProps from "./props.ts"
 
 const votesLoadingKey = "__votes__" + Math.random().toString(36).slice(2, 10)
+const closeLoadingKey = "__close__" + Math.random().toString(36).slice(2, 10)
 
 function toVoteList(evt: MemDBEvent, maxSelections: number): string[] {
 	const content = evt.content as PollResponseEventContent
@@ -47,6 +56,20 @@ function getMaxSelections(pollStart: PollStartEventContent): number {
 	return start.max_selections
 }
 
+function canClosePoll(
+	closeSender: UserID, pollSender: UserID, pls: PowerLevelEventContent, createEvent: MemDBEvent,
+): boolean {
+	return closeSender === pollSender || getUserLevel(pls, createEvent, closeSender) >= (pls.redact ?? 50)
+}
+
+function isValidCloseEvent(evt: MemDBEvent, pollSender: UserID, room: RoomStateStore, client: Client): boolean {
+	if (evt.type !== "org.matrix.msc3381.poll.end") {
+		return false
+	}
+	const [pls, , createEvent] = getPowerLevels(room, client)
+	return canClosePoll(evt.sender, pollSender, pls, createEvent)
+}
+
 const PollMessageBody = ({ event, room }: EventContentProps) => {
 	const client = use(ClientContext)!
 
@@ -58,6 +81,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 	const [loading, setLoading] = useState<null | string>(null)
 	const maxSelections = getMaxSelections(content)
 	const answers = Array.isArray(pollStart.answers) ? pollStart.answers : []
+	const [pls, ownPL, createEvent] = getPowerLevels(room, client)
 
 	useEffect(() => pollEndTS > 0 ? undefined : room.newTimelineEventSub.listen(evt => {
 		if (evt === null) {
@@ -67,7 +91,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		if (pollEndTS > 0 || evt.relation_type !== "m.reference" || evt.relates_to !== event.event_id) {
 			return
 		}
-		if (evt.type === "org.matrix.msc3381.poll.end") {
+		if (isValidCloseEvent(evt, event.sender, room, client)) {
 			setPollEndTS(evt.timestamp)
 		} else if (evt.type === "org.matrix.msc3381.poll.response") {
 			setVotes(oldVotes => {
@@ -80,7 +104,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 				}
 			})
 		}
-	}), [room, event.event_id, pollEndTS, maxSelections])
+	}), [room, client, event, pollEndTS, maxSelections])
 
 	const votesByAnswer = useMemo(() => {
 		if (!votes) {
@@ -113,7 +137,10 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 			window.alert(`Failed to load poll votes: ${err}`)
 			return null
 		}
-		const pollEndTS = res.find(evt => evt.type === "org.matrix.msc3381.poll.end")?.timestamp ?? 0
+		const pollEndTS = res.find(evt =>
+			evt.type === "org.matrix.msc3381.poll.end"
+			&& canClosePoll(evt.sender, event.sender, pls, createEvent),
+		)?.timestamp ?? 0
 		res.sort((a, b) => a.timestamp - b.timestamp)
 		const votes = {} as Record<UserID, string[]>
 		for (const evt of res) {
@@ -178,8 +205,23 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		setLoading(answerID)
 		voteDirect(answerID, evt.currentTarget.checked).finally(() => setLoading(null))
 	}
-	const [pls, ownPL] = getPowerLevels(room, client)
+	const clickClose = async () => {
+		if (!window.confirm("Really close poll?")) {
+			return
+		}
+		setLoading(closeLoadingKey)
+		client.rpc.sendEvent(room.roomID, "org.matrix.msc3381.poll.end", {
+			"m.relates_to": {
+				event_id: event.event_id,
+				rel_type: "m.reference",
+			},
+		}).catch(err => {
+			console.error("Failed to close poll:", err)
+			window.alert(`Failed to close poll: ${err}`)
+		}).finally(() => setLoading(null))
+	}
 	const canVote = ownPL >= getEventLevel(pls, "org.matrix.msc3381.poll.response", false)
+	const canClose = canClosePoll(client.userID, event.sender, pls, createEvent)
 
 	const ownVote = votes?.[client.userID] ?? []
 
@@ -234,6 +276,11 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 			disabled={loading !== null}
 			onClick={clickLoadVotes}
 		>Load votes</button>}
+		{votes !== null && canClose && pollEndTS === 0 && <button
+			className="close-poll-button"
+			disabled={loading !== null}
+			onClick={clickClose}
+		>Close poll</button>}
 	</div>
 }
 
