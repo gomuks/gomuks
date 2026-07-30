@@ -190,6 +190,9 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 						max={100}
 						value={resizeSlider}
 						id="slider-resize"
+						list="slider-resize-datalist"
+						onWheel={evt => setResizeSlider(prev =>
+							Math.min(100, Math.max(1, prev - Math.sign(evt.deltaY))))}
 						onChange={evt => {
 							setResizeSlider(parseInt(evt.target.value))
 							if (reencTarget === "") {
@@ -197,6 +200,11 @@ const MediaUploadDialog = ({ file, blobURL, doUploadFile, isEncrypted, isVoice }
 							}
 						}}
 					/>
+					<datalist id="slider-resize-datalist">
+						<option value={25} label="25%" />
+						<option value={50} label="50%" />
+						<option value={75} label="75%" />
+					</datalist>
 					<span>{resizeSlider}%</span>
 				</div>
 			</> : null}
