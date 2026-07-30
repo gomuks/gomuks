@@ -78,33 +78,25 @@ func init() {
 	}
 }
 
-var accountDataPerMessageProfiles = event.Type{
-	Type:  "fi.mau.msc4461.per_message_profiles",
-	Class: event.AccountDataEventType,
-}
-
-func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) *event.BeeperPerMessageProfile {
-	var profiles map[string]*event.BeeperPerMessageProfile
+func (h *HiClient) getPerMessageProfiles(ctx context.Context) *event.StoredProfilesEventContent {
 	profilesPtr := h.perMessageProfiles.Load()
-	if profilesPtr == nil {
-		evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataPerMessageProfiles)
-		if err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
-			return nil
-		}
-		defer h.perMessageProfiles.Store(&profiles)
-		if evt == nil {
-			return nil
-		} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
-			return nil
-		}
-	} else if *profilesPtr == nil {
-		return nil
-	} else {
-		profiles = *profilesPtr
+	if profilesPtr != nil {
+		return profilesPtr
 	}
-	return profiles[name]
+	evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataPerMessageProfiles)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
+		return nil
+	}
+	var profiles event.StoredProfilesEventContent
+	defer h.perMessageProfiles.Store(&profiles)
+	if evt == nil {
+		return nil
+	} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
+		return nil
+	}
+	return &profiles
 }
 
 func (h *HiClient) SendMessage(
@@ -129,17 +121,12 @@ func (h *HiClient) SendMessage(
 	origText := text
 Loop:
 	for {
+		if perMessageProfile == nil {
+			text, perMessageProfile = h.getPerMessageProfiles(ctx).Match(text)
+		}
 		spaceIdx := strings.IndexByte(text, ' ')
 		if spaceIdx < 2 {
 			break
-		}
-		colonIdx := strings.IndexByte(text, ':')
-		if perMessageProfile == nil && colonIdx > 0 && colonIdx < spaceIdx {
-			perMessageProfile = h.getPerMessageProfile(ctx, text[:colonIdx])
-			if perMessageProfile != nil {
-				text = strings.TrimPrefix(text[colonIdx+1:], " ")
-				continue
-			}
 		}
 		switch strings.ToLower(text[:spaceIdx]) {
 		case "/timestamp":
@@ -151,17 +138,6 @@ Loop:
 			ts, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("malformed timestamp: %w", err)
-			}
-			text = parts[2]
-			continue
-		case "/pmp", "/profile":
-			parts := strings.SplitN(text, " ", 3)
-			if len(parts) != 3 {
-				return nil, fmt.Errorf("missing parameters for /profile")
-			}
-			perMessageProfile = h.getPerMessageProfile(ctx, parts[1])
-			if perMessageProfile == nil {
-				return nil, fmt.Errorf("unknown per-message profile: %s", parts[1])
 			}
 			text = parts[2]
 			continue

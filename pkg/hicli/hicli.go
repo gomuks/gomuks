@@ -89,7 +89,7 @@ type HiClient struct {
 	directChatUsers     event.DirectChatsEventContent
 	directChatRooms     map[id.RoomID]id.UserID
 
-	perMessageProfiles atomic.Pointer[map[string]*event.BeeperPerMessageProfile]
+	perMessageProfiles atomic.Pointer[event.StoredProfilesEventContent]
 
 	lastOwnProfileFetch time.Time
 	ownProfileFetchLock sync.Mutex
