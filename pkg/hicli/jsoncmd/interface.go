@@ -67,6 +67,7 @@ type GomuksAPI interface {
 	RegisterPush(ctx context.Context, params *database.PushRegistration) error
 	ListenToDevice(ctx context.Context, listen bool) (bool, error)
 	GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error)
+	GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error)
 	GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error)
 	CalculateRoomID(ctx context.Context, params *CalculateRoomIDParams) (id.RoomID, error)
 }

@@ -255,6 +255,10 @@ func (gr *GomuksRPC) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServe
 	return executeRequest(gr, ctx, jsoncmd.GetTurnServers, nil)
 }
 
+func (gr *GomuksRPC) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetRTCTransports, nil)
+}
+
 func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMediaConfig, nil)
 }

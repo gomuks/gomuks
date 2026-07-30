@@ -99,6 +99,7 @@ const (
 	ReqRegisterPush             Name = "register_push"
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
+	ReqGetRTCTransports         Name = "get_rtc_transports"
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
@@ -302,6 +303,8 @@ var (
 	ListenToDevice = &CommandSpec[bool, bool]{Name: ReqListenToDevice}
 	// GetTurnServers returns TURN server credentials from the homeserver.
 	GetTurnServers = &CommandSpecWithoutRequest[*mautrix.RespTurnServer]{Name: ReqGetTurnServers}
+	// GetRTCTransports returns MatrixRTC transports from the homeserver.
+	GetRTCTransports = &CommandSpecWithoutRequest[*mautrix.RespRTCTransports]{Name: ReqGetRTCTransports}
 	// GetMediaConfig returns the homeserver's media repository configuration (e.g. upload size limit)
 	GetMediaConfig = &CommandSpecWithoutRequest[*mautrix.RespMediaConfig]{Name: ReqGetMediaConfig}
 	// CalculateRoomID calculates a room ID locally from a timestamp and creation content. This is

@@ -518,6 +518,13 @@ export interface RespTurnServer {
 	uris: string[]
 }
 
+export interface RespRTCTransports {
+	rtc_transports: {
+		type: "livekit"
+		livekit_service_url?: string
+	}[]
+}
+
 export interface RespMediaConfig {
 	"m.upload.size": number
 	[key: string]: unknown

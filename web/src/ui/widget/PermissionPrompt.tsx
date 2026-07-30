@@ -42,6 +42,7 @@ const getCapabilityName = (capability: string): string => {
 		"org.matrix.msc2762.receive.state_event": "Receive state events",
 		"org.matrix.msc3819.send.to_device": "Send to-device events",
 		"org.matrix.msc3819.receive.to_device": "Receive to-device events",
+		"org.matrix.msc4515.rtc_transports": "Request RTC transports from the homeserver",
 	}
 
 	const name = capabilityNames[capabilityID] || capabilityID
