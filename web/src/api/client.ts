@@ -19,6 +19,7 @@ import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eve
 import RPCClient, { SendMessageParams } from "./rpc.ts"
 import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
+import { getTabsAPI } from "./tabs.ts"
 import {
 	ClientState,
 	ElementRecentEmoji,
@@ -65,7 +66,7 @@ export default class Client {
 		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
 			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
 
-		const notifListener = window.gomuksDesktop?.setNotificationCount
+		const notifListener = getTabsAPI()?.setNotificationCount
 		if (notifListener) {
 			this.store.homeSpace.counts.listen(counts => {
 				if (this.initComplete.current) {

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, use, useCallback, useState } from "react"
 import { RoomStateStore } from "@/api/statestore"
+import { hasTabs } from "@/api/tabs.ts"
 import {
 	PreferenceContext,
 	PreferenceValueType,
@@ -118,7 +119,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			{makeTabButton(SettingsTab.CustomCSS, "Custom CSS")}
 			{makeTabButton(SettingsTab.Encryption, "Encryption")}
 			{makeTabButton(SettingsTab.MiscButtons, "Misc buttons")}
-			{window.gomuksDesktop && makeTabButton(SettingsTab.BackendManager, "Backend manager")}
+			{hasTabs() && makeTabButton(SettingsTab.BackendManager, "Backend manager")}
 		</nav>
 		<div className="settings-tab">
 			{getContent(tab, setPref, room)}

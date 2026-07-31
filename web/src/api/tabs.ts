@@ -33,13 +33,44 @@ export interface TabInfo {
 
 export type TabInfoUpdate = Omit<TabInfo, "unread" | "exited">
 
+export interface WrapperAPI {
+	getTabID(): string
+	isEmbedded(): boolean
+	setNotificationCount: (count: number) => void
+	switchTab: (tab: string) => void
+	updateTab: (tab: TabInfoUpdate) => Promise<void>
+	deleteTab: (tab: string) => Promise<void>
+	restartBackend: () => void
+}
+
+export interface DesktopAPI extends WrapperAPI {
+	isDesktop: true
+	getDisableNotifications(): boolean
+	subscribeToTabs: (listener: (tabs: TabInfo[]) => void) => void
+	quitApp: () => void
+}
+
+export interface AndroidAPI extends WrapperAPI {
+	isAndroid: true
+}
+
 let tabsCache: readonly TabInfo[] = []
 let tabListeners: (() => void)[] = []
 
 const noopFunc = () => {}
 
+const api = (() => {
+	if (window.gomuksDesktop) {
+		return window.gomuksDesktop
+	}
+	if (window.gomuksAndroid && typeof window.gomuksAndroid === "object") {
+		return window.gomuksAndroid
+	}
+	return null
+})()
+
 function subscribeTabs(fn: () => void) {
-	if (!window.gomuksDesktop) {
+	if (!api) {
 		return noopFunc
 	}
 	tabListeners.push(fn)
@@ -57,47 +88,54 @@ interface UseTabsValue {
 	currentTabID: string
 	totalUnreads: number
 	switchTab: (id: string) => void
-}
-
-interface NoTabs extends UseTabsValue {
-	hasTabs: false
-}
-
-interface HasTabs extends UseTabsValue {
 	updateTab: (update: TabInfoUpdate) => Promise<void>
 	deleteTab: (id: string) => Promise<void>
-	hasTabs: true
+	hasTabs: boolean
 }
 
-const noTabs: NoTabs = {
+const noTabs: UseTabsValue = {
 	tabs: [],
 	currentTabID: "",
 	totalUnreads: 0,
 	switchTab: () => {},
+	updateTab: async () => {},
+	deleteTab: async () => {},
 	hasTabs: false,
 }
 
 export function hasTabs(): boolean {
-	return Boolean(window.gomuksDesktop)
+	return Boolean(api)
 }
 
-export function useTabs(): HasTabs | NoTabs {
+export function getTabsAPI(): WrapperAPI | null {
+	return api
+}
+
+export function useTabs(): UseTabsValue {
 	const tabs = useSyncExternalStore(subscribeTabs, getTabs)
-	if (!window.gomuksDesktop) {
+	if (!api) {
 		return noTabs
 	}
-	const currentTabID = window.gomuksDesktop.getTabID() ?? ""
+	const currentTabID = api.getTabID() ?? ""
 	const totalUnreads = tabs.reduce((acc, t) => acc + (t.id !== currentTabID ? t.unread : 0), 0)
 	return {
 		tabs, currentTabID, totalUnreads,
 		hasTabs: true,
-		switchTab: window.gomuksDesktop.switchTab,
-		updateTab: window.gomuksDesktop.updateTab,
-		deleteTab: window.gomuksDesktop.deleteTab,
+		switchTab: api.switchTab,
+		updateTab: api.updateTab,
+		deleteTab: api.deleteTab,
 	}
 }
 
-window.gomuksDesktop?.subscribeToTabs((tabs: TabInfo[]) => {
+function onTabUpdate(tabs: TabInfo[]) {
 	tabsCache = tabs
 	tabListeners.forEach(l => l())
-})
+}
+
+window.gomuksDesktop?.subscribeToTabs(onTabUpdate)
+
+if (window.gomuksAndroid && typeof window.gomuksAndroid === "object") {
+	window.addEventListener("GomuksAndroidTabUpdate", (evt: CustomEventInit<string>) => {
+		onTabUpdate(JSON.parse(evt.detail!))
+	})
+}
