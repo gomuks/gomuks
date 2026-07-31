@@ -23,14 +23,20 @@ import (
 	"runtime"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
+	"go.mau.fi/gomuks/pkg/hicli"
 	"go.mau.fi/gomuks/pkg/rpc/client"
 	"go.mau.fi/gomuks/version"
 )
 
 const HasEmbeddedBackend = true
 
+func init() {
+	hicli.InitialDeviceDisplayName = "gomuks terminal"
+}
+
 func (ui *GomuksTUI) InitEmbedded() (*client.GomuksClient, error) {
 	backend := gomuks.NewGomuks()
+	backend.EmbeddedTUI = true
 	backend.InitDirectories("")
 	err := backend.LoadConfig()
 	if err != nil {

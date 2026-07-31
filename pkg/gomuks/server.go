@@ -317,6 +317,9 @@ func (gmx *Gomuks) doBasicAuth(r *http.Request) (found, correct bool) {
 		correct = ctEqualString(gmx.DesktopKey, password)
 		return
 	}
+	if gmx.Config.Web.PasswordHash == "" {
+		return
+	}
 	usernameCorrect := ctEqualString(gmx.Config.Web.Username, username)
 	passwordCorrect := bcrypt.CompareHashAndPassword([]byte(gmx.Config.Web.PasswordHash), []byte(password)) == nil
 	correct = passwordCorrect && usernameCorrect

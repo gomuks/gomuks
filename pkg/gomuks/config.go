@@ -127,6 +127,8 @@ func (gmx *Gomuks) LoadConfig() error {
 		// Default to logging to stderr when running as a subprocess
 		gmx.Config.Logging.Writers[0].Type = zeroconfig.WriterTypeStderr
 		gmx.Config.Web.ListenAddress = "localhost:0"
+	} else if gmx.EmbeddedTUI {
+		gmx.Config.Web.Username = "tui"
 	}
 	changed := false
 	if file != nil {
@@ -141,7 +143,7 @@ func (gmx *Gomuks) LoadConfig() error {
 		gmx.Config.Web.TokenKey = random.String(64)
 		changed = true
 	}
-	if gmx.DesktopKey == "" && !gmx.DisableAuth && (gmx.Config.Web.Username == "" || gmx.Config.Web.PasswordHash == "") {
+	if gmx.DesktopKey == "" && !gmx.DisableAuth && gmx.Config.Web.Username == "" {
 		fmt.Println("Please create a username and password for authenticating the web app")
 		fmt.Println("This is only used for gomuks and is NOT your Matrix account")
 		gmx.Config.Web.Username, err = PromptInput("Username: ")
