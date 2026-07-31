@@ -91,6 +91,8 @@ type HiClient struct {
 
 	perMessageProfiles atomic.Pointer[event.StoredProfilesEventContent]
 
+	pendingOAuthAutoDeviceCode atomic.Pointer[jsoncmd.OAuthPollDeviceCodeParams]
+
 	lastOwnProfileFetch time.Time
 	ownProfileFetchLock sync.Mutex
 

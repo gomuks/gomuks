@@ -239,6 +239,10 @@ func (gr *GomuksRPC) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncm
 	return executeRequest(gr, ctx, jsoncmd.OAuthGenerateDeviceCode, params)
 }
 
+func (gr *GomuksRPC) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthSimpleDeviceCode, params)
+}
+
 func (gr *GomuksRPC) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
 	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthPollDeviceCode, params)
 }

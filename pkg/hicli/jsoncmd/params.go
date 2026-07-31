@@ -429,6 +429,11 @@ type RerequestSessionParams struct {
 	Sender    id.UserID    `json:"sender"`
 }
 
+type OAuthSimpleDeviceCodeParams struct {
+	HomeserverURL string    `json:"homeserver_url"`
+	UserIDHint    id.UserID `json:"user_id_hint,omitempty"`
+}
+
 type OAuthRegisterClientParams struct {
 	HomeserverURL string `json:"homeserver_url"`
 	oauth.ClientMetadata

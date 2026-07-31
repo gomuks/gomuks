@@ -90,6 +90,7 @@ const (
 	ReqOAuthGetAuthorizationURL Name = "oauth_get_authorization_url"
 	ReqOAuthExchangeToken       Name = "oauth_exchange_token"
 	ReqOAuthGenerateDeviceCode  Name = "oauth_generate_device_code"
+	ReqOAuthSimpleDeviceCode    Name = "oauth_simple_device_code"
 	ReqOAuthPollDeviceCode      Name = "oauth_poll_device_code"
 	ReqVerify                   Name = "verify"
 	ReqGenerateRecoveryKey      Name = "generate_recovery_key"
@@ -277,6 +278,10 @@ var (
 	// After showing the URL to the user, the frontend should call `oauth_poll_device_code`,
 	// which will block until the login succeeds or times out.
 	OAuthGenerateDeviceCode = &CommandSpec[*OAuthGenerateDeviceCodeParams, *oauth.DeviceCodeResponse]{Name: ReqOAuthGenerateDeviceCode}
+	// OAuthSimpleDeviceCode is a minimal alternative to manually calling `oauth_register_client` + `oauth_generate_device_code`.
+	// It registers a client with default details and generates a device code in one step.
+	// The generated data is cached on the backend, so the frontend can then call `oauth_poll_device_code` with no parameters.
+	OAuthSimpleDeviceCode = &CommandSpec[*OAuthSimpleDeviceCodeParams, *oauth.DeviceCodeResponse]{Name: ReqOAuthSimpleDeviceCode}
 	// OAuthPollDeviceCode polls the homeserver for a device code login.
 	// After a successful login, the `client_state` event will be dispatched.
 	// The frontend should use the event rather than the response to this method to update its state.

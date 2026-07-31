@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
@@ -146,6 +147,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.OAuthExchangeToken.RunCtx(ctx, req.Data, h.API.OAuthExchangeToken)
 	case jsoncmd.ReqOAuthGenerateDeviceCode:
 		return jsoncmd.OAuthGenerateDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthGenerateDeviceCode)
+	case jsoncmd.ReqOAuthSimpleDeviceCode:
+		return jsoncmd.OAuthSimpleDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthSimpleDeviceCode)
 	case jsoncmd.ReqOAuthPollDeviceCode:
 		return jsoncmd.OAuthPollDeviceCode.RunCtx(ctx, req.Data, h.API.OAuthPollDeviceCode)
 	case jsoncmd.ReqLoginCustom:
@@ -580,6 +583,40 @@ func (h *JSONAPI) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuth
 	})
 }
 
+func (h *JSONAPI) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.DeviceCodeResponse, error) {
+		clientMeta, err := h.Client.OAuthRegisterClient(ctx, &oauth.ClientMetadata{
+			ApplicationType:         oauth.ApplicationTypeNative,
+			ClientName:              "gomuks web",
+			ClientURI:               "https://gomuks.app/",
+			LogoURI:                 "https://gomuks.app/favicon.png",
+			GrantTypes:              []oauth.GrantType{oauth.GrantTypeRefreshToken, oauth.GrantTypeDeviceCode},
+			TokenEndpointAuthMethod: oauth.AuthMethodNone,
+		})
+		if err != nil {
+			return nil, err
+		}
+		deviceID := id.DeviceID(random.StringCharset(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))
+		resp, err := h.Client.OAuthGenerateDeviceCode(ctx, oauth.GenerateDeviceCodeParams{
+			Scopes:     []oauth.Scope{oauth.ScopeClientAPI, oauth.ScopeDevice(deviceID)},
+			UserIDHint: params.UserIDHint,
+			ClientID:   clientMeta.ClientID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		h.pendingOAuthAutoDeviceCode.Store(&jsoncmd.OAuthPollDeviceCodeParams{
+			HomeserverURL: params.HomeserverURL,
+			PollDeviceCodeParams: oauth.PollDeviceCodeParams{
+				DeviceCode:       resp.DeviceCode,
+				ClientID:         clientMeta.ClientID,
+				StoreCredentials: true,
+			},
+		})
+		return resp, nil
+	})
+}
+
 func (h *JSONAPI) OAuthGetAuthorizationURL(ctx context.Context, params *jsoncmd.OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error) {
 	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.AuthorizationCodeResponse, error) {
 		return h.Client.OAuthGetAuthorizationURL(ctx, params.GetAuthorizationURLParams)
@@ -600,12 +637,23 @@ func (h *JSONAPI) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncmd.O
 }
 
 func (h *JSONAPI) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
+	if params.HomeserverURL == "" && params.ClientID == "" && params.DeviceCode == "" {
+		params = h.pendingOAuthAutoDeviceCode.Load()
+		if params == nil {
+			return fmt.Errorf("no pending auto device code login data found")
+		}
+	}
 	if err := h.ensureHomeserverURL(params.HomeserverURL); err != nil {
 		return err
 	}
 	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, func() (*oauth.TokenResponse, error) {
 		params.StoreCredentials = true
-		return h.Client.OAuthPollDeviceCode(ctx, params.PollDeviceCodeParams)
+		resp, err := h.Client.OAuthPollDeviceCode(ctx, params.PollDeviceCodeParams)
+		if err != nil {
+			return nil, err
+		}
+		h.pendingOAuthAutoDeviceCode.Store(nil)
+		return resp, nil
 	})
 }
 

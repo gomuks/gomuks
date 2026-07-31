@@ -63,6 +63,7 @@ type GomuksAPI interface {
 	OAuthGetAuthorizationURL(ctx context.Context, params *OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error)
 	OAuthExchangeToken(ctx context.Context, params *OAuthExchangeTokenParams) error
 	OAuthGenerateDeviceCode(ctx context.Context, params *OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error)
+	OAuthSimpleDeviceCode(ctx context.Context, params *OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error)
 	OAuthPollDeviceCode(ctx context.Context, params *OAuthPollDeviceCodeParams) error
 	RegisterPush(ctx context.Context, params *database.PushRegistration) error
 	ListenToDevice(ctx context.Context, listen bool) (bool, error)
