@@ -36,6 +36,8 @@ type sseWriter struct {
 	w  io.Writer
 	j  *json.Encoder
 	c  compressor
+
+	simplified bool
 }
 
 type compressor interface {
@@ -51,7 +53,13 @@ func newSSEWriter(w http.ResponseWriter, r *http.Request) *sseWriter {
 		return nil
 	}
 	rc := http.NewResponseController(w)
-	w.Header().Set("Content-Type", "text/event-stream")
+	var simplified bool
+	if strings.Contains(r.Header.Get("Accept"), "application/jsonl") {
+		w.Header().Set("Content-Type", "application/jsonl")
+		simplified = true
+	} else {
+		w.Header().Set("Content-Type", "text/event-stream")
+	}
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	var c compressor
@@ -74,22 +82,30 @@ func newSSEWriter(w http.ResponseWriter, r *http.Request) *sseWriter {
 		w:  rawWriter,
 		j:  json.NewEncoder(rawWriter),
 		c:  c,
+
+		simplified: simplified,
 	}
 }
 
-var pingBytes = []byte(":\n\n")
-var dataBytes = []byte("data:")
+var ssePingBytes = []byte(":\n\n")
+var jsonlPingBytes = []byte("null\n")
+var sseDataBytes = []byte("data:")
 
 func (w *sseWriter) write(cmd *BufferedEvent) (err error) {
-	_, err = w.w.Write(dataBytes)
-	if err != nil {
-		return
+	if !w.simplified {
+		_, err = w.w.Write(sseDataBytes)
+		if err != nil {
+			return
+		}
 	}
 	err = w.j.Encode(cmd)
 	if err != nil {
 		return
 	}
-	_, err = w.w.Write(newlineBytes)
+	if !w.simplified {
+		// Double newline for SSE. Encode() emits one newline for jsonl on its own.
+		_, err = w.w.Write(newlineBytes)
+	}
 	return
 }
 
@@ -103,8 +119,12 @@ func (w *sseWriter) flush() error {
 	return w.rc.Flush()
 }
 
-func (w *sseWriter) ping() error {
-	_, err := w.w.Write(pingBytes)
+func (w *sseWriter) ping() (err error) {
+	if w.simplified {
+		_, err = w.w.Write(jsonlPingBytes)
+	} else {
+		_, err = w.w.Write(ssePingBytes)
+	}
 	if err != nil {
 		return err
 	}
