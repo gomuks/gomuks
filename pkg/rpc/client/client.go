@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"time"
 
 	"go.mau.fi/util/exsync"
 	"maunium.net/go/mautrix/id"
@@ -27,6 +28,9 @@ import (
 type GomuksClient struct {
 	jsoncmd.GomuksAPI
 	*store.GomuksStore
+
+	underlyingRPC   *rpc.GomuksRPC
+	embeddedBackend embeddedBackend
 
 	InitComplete *exsync.Event
 	EventHandler rpc.EventHandler
@@ -49,6 +53,54 @@ func NewGomuksClient(baseURL string) (*GomuksClient, error) {
 	}
 	rpcClient.EventHandler = gc.handleEvent
 	return gc, nil
+}
+
+type embeddedBackend interface {
+	GenerateToken() (string, time.Time)
+	GenerateImageToken(expiry time.Duration) jsoncmd.ImageAuthToken
+	GetAPI() jsoncmd.GomuksAPI
+	StartServer()
+	StartClientWithoutExit(context.Context) int
+	DirectStop()
+	AddEventListener(rpc.EventHandler)
+}
+
+func (gc *GomuksClient) SetEmbeddedBackend(backend embeddedBackend) {
+	if gc.embeddedBackend != nil {
+		panic(fmt.Errorf("SetEmbeddedBackend called multiple times"))
+	}
+	gc.GomuksAPI = backend.GetAPI()
+	backend.AddEventListener(gc.handleEvent)
+	gc.embeddedBackend = backend
+	gc.underlyingRPC.SetAuthCookie(backend.GenerateToken())
+	// TODO rotate token automatically
+	gc.GomuksStore.ImageAuthToken = string(backend.GenerateImageToken(7 * 24 * time.Hour))
+}
+
+func (gc *GomuksClient) Start() error {
+	if gc.embeddedBackend != nil {
+		err := gc.embeddedBackend.StartClientWithoutExit(context.TODO())
+		if err != 0 {
+			return fmt.Errorf("failed to start client: exit code %d", err)
+		}
+		return nil
+	} else {
+		return gc.underlyingRPC.Connect(context.TODO())
+	}
+}
+
+func (gc *GomuksClient) Authenticate(ctx context.Context, username, password string) error {
+	if gc.embeddedBackend != nil {
+		return fmt.Errorf("can't authenticate on embedded backend")
+	}
+	return gc.underlyingRPC.Authenticate(ctx, username, password)
+}
+
+func (gc *GomuksClient) Stop() {
+	if gc.embeddedBackend != nil {
+		gc.embeddedBackend.DirectStop()
+	}
+	gc.underlyingRPC.Disconnect()
 }
 
 func (gc *GomuksClient) handleEvent(ctx context.Context, rawEvt any) {
@@ -207,13 +259,11 @@ func (gc *GomuksClient) GetDownloadURL(mxc id.ContentURI, encrypted, preauthed b
 	if preauthed {
 		query.Set("image_auth", gc.GomuksStore.ImageAuthToken)
 	}
-	// TODO fix downloads with non-remote backend
-	return gc.GomuksAPI.(*rpc.GomuksRPC).BuildURLWithQuery(rpc.GomuksURLPath{"media", mxc.Homeserver, mxc.FileID}, query)
+	return gc.underlyingRPC.BuildURLWithQuery(rpc.GomuksURLPath{"media", mxc.Homeserver, mxc.FileID}, query)
 }
 
 func (gc *GomuksClient) Download(mxc id.ContentURI, encrypted bool) ([]byte, error) {
-	// TODO fix downloads with non-remote backend
-	resp, err := gc.GomuksAPI.(*rpc.GomuksRPC).DownloadMedia(context.TODO(), rpc.DownloadMediaParams{
+	resp, err := gc.underlyingRPC.DownloadMedia(context.TODO(), rpc.DownloadMediaParams{
 		MXC:       mxc,
 		Encrypted: encrypted,
 	})

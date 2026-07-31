@@ -193,6 +193,17 @@ func (gmx *Gomuks) StartClient() {
 	}
 }
 
+func (gmx *Gomuks) GetAPI() jsoncmd.GomuksAPI {
+	return gmx.Client.API
+}
+
+func (gmx *Gomuks) AddEventListener(listener func(context.Context, any)) {
+	ctx := gmx.Log.WithContext(context.Background())
+	gmx.EventBuffer.Subscribe(0, nil, func(bufferedEvent *BufferedEvent) {
+		listener(ctx, bufferedEvent.Data)
+	})
+}
+
 func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 	hicli.HTMLSanitizerImgSrcTemplate = "_gomuks/media/%s/%s?encrypted=false"
 	rawDB, err := dbutil.NewFromConfig("gomuks", dbutil.Config{

@@ -212,7 +212,7 @@ func (gmx *Gomuks) validateAuth(token string, imageOnly bool) bool {
 		td.ImageOnly == imageOnly
 }
 
-func (gmx *Gomuks) generateToken() (string, time.Time) {
+func (gmx *Gomuks) GenerateToken() (string, time.Time) {
 	expiry := time.Now().Add(7 * 24 * time.Hour)
 	return gmx.signToken(tokenData{
 		Username: gmx.Config.Web.Username,
@@ -220,7 +220,7 @@ func (gmx *Gomuks) generateToken() (string, time.Time) {
 	}), expiry
 }
 
-func (gmx *Gomuks) generateImageToken(expiry time.Duration) jsoncmd.ImageAuthToken {
+func (gmx *Gomuks) GenerateImageToken(expiry time.Duration) jsoncmd.ImageAuthToken {
 	return jsoncmd.ImageAuthToken(gmx.signToken(tokenData{
 		Username:  gmx.Config.Web.Username,
 		Expiry:    jsontime.U(time.Now().Add(expiry)),
@@ -237,7 +237,7 @@ func (gmx *Gomuks) signToken(td any) string {
 }
 
 func (gmx *Gomuks) writeTokenCookie(w http.ResponseWriter, created, jsonOutput, insecureCookie bool) {
-	token, expiry := gmx.generateToken()
+	token, expiry := gmx.GenerateToken()
 	if !jsonOutput {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "gomuks_auth",

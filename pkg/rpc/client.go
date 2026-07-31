@@ -109,6 +109,16 @@ func (gr *GomuksRPC) Authenticate(ctx context.Context, username, password string
 	return nil
 }
 
+func (gr *GomuksRPC) SetAuthCookie(cookie string, expiry time.Time) {
+	gr.http.Jar.SetCookies(gr.BaseURL, []*http.Cookie{{
+		Name:     "gomuks_auth",
+		Value:    cookie,
+		Expires:  expiry,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}})
+}
+
 type DownloadMediaParams struct {
 	MXC               id.ContentURI
 	FallbackColor     string
