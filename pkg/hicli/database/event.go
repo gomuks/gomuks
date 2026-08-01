@@ -98,13 +98,13 @@ const (
 	getEventEditRowIDsQuery = `
 		SELECT main.event_id, edit.rowid
 		FROM event main
-		JOIN event edit ON
+		JOIN event edit INDEXED BY event_relates_to_idx ON
 			edit.room_id = main.room_id
 			AND edit.relates_to = main.event_id
 			AND edit.relation_type = 'm.replace'
-		AND edit.type = main.type
-		AND edit.sender = main.sender
-		AND edit.redacted_by IS NULL
+			AND edit.type = main.type
+			AND edit.sender = main.sender
+			AND edit.redacted_by IS NULL
 		WHERE main.room_id = ? AND main.event_id IN (%s)
 		ORDER BY main.event_id, edit.timestamp
 	`
