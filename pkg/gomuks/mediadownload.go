@@ -75,6 +75,23 @@ func (gmx *Gomuks) DownloadMediaHTTP(w http.ResponseWriter, r *http.Request) {
 		IsAvatar:        fallback != "",
 		ThumbnailAvatar: query.Get("thumbnail") == "avatar",
 	}
+	if query.Get("crypto_version") == "v2" {
+		params.Keys = &attachment.EncryptedFile{
+			Key: attachment.JSONWebKey{
+				Key:         query.Get("crypto_key"),
+				Algorithm:   "A256CTR",
+				Extractable: true,
+				KeyType:     "oct",
+				KeyOps:      []string{"encrypt", "decrypt"},
+			},
+			InitVector: query.Get("crypto_iv"),
+			Hashes: attachment.EncryptedFileHashes{
+				SHA256: query.Get("crypto_hash"),
+			},
+			Version: "v2",
+		}
+	}
+
 	entry, err := gmx.GetMediaCacheEntry(r.Context(), params)
 	if err != nil {
 		writeDownloadError(w, r, err)
@@ -163,6 +180,12 @@ func (gmx *Gomuks) GetMediaCacheEntry(ctx context.Context, params jsoncmd.Downlo
 		log.Err(err).Msg("Failed to get cached media entry")
 		return nil, mautrix.MUnknown.WithMessage(fmt.Sprintf("Failed to get cached media entry: %v", err))
 	} else if (cacheEntry == nil || cacheEntry.EncFile == nil) && encrypted {
+		if params.Keys != nil {
+			return &database.Media{
+				MXC:     params.MXC,
+				EncFile: params.Keys,
+			}, nil
+		}
 		return nil, mautrix.MNotFound.WithMessage("Media encryption keys not found in cache")
 	} else if cacheEntry != nil && cacheEntry.EncFile != nil && !encrypted {
 		return nil, mautrix.MNotFound.WithMessage("Tried to download encrypted media without encrypted flag")

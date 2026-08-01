@@ -11,6 +11,7 @@ import (
 
 	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto/attachment"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
@@ -403,6 +404,9 @@ type DownloadMediaParams struct {
 	MXC id.ContentURI `json:"mxc"`
 	// Whether the media is encrypted. The keys are fetched from the local database.
 	Encrypted bool `json:"encrypted,omitempty"`
+	// Optionally, the raw keys for the file. This is only used if the keys aren't found in the database.
+	// Using this field is not recommended, except for custom events which the backend doesn't extract keys from.
+	Keys *attachment.EncryptedFile `json:"keys,omitempty"`
 
 	// If the media is an avatar, the backend will ensure that the mime type is acceptable.
 	// It will also ignore the server returning application/octet-stream and detect the mime from the data instead.
