@@ -45,15 +45,11 @@ const CreateRoomView = () => {
 	const [isDirect, setIsDirect] = useState(false)
 	const [isEncrypted, setIsEncrypted] = useState(true)
 	const [initialState, setInitialState] = useState<initialStateEntry[]>([])
-	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">("")
+	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">("12")
 	const [roomID, setRoomID] = useState("")
 	const [roomCreateTS, setRoomCreateTS] = useState<number>(0)
 	const [creationContent, setCreationContent] = useState<string>("{\n\n}")
-	const [powerLevelContentOverride, setPowerLevelContentOverride] = useState<string>(() => `{
-  "users": {
-    ${JSON.stringify(client.store.userID)}: 9001
-  }
-}`)
+	const [powerLevelContentOverride, setPowerLevelContentOverride] = useState<string>("{\n\n}")
 
 	const isRoomV12 = !preV12.has(roomVersion)
 	const onSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
@@ -237,7 +233,7 @@ const CreateRoomView = () => {
 				<input
 					id="room-create-version"
 					type="text"
-					placeholder="11"
+					placeholder="server default"
 					value={roomVersion}
 					onChange={e => setRoomVersion(e.target.value as RoomVersion)}
 				/>
