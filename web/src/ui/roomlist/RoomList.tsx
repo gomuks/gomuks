@@ -199,6 +199,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				/>
 			</div>
 		</div>
+		<div className="blank" />
 		<div className="room-list">
 			{initComplete ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}

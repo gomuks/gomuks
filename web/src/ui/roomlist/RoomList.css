@@ -11,10 +11,16 @@ div.room-list-wrapper {
 		"spacebar search"   3.5rem
 		"spacebar roomlist" 1fr
 		"profile  roomlist" 3rem
+		"blank    roomlist" var(--window-bottom-margin)
 		/ 3rem    1fr;
 
 	container-type: inline-size;
 	container-name: left-panel;
+
+	> div.blank {
+		grid-area: blank;
+		background-color: var(--space-list-background-overlay);
+	}
 }
 
 div.room-list {
