@@ -579,14 +579,7 @@ func (h *JSONAPI) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlo
 	}, err
 }
 
-func (h *JSONAPI) GetVersions(ctx context.Context) (*mautrix.RespVersions, error) {
-	if h.Client.SpecVersions != nil {
-		return h.Client.SpecVersions, nil
-	}
-	err := h.checkServerVersions(ctx, h.Client)
-	if err != nil {
-		return nil, err
-	}
+func (h *JSONAPI) GetVersions(_ context.Context) (*mautrix.RespVersions, error) {
 	return h.Client.SpecVersions, nil
 }
 
