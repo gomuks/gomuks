@@ -76,8 +76,12 @@ type DownloadMediaResponse struct {
 	ThumbnailPath string `json:"thumbnail_path,omitempty"`
 }
 
+type ProfileBio struct {
+	HTML       string `json:"html"`
+	EditSource string `json:"edit_source,omitempty"`
+}
+
 type GetProfileResponse struct {
-	Profile       *mautrix.RespUserProfile `json:"profile"`
-	Bio           string                   `json:"bio"`
-	BioEditSource string                   `json:"bio_edit_source,omitempty"`
+	Profile *mautrix.RespUserProfile `json:"profile"`
+	Bio     *ProfileBio              `json:"bio,omitempty"`
 }

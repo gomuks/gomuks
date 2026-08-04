@@ -278,20 +278,21 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 	if err != nil {
 		return nil, err
 	}
-	var bio, bioEditSource string
+	var bio *jsoncmd.ProfileBio
 	if bioData, ok := resp.Extra["gay.fomx.biography"]; ok {
 		var text event.ExtensibleTextContainer
 		d, _ := json.Marshal(bioData)
 		_ = json.Unmarshal(d, &text)
+		var bioHTML, bioEditSource string
 		for _, repr := range text.Text {
 			switch repr.MimeType {
 			case "text/html":
-				if bio == "" {
-					bio, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
+				if bioHTML == "" {
+					bioHTML, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
 				}
 			case "text/plain", "":
-				if bio == "" {
-					bio = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
+				if bioHTML == "" {
+					bioHTML = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
 				}
 			case gomuksInputMime:
 				if params.UserID == h.Account.UserID {
@@ -299,14 +300,17 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 				}
 			}
 		}
-		if bioEditSource == "" && bio != "" && params.UserID == h.Account.UserID {
-			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bio)
+		if bioEditSource == "" && bioHTML != "" && params.UserID == h.Account.UserID {
+			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bioHTML)
+		}
+		bio = &jsoncmd.ProfileBio{
+			HTML:       bioHTML,
+			EditSource: bioEditSource,
 		}
 	}
 	return &jsoncmd.GetProfileResponse{
-		Profile:       resp,
-		Bio:           bio,
-		BioEditSource: bioEditSource,
+		Profile: resp,
+		Bio:     bio,
 	}, nil
 }
 

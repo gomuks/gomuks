@@ -205,7 +205,10 @@ export interface MutualRoomsResponse {
 
 export interface GetProfileResponse {
 	profile: UserProfile
-	bio: string
+	bio?: {
+		html: string
+		edit_source?: string
+	}
 }
 
 export interface ManualPaginationResponse {
