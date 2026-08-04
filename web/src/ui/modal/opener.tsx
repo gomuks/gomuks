@@ -16,26 +16,34 @@
 import { RefObject } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
-import EventReactions from "@/ui/modal/EventReactions.tsx"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import MediaUploadDialog, { UploadFileFunc } from "../composer/MediaUploadDialog.tsx"
 import VoiceRecorder from "../composer/VoiceRecorder.tsx"
+import EventReactions from "../modal/EventReactions.tsx"
 import CreateRoomView from "../roomview/CreateRoomView.tsx"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import RoomStateExplorer from "../settings/RoomStateExplorer.tsx"
 import SettingsView from "../settings/SettingsView.tsx"
+import type { EventKind } from "../settings/devtools-util.ts"
 import EventContextModal from "../timeline/EventContextModal.tsx"
 import EventEditHistory from "../timeline/EventEditHistory.tsx"
 import JSONView from "../util/JSONView.tsx"
 import { ShareModal } from "./ShareModal.tsx"
 import { ModalState, NestableModalState, NonNestableModalState } from "./contexts.ts"
 
-export function roomStateExplorer(room: RoomStateStore): ModalState {
+export function roomStateExplorer(
+	room: RoomStateStore, initialViewKind?: EventKind, initialSelectedType?: string, initialSelectedStateKey?: string,
+): ModalState {
 	return {
 		dimmed: true,
 		boxed: true,
 		innerBoxClass: "state-explorer-box",
-		content: <RoomStateExplorer room={room} />,
+		content: <RoomStateExplorer
+			room={room}
+			initialViewKind={initialViewKind}
+			initialSelectedType={initialSelectedType}
+			initialSelectedStateKey={initialSelectedStateKey}
+		/>,
 	}
 }
 

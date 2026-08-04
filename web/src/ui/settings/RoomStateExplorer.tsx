@@ -24,6 +24,9 @@ import "./RoomStateExplorer.css"
 
 interface StateExplorerProps {
 	room: RoomStateStore
+	initialViewKind?: EventKind
+	initialSelectedType?: string
+	initialSelectedStateKey?: string
 }
 
 interface BaseEventViewProps {
@@ -255,11 +258,13 @@ const StateKeyList = ({ room, type, onSelectStateKey, onBack }: StateKeyListProp
 	)
 }
 
-export const StateExplorer = ({ room }: StateExplorerProps) => {
-	const [viewKind, setViewKind] = useState<EventKind>(EventKind.State)
+export const StateExplorer = ({
+	room, initialViewKind, initialSelectedType, initialSelectedStateKey,
+}: StateExplorerProps) => {
+	const [viewKind, setViewKind] = useState<EventKind>(initialViewKind ?? EventKind.State)
 	const [creatingNew, setCreatingNew] = useState<EventKind | null>(null)
-	const [selectedType, setSelectedType] = useState<string | null>(null)
-	const [selectedStateKey, setSelectedStateKey] = useState<string | null>(null)
+	const [selectedType, setSelectedType] = useState<string | null>(initialSelectedType ?? null)
+	const [selectedStateKey, setSelectedStateKey] = useState<string | null>(initialSelectedStateKey ?? null)
 	const [loadingState, setLoadingState] = useState(false)
 	const [resettingTimeline, setResettingTimeline] = useState(false)
 	const [profile, setProfile] = useState<UnknownEventContent | null>(null)

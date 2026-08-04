@@ -87,8 +87,10 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			such as command responses.
 		</div>}
 		{!fakeUser && <UserExtendedProfile
+			room={roomCtx?.store}
 			profile={globalProfile}
 			refreshProfile={refreshProfile}
+			memberEvt={memberEvt}
 			client={client}
 			userID={userID}
 		/>}

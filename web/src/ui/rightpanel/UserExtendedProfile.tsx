@@ -1,12 +1,16 @@
 import { use, useEffect, useState } from "react"
 import Client from "@/api/client.ts"
-import { JSONValue, PronounSet, UserID, UserProfile } from "@/api/types"
+import { RoomStateStore } from "@/api/statestore"
+import { JSONValue, MemDBEvent, PronounSet, UserID, UserProfile } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
+import { EventKind } from "../settings/devtools-util.ts"
 
 interface ExtendedProfileProps {
+	room?: RoomStateStore
 	profile: UserProfile | null
 	refreshProfile: () => void
+	memberEvt: MemDBEvent | null
 	client: Client
 	userID: string
 }
@@ -145,15 +149,21 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 	</select>
 }
 
-const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: ExtendedProfileProps)=>  {
+const UserExtendedProfile = ({ room, profile, refreshProfile, memberEvt, client, userID }: ExtendedProfileProps)=>  {
+	const viewMemberEvent = () => {
+		openModal(modals.roomStateExplorer(room!, EventKind.State, "m.room.member", userID))
+	}
+	const baseContent = memberEvt && room ? <div className="extended-profile">
+		<button onClick={viewMemberEvent}>View member event</button>
+	</div> : null
 	const openModal = use(ModalContext)!
 	if (!profile) {
-		return null
+		return baseContent
 	}
 
 	const hasExtendedProfile = Object.keys(profile).some((key) => key !== "displayname" && key !== "avatar_url")
 	if (!hasExtendedProfile && client.userID !== userID) {
-		return null
+		return baseContent
 	}
 
 	const viewExtensibleProfile = () => {
@@ -173,6 +183,7 @@ const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: Extend
 			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
 		<button onClick={viewExtensibleProfile}>View raw profile</button>
+		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div>
 }
 
