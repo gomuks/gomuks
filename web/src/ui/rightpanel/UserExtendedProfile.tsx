@@ -158,7 +158,7 @@ const UserExtendedProfile = ({
 		openModal(modals.roomStateExplorer(room!, EventKind.State, "m.room.member", userID))
 	}
 	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
-		{!loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
+		{loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
 		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div> : null
 	const openModal = use(ModalContext)!
