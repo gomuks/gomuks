@@ -163,6 +163,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.DiscoverHomeserver.RunCtx(ctx, req.Data, h.API.DiscoverHomeserver)
 	case jsoncmd.ReqGetLoginFlows:
 		return jsoncmd.GetLoginFlows.RunCtx(ctx, req.Data, h.API.GetLoginFlows)
+	case jsoncmd.ReqGetVersions:
+		return jsoncmd.GetVersions.RunCtx(ctx, req.Data, h.API.GetVersions)
 	case jsoncmd.ReqRegisterPush:
 		return jsoncmd.RegisterPush.RunCtx(ctx, req.Data, h.API.RegisterPush)
 	case jsoncmd.ReqListenToDevice:
@@ -575,6 +577,17 @@ func (h *JSONAPI) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlo
 		RespLoginFlows: flows,
 		OAuth:          serverMeta,
 	}, err
+}
+
+func (h *JSONAPI) GetVersions(ctx context.Context) (*mautrix.RespVersions, error) {
+	if h.Client.SpecVersions != nil {
+		return h.Client.SpecVersions, nil
+	}
+	err := h.checkServerVersions(ctx, h.Client)
+	if err != nil {
+		return nil, err
+	}
+	return h.Client.SpecVersions, nil
 }
 
 func (h *JSONAPI) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
