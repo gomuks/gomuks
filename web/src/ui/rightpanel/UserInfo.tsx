@@ -39,6 +39,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const memberEvt = useRoomMember(client, roomCtx?.store, userID)
 	const member = maybeRedactMemberEvent(memberEvt)
 	const [globalProfile, setGlobalProfile] = useState<UserProfile | null>(null)
+	const [loadingGlobalProfile, setLoadingGlobalProfile] = useState(false)
 	const [errors, setErrors] = useState<string[] | null>(null)
 	const refreshProfile = useCallback((clearState = false) => {
 		if (userID === fakeGomuksSender) {
@@ -48,10 +49,11 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			setErrors(null)
 			setGlobalProfile(null)
 		}
+		setLoadingGlobalProfile(true)
 		client.rpc.getProfile(userID).then(
 			setGlobalProfile,
 			err => setErrors([`${err}`]),
-		)
+		).finally(() => setLoadingGlobalProfile(false))
 	}, [userID, client])
 	useEffect(() => refreshProfile(true), [refreshProfile])
 	const displayname = ensureString(member?.displayname)
@@ -93,6 +95,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			memberEvt={memberEvt}
 			client={client}
 			userID={userID}
+			loading={loadingGlobalProfile}
 		/>}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>

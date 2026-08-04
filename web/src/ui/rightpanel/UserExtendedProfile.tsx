@@ -1,4 +1,5 @@
 import { use, useEffect, useState } from "react"
+import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { JSONValue, MemDBEvent, PronounSet, UserID, UserProfile } from "@/api/types"
@@ -11,6 +12,7 @@ interface ExtendedProfileProps {
 	profile: UserProfile | null
 	refreshProfile: () => void
 	memberEvt: MemDBEvent | null
+	loading: boolean
 	client: Client
 	userID: string
 }
@@ -149,12 +151,15 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 	</select>
 }
 
-const UserExtendedProfile = ({ room, profile, refreshProfile, memberEvt, client, userID }: ExtendedProfileProps)=>  {
+const UserExtendedProfile = ({
+	room, profile, refreshProfile, memberEvt, client, userID, loading,
+}: ExtendedProfileProps)=>  {
 	const viewMemberEvent = () => {
 		openModal(modals.roomStateExplorer(room!, EventKind.State, "m.room.member", userID))
 	}
-	const baseContent = memberEvt && room ? <div className="extended-profile">
-		<button onClick={viewMemberEvent}>View member event</button>
+	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
+		{!loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
+		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div> : null
 	const openModal = use(ModalContext)!
 	if (!profile) {
