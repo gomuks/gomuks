@@ -23,7 +23,7 @@ type GomuksAPI interface {
 	SetAccountData(ctx context.Context, params *SetAccountDataParams) error
 	MarkRead(ctx context.Context, params *MarkReadParams) error
 	SetTyping(ctx context.Context, params *SetTypingParams) error
-	GetProfile(ctx context.Context, params *GetProfileParams) (*mautrix.RespUserProfile, error)
+	GetProfile(ctx context.Context, params *GetProfileParams) (*GetProfileResponse, error)
 	SetProfileField(ctx context.Context, params *SetProfileFieldParams) error
 	GetMutualRooms(ctx context.Context, params *GetMutualRoomsParams) (*mautrix.RespMutualRooms, error)
 	TrackUserDevices(ctx context.Context, params *GetProfileParams) (*ProfileEncryptionInfo, error)

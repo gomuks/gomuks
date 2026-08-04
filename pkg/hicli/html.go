@@ -550,6 +550,13 @@ func getCodeBlockLanguage(token html.Token) string {
 
 const builderPreallocBuffer = 100
 
+func linkifyPlaintext(body string) string {
+	var builder strings.Builder
+	builder.Grow(len(body) + builderPreallocBuffer)
+	linkifyAndWriteBytes(&builder, []byte(body))
+	return builder.String()
+}
+
 func sanitizeAndLinkifyHTML(body string, ownMessage bool) (string, []id.ContentURI, error) {
 	tz := html.NewTokenizer(strings.NewReader(body))
 	var built strings.Builder

@@ -693,10 +693,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 				}
 			}
 			if hasSpecialCharacters {
-				var builder strings.Builder
-				builder.Grow(len(content.Body) + builderPreallocBuffer)
-				linkifyAndWriteBytes(&builder, []byte(content.Body))
-				sanitizedHTML = builder.String()
+				sanitizedHTML = linkifyPlaintext(content.Body)
 			} else if len(content.Body) < 100 && emojirunes.IsOnlyEmojis(content.Body) {
 				bigEmoji = true
 			}

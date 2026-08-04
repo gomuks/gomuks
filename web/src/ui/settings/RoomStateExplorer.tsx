@@ -319,7 +319,7 @@ export const StateExplorer = ({
 	useEffect(() => {
 		if (!profile && viewKind == EventKind.Profile) {
 			client.rpc.getProfile(client.userID).then(
-				setProfile,
+				resp => setProfile(resp.profile),
 				err => {
 					console.error("Failed to load profile", err)
 					window.alert(`Failed to load profile: ${err}`)

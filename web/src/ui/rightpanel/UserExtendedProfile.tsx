@@ -2,14 +2,14 @@ import { use, useEffect, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { JSONValue, MemDBEvent, PronounSet, UserID, UserProfile } from "@/api/types"
+import { GetProfileResponse, JSONValue, MemDBEvent, PronounSet, UserID } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
 import { EventKind } from "../settings/devtools-util.ts"
 
 interface ExtendedProfileProps {
 	room?: RoomStateStore
-	profile: UserProfile | null
+	profileResp: GetProfileResponse | null
 	refreshProfile: () => void
 	memberEvt: MemDBEvent | null
 	loading: boolean
@@ -152,8 +152,9 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 }
 
 const UserExtendedProfile = ({
-	room, profile, refreshProfile, memberEvt, client, userID, loading,
+	room, profileResp, refreshProfile, memberEvt, client, userID, loading,
 }: ExtendedProfileProps)=>  {
+	const profile = profileResp?.profile
 	const viewMemberEvent = () => {
 		openModal(modals.roomStateExplorer(room!, EventKind.State, "m.room.member", userID))
 	}

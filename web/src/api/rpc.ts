@@ -24,6 +24,7 @@ import {
 	EventRowID,
 	EventType,
 	GetOwnDevicesResponse,
+	GetProfileResponse,
 	JSONValue,
 	LocalSearchParams,
 	LoginFlowsResponse,
@@ -70,7 +71,6 @@ import {
 	URLPreview,
 	UnreadType,
 	UserID,
-	UserProfile,
 } from "./types"
 
 export interface ConnectionEvent {
@@ -277,7 +277,7 @@ export default abstract class RPCClient {
 		return this.request("set_typing", { room_id, timeout })
 	}
 
-	getProfile(user_id: UserID): Promise<UserProfile> {
+	getProfile(user_id: UserID): Promise<GetProfileResponse> {
 		return this.request("get_profile", { user_id })
 	}
 

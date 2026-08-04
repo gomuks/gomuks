@@ -30,6 +30,7 @@ import type {
 	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
+	UserProfile,
 } from "./mxtypes.ts"
 import type { OAuthServerMetadata } from "./oauth.ts"
 
@@ -200,6 +201,11 @@ export interface MutualRoomsResponse {
 	joined: RoomID[]
 	count: number
 	next_batch?: string
+}
+
+export interface GetProfileResponse {
+	profile: UserProfile
+	bio: string
 }
 
 export interface ManualPaginationResponse {

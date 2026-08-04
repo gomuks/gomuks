@@ -71,7 +71,7 @@ func (gr *GomuksRPC) SetTyping(ctx context.Context, params *jsoncmd.SetTypingPar
 	return executeRequestNoResponse(gr, ctx, jsoncmd.SetTyping, params)
 }
 
-func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*mautrix.RespUserProfile, error) {
+func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfile, params)
 }
 

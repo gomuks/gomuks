@@ -9,6 +9,7 @@ package hicli
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -271,8 +272,32 @@ func (h *JSONAPI) SetTyping(ctx context.Context, params *jsoncmd.SetTypingParams
 	return h.HiClient.SetTyping(ctx, params.RoomID, time.Duration(params.Timeout)*time.Millisecond)
 }
 
-func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*mautrix.RespUserProfile, error) {
-	return h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
+func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
+	resp, err := h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
+	if err != nil {
+		return nil, err
+	}
+	var bio string
+	if bioData, ok := resp.Extra["gay.fomx.biography"]; ok {
+		var text event.ExtensibleTextContainer
+		d, _ := json.Marshal(bioData)
+		_ = json.Unmarshal(d, &text)
+	Loop:
+		for _, repr := range text.Text {
+			switch repr.MimeType {
+			case "text/html":
+				bio, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
+				break Loop
+			case "text/plain", "":
+				bio = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
+				break Loop
+			}
+		}
+	}
+	return &jsoncmd.GetProfileResponse{
+		Profile: resp,
+		Bio:     bio,
+	}, nil
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {

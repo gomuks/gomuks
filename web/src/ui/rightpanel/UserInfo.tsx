@@ -17,7 +17,7 @@ import { JSX, use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
 import { getAvatarURL } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
-import { UserID, UserProfile } from "@/api/types"
+import { GetProfileResponse, UserID } from "@/api/types"
 import { ensureString, getLocalpart, getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext } from "../modal"
@@ -38,7 +38,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const openLightbox = use(LightboxContext)!
 	const memberEvt = useRoomMember(client, roomCtx?.store, userID)
 	const member = maybeRedactMemberEvent(memberEvt)
-	const [globalProfile, setGlobalProfile] = useState<UserProfile | null>(null)
+	const [globalProfile, setGlobalProfile] = useState<GetProfileResponse | null>(null)
 	const [loadingGlobalProfile, setLoadingGlobalProfile] = useState(false)
 	const [errors, setErrors] = useState<string[] | null>(null)
 	const refreshProfile = useCallback((clearState = false) => {
@@ -57,7 +57,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	}, [userID, client])
 	useEffect(() => refreshProfile(true), [refreshProfile])
 	const displayname = ensureString(member?.displayname)
-		|| ensureString(globalProfile?.displayname)
+		|| ensureString(globalProfile?.profile?.displayname)
 		|| getLocalpart(userID)
 	const fakeUser = userID === fakeGomuksSender
 	let reactUserID: JSX.Element | string
@@ -75,7 +75,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			/> : <img
 				className="avatar"
 				// this is a big avatar (236px by default), use full resolution
-				src={getAvatarURL(userID, member ?? globalProfile)}
+				src={getAvatarURL(userID, member ?? globalProfile?.profile)}
 				onClick={openLightbox}
 				alt=""
 			/>}
@@ -90,7 +90,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		</div>}
 		{!fakeUser && <UserExtendedProfile
 			room={roomCtx?.store}
-			profile={globalProfile}
+			profileResp={globalProfile}
 			refreshProfile={refreshProfile}
 			memberEvt={memberEvt}
 			client={client}

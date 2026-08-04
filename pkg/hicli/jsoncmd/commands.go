@@ -166,7 +166,7 @@ var (
 	// SetTyping starts or stops sending typing notifications in a room.
 	SetTyping = &CommandSpecWithoutResponse[*SetTypingParams]{Name: ReqSetTyping}
 	// GetProfile returns a Matrix user profile from the homeserver.
-	GetProfile = &CommandSpec[*GetProfileParams, *mautrix.RespUserProfile]{Name: ReqGetProfile}
+	GetProfile = &CommandSpec[*GetProfileParams, *GetProfileResponse]{Name: ReqGetProfile}
 	// SetProfileField sets a field in the current user's Matrix profile.
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user

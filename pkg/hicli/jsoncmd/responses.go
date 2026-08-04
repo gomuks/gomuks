@@ -75,3 +75,8 @@ type DownloadMediaResponse struct {
 	Path          string `json:"path"`
 	ThumbnailPath string `json:"thumbnail_path,omitempty"`
 }
+
+type GetProfileResponse struct {
+	Profile *mautrix.RespUserProfile `json:"profile"`
+	Bio     string                   `json:"bio"`
+}
