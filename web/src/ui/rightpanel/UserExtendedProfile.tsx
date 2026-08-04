@@ -182,7 +182,7 @@ const UserExtendedProfile = ({ room, profile, refreshProfile, memberEvt, client,
 			<div>Pronouns:</div>
 			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
-		<button onClick={viewExtensibleProfile}>View raw profile</button>
+		<button onClick={viewExtensibleProfile}>View global profile</button>
 		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div>
 }
