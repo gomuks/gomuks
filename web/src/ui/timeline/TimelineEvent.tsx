@@ -23,6 +23,7 @@ import {
 	useRoomMember,
 } from "@/api/statestore"
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
+import { formatDate, formatFullTime, formatShortTime, newSafeDate } from "@/util/datetime.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
@@ -52,20 +53,6 @@ export interface TimelineEventProps {
 	smallThreads?: boolean
 	isFocused?: boolean
 	viewType: TimelineEventViewType
-}
-
-const fullTimeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
-const dateFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full" })
-const formatShortTime = (time: Date) =>
-	`${time.getHours().toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}`
-const formatFullTime = (time: Date) => fullTimeFormatter.format(time)
-const formatDate = (time: Date) => dateFormatter.format(time)
-const newSafeDate = (val: number) => {
-	const date = new Date(val)
-	if (isNaN(+date)) {
-		return new Date(0)
-	}
-	return date
 }
 
 interface EventReactionsProps {

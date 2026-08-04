@@ -17,6 +17,7 @@ import { JSX, use, useEffect, useMemo, useState } from "react"
 import { GridLoader } from "react-spinners"
 import { RoomStateStore } from "@/api/statestore"
 import { DeviceID, GetOwnDevicesResponse, OwnDevice, ProfileDevice } from "@/api/types"
+import { formatFullTime } from "@/util/datetime.ts"
 import ClientContext from "../ClientContext.ts"
 import KeyExportView from "./KeyExportView.tsx"
 import EncryptedOffIcon from "@/icons/encrypted-off.svg?react"
@@ -24,7 +25,6 @@ import EncryptedQuestionIcon from "@/icons/encrypted-question.svg?react"
 import EncryptedIcon from "@/icons/encrypted.svg?react"
 
 const deltaFormatter = new Intl.RelativeTimeFormat("en-GB")
-const timeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
 
 const MINUTE = 60 * 1000
 const HOUR = 60 * MINUTE
@@ -72,6 +72,11 @@ function roundToUnit(x: number, unit: Intl.RelativeTimeFormatUnit) {
 	}
 }
 
+function formatLastSeen(sinceLastSeen: number): string {
+	const unit = pickUnit(sinceLastSeen)
+	return deltaFormatter.format(-roundToUnit(sinceLastSeen, unit), unit)
+}
+
 interface DeviceInfoProps {
 	dev: OwnDevice
 	enc?: ProfileDevice
@@ -89,17 +94,16 @@ const DeviceInfo = ({ dev, enc, isCurrent }: DeviceInfoProps) => {
 	}
 	const lastSeen = new Date(dev.last_seen_ts)
 	const sinceLastSeen = Date.now() - dev.last_seen_ts
-	const unit = pickUnit(sinceLastSeen)
 
 	return <div key={dev.device_id} className="device-info">
 		{icon}
 		<div className="device-name">{dev.display_name}</div>
 		<div className="metadata">
 			<code className="device-id">{dev.device_id}</code>
-			{isCurrent ? <span className="last-seen" title={timeFormatter.format(lastSeen)}>
+			{isCurrent ? <span className="last-seen" title={formatFullTime(lastSeen)}>
 				· Current device
-			</span> : dev.last_seen_ts > 0 ? <span className="last-seen" title={timeFormatter.format(lastSeen)}>
-				· Last seen {deltaFormatter.format(-roundToUnit(sinceLastSeen, unit), unit)}
+			</span> : dev.last_seen_ts > 0 ? <span className="last-seen" title={formatFullTime(lastSeen)}>
+				· Last seen {formatLastSeen(sinceLastSeen)}
 			</span> : <span className="last-seen">
 				· Never seen online
 			</span>}
