@@ -21,6 +21,7 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
@@ -277,26 +278,35 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 	if err != nil {
 		return nil, err
 	}
-	var bio string
+	var bio, bioEditSource string
 	if bioData, ok := resp.Extra["gay.fomx.biography"]; ok {
 		var text event.ExtensibleTextContainer
 		d, _ := json.Marshal(bioData)
 		_ = json.Unmarshal(d, &text)
-	Loop:
 		for _, repr := range text.Text {
 			switch repr.MimeType {
 			case "text/html":
-				bio, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
-				break Loop
+				if bio == "" {
+					bio, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
+				}
 			case "text/plain", "":
-				bio = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
-				break Loop
+				if bio == "" {
+					bio = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
+				}
+			case gomuksInputMime:
+				if params.UserID == h.Account.UserID {
+					bioEditSource = repr.Body
+				}
 			}
+		}
+		if bioEditSource == "" && bio != "" && params.UserID == h.Account.UserID {
+			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bio)
 		}
 	}
 	return &jsoncmd.GetProfileResponse{
-		Profile: resp,
-		Bio:     bio,
+		Profile:       resp,
+		Bio:           bio,
+		BioEditSource: bioEditSource,
 	}, nil
 }
 
@@ -304,6 +314,14 @@ func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfil
 	// Value is a raw JSON field, so nil means it was omitted
 	if params.Value == nil {
 		return h.Client.DeleteProfileField(ctx, params.Field)
+	}
+	if params.Field == "_gomuks_bio" {
+		var inputText string
+		err := json.Unmarshal(params.Value, &inputText)
+		if err != nil {
+			return err
+		}
+		return h.Client.SetProfileField(ctx, "gay.fomx.biography", inputTextToExtensible(inputText))
 	}
 	return h.Client.SetProfileField(ctx, params.Field, params.Value)
 }

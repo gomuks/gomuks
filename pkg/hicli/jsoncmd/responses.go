@@ -77,6 +77,7 @@ type DownloadMediaResponse struct {
 }
 
 type GetProfileResponse struct {
-	Profile *mautrix.RespUserProfile `json:"profile"`
-	Bio     string                   `json:"bio"`
+	Profile       *mautrix.RespUserProfile `json:"profile"`
+	Bio           string                   `json:"bio"`
+	BioEditSource string                   `json:"bio_edit_source,omitempty"`
 }

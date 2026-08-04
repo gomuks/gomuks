@@ -99,6 +99,46 @@ func (h *HiClient) getPerMessageProfiles(ctx context.Context) *event.StoredProfi
 	return &profiles
 }
 
+func parseTextFormatCommand(text string) (event.MessageEventContent, bool) {
+	if strings.HasPrefix(text, "/rainbow ") {
+		text = strings.TrimPrefix(text, "/rainbow ")
+		content := format.RenderMarkdownCustom(text, rainbowWithHTML)
+		content.FormattedBody = rainbow.ApplyColor(content.FormattedBody)
+		return content, true
+	} else if strings.HasPrefix(text, "/plain ") {
+		text = strings.TrimPrefix(text, "/plain ")
+		return format.TextToContent(text), true
+	} else if strings.HasPrefix(text, "/html ") {
+		text = strings.TrimPrefix(text, "/html ")
+		return format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1)), true
+	}
+	return event.MessageEventContent{}, false
+}
+
+const gomuksInputMime = "text/x-gomuks-input"
+
+func inputTextToExtensible(text string) *event.ExtensibleTextContainer {
+	content, ok := parseTextFormatCommand(text)
+	if !ok {
+		content = format.RenderMarkdownCustom(text, defaultNoHTML)
+	}
+	container := &event.ExtensibleTextContainer{Text: []event.ExtensibleText{{
+		Body:     content.Body,
+		MimeType: "text/plain",
+	}}}
+	if content.FormattedBody != "" {
+		container.Text = append(container.Text, event.ExtensibleText{
+			Body:     content.FormattedBody,
+			MimeType: "text/html",
+		})
+	}
+	container.Text = append(container.Text, event.ExtensibleText{
+		MimeType: text,
+		Body:     gomuksInputMime,
+	})
+	return container
+}
+
 func (h *HiClient) SendMessage(
 	ctx context.Context,
 	roomID id.RoomID,
@@ -154,18 +194,8 @@ Loop:
 		}
 		text = text[spaceIdx+1:]
 	}
-	var content event.MessageEventContent
-	if strings.HasPrefix(text, "/rainbow ") {
-		text = strings.TrimPrefix(text, "/rainbow ")
-		content = format.RenderMarkdownCustom(text, rainbowWithHTML)
-		content.FormattedBody = rainbow.ApplyColor(content.FormattedBody)
-	} else if strings.HasPrefix(text, "/plain ") {
-		text = strings.TrimPrefix(text, "/plain ")
-		content = format.TextToContent(text)
-	} else if strings.HasPrefix(text, "/html ") {
-		text = strings.TrimPrefix(text, "/html ")
-		content = format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1))
-	} else if text != "" {
+	content, ok := parseTextFormatCommand(text)
+	if !ok && text != "" {
 		hasUnstructuredCommand := unencrypted || rawInputBody || ts != 0 || msgType != event.MsgText ||
 			content.BeeperPerMessageProfile != nil
 		if !hasCommand && strings.HasPrefix(text, "/") && !hasUnstructuredCommand {
