@@ -315,10 +315,6 @@ func (h *HiClient) Send(
 	disableEncryption bool,
 	synchronous bool,
 ) (*database.Event, error) {
-	if evtType == event.EventRedaction {
-		// TODO implement
-		return nil, fmt.Errorf("redaction is not supported")
-	}
 	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, false, 0)
 }
 
