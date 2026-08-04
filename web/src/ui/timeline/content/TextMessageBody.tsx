@@ -156,6 +156,14 @@ function fallbackBodyForMedia(msgtype: string): string {
 	}
 }
 
+export const SanitizedHTMLView = ({ className, html }: { className: string, html: string }) => {
+	return <div
+		className={`standalone-text html-body ${className}`}
+		onClick={onClickHTML}
+		dangerouslySetInnerHTML={{ __html: html }}
+	/>
+}
+
 const TextMessageBody = ({ event, sender }: EventContentProps) => {
 	const content = event.content as MessageEventContent
 	const classNames = ["message-text"]
