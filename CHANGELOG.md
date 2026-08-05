@@ -1,9 +1,15 @@
 # v26.08 (unreleased)
 
 ### Backend
-* Added server-sent events as an alternative for websockets.
+* Added streaming HTTP response as an alternative for websockets.
+  * The stream can either use server-sent events (`text/event-stream`)
+    or plain JSON objects (`application/jsonl`) based on the `Accept` header.
 * Added support for room list catch-up syncs for frontends.
 * Added media download method to C FFI.
+* Added support for using the reply UI with the `/raw` command.
+* Added support for calling any HTTP endpoint with basic auth without having
+  to exchange it for an auth cookie first.
+* Changed format of `get_profile` responses to allow locally generated fields.
 * Changed sync responses to allow omitting any field in room entries.
 * Changed HTML sanitizer to only allow checkboxes inside unordered list items.
 * Changed room state resync to send space edges to clients if the room being
@@ -24,8 +30,16 @@
 * Added option to stop counting unread messages in low priority rooms.
 * Added button to reset TOFU status after another user's master key changed.
 * Added hacky support for checking/unchecking todo list items in own messages.
+* Added button to subscribe to image packs in the image pack editor.
+* Added button to open the user's member event from the right panel user info.
+* Added button for fetching previous state events in the room state explorer.
+* Added support for [MSC4440] profile biographies.
 * Fixed websocket auto-reconnection getting throttled by browsers.
 * Fixed typing notifications getting stuck when the websocket reconnects.
+* Fixed unread counts and space bar not being visible when the room list was
+  resized to be too small.
+
+[MSC4440]: https://github.com/matrix-org/matrix-spec-proposals/pull/4440
 
 ### Desktop
 * Added UI for managing backends.
