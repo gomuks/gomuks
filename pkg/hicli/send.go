@@ -122,10 +122,7 @@ func inputTextToExtensible(text string) *event.ExtensibleTextContainer {
 	if !ok {
 		content = format.RenderMarkdownCustom(text, defaultNoHTML)
 	}
-	container := &event.ExtensibleTextContainer{Text: []event.ExtensibleText{{
-		Body:     content.Body,
-		MimeType: "text/plain",
-	}}}
+	container := &event.ExtensibleTextContainer{Text: make([]event.ExtensibleText, 0, 3)}
 	if content.FormattedBody != "" {
 		container.Text = append(container.Text, event.ExtensibleText{
 			Body:     content.FormattedBody,
@@ -133,8 +130,11 @@ func inputTextToExtensible(text string) *event.ExtensibleTextContainer {
 		})
 	}
 	container.Text = append(container.Text, event.ExtensibleText{
-		MimeType: text,
-		Body:     gomuksInputMime,
+		Body:     content.Body,
+		MimeType: "text/plain",
+	}, event.ExtensibleText{
+		MimeType: gomuksInputMime,
+		Body:     text,
 	})
 	return container
 }
