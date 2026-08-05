@@ -557,6 +557,8 @@ func linkifyPlaintext(body string) string {
 	return builder.String()
 }
 
+const MaxHTMLDepth = 100
+
 func sanitizeAndLinkifyHTML(body string, ownMessage bool) (string, []id.ContentURI, error) {
 	tz := html.NewTokenizer(strings.NewReader(body))
 	var built strings.Builder
@@ -576,6 +578,9 @@ Loop:
 			}
 			return "", nil, err
 		case html.StartTagToken, html.SelfClosingTagToken:
+			if len(ts) >= MaxHTMLDepth {
+				continue
+			}
 			token := tz.Token()
 			if codeBlock != nil {
 				if token.DataAtom == atom.Code {
@@ -696,8 +701,7 @@ Loop:
 			// ignore
 		}
 	}
-	slices.Reverse(ts)
-	for _, t := range ts {
+	for _, t := range slices.Backward(ts) {
 		built.WriteString("</")
 		built.WriteString(t.String())
 		built.WriteByte('>')
