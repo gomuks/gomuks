@@ -54,6 +54,7 @@ const (
 	ReqSetTyping                Name = "set_typing"
 	ReqGetProfile               Name = "get_profile"
 	ReqSetProfileField          Name = "set_profile_field"
+	ReqSetProfileAnnotation     Name = "set_profile_annotation"
 	ReqGetMutualRooms           Name = "get_mutual_rooms"
 	ReqTrackUserDevices         Name = "track_user_devices"
 	ReqResetMasterKeyTOFU       Name = "reset_master_key_tofu"
@@ -187,6 +188,8 @@ var (
 	GetProfile = &CommandSpec[*GetProfileParams, *GetProfileResponse]{Name: ReqGetProfile}
 	// SetProfileField sets a field in the current user's Matrix profile.
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
+	// SetProfileAnnotation sets a user's profile annotations.
+	SetProfileAnnotation = &CommandSpecWithoutResponse[*SetProfileAnnotationParams]{Name: ReqSetProfileAnnotation}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user
 	// from the homeserver.
 	GetMutualRooms = &CommandSpec[*GetMutualRoomsParams, *mautrix.RespMutualRooms]{Name: ReqGetMutualRooms}

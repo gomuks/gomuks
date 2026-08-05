@@ -22,7 +22,6 @@ import (
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/event/cmdschema"
-	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
@@ -79,6 +78,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetProfile.RunCtx(ctx, req.Data, h.API.GetProfile)
 	case jsoncmd.ReqSetProfileField:
 		return jsoncmd.SetProfileField.RunCtx(ctx, req.Data, h.API.SetProfileField)
+	case jsoncmd.ReqSetProfileAnnotation:
+		return jsoncmd.SetProfileAnnotation.RunCtx(ctx, req.Data, h.API.SetProfileAnnotation)
 	case jsoncmd.ReqGetMutualRooms:
 		return jsoncmd.GetMutualRooms.RunCtx(ctx, req.Data, h.API.GetMutualRooms)
 	case jsoncmd.ReqTrackUserDevices:
@@ -301,6 +302,8 @@ func (h *JSONAPI) SetTyping(ctx context.Context, params *jsoncmd.SetTypingParams
 	return h.HiClient.SetTyping(ctx, params.RoomID, time.Duration(params.Timeout)*time.Millisecond)
 }
 
+var accountDataProfileAnnotations = event.NewEventType("dev.zirco.msc4441.profile_annotations")
+
 func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
 	resp, err := h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
 	if err != nil {
@@ -311,35 +314,44 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 		var text event.ExtensibleTextContainer
 		d, _ := json.Marshal(bioData)
 		_ = json.Unmarshal(d, &text)
-		var bioHTML, bioEditSource string
-		for _, repr := range text.Text {
-			switch repr.MimeType {
-			case "text/html":
-				if bioHTML == "" {
-					bioHTML, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
-				}
-			case "text/plain", "":
-				if bioHTML == "" {
-					bioHTML = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
-				}
-			case gomuksInputMime:
-				if params.UserID == h.Account.UserID {
-					bioEditSource = repr.Body
-				}
-			}
-		}
-		if bioEditSource == "" && bioHTML != "" && params.UserID == h.Account.UserID {
-			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bioHTML)
-		}
+		bioHTML, bioEditSource := h.SanitizeExtensibleText(params.UserID, text)
 		bio = &jsoncmd.ProfileBio{
 			HTML:       bioHTML,
 			EditSource: bioEditSource,
 		}
 	}
-	return &jsoncmd.GetProfileResponse{
+
+	response := &jsoncmd.GetProfileResponse{
 		Profile: resp,
 		Bio:     bio,
-	}, nil
+	}
+
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataProfileAnnotations)
+	if err != nil {
+		return nil, err
+	}
+	if accountDataJSON == nil {
+		return response, nil
+	}
+
+	allAnnotations := make(map[string]event.ExtensibleTextContainer)
+	err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
+	if err != nil {
+		return nil, err
+	}
+
+	userAnnotation, ok := allAnnotations[string(params.UserID)]
+	if !ok {
+		return response, nil
+	}
+
+	html, editSource := h.SanitizeExtensibleText(params.UserID, userAnnotation)
+
+	response.Note = &jsoncmd.ProfileNote{
+		HTML:       html,
+		EditSource: editSource,
+	}
+	return response, nil
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {
@@ -385,6 +397,33 @@ func (h *JSONAPI) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.
 
 func (h *JSONAPI) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
 	return h.HiClient.GetOwnDevices(ctx)
+}
+
+
+func (h *JSONAPI) SetProfileAnnotation(ctx context.Context, params *jsoncmd.SetProfileAnnotationParams) error {
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataProfileAnnotations)
+	if err != nil {
+		return err
+	}
+
+	allAnnotations := make(map[string]event.ExtensibleTextContainer)
+	if accountDataJSON != nil {
+		err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
+		if err != nil {
+			return err
+		}
+	}
+
+	extensible := inputTextToExtensible(params.Note)
+
+	allAnnotations[string(params.UserID)] = *extensible
+
+	err = h.Client.SetAccountData(ctx, "dev.zirco.msc4441.profile_annotations", allAnnotations)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) (*database.Event, error) {

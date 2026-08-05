@@ -307,6 +307,10 @@ export default abstract class RPCClient {
 		return this.request("get_own_devices", {})
 	}
 
+	setProfileAnnotation(user_id: UserID, note?: string | undefined): Promise<void> {
+		return this.request("set_profile_annotation", { user_id, note })
+	}
+
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
 		return this.request("track_user_devices", { user_id })
 	}
