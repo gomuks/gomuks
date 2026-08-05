@@ -27,6 +27,7 @@ import DeviceList from "./UserInfoDeviceList.tsx"
 import UserInfoError from "./UserInfoError.tsx"
 import MutualRooms from "./UserInfoMutualRooms.tsx"
 import UserModeration from "./UserModeration.tsx"
+import { UserProfileNotes } from "./UserProfileNotes.tsx"
 
 interface UserInfoProps {
 	userID: UserID
@@ -97,6 +98,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			userID={userID}
 			loading={loadingGlobalProfile}
 		/>}
+		{!fakeUser && <UserProfileNotes client={client} userID={userID} />}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
