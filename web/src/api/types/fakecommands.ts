@@ -39,6 +39,7 @@ const FakeCommands: WrappedBotCommand[] = [
 	makeFakeCommand("plain", "Send a plain text message without any formatting"),
 	makeFakeCommand("html", "Send a formatted message with only HTML (no markdown)"),
 	makeFakeCommand("rainbow", "Send a message with rainbow colors (markdown allowed)"),
+	makeFakeCommand("htmlmd", "Send a formatted message that allows both HTML and markdown"),
 	makeFakeCommand("me", "Send an m.emote message"),
 	makeFakeCommand("notice", "Send an m.notice message"),
 	makeFakeCommand("unencrypted", "Send an unencrypted message even if the room is encrypted"),
@@ -60,6 +61,7 @@ export function isFakeCommand(text: string): boolean {
 		|| text.startsWith("/notice ")
 		|| text.startsWith("/rainbow ")
 		|| text.startsWith("/html ")
+		|| text.startsWith("/htmlmd ")
 		|| text.startsWith("/timestamp ")
 		|| text.startsWith("/unencrypted ")
 		|| text.startsWith("/rawinputbody ")

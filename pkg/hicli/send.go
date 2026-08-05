@@ -48,6 +48,7 @@ var baseExtensions = goldmark.WithExtensions(
 var (
 	rainbowWithHTML = goldmark.New(baseExtensions, format.HTMLOptions, goldmark.WithExtensions(rainbow.Extension))
 	defaultNoHTML   = goldmark.New(baseExtensions, format.HTMLOptions, goldmark.WithExtensions(mdext.EscapeHTML))
+	defaultWithHTML = goldmark.New(baseExtensions, format.HTMLOptions)
 )
 
 var htmlToMarkdownForInput = ptr.Clone(format.MarkdownHTMLParser)
@@ -111,6 +112,9 @@ func parseTextFormatCommand(text string) (event.MessageEventContent, bool) {
 	} else if strings.HasPrefix(text, "/html ") {
 		text = strings.TrimPrefix(text, "/html ")
 		return format.HTMLToContent(strings.Replace(text, "\n", "<br>", -1)), true
+	} else if strings.HasPrefix(text, "/htmlmd ") {
+		text = strings.TrimPrefix(text, "/htmlmd ")
+		return format.RenderMarkdownCustom(text, defaultWithHTML), true
 	}
 	return event.MessageEventContent{}, false
 }
