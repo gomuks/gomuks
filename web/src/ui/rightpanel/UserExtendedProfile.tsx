@@ -1,3 +1,18 @@
+// gomuks - A Matrix client written in Go.
+// Copyright (C) 2026 Tulir Asokan
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
@@ -6,6 +21,7 @@ import { GetProfileResponse, JSONValue, MemDBEvent, PronounSet, UserID } from "@
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
 import { EventKind } from "../settings/devtools-util.ts"
+import { UserProfileSmallBio } from "./UserProfileBio.tsx"
 
 interface ExtendedProfileProps {
 	room?: RoomStateStore
@@ -151,6 +167,11 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 	</select>
 }
 
+const emptyBio = {
+	html: "",
+	edit_source: "",
+}
+
 const UserExtendedProfile = ({
 	room, profileResp, refreshProfile, memberEvt, client, userID, loading,
 }: ExtendedProfileProps)=>  {
@@ -188,6 +209,9 @@ const UserExtendedProfile = ({
 			<div>Pronouns:</div>
 			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
+		{profileResp?.bio || userID === client.userID ? <UserProfileSmallBio
+			bio={profileResp?.bio ?? emptyBio} userID={userID} client={client} refreshProfile={refreshProfile}
+		/> : null}
 		<button onClick={viewExtensibleProfile}>View global profile</button>
 		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div>

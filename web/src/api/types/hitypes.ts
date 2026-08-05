@@ -203,12 +203,14 @@ export interface MutualRoomsResponse {
 	next_batch?: string
 }
 
+export interface SanitizedBio {
+	html: string
+	edit_source?: string
+}
+
 export interface GetProfileResponse {
 	profile: UserProfile
-	bio?: {
-		html: string
-		edit_source?: string
-	}
+	bio?: SanitizedBio
 }
 
 export interface ManualPaginationResponse {
