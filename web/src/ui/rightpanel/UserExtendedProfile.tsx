@@ -202,6 +202,9 @@ const UserExtendedProfile = ({
 	const pronouns = ensureArray(profile["io.fsky.nyx.pronouns"]) as PronounSet[]
 	const userTimeZone = ensureString(profile["m.tz"] ?? profile["us.cloke.msc4175.tz"])
 	return <div className="extended-profile">
+		{profileResp?.bio || userID === client.userID ? <UserProfileSmallBio
+			bio={profileResp?.bio ?? emptyBio} userID={userID} client={client} refreshProfile={refreshProfile}
+		/> : null}
 		{userTimeZone && <ClockElement tz={userTimeZone} />}
 		{userID === client.userID &&
 			<SetTimeZoneElement tz={userTimeZone} client={client} refreshProfile={refreshProfile} />}
@@ -209,9 +212,6 @@ const UserExtendedProfile = ({
 			<div>Pronouns:</div>
 			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
-		{profileResp?.bio || userID === client.userID ? <UserProfileSmallBio
-			bio={profileResp?.bio ?? emptyBio} userID={userID} client={client} refreshProfile={refreshProfile}
-		/> : null}
 		<button onClick={viewExtensibleProfile}>View global profile</button>
 		{memberEvt && room && <button onClick={viewMemberEvent}>View member event</button>}
 	</div>
