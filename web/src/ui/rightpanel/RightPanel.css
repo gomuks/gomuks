@@ -231,6 +231,10 @@ div.right-panel-content.user {
 				img.hicli-custom-emoji {
 					height: 1.5rem;
 				}
+
+				img.hicli-inline-img {
+					max-width: 100%;
+				}
 			}
 
 			> button {
