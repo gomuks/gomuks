@@ -17,6 +17,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/exstrings"
 	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
@@ -305,18 +306,25 @@ type rawArguments struct {
 	JSON      string  `json:"json"`
 }
 
-func (h *HiClient) handleCmdRaw(ctx context.Context, roomID id.RoomID, args rawArguments, _ *event.RelatesTo) *database.Event {
-	return h.handleCmdRawInternal(ctx, roomID, args, false)
+func (h *HiClient) handleCmdRaw(ctx context.Context, roomID id.RoomID, args rawArguments, rel *event.RelatesTo) *database.Event {
+	return h.handleCmdRawInternal(ctx, roomID, args, false, rel)
 }
 
-func (h *HiClient) handleCmdUnencryptedRaw(ctx context.Context, roomID id.RoomID, args rawArguments, _ *event.RelatesTo) *database.Event {
-	return h.handleCmdRawInternal(ctx, roomID, args, true)
+func (h *HiClient) handleCmdUnencryptedRaw(ctx context.Context, roomID id.RoomID, args rawArguments, rel *event.RelatesTo) *database.Event {
+	return h.handleCmdRawInternal(ctx, roomID, args, true, rel)
 }
 
-func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, args rawArguments, unencrypted bool) *database.Event {
+func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, args rawArguments, unencrypted bool, rel *event.RelatesTo) *database.Event {
 	jsonData := json.RawMessage(exstrings.UnsafeBytes(args.JSON))
 	if !json.Valid(jsonData) {
 		return database.MakeFakeEvent(roomID, "Invalid JSON entered")
+	}
+	if rel != nil {
+		var err error
+		jsonData, err = sjson.SetBytes(jsonData, exgjson.Path("m.relates_to"), rel)
+		if err != nil {
+			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to add relates_to: %s", html.EscapeString(err.Error())))
+		}
 	}
 	if args.StateKey != nil {
 		_, err := h.SetState(ctx, roomID, event.Type{Type: args.EventType, Class: event.StateEventType}, *args.StateKey, jsonData)
