@@ -97,6 +97,7 @@ const (
 	ReqResetEncryption          Name = "reset_encryption"
 	ReqDiscoverHomeserver       Name = "discover_homeserver"
 	ReqGetLoginFlows            Name = "get_login_flows"
+	ReqGetVersions              Name = "get_versions"
 	ReqRegisterPush             Name = "register_push"
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
@@ -299,6 +300,8 @@ var (
 	DiscoverHomeserver = &CommandSpec[*DiscoverHomeserverParams, *mautrix.ClientWellKnown]{Name: ReqDiscoverHomeserver}
 	// GetLoginFlows returns the available login flows on the given homeserver.
 	GetLoginFlows = &CommandSpec[*GetLoginFlowsParams, *LoginFlowsResponse]{Name: ReqGetLoginFlows}
+	// GetVersions returns the spec versions and unstable features supported by the homeserver.
+	GetVersions = &CommandSpecWithoutRequest[*mautrix.RespVersions]{Name: ReqGetVersions}
 	// RegisterPush stores a gomuks-specific pusher in the database. This will not register a
 	// pusher on the homeserver. Push notifications will not work without the gomuks backend
 	// being online.

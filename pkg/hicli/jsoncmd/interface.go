@@ -59,6 +59,7 @@ type GomuksAPI interface {
 	Verify(ctx context.Context, params *VerifyParams) error
 	DiscoverHomeserver(ctx context.Context, params *DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error)
 	GetLoginFlows(ctx context.Context, params *GetLoginFlowsParams) (*LoginFlowsResponse, error)
+	GetVersions(ctx context.Context) (*mautrix.RespVersions, error)
 	OAuthRegisterClient(ctx context.Context, params *OAuthRegisterClientParams) (*oauth.ClientMetadata, error)
 	OAuthGetAuthorizationURL(ctx context.Context, params *OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error)
 	OAuthExchangeToken(ctx context.Context, params *OAuthExchangeTokenParams) error

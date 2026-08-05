@@ -223,6 +223,10 @@ func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLogin
 	return executeRequest(gr, ctx, jsoncmd.GetLoginFlows, params)
 }
 
+func (gr *GomuksRPC) GetVersions(ctx context.Context) (*mautrix.RespVersions, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetVersions, nil)
+}
+
 func (gr *GomuksRPC) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
 	return executeRequest(gr, ctx, jsoncmd.OAuthRegisterClient, params)
 }
