@@ -206,7 +206,7 @@ div.right-panel-content.user {
 			border-bottom: 1px solid var(--blockquote-border-color);
 		}
 
-		> button {
+		button {
 			grid-column: span 2;
 			padding: .25rem;
 		}
@@ -230,7 +230,7 @@ div.right-panel-content.user {
 			}
 
 			> button {
-				padding: 0 .25rem;
+				width: 100%;
 			}
 		}
 	}
