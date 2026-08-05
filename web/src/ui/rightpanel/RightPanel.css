@@ -196,7 +196,7 @@ div.right-panel-content.user {
 	div.extended-profile {
 		display: grid;
 		gap: 0.25rem;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: auto 1fr;
 
 		> input {
 			border: 0;
