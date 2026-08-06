@@ -7,13 +7,17 @@
 * Added support for room list catch-up syncs for frontends.
 * Added media download method to C FFI.
 * Added support for using the reply UI with the `/raw` command.
+* Added `/htmlmd` command which allows sending messages that mix HTML and
+  markdown.
 * Added support for calling any HTTP endpoint with basic auth without having
   to exchange it for an auth cookie first.
+* Added `get_versions` command to get spec versions supported by the homeserver.
 * Changed format of `get_profile` responses to allow locally generated fields.
 * Changed sync responses to allow omitting any field in room entries.
 * Changed HTML sanitizer to only allow checkboxes inside unordered list items.
 * Changed room state resync to send space edges to clients if the room being
   resynced is a space.
+* Fixed HTML sanitizer not applying the depth limit specified by Matrix.
 * Fixed `prev_batch` token not being saved when paginating messages from the
   server returns no new messages.
 * Fixed `prev_batch` not being reset on limited syncs.
