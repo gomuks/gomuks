@@ -56,9 +56,8 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		).finally(() => setLoadingGlobalProfile(false))
 	}, [userID, client])
 	useEffect(() => refreshProfile(true), [refreshProfile])
-	const displayname = ensureString(member?.displayname)
-		|| ensureString(globalProfile?.profile?.displayname)
-		|| getLocalpart(userID)
+	const renderedProfile = member ?? globalProfile?.profile
+	const displayname = ensureString(renderedProfile?.displayname) || getLocalpart(userID)
 	const fakeUser = userID === fakeGomuksSender
 	let reactUserID: JSX.Element | string
 	if (fakeUser) {
@@ -68,14 +67,14 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	}
 	return <>
 		<div className="avatar-container">
-			{member === null && globalProfile === null && errors == null ? <PuffLoader
+			{!renderedProfile && errors == null ? <PuffLoader
 				color="var(--primary-color)"
 				size="100%"
 				className="avatar-loader"
 			/> : <img
 				className="avatar"
 				// this is a big avatar (236px by default), use full resolution
-				src={getAvatarURL(userID, member ?? globalProfile?.profile)}
+				src={getAvatarURL(userID, renderedProfile)}
 				onClick={openLightbox}
 				alt=""
 			/>}

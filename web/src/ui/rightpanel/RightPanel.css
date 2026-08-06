@@ -220,6 +220,11 @@ div.right-panel-content.user {
 			padding: .25rem;
 		}
 
+		.blur {
+			filter: blur(8px);
+			pointer-events: none;
+		}
+
 		> .user-info-loader {
 			grid-column: span 2;
 		}
