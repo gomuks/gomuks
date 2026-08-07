@@ -215,6 +215,8 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 				event_id: event.event_id,
 				rel_type: "m.reference",
 			},
+			"org.matrix.msc3381.poll.end": {},
+			"org.matrix.msc1767.text": "Poll closed",
 		}).catch(err => {
 			console.error("Failed to close poll:", err)
 			window.alert(`Failed to close poll: ${err}`)
