@@ -645,12 +645,12 @@ func (h *HiClient) cacheMedia(ctx context.Context, evt *event.Event, rowID datab
 
 func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Event, evt *event.Event) (*database.LocalContent, []id.ContentURI) {
 	if evt.Type != event.EventMessage {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	_ = evt.Content.ParseRaw(evt.Type)
 	content, ok := evt.Content.Parsed.(*event.MessageEventContent)
 	if !ok {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	if dbEvt.RelationType == event.RelReplace && content.NewContent != nil {
 		content = content.NewContent
