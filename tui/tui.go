@@ -30,7 +30,6 @@ import (
 	"go.mau.fi/util/exzerolog"
 
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
-	"go.mau.fi/gomuks/pkg/rpc"
 	"go.mau.fi/gomuks/pkg/rpc/client"
 	"go.mau.fi/gomuks/pkg/rpc/store"
 	"go.mau.fi/gomuks/tui/config"
@@ -85,9 +84,12 @@ func (ui *GomuksTUI) Run() {
 	log := exerrors.Must(ui.Config.LogConfig.Compile())
 	exzerolog.SetupDefaults(log)
 	loggedIn := false
-	if ui.Config.Server != "" && ui.Config.Username != "" && ui.Config.Password != "" {
+	if ui.Config.Embedded {
+		ui.gmx = exerrors.Must(ui.InitEmbedded())
+		loggedIn = true
+	} else if ui.Config.Server != "" && ui.Config.Username != "" && ui.Config.Password != "" {
 		ui.gmx = exerrors.Must(client.NewGomuksClient(ui.Config.Server))
-		exerrors.PanicIfNotNil(ui.gmx.GomuksAPI.(*rpc.GomuksRPC).Authenticate(context.TODO(), ui.Config.Username, ui.Config.Password))
+		exerrors.PanicIfNotNil(ui.gmx.Authenticate(context.TODO(), ui.Config.Username, ui.Config.Password))
 		loggedIn = true
 	}
 
@@ -126,7 +128,7 @@ func (ui *GomuksTUI) Connect() {
 	ui.gmx.SendNotification = ui.MainView.NotifyMessage
 	ui.gmx.EventHandler = ui.gomuksEventHandler
 	ui.MainView.matrix = ui.gmx
-	exerrors.PanicIfNotNil(ui.gmx.GomuksAPI.(*rpc.GomuksRPC).Connect(context.TODO()))
+	exerrors.PanicIfNotNil(ui.gmx.Start())
 }
 
 func (ui *GomuksTUI) gomuksEventHandler(ctx context.Context, rawEvt any) {
@@ -141,7 +143,7 @@ func (ui *GomuksTUI) gomuksEventHandler(ctx context.Context, rawEvt any) {
 
 func (ui *GomuksTUI) Stop() {
 	debug.Print("Stopping")
-	ui.gmx.GomuksAPI.(*rpc.GomuksRPC).Disconnect()
+	ui.gmx.Stop()
 	debug.Print("Disconnection complete")
 	ui.app.Stop()
 	debug.Print("Stopped")

@@ -92,6 +92,7 @@ type RawKeybindings struct {
 
 // Config contains the main config of gomuks.
 type Config struct {
+	Embedded bool   `yaml:"embedded"`
 	Server   string `yaml:"server"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`

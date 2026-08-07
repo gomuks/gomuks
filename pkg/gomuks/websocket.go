@@ -167,7 +167,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	const RecvTimeout = 60 * time.Second
 	lastImageAuthTokenSent := time.Now()
 	sendImageAuthToken := func() {
-		err := writeCmd(ctx, conn, fp, jsoncmd.SpecImageAuthToken.Format(gmx.generateImageToken(1*time.Hour)))
+		err := writeCmd(ctx, conn, fp, jsoncmd.SpecImageAuthToken.Format(gmx.GenerateImageToken(1*time.Hour)))
 		if err != nil {
 			log.Err(err).Msg("Failed to write image auth token message")
 			return

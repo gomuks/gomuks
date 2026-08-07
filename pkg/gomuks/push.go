@@ -127,7 +127,7 @@ func (gmx *Gomuks) SendPushNotifications(sync *jsoncmd.SyncComplete) {
 	}
 	if len(push.RawMessages) > 0 {
 		exp := time.Now().Add(24 * time.Hour)
-		push.ImageAuth = gmx.generateImageToken(24 * time.Hour)
+		push.ImageAuth = gmx.GenerateImageToken(24 * time.Hour)
 		push.ImageAuthExpiry = ptr.Ptr(jsontime.UM(exp))
 	}
 	for notif := range push.Split {

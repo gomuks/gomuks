@@ -79,7 +79,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sendImageAuthToken := func() {
-		err := sw.write(jsoncmd.SpecImageAuthToken.Format(gmx.generateImageToken(1 * time.Hour)).AsAny())
+		err := sw.write(jsoncmd.SpecImageAuthToken.Format(gmx.GenerateImageToken(1 * time.Hour)).AsAny())
 		if err != nil {
 			cancel(fmt.Errorf("failed to write image auth token: %w", err))
 		}
