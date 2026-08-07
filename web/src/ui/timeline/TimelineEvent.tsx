@@ -292,6 +292,8 @@ const TimelineEvent = ({
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)
+	const renderMemberEventDisplayname = getDisplayname(evt.sender, renderMemberEvtContent)
+	const mainMemberEventDisplayname = getDisplayname(evt.sender, memberEvtContent)
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
@@ -331,9 +333,9 @@ const TimelineEvent = ({
 				onClick={perMessageSender ? undefined : roomCtx.appendMentionToComposer}
 				title={perMessageSender ? perMessageSender.id : evt.sender}
 			>
-				{getDisplayname(evt.sender, renderMemberEvtContent)}
+				{renderMemberEventDisplayname}
 			</span>
-			{perMessageSender && <>
+			{renderMemberEventDisplayname !== mainMemberEventDisplayname && <>
 				<span className="via">via</span>
 				<span
 					className={`event-sender original sender-color-${getUserColorIndex(evt.sender)}`}
@@ -341,7 +343,7 @@ const TimelineEvent = ({
 					onClick={roomCtx.appendMentionToComposer}
 					title={evt.sender}
 				>
-					{getDisplayname(evt.sender, memberEvtContent)}
+					{mainMemberEventDisplayname}
 				</span>
 			</>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
