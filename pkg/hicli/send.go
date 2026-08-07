@@ -79,25 +79,44 @@ func init() {
 	}
 }
 
-func (h *HiClient) getPerMessageProfiles(ctx context.Context) *event.StoredProfilesEventContent {
-	profilesPtr := h.perMessageProfiles.Load()
+func (h *HiClient) getPerMessageProfilesForRoom(ctx context.Context, roomID id.RoomID) *event.PerMessageProfilesEventContent {
+	profiles, ok := h.roomPerMessageProfiles.Get(roomID)
+	if ok {
+		return profiles
+	}
+	evt, err := h.DB.AccountData.GetRoom(ctx, h.Account.UserID, roomID, event.AccountDataPerMessageProfiles)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Stringer("room_id", roomID).Msg("Failed to get per-message profiles from room account data")
+		return nil
+	}
+	if evt != nil {
+		if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+			zerolog.Ctx(ctx).Err(err).Stringer("room_id", roomID).Msg("Failed to unmarshal per-message profiles from room account data")
+		}
+	}
+	h.roomPerMessageProfiles.Set(roomID, profiles)
+	return profiles
+}
+
+func (h *HiClient) getPerMessageProfiles(ctx context.Context) *event.PerMessageProfilesEventContent {
+	profilesPtr := h.globalPerMessageProfiles.Load()
 	if profilesPtr != nil {
-		return profilesPtr
+		return *profilesPtr
 	}
 	evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataPerMessageProfiles)
 	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Msg("Failed to get per-message profiles from account data")
 		return nil
 	}
-	var profiles event.StoredProfilesEventContent
-	defer h.perMessageProfiles.Store(&profiles)
-	if evt == nil {
-		return nil
-	} else if err = json.Unmarshal(evt.Content, &profiles); err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
-		return nil
+	var profiles *event.PerMessageProfilesEventContent
+	if evt != nil {
+		if err = json.Unmarshal(evt.Content, &profiles); err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal per-message profiles from account data")
+			return nil
+		}
 	}
-	return &profiles
+	h.globalPerMessageProfiles.Store(&profiles)
+	return profiles
 }
 
 func parseTextFormatCommand(text string) (event.MessageEventContent, bool) {
@@ -161,12 +180,14 @@ func (h *HiClient) SendMessage(
 	var ts int64
 	var rawInputBody bool
 	var perMessageProfile *event.BeeperPerMessageProfile
+	globalPMPs := h.getPerMessageProfiles(ctx)
+	roomPMPs := h.getPerMessageProfilesForRoom(ctx, roomID)
 	msgType := event.MsgText
 	origText := text
 Loop:
 	for {
 		if perMessageProfile == nil {
-			text, perMessageProfile = h.getPerMessageProfiles(ctx).Match(text)
+			text, perMessageProfile = event.PickPerMessageProfile(globalPMPs, roomPMPs, text)
 		}
 		spaceIdx := strings.IndexByte(text, ' ')
 		if spaceIdx < 2 {
