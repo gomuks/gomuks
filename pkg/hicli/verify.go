@@ -287,7 +287,13 @@ func (h *HiClient) verifyWithKey(ctx context.Context, key *ssss.Key, wasReset bo
 	return nil
 }
 
-func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, passphrase *ssss.PassphraseMetadata, userPassword string) error {
+func (h *HiClient) ResetEncryption(
+	ctx context.Context,
+	recoveryKey string,
+	passphrase *ssss.PassphraseMetadata,
+	keys crypto.CrossSigningSeeds,
+	userPassword string,
+) error {
 	keyBytes := utils.DecodeBase58RecoveryKey(recoveryKey)
 	if keyBytes == nil {
 		return ssss.ErrInvalidRecoveryKey
@@ -298,11 +304,11 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	}
 	defer h.dispatchCurrentState()
 
-	keysCache, err := h.Crypto.GenerateCrossSigningKeys()
+	keysCache, err := keys.Decode()
 	if err != nil {
-		return fmt.Errorf("failed to generate cross-signing keys: %w", err)
+		return fmt.Errorf("failed to decode cross-signing keys: %w", err)
 	}
-	err = h.Crypto.PublishCrossSigningKeys(ctx, keysCache, func(uia *mautrix.RespUserInteractive) any {
+	err = h.Crypto.PublishCrossSigningKeys(ctx, &keysCache, func(uia *mautrix.RespUserInteractive) any {
 		if userPassword == "" {
 			return nil
 		}
@@ -322,7 +328,7 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	if err != nil {
 		return fmt.Errorf("failed to store SSSS key data: %w", err)
 	}
-	err = h.Crypto.UploadCrossSigningKeysToSSSS(ctx, key, keysCache)
+	err = h.Crypto.UploadCrossSigningKeysToSSSS(ctx, key, &keysCache)
 	if err != nil {
 		return fmt.Errorf("failed to upload cross-signing keys to SSSS: %w", err)
 	}
@@ -330,7 +336,7 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	if err != nil {
 		return fmt.Errorf("failed to set default SSSS key: %w", err)
 	}
-	h.Crypto.CrossSigningKeys = keysCache
+	h.Crypto.CrossSigningKeys = &keysCache
 	err = h.storeCrossSigningPrivateKeys(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to store cross-signing private keys: %w", err)

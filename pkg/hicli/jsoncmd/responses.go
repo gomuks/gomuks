@@ -8,6 +8,7 @@ package jsoncmd
 
 import (
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
@@ -61,8 +62,9 @@ type ManualPaginationResponse struct {
 }
 
 type RecoveryKeyResponse struct {
-	RecoveryKey    string                   `json:"recovery_key"`
-	PassphraseMeta *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
+	RecoveryKey      string                   `json:"recovery_key"`
+	CrossSigningKeys crypto.CrossSigningSeeds `json:"cross_signing_keys"`
+	PassphraseMeta   *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
 }
 
 type LoginFlowsResponse struct {
