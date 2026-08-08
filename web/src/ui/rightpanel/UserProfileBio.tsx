@@ -82,6 +82,7 @@ export const UserProfileSmallBio = ({ bio, blur, ...rest }: UserProfileBioProps)
 			dimmed: true,
 			innerBoxClass: "profile-full-bio-modal",
 			boxClass: "profile-full-bio-modal-wrapper",
+			noDismiss: true,
 		})
 	}
 	if (!editByDefault && !bio.html) {
