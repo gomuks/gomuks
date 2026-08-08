@@ -309,6 +309,15 @@ func (h *HiClient) ResetEncryption(
 		return fmt.Errorf("failed to decode cross-signing keys: %w", err)
 	}
 	err = h.Crypto.PublishCrossSigningKeys(ctx, &keysCache, func(uia *mautrix.RespUserInteractive) any {
+		// Continuwuity compatibility: auto-retry with the returned UIA session ID.
+		// MAS doesn't need this, it works on the first try if the user allowed it beforehand.
+		if uia.HasSingleStageFlow(mautrix.AuthTypeOAuth) {
+			return &mautrix.BaseAuthData{
+				Session: uia.Session,
+				// This field isn't even in the spec for the m.oauth UIA type, but continuwuity requires it
+				Type: mautrix.AuthTypeOAuth,
+			}
+		}
 		if userPassword == "" {
 			return nil
 		}
