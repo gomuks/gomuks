@@ -41,6 +41,12 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 		err = fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
 		return
 	}
+	if state.IsVerified {
+		state.IsVerified, err = h.loadPrivateKeys(ctx)
+		if err != nil {
+			return
+		}
+	}
 	if !state.IsVerified {
 		var defaultKeyID string
 		defaultKeyID, err = h.Crypto.SSSS.GetDefaultKeyID(ctx)
@@ -51,10 +57,6 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 		err = nil
 		state.HasSSSS = defaultKeyID != ""
 	} else {
-		err = h.loadPrivateKeys(ctx)
-		if err != nil {
-			return
-		}
 		// Assume SSSS is there if we found all keys in the local DB
 		state.HasSSSS = true
 	}
@@ -151,19 +153,19 @@ func (h *HiClient) getAndDecodeSecret(ctx context.Context, secret id.Secret) ([]
 	return data, nil
 }
 
-func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
+func (h *HiClient) loadPrivateKeys(ctx context.Context) (bool, error) {
 	zerolog.Ctx(ctx).Debug().Msg("Loading cross-signing private keys")
 	masterKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSMaster)
 	if err != nil {
-		return fmt.Errorf("failed to get master key: %w", err)
+		return false, fmt.Errorf("failed to get master key: %w", err)
 	}
 	selfSigningKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSSelfSigning)
 	if err != nil {
-		return fmt.Errorf("failed to get self-signing key: %w", err)
+		return false, fmt.Errorf("failed to get self-signing key: %w", err)
 	}
 	userSigningKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSUserSigning)
 	if err != nil {
-		return fmt.Errorf("failed to get user signing key: %w", err)
+		return false, fmt.Errorf("failed to get user signing key: %w", err)
 	}
 	err = h.Crypto.ImportCrossSigningKeys(crypto.CrossSigningSeeds{
 		MasterKey:      masterKeySeed,
@@ -171,21 +173,24 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 		UserSigningKey: userSigningKeySeed,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to import cross-signing private keys: %w", err)
+		return false, fmt.Errorf("failed to import cross-signing private keys: %w", err)
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Loading key backup key")
 	keyBackupKey, err := h.getAndDecodeSecret(ctx, id.SecretMegolmBackupV1)
 	if err != nil {
-		return fmt.Errorf("failed to get megolm backup key: %w", err)
+		return false, fmt.Errorf("failed to get megolm backup key: %w", err)
 	}
 	h.KeyBackupKey, err = backup.MegolmBackupKeyFromBytes(keyBackupKey)
 	if err != nil {
-		return fmt.Errorf("failed to parse megolm backup key: %w", err)
+		return false, fmt.Errorf("failed to parse megolm backup key: %w", err)
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Fetching key backup version")
 	latestVersion, err := h.Client.GetKeyBackupLatestVersion(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get key backup latest version: %w", err)
+		if errors.Is(err, mautrix.MNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get key backup latest version: %w", err)
 	}
 	prevVersion := h.Crypto.KeyBackupVersion()
 	if prevVersion == latestVersion.Version {
@@ -196,7 +201,7 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 	} else if latestVersion.AuthData.PublicKey == stringifyKeyBackupKey(h.KeyBackupKey) && latestVersion.Algorithm == id.KeyBackupAlgorithmMegolmBackupV1 {
 		err = h.Crypto.SetKeyBackupVersion(ctx, latestVersion.Version)
 		if err != nil {
-			return fmt.Errorf("failed to set key backup version in crypto store: %w", err)
+			return false, fmt.Errorf("failed to set key backup version in crypto store: %w", err)
 		}
 		h.KeyBackupVersion = latestVersion.Version
 		zerolog.Ctx(ctx).Warn().
@@ -212,10 +217,10 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 			Str("server_version", latestVersion.Version.String()).
 			Str("server_public_key", latestVersion.AuthData.PublicKey.Fingerprint()).
 			Msg("Key backup key mismatch between local store and server")
-		// TODO fall back to unverified?
+		return false, nil
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Secrets loaded")
-	return nil
+	return true, nil
 }
 
 func (h *HiClient) storeCrossSigningPrivateKeys(ctx context.Context) error {
