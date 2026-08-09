@@ -100,7 +100,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
 		</>}
-		<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
+		{!fakeUser && <UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>}
 	</>
 }
 
