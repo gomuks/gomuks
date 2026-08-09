@@ -36,16 +36,9 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 		return
 	}
 	state.HasCrossSigning = true
-	state.IsVerified, err = h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, keys.SelfSigningKey)
+	state.IsVerified, err = h.loadPrivateKeys(ctx, keys.SelfSigningKey)
 	if err != nil {
-		err = fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
 		return
-	}
-	if state.IsVerified {
-		state.IsVerified, err = h.loadPrivateKeys(ctx)
-		if err != nil {
-			return
-		}
 	}
 	if !state.IsVerified {
 		var defaultKeyID string
@@ -153,7 +146,13 @@ func (h *HiClient) getAndDecodeSecret(ctx context.Context, secret id.Secret) ([]
 	return data, nil
 }
 
-func (h *HiClient) loadPrivateKeys(ctx context.Context) (bool, error) {
+func (h *HiClient) loadPrivateKeys(ctx context.Context, ssk id.Ed25519) (bool, error) {
+	isVerified, err := h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, ssk)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
+	} else if !isVerified {
+		return false, nil
+	}
 	zerolog.Ctx(ctx).Debug().Msg("Loading cross-signing private keys")
 	masterKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSMaster)
 	if err != nil {
