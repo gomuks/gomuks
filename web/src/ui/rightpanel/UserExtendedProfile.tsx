@@ -21,6 +21,7 @@ import { GetProfileResponse, JSONValue, MemDBEvent, PronounSet, UserID } from "@
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
 import { EventKind } from "../settings/devtools-util.ts"
+import UserInfoError from "./UserInfoError.tsx"
 import { UserProfileSmallBio } from "./UserProfileBio.tsx"
 
 interface ExtendedProfileProps {
@@ -31,6 +32,7 @@ interface ExtendedProfileProps {
 	loading: boolean
 	client: Client
 	userID: string
+	errors: string[] | null
 }
 
 interface SetTimezoneProps {
@@ -174,7 +176,7 @@ const emptyBio = {
 }
 
 const UserExtendedProfile = ({
-	room, profileResp, refreshProfile, memberEvt, client, userID, loading,
+	room, profileResp, refreshProfile, memberEvt, client, userID, loading, errors,
 }: ExtendedProfileProps)=>  {
 	const profile = profileResp?.profile
 	const viewMemberEvent = () => {
@@ -189,6 +191,7 @@ const UserExtendedProfile = ({
 	</div>
 	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
 		{loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
+		<UserInfoError errors={errors}/>
 		{viewButtons}
 	</div> : null
 	const openModal = use(ModalContext)!
@@ -220,6 +223,7 @@ const UserExtendedProfile = ({
 				blur={blurUserInput}
 			/>
 		</>}
+		<UserInfoError errors={errors}/>
 		{viewButtons}
 	</div>
 }

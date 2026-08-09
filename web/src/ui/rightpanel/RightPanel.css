@@ -187,7 +187,7 @@ div.right-panel-content.user {
 		max-height: 4rem;
 	}
 
-	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms, > div.errors {
+	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms {
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: .5rem;
 		margin-bottom: .5rem;

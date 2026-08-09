@@ -24,7 +24,6 @@ import { LightboxContext } from "../modal"
 import { RoomContext } from "../roomview/roomcontext.ts"
 import UserExtendedProfile from "./UserExtendedProfile.tsx"
 import DeviceList from "./UserInfoDeviceList.tsx"
-import UserInfoError from "./UserInfoError.tsx"
 import MutualRooms from "./UserInfoMutualRooms.tsx"
 import UserModeration from "./UserModeration.tsx"
 
@@ -95,13 +94,13 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			client={client}
 			userID={userID}
 			loading={loadingGlobalProfile}
+			errors={errors}
 		/>}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
 		</>}
 		<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
-		<UserInfoError errors={errors}/>
 	</>
 }
 
