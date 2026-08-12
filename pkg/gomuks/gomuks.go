@@ -53,6 +53,8 @@ type Gomuks struct {
 	Server *http.Server
 	Client *hicli.HiClient
 
+	RootOverride string
+
 	ConfigDir string
 	DataDir   string
 	CacheDir  string
@@ -103,7 +105,7 @@ func NewGomuks() *Gomuks {
 	return gmx
 }
 
-func (gmx *Gomuks) InitDirectories(root string) {
+func (gmx *Gomuks) InitDirectories() {
 	// We need 4 directories: config, data, cache, logs
 	//
 	// 1. If GOMUKS_*_HOME is set, that value is used as the directory.
@@ -125,12 +127,7 @@ func (gmx *Gomuks) InitDirectories(root string) {
 	// - Config and Data: $HOME/Library/Application Support/gomuks
 	// - Cache: $HOME/Library/Caches/gomuks
 	// - Logs: $HOME/Library/Logs/gomuks
-	gomuksRoot := ""
-	if root != "" {
-		gomuksRoot = root
-	} else {
-		gomuksRoot = os.Getenv("GOMUKS_ROOT")
-	}
+	gomuksRoot := cmp.Or(gmx.RootOverride, os.Getenv("GOMUKS_ROOT"))
 	gmx.CacheDir = os.Getenv("GOMUKS_CACHE_HOME")
 	gmx.ConfigDir = os.Getenv("GOMUKS_CONFIG_HOME")
 	gmx.DataDir = os.Getenv("GOMUKS_DATA_HOME")
@@ -289,7 +286,7 @@ func (gmx *Gomuks) DirectStop() {
 }
 
 func (gmx *Gomuks) Run() {
-	gmx.InitDirectories("")
+	gmx.InitDirectories()
 	err := gmx.LoadConfig()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)

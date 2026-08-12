@@ -102,10 +102,9 @@ func GomuksInit(root *C.char) C.GomuksHandle {
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
 	if root != nil {
-		gmx.InitDirectories(C.GoString(root))
-	} else {
-		gmx.InitDirectories("")
+		gmx.RootOverride = C.GoString(root)
 	}
+	gmx.InitDirectories()
 	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
 	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
 		Gomuks: gmx,
