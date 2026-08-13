@@ -105,18 +105,6 @@ func GomuksInit(root *C.char) C.GomuksHandle {
 		gmx.RootOverride = C.GoString(root)
 	}
 	gmx.InitDirectories()
-	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
-	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
-		Gomuks: gmx,
-		ctx:    cmdCtx,
-		cancel: cancelCmdCtx,
-	}))
-}
-
-//export GomuksStart
-func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
-	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-
 	gmx.Config = gomuks.Config{
 		Logging: zeroconfig.Config{
 			MinLevel: ptr.Ptr(zerolog.DebugLevel),
@@ -136,18 +124,30 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 	}
 	gmx.EventBuffer = gomuks.NewEventBuffer(0)
 	gmx.SetupLog()
-	gmx.ctx = gmx.Log.WithContext(gmx.ctx)
+	cmdCtx, cancelCmdCtx := context.WithCancel(context.Background())
+	cmdCtx = gmx.Log.WithContext(cmdCtx)
 	gmx.Log.Info().
 		Str("version", version.Gomuks.FormattedVersion).
 		Str("go_version", runtime.Version()).
 		Time("built_at", version.Gomuks.BuildTime).
-		Msg("Starting gomuks FFI")
+		Msg("Initialized gomuks FFI")
+	return C.GomuksHandle(cgo.NewHandle(&gomuksHandle{
+		Gomuks: gmx,
+		ctx:    cmdCtx,
+		cancel: cancelCmdCtx,
+	}))
+}
+
+//export GomuksStart
+func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
 
 	eventChan := make(chan *gomuks.BufferedEvent, 1024)
 	gmx.EventBuffer.Subscribe(0, nil, func(event *gomuks.BufferedEvent) {
 		eventChan <- event
 	})
 
+	gmx.Log.Info().Msg("Starting gomuks")
 	exitCode := gmx.StartClientWithoutExit(gmx.ctx)
 	if exitCode != 0 {
 		return C.int(exitCode)
@@ -223,10 +223,18 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 			Data:    reqData,
 		})
 	}
-	return C.GomuksResponse{
-		buf:     bytesToOwnedBuffer(res.Data),
-		command: commandNames[res.Command],
+	return containerToResponse(res)
+}
+
+//export GomuksHandlePush
+func GomuksHandlePush(handle C.GomuksHandle, data C.GomuksBorrowedBuffer) C.GomuksResponse {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	var parsed gomuks.PushPayload
+	err := json.Unmarshal(borrowBufferBytes(data), &parsed)
+	if err != nil {
+		return containerToResponse(wrapFFIResponse(nil, err))
 	}
+	return containerToResponse(wrapFFIResponse(gmx.ReceivePushNotification(gmx.ctx, parsed)))
 }
 
 //export GomuksUploadMediaBytes

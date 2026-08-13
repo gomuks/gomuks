@@ -544,6 +544,11 @@ export interface AccountModerationCapability {
 	suspend?: boolean
 }
 
+export interface WebPushCapability {
+	enabled: boolean
+	vapid: string
+}
+
 export interface Capabilities {
 	"m.room_versions"?: RoomVersionsCapability
 	"m.change_password"?: BooleanCapability
@@ -551,6 +556,7 @@ export interface Capabilities {
 	"m.set_avatar_url"?: BooleanCapability
 	"m.3pid_changes"?: BooleanCapability
 	"m.get_login_token"?: BooleanCapability
+	"org.matrix.msc4174.webpush"?: WebPushCapability
 	"uk.timedout.msc4323"?: AccountModerationCapability
 }
 

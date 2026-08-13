@@ -71,6 +71,9 @@ type Gomuks struct {
 
 	GetDBConfig func() dbutil.PoolConfig
 
+	initLock             sync.Mutex
+	notificationSyncLock sync.Mutex
+
 	stopOnce sync.Once
 	stopChan chan struct{}
 
@@ -190,14 +193,19 @@ func (gmx *Gomuks) StartClient() {
 	}
 }
 
-func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
+func (gmx *Gomuks) initClient() error {
+	gmx.initLock.Lock()
+	defer gmx.initLock.Unlock()
+	if gmx.Client != nil {
+		return nil
+	}
 	hicli.HTMLSanitizerImgSrcTemplate = "_gomuks/media/%s/%s?encrypted=false"
 	rawDB, err := dbutil.NewFromConfig("gomuks", dbutil.Config{
 		PoolConfig: gmx.GetDBConfig(),
 	}, dbutil.ZeroLogger(gmx.Log.With().Str("component", "hicli").Str("db_section", "main").Logger()))
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to open database")
-		return 10
+		return err
 	}
 	gmx.Client = hicli.New(
 		rawDB,
@@ -223,12 +231,39 @@ func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 			h2.ReadIdleTimeout = 30 * time.Second
 		}
 	}
+	gmx.Log.Debug().Msg("Client instance created")
+	return nil
+}
+
+func (gmx *Gomuks) initClientForNotifications(ctx context.Context) error {
+	if err := gmx.initClient(); err != nil {
+		return err
+	}
+	if gmx.Client.Account != nil {
+		return nil
+	}
+	userID, err := gmx.Client.DB.Account.GetFirstUserID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get first user ID: %w", err)
+	} else if userID == "" {
+		return fmt.Errorf("no user ID stored")
+	}
+	return gmx.Client.Load(ctx, userID)
+}
+
+func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
+	if err := gmx.initClient(); err != nil {
+		return 10
+	}
 	userID, err := gmx.Client.DB.Account.GetFirstUserID(ctx)
 	if err != nil {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to get first user ID")
 		return 11
 	}
-	err = gmx.Client.Start(ctx, userID)
+	err = gmx.Client.Load(ctx, userID)
+	if err == nil {
+		err = gmx.Client.Start(ctx)
+	}
 	if errors.Is(err, mautrix.MUnknownToken) || errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		gmx.Log.Err(err).Msg("Failed to start client, logging out")
 		err = gmx.Logout(ctx)

@@ -40,6 +40,7 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 		log.Warn().Err(err).Msg("Failed to log out")
 		return err
 	}
+	gmx.Client = nil
 	log.Info().Msg("Logout complete, removing data")
 	err = os.RemoveAll(gmx.CacheDir)
 	if err != nil {

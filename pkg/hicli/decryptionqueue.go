@@ -41,28 +41,37 @@ func (h *HiClient) fetchFromKeyBackup(ctx context.Context, roomID id.RoomID, ses
 }
 
 func (h *HiClient) handleReceivedMegolmSession(ctx context.Context, roomID id.RoomID, sessionID id.SessionID, firstKnownIndex uint32) {
+	log := zerolog.Ctx(ctx)
 	err := h.DB.SessionRequest.Remove(ctx, sessionID, firstKnownIndex)
 	if err != nil {
-		zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to remove session request after receiving megolm session")
+		log.Warn().Err(err).Msg("Failed to remove session request after receiving megolm session")
 	}
 	// When receiving megolm sessions in sync, wake up the request queue to ensure they get uploaded to key backup
 	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
 	if ok {
 		syncCtx.shouldWakeupRequestQueue = true
 	}
-	go h.bgHandleReceivedMegolmSession(ctx, roomID, sessionID, firstKnownIndex)
-}
-
-func (h *HiClient) bgHandleReceivedMegolmSession(ctx context.Context, roomID id.RoomID, sessionID id.SessionID, firstKnownIndex uint32) {
-	log := zerolog.Ctx(ctx)
 	events, err := h.DB.Event.GetFailedByMegolmSessionID(ctx, roomID, sessionID)
 	if err != nil {
 		log.Err(err).Msg("Failed to get events that failed to decrypt to retry decryption")
-		return
 	} else if len(events) == 0 {
 		log.Trace().Msg("No events to retry decryption for")
+	} else {
+		go h.bgHandleReceivedMegolmSession(ctx, roomID, firstKnownIndex, events)
+	}
+}
+
+func (h *HiClient) bgHandleReceivedMegolmSession(
+	ctx context.Context,
+	roomID id.RoomID,
+	firstKnownIndex uint32,
+	events []*database.Event,
+) {
+	if ctx.Err() != nil {
 		return
 	}
+	defer h.backgroundMegolmDecrypters.Task()()
+	log := zerolog.Ctx(ctx)
 	decrypted := events[:0]
 	for _, evt := range events {
 		if evt.Decrypted != nil {
@@ -84,13 +93,17 @@ func (h *HiClient) bgHandleReceivedMegolmSession(ctx context.Context, roomID id.
 		} else {
 			decrypted = append(decrypted, evt)
 			h.postDecryptProcess(ctx, nil, evt, mautrixEvt)
+			ch, ok := h.eventDecryptionWaiters.Pop(evt.ID)
+			if ok {
+				close(ch)
+			}
 		}
 	}
 	if len(decrypted) > 0 {
 		var newPreview database.EventRowID
-		err = h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
+		err := h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 			for _, evt := range decrypted {
-				err = h.DB.Event.UpdateDecrypted(ctx, evt)
+				err := h.DB.Event.UpdateDecrypted(ctx, evt)
 				if err != nil {
 					return fmt.Errorf("failed to save decrypted content for %s: %w", evt.ID, err)
 				}

@@ -67,11 +67,15 @@ type HiClient struct {
 	sendInitSyncToClients bool
 	syncingID             int
 	syncLock              sync.Mutex
+	stopping              bool
 	stopSync              atomic.Pointer[context.CancelFunc]
 	encryptLock           sync.Mutex
 	loginLock             sync.Mutex
+	loadLock              sync.Mutex
 
-	eventDecryptionLock sync.Mutex
+	eventDecryptionLock        sync.Mutex
+	backgroundMegolmDecrypters safeWaitGroup
+	eventDecryptionWaiters     *exsync.Map[id.EventID, chan struct{}]
 
 	requestQueueWakeup chan struct{}
 
@@ -100,6 +104,32 @@ type HiClient struct {
 	API *JSONAPI
 }
 
+type safeWaitGroup struct {
+	l sync.Mutex
+	w *sync.WaitGroup
+}
+
+func (sfg *safeWaitGroup) Wait() {
+	sfg.l.Lock()
+	w := sfg.w
+	sfg.w = nil
+	sfg.l.Unlock()
+	if w != nil {
+		w.Wait()
+	}
+}
+
+func (sfg *safeWaitGroup) Task() func() {
+	sfg.l.Lock()
+	if sfg.w == nil {
+		sfg.w = &sync.WaitGroup{}
+	}
+	w := sfg.w
+	w.Add(1)
+	sfg.l.Unlock()
+	return w.Done
+}
+
 var (
 	_ mautrix.StateStore        = (*database.ClientStateStore)(nil)
 	_ mautrix.StateStoreUpdater = (*database.ClientStateStore)(nil)
@@ -124,10 +154,11 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 		DB:  db,
 		Log: log,
 
-		requestQueueWakeup:    make(chan struct{}, 1),
-		jsonRequests:          make(map[int64]context.CancelCauseFunc),
-		paginationInterrupter: make(map[id.RoomID]context.CancelCauseFunc),
-		sendLock:              make(map[id.RoomID]*sync.Mutex),
+		eventDecryptionWaiters: exsync.NewMap[id.EventID, chan struct{}](),
+		requestQueueWakeup:     make(chan struct{}, 1),
+		jsonRequests:           make(map[int64]context.CancelCauseFunc),
+		paginationInterrupter:  make(map[id.RoomID]context.CancelCauseFunc),
+		sendLock:               make(map[id.RoomID]*sync.Mutex),
 
 		roomPerMessageProfiles: exsync.NewMap[id.RoomID, *event.PerMessageProfilesEventContent](),
 
@@ -227,7 +258,16 @@ func (h *HiClient) IsLoggedInAndVerified() bool {
 	return h.IsLoggedIn() && h.VerificationState.IsVerified
 }
 
-func (h *HiClient) Start(ctx context.Context, userID id.UserID) error {
+func (h *HiClient) Load(ctx context.Context, userID id.UserID) error {
+	h.loadLock.Lock()
+	defer h.loadLock.Unlock()
+	if h.Account != nil {
+		if h.Account.UserID != userID {
+			return fmt.Errorf("hicli already loaded with a different user ID: %s != %s", h.Account.UserID, userID)
+		}
+		return nil
+	}
+
 	err := h.DB.Upgrade(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade hicli db: %w", err)
@@ -252,16 +292,27 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID) error {
 		if err != nil {
 			return err
 		}
-		err = h.CheckServerVersions(ctx)
-		if err != nil {
-			return err
-		}
 		err = h.Crypto.Load(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to load olm machine: %w", err)
 		}
+		_, err = h.checkIsCurrentDeviceVerified(ctx, true)
+		if err != nil {
+			return err
+		}
+		h.loadStoredPushRules(ctx)
+	}
+	return nil
+}
 
-		h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx)
+func (h *HiClient) Start(ctx context.Context) error {
+	if h.Account != nil {
+		err := h.CheckServerVersions(ctx)
+		if err != nil {
+			return err
+		}
+
+		h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx, false)
 		if err != nil {
 			return err
 		}
@@ -269,6 +320,7 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID) error {
 		zerolog.Ctx(ctx).Debug().
 			Any("verification_state", h.VerificationState).
 			Msg("Checked current device verification status")
+
 		if h.VerificationState.IsVerified {
 			h.sendInitSyncToClients = false
 			go h.Sync()
@@ -289,6 +341,9 @@ var ErrOutdatedServer = errors.New("homeserver is outdated")
 var MinimumSpecVersion = mautrix.SpecV11
 
 func (h *HiClient) CheckServerVersions(ctx context.Context) error {
+	if h.Client.SpecVersions != nil {
+		return nil
+	}
 	return h.checkServerVersions(ctx, h.Client)
 }
 
@@ -396,6 +451,7 @@ func (h *HiClient) Sync() {
 }
 
 func (h *HiClient) Stop() {
+	h.stopping = true
 	h.Client.StopSync()
 	if fn := h.stopSync.Swap(nil); fn != nil {
 		(*fn)()
@@ -403,6 +459,7 @@ func (h *HiClient) Stop() {
 	h.syncLock.Lock()
 	//lint:ignore SA2001 just acquire the lock to make sure Sync is done
 	h.syncLock.Unlock()
+	h.backgroundMegolmDecrypters.Wait()
 	err := h.DB.Close()
 	if err != nil {
 		h.Log.Err(err).Msg("Failed to close database cleanly")

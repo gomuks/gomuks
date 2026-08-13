@@ -45,10 +45,12 @@ typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
 // If root is non-NULL, it is used as the root directory for all gomuks data
 // (config, cache, data, logs), bypassing environment variable lookups.
 // Pass NULL to use the default directory resolution.
+// The caller is responsible for memory management of the root path string.
 GomuksHandle GomuksInit(char* root);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
+// This must be called before SubmitCommand or the media upload/download methods.
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 // GomuksDestroy stops the given gomuks instance and removes references to it.
 void GomuksDestroy(GomuksHandle handle);
@@ -57,6 +59,10 @@ void GomuksDestroy(GomuksHandle handle);
 // The caller is responsible for memory management of the command string.
 // A good approach is creating one string for each command and reusing them forever.
 GomuksResponse GomuksSubmitCommand(GomuksHandle handle, char* command, GomuksBorrowedBuffer data);
+// GomuksHandlePush handles a push notification received from the server
+// and returns the event that the notification is about (if any).
+// This can be called without GomuksStart.
+GomuksResponse GomuksHandlePush(GomuksHandle handle, GomuksBorrowedBuffer payload);
 
 // GomuksUploadMediaPath is equivalent to GomuksSubmitCommand with the upload_media command
 // with an additional progress callback that will be called to report upload progress as a float64 between 0 and 100.
