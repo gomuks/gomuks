@@ -228,7 +228,7 @@ func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to get first user ID")
 		return 11
 	}
-	err = gmx.Client.Start(ctx, userID, nil)
+	err = gmx.Client.Start(ctx, userID)
 	if errors.Is(err, mautrix.MUnknownToken) || errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		gmx.Log.Err(err).Msg("Failed to start client, logging out")
 		err = gmx.Logout(ctx)

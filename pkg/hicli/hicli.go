@@ -227,10 +227,7 @@ func (h *HiClient) IsLoggedInAndVerified() bool {
 	return h.IsLoggedIn() && h.VerificationState.IsVerified
 }
 
-func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount *database.Account) error {
-	if expectedAccount != nil && userID != expectedAccount.UserID {
-		panic(fmt.Errorf("invalid parameters: different user ID in expected account and user ID"))
-	}
+func (h *HiClient) Start(ctx context.Context, userID id.UserID) error {
 	err := h.DB.Upgrade(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade hicli db: %w", err)
@@ -242,14 +239,6 @@ func (h *HiClient) Start(ctx context.Context, userID id.UserID, expectedAccount 
 	account, err := h.DB.Account.Get(ctx, userID)
 	if err != nil {
 		return err
-	} else if account == nil && expectedAccount != nil {
-		err = h.DB.Account.Put(ctx, expectedAccount)
-		if err != nil {
-			return err
-		}
-		account = expectedAccount
-	} else if expectedAccount != nil && expectedAccount.DeviceID != account.DeviceID {
-		return fmt.Errorf("device ID mismatch: expected %s, got %s", expectedAccount.DeviceID, account.DeviceID)
 	}
 	if account != nil {
 		zerolog.Ctx(ctx).Debug().Stringer("user_id", account.UserID).Msg("Preparing client with existing credentials")
