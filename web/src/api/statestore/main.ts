@@ -19,10 +19,12 @@ import { CustomEmojiPack } from "@/util/emoji"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { focused } from "@/util/focus.ts"
 import toSearchableString from "@/util/searchablestring.ts"
+import { playSound } from "@/util/sound.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import {
 	ContentURI,
+	DBRoom,
 	EventRowID,
 	EventsDecryptedData,
 	ImagePackRooms,
@@ -36,11 +38,19 @@ import {
 	TypingEventData,
 	UnknownEventContent,
 	UserID,
-	roomStateGUIDToString,
 } from "../types"
+import StateCache from "./cache.ts"
 import { InvitedRoomStore } from "./invitedroom.ts"
 import { RoomStateStore } from "./room.ts"
-import { DirectChatSpace, RoomListFilter, Space, SpaceEdgeStore, SpaceOrphansSpace, UnreadsSpace } from "./space.ts"
+import {
+	DirectChatSpace,
+	HomeSpace,
+	RoomListFilter,
+	Space,
+	SpaceEdgeStore,
+	SpaceOrphansSpace,
+	UnreadsSpace,
+} from "./space.ts"
 
 export interface RoomListEntry {
 	room_id: RoomID
@@ -56,6 +66,7 @@ export interface RoomListEntry {
 	marked_unread: boolean
 	is_invite?: boolean
 	favorite_order?: number
+	low_priority?: boolean
 }
 
 function alphabeticalSort(r1: RoomListEntry, r2: RoomListEntry): number {
@@ -73,6 +84,16 @@ function favoriteSort(r1: RoomListEntry, r2: RoomListEntry): number {
 		return 1
 	} else if (r2.favorite_order !== undefined) {
 		return -1
+	} else {
+		return 0
+	}
+}
+
+function lowPrioritySort(r1: RoomListEntry, r2: RoomListEntry): number {
+	if (r1.low_priority && !r2.low_priority) {
+		return -1
+	} else if (!r1.low_priority && r2.low_priority) {
+		return 1
 	} else {
 		return 0
 	}
@@ -118,6 +139,7 @@ export class StateStore {
 	readonly topLevelSpaces = new NonNullCachedEventDispatcher<RoomID[]>([])
 	readonly spaceEdges: Map<RoomID, SpaceEdgeStore> = new Map()
 	readonly spaceOrphans = new SpaceOrphansSpace(this)
+	readonly homeSpace = new HomeSpace()
 	readonly directChatsSpace = new DirectChatSpace()
 	readonly unreadsSpace = new UnreadsSpace(this)
 	readonly pseudoSpaces = [
@@ -133,6 +155,7 @@ export class StateStore {
 	readonly preferences = getPreferenceProxy(this)
 	#frequentlyUsedEmoji: Map<string, number> | null = null
 	#emojiPackKeys: RoomStateGUID[] | null = null
+	#emojiPackLegacyKeys: RoomStateGUID[] | null = null
 	#watchedRoomEmojiPacks: Record<string, CustomEmojiPack> | null = null
 	readonly preferenceSub = new NoDataSubscribable()
 	readonly localPreferenceCache: Preferences = getLocalStoragePreferences("global_prefs", this.preferenceSub.notify)
@@ -142,6 +165,10 @@ export class StateStore {
 	activeRoomIsPreview: boolean = false
 	imageAuthToken?: string
 	readonly widgetListeners: Set<WidgetListener> = new Set()
+	stateCache?: StateCache
+	tmpStateCache?: StateCache
+	stateCacheStatus: string = "disabled"
+	serverTimestamp?: number
 
 	get activeRoomID(): RoomID | null {
 		return this.#activeRoomID
@@ -159,6 +186,49 @@ export class StateStore {
 			return false
 		}
 		return true
+	}
+
+	get anyStateCache(): StateCache | undefined {
+		return this.stateCache ?? this.tmpStateCache
+	}
+
+	closeCache() {
+		this.anyStateCache?.close()
+		this.stateCache = undefined
+		this.tmpStateCache = undefined
+		this.stateCacheStatus = "closed"
+	}
+
+	deleteCache() {
+		this.closeCache()
+		this.stateCacheStatus = "deleted"
+		return StateCache.delete()
+	}
+
+	loadCache() {
+		const cache = new StateCache()
+		this.tmpStateCache = cache
+		return cache.load().then(data => {
+			if (!data) {
+				console.info("No state cache found")
+				this.stateCacheStatus = "no data"
+			} else {
+				console.info(
+					"Applying state cache for", data.user_id,
+					"from", new Date(data.server_timestamp!),
+					"with", Object.keys(data.rooms ?? {}).length, "rooms",
+				)
+				this.userID = data.user_id
+				this.applySync(data)
+				this.stateCacheStatus = "enabled"
+			}
+			this.stateCache = cache
+			this.tmpStateCache = undefined
+		}, err => {
+			console.error("Failed to load state cache", err)
+			this.stateCacheStatus = `failed: ${err}`
+			cache.close()
+		})
 	}
 
 	getSpaceByID(spaceID: string | undefined): RoomListFilter | null {
@@ -206,8 +276,8 @@ export class StateStore {
 		return fn ? this.roomList.current.filter(fn) : this.roomList.current
 	}
 
-	#showTypeInRoomList(entry: SyncRoom): boolean {
-		const cc = entry.meta.creation_content
+	#showTypeInRoomList(meta: DBRoom): boolean {
+		const cc = meta.creation_content
 		switch (cc?.type ?? "") {
 		default:
 			// The room is not a normal room
@@ -215,16 +285,17 @@ export class StateStore {
 		case "":
 		case "support.feline.policy.lists.msc.v1":
 		case "org.matrix.msc3417.call":
+		case "fi.mau.msc2545.image_pack":
 			return true
 		}
 	}
 
-	#isTombstoned(entry: SyncRoom): boolean {
-		const replacementRoom = entry.meta.tombstone?.replacement_room
+	#isTombstoned(meta: DBRoom): boolean {
+		const replacementRoom = meta.tombstone?.replacement_room
 		if (
 			replacementRoom
 			&& this.rooms.get(replacementRoom)?.meta.current.creation_content?.predecessor?.room_id
-			=== entry.meta.room_id
+			=== meta.room_id
 		) {
 			// The room is tombstoned and the replacement room is valid.
 			return true
@@ -234,6 +305,9 @@ export class StateStore {
 	}
 
 	#roomListEntryChanged(entry: SyncRoom, oldEntry: RoomStateStore): boolean {
+		if (!entry.meta) {
+			return (!!entry.account_data && "m.tag" in entry.account_data)
+		}
 		return entry.meta.sorting_timestamp !== oldEntry.meta.current.sorting_timestamp ||
 			entry.meta.unread_messages !== oldEntry.meta.current.unread_messages ||
 			entry.meta.unread_notifications !== oldEntry.meta.current.unread_notifications ||
@@ -243,16 +317,20 @@ export class StateStore {
 			entry.meta.name !== oldEntry.meta.current.name ||
 			entry.meta.avatar !== oldEntry.meta.current.avatar ||
 			entry.meta.dm_user_id !== oldEntry.meta.current.dm_user_id ||
-			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta.preview_event_rowid) !== -1 ||
+			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta!.preview_event_rowid) !== -1 ||
 			(!!entry.account_data && "m.tag" in entry.account_data)
 	}
 
 	#makeRoomListEntry(entry: SyncRoom, room?: RoomStateStore): RoomListEntry | null {
-		if (!room) {
-			room = this.rooms.get(entry.meta.room_id)
+		const meta = entry.meta ?? room?.meta.current
+		if (!meta) {
+			return null
 		}
-		const isTombstoned = this.#isTombstoned(entry)
-		const showInRoomList = this.#showTypeInRoomList(entry)
+		if (!room) {
+			room = this.rooms.get(meta.room_id)
+		}
+		const isTombstoned = this.#isTombstoned(meta)
+		const showInRoomList = this.#showTypeInRoomList(meta)
 		const hidden = isTombstoned || !showInRoomList
 		if (room) {
 			room.tombstoned = isTombstoned
@@ -261,22 +339,25 @@ export class StateStore {
 		if (hidden) {
 			return null
 		}
-		const preview_event = room?.eventsByRowID.get(entry.meta.preview_event_rowid)
-		const name = entry.meta.name ?? "Unnamed room"
-		const favoriteTag = room?.accountData.get("m.tag")?.tags?.["m.favourite"]
+		const preview_event = room?.eventsByRowID.get(meta.preview_event_rowid)
+		const name = meta.name ?? "Unnamed room"
+		const tags = room?.accountData.get("m.tag")?.tags
+		const favoriteTag = tags?.["m.favourite"]
+		const lowPriority = !!tags?.["m.lowpriority"]
 		return {
-			room_id: entry.meta.room_id,
-			dm_user_id: entry.meta.dm_user_id,
-			sorting_timestamp: entry.meta.sorting_timestamp,
+			room_id: meta.room_id,
+			dm_user_id: meta.dm_user_id,
+			sorting_timestamp: meta.sorting_timestamp,
 			preview_event,
 			name,
 			search_name: toSearchableString(name),
-			avatar: entry.meta.avatar,
-			unread_messages: entry.meta.unread_messages,
-			unread_notifications: entry.meta.unread_notifications,
-			unread_highlights: entry.meta.unread_highlights,
-			marked_unread: entry.meta.marked_unread,
+			avatar: meta.avatar,
+			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : meta.unread_messages,
+			unread_notifications: meta.unread_notifications,
+			unread_highlights: meta.unread_highlights,
+			marked_unread: meta.marked_unread,
 			favorite_order: favoriteTag ? (+favoriteTag.order || 0) : undefined,
+			low_priority: lowPriority,
 		}
 	}
 
@@ -285,6 +366,7 @@ export class StateStore {
 		if (!someMeta) {
 			return
 		}
+		this.homeSpace.applyUnreads(meta, oldMeta)
 		if (this.directChatsSpace.include(someMeta)) {
 			this.directChatsSpace.applyUnreads(meta, oldMeta)
 		} else if (oldMeta && this.directChatsSpace.include(oldMeta)) {
@@ -309,6 +391,11 @@ export class StateStore {
 			console.info("Clearing state store as sync told to reset and there are rooms in the store")
 			prevActiveRoom = this.activeRoomID
 			this.clear()
+		} else if (sync.catchup) {
+			console.info("Received catchup sync, doing garbage collection on all rooms")
+			for (const room of this.rooms.values()) {
+				room.doGarbageCollection()
+			}
 		}
 		const resyncRoomList = this.roomList.current.length === 0
 		const changedRoomListEntries = new Map<RoomID, RoomListEntry | null>()
@@ -328,21 +415,27 @@ export class StateStore {
 			if (this.activeRoomID === room.room_id) {
 				this.switchRoom?.(room.room_id)
 			}
+			this.stateCache?.setInvitedRoom(data)
 		}
 		const hasInvites = this.inviteRooms.size > 0
 		for (const [roomID, data] of Object.entries(sync.rooms ?? {})) {
 			let isNewRoom = false
 			let room = this.rooms.get(roomID)
 			if (!room) {
+				if (!data.meta) {
+					console.warn("Received room sync data without meta for unknown room", roomID)
+					continue
+				}
 				room = new RoomStateStore(data.meta, this)
 				this.rooms.set(roomID, room)
 				if (hasInvites) {
 					this.inviteRooms.delete(roomID)
+					this.stateCache?.deleteInvitedRoom(roomID)
 				}
 				isNewRoom = true
 			}
 			const roomListEntryChanged = !resyncRoomList && (isNewRoom || this.#roomListEntryChanged(data, room))
-			room.applySync(data)
+			room.applySync(data, isNewRoom)
 			if (roomListEntryChanged) {
 				const entry = this.#makeRoomListEntry(data, room)
 				changedRoomListEntries.set(roomID, entry)
@@ -355,11 +448,12 @@ export class StateStore {
 			}
 			if (!resyncRoomList) {
 				// When we join a valid replacement room, hide the tombstoned room.
-				const predecessorID = data.meta.creation_content?.predecessor?.room_id
+				const predecessorID = data.meta?.creation_content?.predecessor?.room_id
 				if (isNewRoom && typeof predecessorID === "string") {
 					const predecessorRoom = this.rooms.get(predecessorID)
 					if (predecessorRoom?.meta.current.tombstone?.replacement_room === roomID) {
 						changedRoomListEntries.set(predecessorID, null)
+						this.#applyUnreadModification(null, this.roomListEntries.get(predecessorID))
 						predecessorRoom.tombstoned = true
 						predecessorRoom.hidden = true
 					}
@@ -389,6 +483,7 @@ export class StateStore {
 			}
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
+			this.stateCache?.setAccountData(ad)
 		}
 		for (const roomID of sync.left_rooms ?? []) {
 			if (this.activeRoomID === roomID) {
@@ -397,6 +492,8 @@ export class StateStore {
 			this.rooms.delete(roomID)
 			changedRoomListEntries.set(roomID, null)
 			this.#applyUnreadModification(null, this.roomListEntries.get(roomID))
+			this.stateCache?.deleteRoom(roomID)
+			this.stateCache?.deleteInvitedRoom(roomID)
 		}
 
 		let sortFunc: SortFunc = timestampSort
@@ -405,6 +502,25 @@ export class StateStore {
 		}
 		if (this.preferences.pin_favorites) {
 			sortFunc = chainedSort(favoriteSort, sortFunc)
+		}
+		if (this.preferences.pin_low_priority) {
+			sortFunc = chainedSort(lowPrioritySort, sortFunc)
+		}
+
+		if (sync.space_edges) {
+			// Ensure all space stores exist first
+			for (const spaceID of Object.keys(sync.space_edges)) {
+				this.getSpaceStore(spaceID, true)
+			}
+			for (const [spaceID, children] of Object.entries(sync.space_edges ?? {})) {
+				this.getSpaceStore(spaceID, true).children = children
+				this.stateCache?.setSpaceEdges(spaceID, children)
+			}
+		}
+		if (sync.top_level_spaces) {
+			this.topLevelSpaces.emit(sync.top_level_spaces)
+			this.spaceOrphans.children = sync.top_level_spaces.map(child_id => ({ child_id }))
+			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
 		}
 
 		let updatedRoomList: RoomListEntry[] | undefined
@@ -445,27 +561,19 @@ export class StateStore {
 		if (updatedRoomList) {
 			this.roomList.emit(updatedRoomList)
 		}
-		if (sync.space_edges) {
-			// Ensure all space stores exist first
-			for (const spaceID of Object.keys(sync.space_edges)) {
-				this.getSpaceStore(spaceID, true)
-			}
-			for (const [spaceID, children] of Object.entries(sync.space_edges ?? {})) {
-				this.getSpaceStore(spaceID, true).children = children
-			}
-		}
-		if (sync.top_level_spaces) {
-			this.topLevelSpaces.emit(sync.top_level_spaces)
-			this.spaceOrphans.children = sync.top_level_spaces.map(child_id => ({ child_id }))
-		}
 		if (prevActiveRoom) {
 			// TODO this will fail if the room is not in the top 100 recent rooms
 			this.switchRoom?.(prevActiveRoom)
+		}
+		if (sync.server_timestamp) {
+			this.stateCache?.setServerTimestamp(sync.server_timestamp)
+			this.serverTimestamp = sync.server_timestamp
 		}
 	}
 
 	invalidateEmojiPackKeyCache() {
 		this.#emojiPackKeys = null
+		this.#emojiPackLegacyKeys = null
 		this.#watchedRoomEmojiPacks = null
 	}
 
@@ -474,29 +582,36 @@ export class StateStore {
 		this.emojiRoomsSub.notify()
 	}
 
-	getEmojiPackKeys(): RoomStateGUID[] {
-		if (this.#emojiPackKeys === null) {
-			const emoteRooms = this.accountData.get("im.ponies.emote_rooms") as ImagePackRooms | undefined
+	getEmojiPackKeys(bothKeys: boolean = true): RoomStateGUID[] {
+		if (this.#emojiPackKeys === null || this.#emojiPackLegacyKeys === null) {
+			const emoteRooms = (
+				this.accountData.get("m.image_pack.rooms")
+				?? this.accountData.get("im.ponies.emote_rooms")
+			) as ImagePackRooms | undefined
 			try {
 				const emojiPacks: RoomStateGUID[] = []
+				const legacyKeys: RoomStateGUID[] = []
 				for (const [roomID, packs] of Object.entries(emoteRooms?.rooms ?? {})) {
 					for (const pack of Object.keys(packs)) {
-						emojiPacks.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
+						legacyKeys.push({ room_id: roomID, type: "im.ponies.room_emotes", state_key: pack })
+						emojiPacks.push({ room_id: roomID, type: "m.room.image_pack", state_key: pack })
 					}
 				}
 				this.#emojiPackKeys = emojiPacks
+				this.#emojiPackLegacyKeys = emojiPacks.concat(legacyKeys)
 			} catch (err) {
 				console.warn("Failed to parse emote rooms data", err, emoteRooms)
 				this.#emojiPackKeys = []
+				this.#emojiPackLegacyKeys = []
 			}
 		}
-		return this.#emojiPackKeys
+		return bothKeys ? this.#emojiPackLegacyKeys : this.#emojiPackKeys
 	}
 
 	getRoomEmojiPacks() {
 		if (this.#watchedRoomEmojiPacks === null) {
 			this.#watchedRoomEmojiPacks = Object.fromEntries(
-				this.getEmojiPackKeys()
+				this.getEmojiPackKeys(false)
 					.map(key => {
 						const room = this.rooms.get(key.room_id)
 						if (!room) {
@@ -508,7 +623,7 @@ export class StateStore {
 							console.warn("Failed to find pack", key)
 							return null
 						}
-						return [roomStateGUIDToString(key), pack]
+						return [pack.id, pack]
 					})
 					.filter(pack => !!pack),
 			)
@@ -551,6 +666,13 @@ export class StateStore {
 		if (!evt || typeof evt.content.body !== "string") {
 			return
 		}
+		if (sound) {
+			playSound(room.preferences.notification_sound, room.preferences.notification_sound_volume)
+		}
+		if (window.gomuksDesktop?.getDisableNotifications()) {
+			// Notifications are sent by the main process
+			return
+		}
 		let body = evt.content.body
 		if (body.length > 400) {
 			body = body.slice(0, 350) + " […]"
@@ -560,9 +682,6 @@ export class StateStore {
 		const roomName = room.meta.current.name ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
-		if (sound) {
-			(document.getElementById("default-notification-sound") as HTMLAudioElement)?.play()
-		}
 		const notif = new Notification(title, {
 			body,
 			icon,
@@ -621,6 +740,12 @@ export class StateStore {
 		room.applyTyping(typing.user_ids)
 	}
 
+	clearTyping() {
+		for (const room of this.rooms.values()) {
+			room.clearTyping()
+		}
+	}
+
 	doGarbageCollection() {
 		const maxLastOpened = Date.now() - window.gcSettings.lastOpenedCutoff
 		let deletedEvents = 0
@@ -640,6 +765,7 @@ export class StateStore {
 		this.rooms.clear()
 		this.inviteRooms.clear()
 		this.spaceEdges.clear()
+		this.homeSpace.clearUnreads()
 		this.pseudoSpaces.forEach(space => space.clearUnreads())
 		this.roomList.emit([])
 		this.topLevelSpaces.emit([])
@@ -648,6 +774,7 @@ export class StateStore {
 		this.currentRoomListFilter = null
 		this.#frequentlyUsedEmoji = null
 		this.#emojiPackKeys = null
+		this.#emojiPackLegacyKeys = null
 		this.#watchedRoomEmojiPacks = null
 		this.serverPreferenceCache = {}
 		this.activeRoomID = null

@@ -17,24 +17,25 @@ import { useEffect, useMemo } from "react"
 import { ScaleLoader } from "react-spinners"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
+import SSEClient from "./api/sseclient.ts"
 import { getLocalStoragePreferences } from "./api/types/preferences"
-import WailsClient from "./api/wailsclient.ts"
 import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
 import MainScreen from "./ui/MainScreen.tsx"
 import { LoginScreen, VerificationScreen } from "./ui/login"
-import { LightboxWrapper } from "./ui/modal"
+import { LightboxWrapper, ModalContext, ModalWrapper, NestableModalContext } from "./ui/modal"
 import { useEventAsState } from "./util/eventdispatcher.ts"
 
 function makeRPCClient(): RPCClient {
-	if (window.gomuksDesktop) {
-		return new WailsClient()
-	} else if (window.gomuksWebWasm) {
+	if (window.gomuksWebWasm) {
 		return new WasmClient()
 	}
-	const lb = getLocalStoragePreferences("global_prefs", () => {}).low_bandwidth
-	return new WSClient("_gomuks/websocket", lb ?? false)
+	const prefs = getLocalStoragePreferences("global_prefs", () => {})
+	if (prefs.server_sent_events) {
+		return new SSEClient()
+	}
+	return new WSClient("_gomuks/websocket", prefs.low_bandwidth ?? false)
 }
 
 function App() {
@@ -69,7 +70,7 @@ function App() {
 			{connState.reconnecting && <div>
 				<ScaleLoader width="2rem" height="2rem" color="var(--primary-color)"/>
 				Reconnecting to backend...
-				{connState.nextAttempt ? <div><small>(next attempt at {connState.nextAttempt})</small></div> : null}
+				{connState.nextAttempt ? <div><small>({connState.nextAttempt})</small></div> : null}
 			</div>}
 		</div>
 	</div> : null
@@ -87,9 +88,17 @@ function App() {
 			{msg}
 		</div>
 	} else if (!clientState.is_logged_in) {
-		return <div className="pre-main"><LoginScreen client={client} clientState={clientState}/></div>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<div className="pre-main"><LoginScreen client={client} clientState={clientState}/></div>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else if (!clientState.is_verified) {
-		return <div className="pre-main"><VerificationScreen client={client} clientState={clientState}/></div>
+		return <ModalWrapper ContextType={ModalContext}>
+			<ModalWrapper ContextType={NestableModalContext}>
+				<div className="pre-main"><VerificationScreen client={client} clientState={clientState}/></div>
+			</ModalWrapper>
+		</ModalWrapper>
 	} else {
 		return <ClientContext value={client}>
 			<LightboxWrapper>

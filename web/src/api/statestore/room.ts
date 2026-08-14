@@ -15,11 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
 import { CustomEmojiPack, parseCustomEmojiPack } from "@/util/emoji"
-import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
+import { EventDispatcher, NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
-import { getDisplayname, getRelatesTo, getServerName } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getServerName, getThreadRoot } from "@/util/validation.ts"
 import {
 	ContentURI,
 	DBReceipt,
@@ -39,6 +39,7 @@ import {
 	RoomID,
 	SyncRoom,
 	TimelineRowTuple,
+	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -47,6 +48,7 @@ import {
 } from "../types"
 import FakeCommands from "../types/fakecommands.ts"
 import StandardCommands from "../types/stdcommands.json"
+import type StateCache from "./cache.ts"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {
@@ -81,6 +83,34 @@ function visibleMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
 		meta1.has_member_list === meta2.has_member_list
 }
 
+function tombstoneIsEqual(t1?: TombstoneEventContent, t2?: TombstoneEventContent): boolean {
+	return t1?.body === t2?.body &&
+		t1?.replacement_room === t2?.replacement_room
+}
+
+function otherMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
+	return meta1.preview_event_rowid === meta2.preview_event_rowid &&
+		meta1.sorting_timestamp === meta2.sorting_timestamp &&
+		meta1.unread_highlights === meta2.unread_highlights &&
+		meta1.unread_notifications === meta2.unread_notifications &&
+		meta1.unread_messages === meta2.unread_messages &&
+		meta1.marked_unread === meta2.marked_unread &&
+		tombstoneIsEqual(meta1.tombstone, meta2.tombstone)
+}
+
+function memToRawEvent(evt: MemDBEvent): RawDBEvent {
+	const content = evt.orig_content ?? evt.content
+	const { mem, pending, viewing_redacted, ...rest } = evt
+	return {
+		...rest,
+		decrypted: evt.encrypted ? content : undefined,
+		content: evt.encrypted ?? content,
+		local_content: evt.orig_local_content ?? evt.local_content,
+		type: evt.encrypted ? "m.room.encrypted" : evt.type,
+		decrypted_type: evt.encrypted ? evt.type : undefined,
+	}
+}
+
 export interface AutocompleteMemberEntry {
 	userID: UserID
 	displayName: string
@@ -97,8 +127,8 @@ function isInThread(evt: MemDBEvent, threadRoot?: EventID | null): boolean {
 	if (!threadRoot) {
 		return false
 	}
-	const rel = getRelatesTo(evt)
-	return rel?.rel_type === "m.thread" && rel?.event_id === threadRoot
+	const expectedRoot = getThreadRoot(getRelatesTo(evt))
+	return !!expectedRoot && expectedRoot === threadRoot
 }
 
 export const fakeGomuksSender: UserID = "@gomuks"
@@ -138,6 +168,7 @@ export class RoomStateStore {
 	readonly eventsByRowID: Map<EventRowID, MemDBEvent> = new Map()
 	readonly eventsByID: Map<EventID, MemDBEvent> = new Map()
 	readonly timelineSub = new Subscribable()
+	readonly newTimelineEventSub = new EventDispatcher<MemDBEvent | null>()
 	readonly typingSub = new Subscribable()
 	readonly stateSubs = new MultiSubscribable()
 	readonly eventSubs = new MultiSubscribable()
@@ -145,11 +176,13 @@ export class RoomStateStore {
 	readonly receiptsByUserID: Map<UserID, MemReceipt> = new Map()
 	readonly receiptSubs = new MultiSubscribable()
 	readonly requestedEvents: Set<EventID> = new Set()
+	readonly requestedEventRowIDs: Set<EventRowID> = new Set()
 	readonly requestedMembers: Set<UserID> = new Set()
 	readonly accountData: Map<string, UnknownEventContent> = new Map()
 	readonly accountDataSubs = new MultiSubscribable()
 	readonly openNotifications: Map<EventRowID, Notification> = new Map()
 	readonly #emojiPacksCache: Map<string, CustomEmojiPack | null> = new Map()
+	readonly imagePackSub = new Subscribable()
 	readonly preferences: Required<Preferences>
 	readonly localPreferenceCache: Preferences
 	readonly preferenceSub = new NoDataSubscribable()
@@ -225,7 +258,10 @@ export class RoomStateStore {
 
 	getEmojiPack(key: string): CustomEmojiPack | null {
 		if (!this.#emojiPacksCache.has(key)) {
-			const packEvt = this.getStateEvent("im.ponies.room_emotes", key)
+			let packEvt = this.getStateEvent("m.room.image_pack", key)
+			if (!packEvt) {
+				packEvt = this.getStateEvent("im.ponies.room_emotes", key)
+			}
 			if (!packEvt || packEvt?.redacted_by || !packEvt?.content?.images) {
 				this.#emojiPacksCache.set(key, null)
 				return null
@@ -234,7 +270,7 @@ export class RoomStateStore {
 				? this.meta.current.name : `${this.meta.current.name} - ${key}`
 			const packID = roomStateGUIDToString({
 				room_id: this.roomID,
-				type: "im.ponies.room_emotes",
+				type: packEvt.type,
 				state_key: key,
 			})
 			this.#emojiPacksCache.set(key, parseCustomEmojiPack(packEvt.content as ImagePack, packID, fallbackName))
@@ -244,13 +280,15 @@ export class RoomStateStore {
 
 	getAllEmojiPacks(): Record<string, CustomEmojiPack> {
 		if (this.#allPacksCache === null) {
+			const keys = [
+				...(this.state.get("im.ponies.room_emotes")?.keys() ?? []),
+				...(this.state.get("m.room.image_pack")?.keys() ?? []),
+			]
 			this.#allPacksCache = Object.fromEntries(
-				this.state.get("im.ponies.room_emotes")?.keys()
-					.map(stateKey => {
-						const pack = this.getEmojiPack(stateKey)
-						return pack ? [pack.id, pack] : null
-					})
-					.filter((res): res is [string, CustomEmojiPack] => !!res) ?? [],
+				keys.map(stateKey => {
+					const pack = this.getEmojiPack(stateKey)
+					return pack ? [pack.id, pack] : null
+				}).filter((res): res is [string, CustomEmojiPack] => !!res),
 			)
 		}
 		return this.#allPacksCache
@@ -294,20 +332,28 @@ export class RoomStateStore {
 		const createEvt = this.getStateEvent("m.room.create", "")
 		const membersCache = memberEvtIDs.values()
 			.map(rowID => this.eventsByRowID.get(rowID))
-			.filter((evt): evt is MemDBEvent => !!evt &&
-				(evt.content.membership === "join" || evt.content.membership === "invite"))
+			.filter((evt): evt is MemDBEvent => !!evt && (
+				evt.content.membership === "join"
+				|| evt.content.membership === "invite"
+				|| evt.content.membership === "knock"
+			))
 			.map((evt): AutocompleteMemberEntry => ({
 				userID: evt.state_key!,
 				displayName: getDisplayname(evt.state_key!, evt.content as MemberEventContent),
 				avatarURL: evt.content?.avatar_url,
-				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)}`),
+				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)} ${
+					evt.content.membership !== "join" ? evt.content.membership : ""}`),
 				event: evt,
 			}))
 			.toArray()
 		membersCache.sort((a, b) => {
+			const aKnocked = a.event.content.membership === "knock"
+			const bKnocked = b.event.content.membership === "knock"
 			const aPower = getUserLevel(powerLevels, createEvt, a.userID)
 			const bPower = getUserLevel(powerLevels, createEvt, b.userID)
-			if (aPower !== bPower) {
+			if (aKnocked !== bKnocked) {
+				return aKnocked ? 1 : -1
+			} else if (aPower !== bPower) {
 				return bPower - aPower
 			} else if (a.displayName === b.displayName) {
 				return a.userID.localeCompare(b.userID)
@@ -470,8 +516,8 @@ export class RoomStateStore {
 		if (viewRedacted) {
 			memEvt.viewing_redacted = true
 		}
-		if (evt.type === "m.room.encrypted" && evt.decrypted && evt.decrypted_type) {
-			memEvt.type = evt.decrypted_type
+		if (evt.type === "m.room.encrypted" && evt.decrypted) {
+			memEvt.type = evt.decrypted_type ?? ""
 			memEvt.encrypted = evt.content as EncryptedEventContent
 			memEvt.content = evt.decrypted
 		}
@@ -500,6 +546,7 @@ export class RoomStateStore {
 			}
 		}
 		this.requestedEvents.delete(memEvt.event_id)
+		this.requestedEventRowIDs.delete(memEvt.rowid)
 		if (!pending) {
 			const pendingIdx = this.pendingEvents.indexOf(memEvt.rowid)
 			if (pendingIdx !== -1) {
@@ -520,10 +567,11 @@ export class RoomStateStore {
 	}
 
 	invalidateStateCaches(evtType: string, key: string) {
-		if (evtType === "im.ponies.room_emotes") {
+		if (evtType === "im.ponies.room_emotes" || evtType === "m.room.image_pack") {
 			this.#emojiPacksCache.delete(key)
 			this.#allPacksCache = null
 			this.parent.invalidateEmojiPacksCache()
+			this.imagePackSub.notify()
 		} else if (evtType === "m.room.member") {
 			this.#membersCache = null
 			this.#allCommandsCache = null
@@ -544,15 +592,20 @@ export class RoomStateStore {
 		)
 	}
 
-	applySync(sync: SyncRoom) {
-		if (sync.meta.dm_user_id === "") {
+	applySync(sync: SyncRoom, isNewRoom: boolean) {
+		if (sync.meta?.dm_user_id === "") {
 			sync.meta.dm_user_id = undefined
 		}
-		if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
-			this.meta.current = sync.meta
-		} else {
-			this.searchString = this.#makeSearchString(sync.meta)
-			this.meta.emit(sync.meta)
+		let metaChanged = false
+		if (sync.meta) {
+			if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
+				metaChanged = isNewRoom || !otherMetaIsEqual(this.meta.current, sync.meta)
+				this.meta.current = sync.meta
+			} else {
+				metaChanged = true
+				this.searchString = this.#makeSearchString(sync.meta)
+				this.meta.emit(sync.meta)
+			}
 		}
 		for (const ad of Object.values(sync.account_data ?? {})) {
 			if (ad.type === "fi.mau.gomuks.preferences") {
@@ -561,6 +614,7 @@ export class RoomStateStore {
 			}
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
+			this.parent.stateCache?.setRoomAccountData(ad)
 		}
 		for (const evt of sync.events ?? []) {
 			this.applyEvent(evt)
@@ -586,12 +640,13 @@ export class RoomStateStore {
 			this.stateSubs.notify(evtType)
 		}
 		if (sync.reset) {
+			this.newTimelineEventSub.emit(null)
 			this.timeline = sync.timeline ?? []
 			this.pendingEvents.splice(0, this.pendingEvents.length)
 		} else if (sync.timeline) {
 			this.timeline.push(...sync.timeline)
 		}
-		if (sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
+		if (sync.meta && sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
 			for (const notif of this.openNotifications.values()) {
 				notif.close()
 			}
@@ -602,7 +657,7 @@ export class RoomStateStore {
 			this.applyReceipts(receipts, evtID, false)
 		}
 		if (
-			(hasWidgets || this.#threadListener)
+			(hasWidgets || this.#threadListener || this.newTimelineEventSub.hasListeners)
 			&& ((sync.timeline && sync.timeline.length > 0) || newState.length > 0 || (sync.sticky?.length ?? 0) > 0)
 		) {
 			const stickyEvts = sync.sticky?.map(rowID => this.eventsByRowID.get(rowID)).filter(evt => !!evt)
@@ -610,11 +665,49 @@ export class RoomStateStore {
 			if (this.#threadListener && this.#threadListenerRoot && evts) {
 				this.#threadListener(evts.filter(evt => isInThread(evt, this.#threadListenerRoot)))
 			}
+			if (evts && this.newTimelineEventSub.hasListeners) {
+				for (const evt of evts) {
+					this.newTimelineEventSub.emit(evt)
+				}
+			}
 			this.parent.widgetListeners.forEach(listener => {
 				stickyEvts?.forEach(listener.onTimelineEvent)
 				evts?.forEach(listener.onTimelineEvent)
 				newState.forEach(listener.onStateEvent)
 			})
+		}
+		if (this.parent.stateCache && metaChanged) {
+			this.parent.stateCache.setRoom(this.getStateForCache())
+		}
+	}
+
+	getStateForCache(): Parameters<StateCache["setRoom"]>[0] {
+		// This should be roughly in sync with pkg/hicli/init.go's getInitialSyncRoom
+		const meta = this.meta.current
+		const events: RawDBEvent[] = []
+		const state: SyncRoom["state"] = {}
+		const previewEvent = meta.preview_event_rowid && this.eventsByRowID.get(meta.preview_event_rowid)
+		if (previewEvent) {
+			events.push(memToRawEvent(previewEvent))
+			const previewMember = this.getStateEvent("m.room.member", previewEvent?.sender ?? "")
+			if (previewMember) {
+				events.push(memToRawEvent(previewMember))
+				const stateMap = state[previewMember.type] ?? {}
+				stateMap[previewMember.state_key!] = previewMember.rowid
+				state[previewMember.type] = stateMap
+			}
+			if (previewEvent.last_edit) {
+				events.push(memToRawEvent(previewEvent.last_edit))
+			}
+		}
+		return { meta, state, events }
+	}
+
+	removeFailedEvent(evt: MemDBEvent) {
+		const evtIdx = this.pendingEvents.indexOf(evt.rowid)
+		if (evtIdx >= 0) {
+			this.pendingEvents.splice(evtIdx, 1)
+			this.notifyTimelineSubscribers()
 		}
 	}
 
@@ -677,6 +770,9 @@ export class RoomStateStore {
 				this.stateSubs.notify(this.stateSubKey(evtType, key))
 			}
 			this.stateSubs.notify(evtType)
+			if (evtType === "m.room.image_pack" || evtType === "im.ponies.room_emotes") {
+				this.imagePackSub.notify()
+			}
 		}
 	}
 
@@ -691,12 +787,19 @@ export class RoomStateStore {
 		}
 		if (decrypted.preview_event_rowid) {
 			this.meta.current.preview_event_rowid = decrypted.preview_event_rowid
+			this.parent.stateCache?.setRoom(this.getStateForCache())
 		}
 	}
 
 	applyTyping(users: string[]) {
 		this.typing = users
 		this.typingSub.notify()
+	}
+
+	clearTyping() {
+		if (this.typing.length) {
+			this.applyTyping([])
+		}
 	}
 
 	doGarbageCollection() {
@@ -725,10 +828,17 @@ export class RoomStateStore {
 				}
 			}) ?? [],
 		))
-		const emotes = this.state.get("im.ponies.room_emotes")
+		const emotes = this.state.get("m.room.image_pack")
 		if (emotes) {
-			newState.set("im.ponies.room_emotes", emotes)
+			newState.set("m.room.image_pack", emotes)
 			for (const rowid of emotes.values()) {
+				eventsToKeep.add(rowid)
+			}
+		}
+		const oldEmotes = this.state.get("im.ponies.room_emotes")
+		if (oldEmotes) {
+			newState.set("im.ponies.room_emotes", oldEmotes)
+			for (const rowid of oldEmotes.values()) {
 				eventsToKeep.add(rowid)
 			}
 		}

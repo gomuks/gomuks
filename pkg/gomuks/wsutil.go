@@ -17,7 +17,6 @@
 package gomuks
 
 import (
-	"compress/flate"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/klauspost/compress/flate"
 
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )

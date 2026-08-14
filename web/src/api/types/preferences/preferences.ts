@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { isMobileDevice } from "@/util/ismobile.ts"
 import type { ContentURI, RoomType } from "../../types"
 import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
 
@@ -213,13 +214,13 @@ export const preferences = {
 		displayName: "Right-click menu on messages",
 		description: "Show a context menu when right-clicking on messages.",
 		allowedContexts: anyContext,
-		defaultValue: true,
+		defaultValue: !isMobileDevice,
 	}),
 	ctrl_enter_send: new Preference<boolean>({
 		displayName: "Use Ctrl+Enter to send",
 		description: "Disable sending on enter and use Ctrl+Enter for sending instead",
 		allowedContexts: anyContext,
-		defaultValue: false,
+		defaultValue: isMobileDevice,
 	}),
 	refocus_input_after_send: new Preference<boolean>({
 		displayName: "Re-focus composer after send",
@@ -239,35 +240,61 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
+	pin_low_priority: new Preference<boolean>({
+		displayName: "Pin low priority to bottom",
+		description: "Always keep low priority at the bottom of the room list, ignoring recent activity.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
+	mute_low_priority: new Preference<boolean>({
+		displayName: "No unreads in low priority",
+		description: "Disable the unread message counter in low priority rooms. Notifications and highlights are still counted.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
 	alphabetical_order: new Preference<boolean>({
 		displayName: "Alphabetical room list",
 		description: "Sort rooms by name instead of recent activity.",
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
-	custom_notification_sound: new Preference<ContentURI>({
-		displayName: "Custom notification sound",
+	notification_sound: new Preference<ContentURI>({
+		displayName: "Notification sound",
 		description: "The mxc:// URI to a custom notification sound.",
 		allowedContexts: anyContext,
-		defaultValue: "",
+		defaultValue: "sounds/bright.flac",
+		hidden: Boolean(window.gomuksAndroid),
+	}),
+	notification_sound_volume: new Preference<number>({
+		displayName: "Notification sound volume",
+		description: "The volume at which to play notification sounds.",
+		allowedContexts: anyContext,
+		defaultValue: 100,
+		minValue: 0,
+		maxValue: 100,
+		numberType: "range",
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	room_window_title: new Preference<string>({
 		displayName: "In-room window title",
 		description: "The title to use for the window when viewing a room. $room will be replaced with the room name",
 		allowedContexts: anyContext,
 		defaultValue: "$room - gomuks web",
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	window_title: new Preference<string>({
 		displayName: "Default window title",
 		description: "The title to use for the window when not in a room.",
 		allowedContexts: anyGlobalContext,
 		defaultValue: "gomuks web",
+		hidden: Boolean(window.gomuksAndroid),
 	}),
 	favicon: new Preference<string>({
 		displayName: "Favicon",
 		description: "The URL to use for the favicon.",
 		allowedContexts: anyContext,
 		defaultValue: "gomuks.png",
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
 	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",
@@ -282,14 +309,21 @@ export const preferences = {
 		description: "Whether to enable bandwidth saving features. Refresh to apply changes.",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksDesktop?.isEmbedded() || window.gomuksWebWasm),
+	}),
+	server_sent_events: new Preference<boolean>({
+		displayName: "Use SSE",
+		description: "Use server-sent events instead of a websocket. Refresh to apply changes.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: false,
+		hidden: Boolean(window.gomuksWebWasm),
 	}),
 	web_push: new Preference<boolean>({
 		displayName: "Web push notifications",
 		description: "Whether to enable web push for background notifications. Refresh to apply changes.",
 		allowedContexts: globalDeviceSpecific,
 		defaultValue: false,
-		hidden: window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm,
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop || window.gomuksWebWasm),
 	}),
 } as const
 

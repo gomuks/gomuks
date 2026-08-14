@@ -7,8 +7,11 @@
 package jsoncmd
 
 import (
+	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -31,6 +34,12 @@ type ProfileEncryptionInfo struct {
 	Errors         []string         `json:"errors"`
 }
 
+type GetOwnDevicesResponse struct {
+	Encryption    *ProfileEncryptionInfo   `json:"encryption"`
+	Devices       []mautrix.RespDeviceInfo `json:"devices"`
+	CurrentDevice *ProfileDevice           `json:"current_device"`
+}
+
 type PaginationResponse struct {
 	Events        []*database.Event                  `json:"events"`
 	Receipts      map[id.EventID][]*database.Receipt `json:"receipts"`
@@ -49,10 +58,32 @@ type EventContextResponse struct {
 
 type ManualPaginationResponse struct {
 	Events    []*database.Event `json:"events"`
-	NextBatch string            `json:"next_batch"`
+	NextBatch string            `json:"next_batch,omitempty"`
 }
 
 type RecoveryKeyResponse struct {
-	RecoveryKey    string                   `json:"recovery_key"`
-	PassphraseMeta *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
+	RecoveryKey      string                   `json:"recovery_key"`
+	CrossSigningKeys crypto.CrossSigningSeeds `json:"cross_signing_keys"`
+	PassphraseMeta   *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
+}
+
+type LoginFlowsResponse struct {
+	*mautrix.RespLoginFlows
+	OAuth *oauth.ServerMetadata `json:"oauth,omitempty"`
+}
+
+type DownloadMediaResponse struct {
+	*database.Media
+	Path          string `json:"path"`
+	ThumbnailPath string `json:"thumbnail_path,omitempty"`
+}
+
+type ProfileBio struct {
+	HTML       string `json:"html"`
+	EditSource string `json:"edit_source,omitempty"`
+}
+
+type GetProfileResponse struct {
+	Profile *mautrix.RespUserProfile `json:"profile"`
+	Bio     *ProfileBio              `json:"bio,omitempty"`
 }

@@ -372,6 +372,36 @@ export interface LocationMessageEventContent extends BaseMessageEventContent {
 
 export type MessageEventContent = TextMessageEventContent | MediaMessageEventContent | LocationMessageEventContent
 
+export interface LegacyMSC1767Text {
+	"org.matrix.msc1767.text"?: string
+	"org.matrix.msc1767.message"?: {
+		mimetype?: string
+		body: string
+	}[]
+}
+
+export type PollKind = "org.matrix.msc3381.poll.disclosed" | "org.matrix.msc3381.poll.undisclosed"
+
+export interface PollOption extends LegacyMSC1767Text {
+	id: string
+}
+
+export interface PollStartEventContent extends LegacyMSC1767Text {
+	"org.matrix.msc3381.poll.start": {
+		answers: PollOption[]
+		kind: PollKind
+		max_selections: number
+		question: LegacyMSC1767Text
+	}
+}
+
+export interface PollResponseEventContent {
+	"m.relates_to": RelatesTo
+	"org.matrix.msc3381.poll.response": {
+		answers: string[]
+	}
+}
+
 export type ImagePackUsage = "emoticon" | "sticker"
 
 export interface ImagePackEntry {
@@ -488,6 +518,13 @@ export interface RespTurnServer {
 	uris: string[]
 }
 
+export interface RespRTCTransports {
+	rtc_transports: {
+		type: "livekit"
+		livekit_service_url?: string
+	}[]
+}
+
 export interface RespMediaConfig {
 	"m.upload.size": number
 	[key: string]: unknown
@@ -515,4 +552,86 @@ export interface Capabilities {
 }
 export interface RespCapabilities {
 	capabilities: Capabilities
+}
+
+export type PushRuleKind = "override" | "content" | "sender" | "room" | "underride"
+
+export interface PushRulesEventContent {
+	global: {
+		override: RidePushRule
+		content: ContentPushRule
+		sender: SenderPushRule
+		room: RoomPushRule
+		underride: RidePushRule
+	}
+}
+
+interface BasePushRule {
+	rule_id: string
+	default: boolean
+	enabled: boolean
+	actions: PushRuleAction[]
+}
+
+export interface RidePushRule extends BasePushRule {
+	conditions: PushRuleCondition[]
+}
+
+export interface SenderPushRule extends BasePushRule {
+	rule_id: UserID
+}
+
+export interface RoomPushRule extends BasePushRule {
+	rule_id: RoomID
+}
+
+export interface ContentPushRule extends BasePushRule {
+	pattern: string
+}
+
+export type PushRule = RidePushRule | SenderPushRule | RoomPushRule | ContentPushRule
+
+export type PushRuleCondition = {
+	kind: "event_match"
+	key: string
+	pattern: string
+} | {
+	kind: "event_property_is" | "event_property_contains"
+	key: string
+	value: string | number | boolean | null
+} | {
+	kind: "contains_display_name"
+} | {
+	kind: "room_member_count"
+	is: string
+} | {
+	kind: "sender_notification_permission"
+	key: string
+}
+
+export type UnknownPushRuleCondition = PushRuleCondition | {
+	kind: string
+	[key: string]: unknown
+}
+
+export type PushRuleAction = "notify" | {
+	set_tweak: "sound"
+	value: string
+} | {
+	set_tweak: "highlight"
+	value?: boolean
+}
+
+export interface PutPushRuleRequest {
+	actions: PushRuleAction[]
+	conditions?: UnknownPushRuleCondition[]
+	pattern?: string
+}
+
+export interface JoinRulesEventContent {
+	join_rule: JoinRule
+	allow?: {
+		type: "m.room_membership"
+		room_id: RoomID
+	}[]
 }

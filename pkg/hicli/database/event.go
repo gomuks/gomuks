@@ -45,7 +45,7 @@ const (
 		WHERE room_id = $1 AND timestamp > $2 AND sticky_duration IS NOT NULL AND timestamp + sticky_duration > $3
 	`
 	getRelatedEventsQuery = getEventBaseQuery + `
-		WHERE room_id = $1 AND relates_to = $2 AND ($3 = '' OR relation_type = $3)
+		WHERE room_id = $1 AND relates_to = $2 AND ($3 = '' OR relation_type = $3) AND ($4 = '' OR type = $4)
 		ORDER BY timestamp ASC
 	`
 	getMentionEventsQuery = getEventBaseQuery + `
@@ -98,13 +98,13 @@ const (
 	getEventEditRowIDsQuery = `
 		SELECT main.event_id, edit.rowid
 		FROM event main
-		JOIN event edit ON
+		JOIN event edit INDEXED BY event_relates_to_idx ON
 			edit.room_id = main.room_id
 			AND edit.relates_to = main.event_id
 			AND edit.relation_type = 'm.replace'
-		AND edit.type = main.type
-		AND edit.sender = main.sender
-		AND edit.redacted_by IS NULL
+			AND edit.type = main.type
+			AND edit.sender = main.sender
+			AND edit.redacted_by IS NULL
 		WHERE main.room_id = ? AND main.event_id IN (%s)
 		ORDER BY main.event_id, edit.timestamp
 	`
@@ -138,8 +138,8 @@ func (eq *EventQuery) GetByRowID(ctx context.Context, rowID EventRowID) (*Event,
 	return eq.QueryOne(ctx, getEventByRowID, rowID)
 }
 
-func (eq *EventQuery) GetRelatedEvents(ctx context.Context, roomID id.RoomID, eventID id.EventID, relationType event.RelationType) ([]*Event, error) {
-	return eq.QueryMany(ctx, getRelatedEventsQuery, roomID, eventID, relationType)
+func (eq *EventQuery) GetRelatedEvents(ctx context.Context, roomID id.RoomID, eventID id.EventID, relationType event.RelationType, eventType string) ([]*Event, error) {
+	return eq.QueryMany(ctx, getRelatedEventsQuery, roomID, eventID, relationType, eventType)
 }
 
 func (eq *EventQuery) GetMentions(ctx context.Context, ts time.Time, unreadType UnreadType, limit int, roomID id.RoomID) ([]*Event, error) {
@@ -147,6 +147,77 @@ func (eq *EventQuery) GetMentions(ctx context.Context, ts time.Time, unreadType 
 		return eq.QueryMany(ctx, getMentionEventsInRoomQuery, ts.UnixMilli(), unreadType, limit, roomID)
 	}
 	return eq.QueryMany(ctx, getMentionEventsQuery, ts.UnixMilli(), unreadType, limit)
+}
+
+func (eq *EventQuery) Search(
+	ctx context.Context,
+	matches, like string,
+	rooms []id.RoomID,
+	senders []id.UserID,
+	minTime, maxTime time.Time,
+	includeRedacted bool,
+	orderByTimeOnly bool,
+	limit, offset int,
+) ([]*Event, error) {
+	args := make([]any, 0, len(rooms)+len(senders)+6)
+
+	query := getEventBaseQuery
+	wheres := make([]string, 0, 6)
+	if matches != "" {
+		query += " JOIN event_search ON event.rowid=event_search.rowid"
+		wheres = append(wheres, "event_search MATCH ?")
+		args = append(args, matches)
+	}
+	if like != "" {
+		wheres = append(wheres, "COALESCE(decrypted, content) LIKE ('%' || ? || '%') COLLATE NOCASE ESCAPE '\\'")
+		args = append(args, like)
+	}
+	if len(rooms) > 0 {
+		wheres = append(wheres, fmt.Sprintf("room_id IN (%s)", strings.TrimSuffix(strings.Repeat("?,", len(rooms)), ",")))
+		for _, room := range rooms {
+			args = append(args, room)
+		}
+	}
+	if len(senders) > 0 {
+		wheres = append(wheres, fmt.Sprintf("sender IN (%s)", strings.TrimSuffix(strings.Repeat("?,", len(senders)), ",")))
+		for _, sender := range senders {
+			args = append(args, sender)
+		}
+	}
+	if !minTime.IsZero() {
+		wheres = append(wheres, "timestamp >= ?")
+		args = append(args, minTime.UnixMilli())
+	}
+	if !maxTime.IsZero() {
+		wheres = append(wheres, "timestamp <= ?")
+		args = append(args, maxTime.UnixMilli())
+	}
+	if !includeRedacted {
+		wheres = append(wheres, "redacted_by IS NULL")
+	}
+	if len(wheres) == 0 {
+		return nil, fmt.Errorf("at least one filter must be provided")
+	}
+	query += " WHERE " + strings.Join(wheres, " AND ")
+
+	if matches != "" && !orderByTimeOnly {
+		query += " ORDER BY rank ASC, timestamp DESC"
+	} else {
+		query += " ORDER BY timestamp DESC"
+	}
+
+	if limit <= 0 {
+		limit = 100
+	} else if limit > 10000 {
+		limit = 10000
+	}
+	query += " LIMIT ?"
+	args = append(args, limit)
+	if offset > 0 {
+		query += " OFFSET ?"
+		args = append(args, offset)
+	}
+	return eq.QueryMany(ctx, query, args...)
 }
 
 func (eq *EventQuery) GetByRowIDs(ctx context.Context, rowIDs ...EventRowID) ([]*Event, error) {

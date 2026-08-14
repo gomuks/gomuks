@@ -24,6 +24,7 @@ import type {
 	MemDBEvent,
 	MemReceipt,
 	MemberEventContent,
+	RoomStateGUID,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -33,10 +34,10 @@ import type { StateStore } from "./main.ts"
 import type { AutocompleteMemberEntry, RoomStateStore } from "./room.ts"
 import type { SpaceEdgeStore } from "./space.ts"
 
-export function useRoomTimeline(room: RoomStateStore): (MemDBEvent | null)[] {
+export function useRoomTimeline(room: RoomStateStore | undefined): (MemDBEvent | null)[] {
 	return useSyncExternalStore(
-		room.timelineSub.subscribe,
-		() => room.timelineCache,
+		room ? room.timelineSub.subscribe : noopSubscribe,
+		() => room?.timelineCache ?? emptyArray,
 	)
 }
 
@@ -217,7 +218,7 @@ export function useCustomEmojis(
 		() => ss.getRoomEmojiPacks(),
 	)
 	const specialRoomPacks = useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.preferences.show_room_emoji_packs ? room.getAllEmojiPacks() : emptyObject,
 	)
 	return useMemo(() => {
@@ -226,9 +227,16 @@ export function useCustomEmojis(
 	}, [watchedRoomPacks, specialRoomPacks, usage])
 }
 
+export function useSubscribedPacks(ss: StateStore, bothKeys: boolean = true): RoomStateGUID[] {
+	return useSyncExternalStore(
+		ss.emojiRoomsSub.subscribe,
+		() => ss.getEmojiPackKeys(bothKeys),
+	)
+}
+
 export function useRoomImagePacks(room: RoomStateStore): Record<string, CustomEmojiPack> {
 	return useSyncExternalStore<Record<string, CustomEmojiPack>>(
-		room.stateSubs.getSubscriber("im.ponies.room_emotes"),
+		room.imagePackSub.subscribe,
 		() => room.getAllEmojiPacks(),
 	)
 }

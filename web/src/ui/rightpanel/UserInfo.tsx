@@ -17,14 +17,13 @@ import { JSX, use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
 import { getAvatarURL } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
-import { UserID, UserProfile } from "@/api/types"
+import { GetProfileResponse, UserID } from "@/api/types"
 import { ensureString, getLocalpart, getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext } from "../modal"
 import { RoomContext } from "../roomview/roomcontext.ts"
 import UserExtendedProfile from "./UserExtendedProfile.tsx"
 import DeviceList from "./UserInfoDeviceList.tsx"
-import UserInfoError from "./UserInfoError.tsx"
 import MutualRooms from "./UserInfoMutualRooms.tsx"
 import UserModeration from "./UserModeration.tsx"
 
@@ -38,7 +37,8 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	const openLightbox = use(LightboxContext)!
 	const memberEvt = useRoomMember(client, roomCtx?.store, userID)
 	const member = maybeRedactMemberEvent(memberEvt)
-	const [globalProfile, setGlobalProfile] = useState<UserProfile | null>(null)
+	const [globalProfile, setGlobalProfile] = useState<GetProfileResponse | null>(null)
+	const [loadingGlobalProfile, setLoadingGlobalProfile] = useState(false)
 	const [errors, setErrors] = useState<string[] | null>(null)
 	const refreshProfile = useCallback((clearState = false) => {
 		if (userID === fakeGomuksSender) {
@@ -48,15 +48,15 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			setErrors(null)
 			setGlobalProfile(null)
 		}
+		setLoadingGlobalProfile(true)
 		client.rpc.getProfile(userID).then(
 			setGlobalProfile,
 			err => setErrors([`${err}`]),
-		)
+		).finally(() => setLoadingGlobalProfile(false))
 	}, [userID, client])
 	useEffect(() => refreshProfile(true), [refreshProfile])
-	const displayname = ensureString(member?.displayname)
-		|| ensureString(globalProfile?.displayname)
-		|| getLocalpart(userID)
+	const renderedProfile = member ?? globalProfile?.profile
+	const displayname = ensureString(renderedProfile?.displayname) || getLocalpart(userID)
 	const fakeUser = userID === fakeGomuksSender
 	let reactUserID: JSX.Element | string
 	if (fakeUser) {
@@ -66,14 +66,14 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	}
 	return <>
 		<div className="avatar-container">
-			{member === null && globalProfile === null && errors == null ? <PuffLoader
+			{!renderedProfile && errors == null ? <PuffLoader
 				color="var(--primary-color)"
 				size="100%"
 				className="avatar-loader"
 			/> : <img
 				className="avatar"
 				// this is a big avatar (236px by default), use full resolution
-				src={getAvatarURL(userID, member ?? globalProfile)}
+				src={getAvatarURL(userID, renderedProfile)}
 				onClick={openLightbox}
 				alt=""
 			/>}
@@ -87,17 +87,20 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			such as command responses.
 		</div>}
 		{!fakeUser && <UserExtendedProfile
-			profile={globalProfile}
+			room={roomCtx?.store}
+			profileResp={globalProfile}
 			refreshProfile={refreshProfile}
+			memberEvt={memberEvt}
 			client={client}
 			userID={userID}
+			loading={loadingGlobalProfile}
+			errors={errors}
 		/>}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
-			<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
 		</>}
-		<UserInfoError errors={errors}/>
+		{!fakeUser && <UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>}
 	</>
 }
 

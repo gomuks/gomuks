@@ -44,8 +44,7 @@ func (h *HiClient) uploadKeysToBackup(ctx context.Context) {
 		}
 		err = h.CryptoStore.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 			for _, sess := range chunk {
-				sess.KeyBackupVersion = version
-				err := h.CryptoStore.PutGroupSession(ctx, sess)
+				err := h.CryptoStore.SetGroupSessionKeyBackupVersion(ctx, sess.ID(), version)
 				if err != nil {
 					return err
 				}
@@ -81,8 +80,9 @@ func (h *HiClient) uploadKeyBackupBatch(ctx context.Context, version id.KeyBacku
 			SenderClaimedKeys: backup.SenderClaimedKeys{
 				Ed25519: session.SigningKey,
 			},
-			SenderKey:  session.SenderKey,
-			SessionKey: string(sessionKey),
+			SenderKey:     session.SenderKey,
+			SessionKey:    string(sessionKey),
+			SharedHistory: session.SharedHistory,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to encrypt session data: %w", err)
@@ -221,10 +221,10 @@ func (h *HiClient) RestoreKeyBackup(
 	progress.Stage = "saving"
 	progressCallback(progress)
 	for chunk := range slices.Chunk(entries, persistChunkSize) {
-		err := h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
+		persistChunk := func(ctx context.Context) error {
 			for _, entry := range chunk {
 				progress.CurrentRoomID = entry.RoomID
-				err := h.CryptoStore.PutGroupSession(ctx, entry.Entry)
+				err := h.Crypto.StoreGroupSession(ctx, entry.Entry)
 				if err != nil {
 					log.Err(err).
 						Stringer("key_backup_version", h.KeyBackupVersion).
@@ -232,12 +232,14 @@ func (h *HiClient) RestoreKeyBackup(
 						Stringer("session_id", entry.SessionID).
 						Msg("Failed to save session data")
 					return err
-				} else {
-					progress.Saved++
 				}
+				progress.Saved++
 				debouncedProgressCallback()
 			}
 			return nil
+		}
+		err := h.withEventDecryptionLock(ctx, "", true, func(ctx context.Context) error {
+			return h.DB.DoTxn(ctx, nil, persistChunk)
 		})
 		if err != nil {
 			return fmt.Errorf("failed to persist decrypted entries: %w", err)

@@ -13,20 +13,22 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, use, useState } from "react"
+import React, { JSX, use, useState } from "react"
+import { MoonLoader } from "react-spinners"
 import Client from "@/api/client.ts"
-import { RoomStateStore, useRoomTimeline } from "@/api/statestore"
-import { MemDBEvent, MembershipAction } from "@/api/types"
-import { useRoomContext } from "@/ui/roomview/roomcontext.ts"
-import { getUserLevel } from "@/util/powerlevel.ts"
+import { RoomStateStore, useRoomState } from "@/api/statestore"
+import { MemDBEvent, MembershipAction, PowerLevelEventContent } from "@/api/types"
+import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { getPowerLevels } from "../menu/util.ts"
 import { BulkRedactModal, ConfirmWithMessageModal, ModalContext } from "../modal"
 import StartDMButton from "./StartDMButton.tsx"
 import UserIgnoreButton from "./UserIgnoreButton.tsx"
+import CheckIcon from "@/icons/check.svg?react"
 import DeleteIcon from "@/icons/delete.svg?react"
 import BanIcon from "@/icons/gavel.svg?react"
 import InviteIcon from "@/icons/person-add.svg?react"
 import KickIcon from "@/icons/person-remove.svg?react"
+import PowerLevelIcon from "@/icons/shield-person.svg?react"
 
 interface UserModerationProps {
 	userID: string;
@@ -35,27 +37,25 @@ interface UserModerationProps {
 	member: MemDBEvent | null;
 }
 
+const powerSlider = !!localStorage.gomuks_power_slider
+
 const UserModeration = ({ userID, client, member, room }: UserModerationProps) => {
 	const openModal = use(ModalContext)
-	const roomCtx = useRoomContext()
-	const timeline = useRoomTimeline(roomCtx.store)
 	const [redactRemaining, setRedactRemaining] = useState<number>(0)
+	const [modifiedPL, setModifiedPL] = useState<number | null>(null)
+	const [powerLoading, setPowerLoading] = useState<boolean>(false)
+	useRoomState(room, "m.room.power_levels")
+	if (!room) {
+		return makeNonRoomUserActions(client, userID)
+	}
+	const [pls, ownPL, createEvent] = getPowerLevels(room, client)
+	const otherUserPL = getUserLevel(pls, createEvent, userID)
 	const hasPL = (action: "invite" | "kick" | "ban" | "redact") => {
-		if (!room) {
-			throw new Error("hasPL called without room")
-		}
-		const [pls, ownPL, createEvent] = getPowerLevels(room, client)
-		if(action === "invite") {
-			return ownPL >= (pls.invite ?? 0)
-		}
-		const otherUserPL = getUserLevel(pls, createEvent, userID)
-		return ownPL >= (pls[action] ?? 50) && (action === "redact" ? true : ownPL > otherUserPL)
+		return ownPL >= (pls[action] ?? (action === "invite" ? 0 : 50))
+			&& (action === "redact" || action === "invite" || ownPL > otherUserPL)
 	}
 
 	const runAction = (action: MembershipAction) => {
-		if (!room) {
-			throw new Error("runAction called without room")
-		}
 		const callback = (reason: string, redact?: boolean) =>
 			client.rpc.setMembership(room.roomID, userID, action, reason, action == "ban" && redact)
 		let content: JSX.Element
@@ -87,16 +87,10 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		}
 	}
 	const calculateRedactions = () => {
-		if (!room) {
-			return []
-		}
-		return timeline.filter((evt): evt is MemDBEvent =>
+		return room.timelineCache.filter((evt): evt is MemDBEvent =>
 			evt !== null && evt.room_id == room.roomID && evt.sender === userID && !evt.redacted_by)
 	}
 	const makeRecentMessageRedactor = (banCallback?: (reason: string, redact?: boolean) => Promise<unknown>) => {
-		if (!room) {
-			throw new Error("makeRecentMessageRedactor called without room")
-		}
 		const eligibleEvents = calculateRedactions()
 		const nonStateEvents = eligibleEvents.filter(evt => evt.state_key === undefined)
 		const callback = async (doRedact: boolean, preserveState: boolean, reason: string) => {
@@ -136,18 +130,83 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 			/>,
 		})
 	}
-	const membership = member?.content.membership || "leave"
+	const onClickSavePL = () => {
+		if (modifiedPL === null) {
+			return
+		}
+		const powerCopy: PowerLevelEventContent = { ...pls }
+		if (modifiedPL === (pls.users_default ?? 0)) {
+			if (powerCopy.users) {
+				delete powerCopy.users[userID]
+			}
+		} else {
+			powerCopy.users = {
+				...(pls.users ?? {}),
+				[userID]: modifiedPL,
+			}
+		}
+		setPowerLoading(true)
+		client.rpc.setState(room.roomID, "m.room.power_levels", "", powerCopy).then(
+			() => console.info("Successfully set power level of", userID, "to", modifiedPL),
+			err => window.alert(`Failed to set power level: ${err}`),
+		).finally(() => setPowerLoading(false))
+	}
+	const onChangePL = (evt: React.ChangeEvent<HTMLInputElement>) => {
+		let newPL: number | null = evt.target.valueAsNumber
+		if (isNaN(newPL)) {
+			return
+		} else if (newPL > ownPL) {
+			newPL = ownPL
+		} else if (newPL > Number.MAX_SAFE_INTEGER) {
+			newPL = Number.MAX_SAFE_INTEGER
+		} else if (newPL < Number.MIN_SAFE_INTEGER) {
+			newPL = Number.MIN_SAFE_INTEGER
+		}
+		setModifiedPL(newPL)
+	}
+	const onPLKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
+		if (evt.key === "Escape") {
+			setModifiedPL(null)
+			evt.currentTarget.blur()
+			evt.stopPropagation()
+		}
+	}
 
+	const membership = member?.content.membership || "leave"
+	const isCreator = otherUserPL === Infinity
+	const hasPLPL = ownPL >= getEventLevel(pls, "m.room.power_levels", true)
+		&& !isCreator
+		&& (ownPL > otherUserPL || pls.users?.[userID] === undefined || userID === client.userID)
 	return <div className="user-moderation">
 		<h4>Actions</h4>
-		{!room || room.meta.current.dm_user_id !== userID ? <StartDMButton userID={userID} client={client} /> : null}
-		{room && (["knock", "leave"].includes(membership) || !member) && hasPL("invite") && (
+		<div className="moderation-action">
+			<PowerLevelIcon />
+			<input
+				type={isCreator ? "text" : powerSlider ? "range" : "number"}
+				value={isCreator ? "Infinity" : modifiedPL ?? otherUserPL}
+				max={Math.min(ownPL, Number.MAX_SAFE_INTEGER)}
+				min={Number.MIN_SAFE_INTEGER}
+				disabled={!hasPLPL || powerLoading}
+				onChange={onChangePL}
+				onMouseUp={powerSlider ? onClickSavePL : undefined}
+				onKeyDown={onPLKeyDown}
+				title="Power level"
+			/>
+			{modifiedPL !== null && modifiedPL !== otherUserPL && <button
+				disabled={!hasPLPL || powerLoading}
+				onClick={onClickSavePL}
+				title="Save power level"
+			>{powerLoading ? <MoonLoader size={16} /> : <CheckIcon />}</button>}
+		</div>
+		{room.meta.current.dm_user_id !== userID && client.userID !== userID ?
+			<StartDMButton userID={userID} client={client} /> : null}
+		{(["knock", "leave"].includes(membership) || !member) && hasPL("invite") && (
 			<button className="moderation-action positive" onClick={runAction("invite")}>
 				<InviteIcon />
 				<span>{membership === "knock" ? "Accept join request" : "Invite"}</span>
 			</button>
 		)}
-		{room && ["knock", "invite", "join"].includes(membership) && hasPL("kick") && (
+		{["knock", "invite", "join"].includes(membership) && hasPL("kick") && (
 			<button className="moderation-action dangerous" onClick={runAction("kick")}>
 				<KickIcon />
 				<span>{
@@ -159,19 +218,18 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 				}</span>
 			</button>
 		)}
-		{room && membership !== "ban" && hasPL("ban") && (
-			<button className="moderation-action dangerous" onClick={runAction("ban")}>
-				<BanIcon />
-				<span>Ban</span>
-			</button>
-		)}
-		{room && membership === "ban" && hasPL("ban") && (
+		{hasPL("ban") && (membership === "ban" ? (
 			<button className="moderation-action positive" onClick={runAction("unban")}>
 				<BanIcon />
 				<span>Unban</span>
 			</button>
-		)}
-		{room && hasPL("redact") && (
+		) : (
+			<button className="moderation-action dangerous" onClick={runAction("ban")}>
+				<BanIcon />
+				<span>Ban</span>
+			</button>
+		))}
+		{ownPL >= getEventLevel(pls, "m.room.redaction") && (hasPL("redact") || userID === client.userID) && (
 			<button
 				className="moderation-action dangerous"
 				onClick={openRedactRecentModal}
@@ -182,6 +240,13 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 			</button>
 		)}
 		<UserIgnoreButton userID={userID} client={client} />
+	</div>
+}
+
+const makeNonRoomUserActions = (client: Client, userID: string) => {
+	return <div className="user-moderation">
+		<h4>Actions</h4>
+		<StartDMButton userID={userID} client={client} />
 	</div>
 }
 

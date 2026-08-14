@@ -20,14 +20,24 @@ import (
 const (
 	upsertAccountDataQuery = `
 		INSERT INTO account_data (user_id, type, content) VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, type) DO UPDATE SET content = excluded.content
+		ON CONFLICT (user_id, type) DO UPDATE
+			SET content = excluded.content,
+				mod_timestamp = unixepoch('subsec')*1000
 	`
 	upsertRoomAccountDataQuery = `
 		INSERT INTO room_account_data (user_id, room_id, type, content) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (user_id, room_id, type) DO UPDATE SET content = excluded.content
+		ON CONFLICT (user_id, room_id, type) DO UPDATE
+			SET content = excluded.content,
+				mod_timestamp = unixepoch('subsec')*1000
 	`
 	getGlobalAccountDataQuery = `
 		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1
+	`
+	getGlobalAccountDataUpdatedAfterQuery = `
+		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1 AND mod_timestamp > $2
+	`
+	getRoomAccountDataUpdatedAfterQuery = `
+		SELECT user_id, room_id, type, content FROM room_account_data WHERE user_id = $1 AND mod_timestamp > $2
 	`
 	getOneGlobalAccountDataQuery = `
 		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1 AND type = $2
@@ -75,12 +85,20 @@ func (adq *AccountDataQuery) GetAllGlobal(ctx context.Context, userID id.UserID)
 	return adq.QueryMany(ctx, getGlobalAccountDataQuery, userID)
 }
 
+func (adq *AccountDataQuery) GetAllGlobalSince(ctx context.Context, userID id.UserID, updatedAfter int64) ([]*AccountData, error) {
+	return adq.QueryMany(ctx, getGlobalAccountDataUpdatedAfterQuery, userID, updatedAfter)
+}
+
 func (adq *AccountDataQuery) GetGlobal(ctx context.Context, userID id.UserID, eventType event.Type) (*AccountData, error) {
 	return adq.QueryOne(ctx, getOneGlobalAccountDataQuery, userID, eventType.Type)
 }
 
 func (adq *AccountDataQuery) GetAllRoom(ctx context.Context, userID id.UserID, roomID id.RoomID) ([]*AccountData, error) {
 	return adq.QueryMany(ctx, getRoomAccountDataQuery, userID, roomID)
+}
+
+func (adq *AccountDataQuery) GetAllRoomSince(ctx context.Context, userID id.UserID, updatedAfter int64) ([]*AccountData, error) {
+	return adq.QueryMany(ctx, getRoomAccountDataUpdatedAfterQuery, userID, updatedAfter)
 }
 
 func (adq *AccountDataQuery) GetRoom(ctx context.Context, userID id.UserID, roomID id.RoomID, eventType event.Type) (*AccountData, error) {

@@ -202,6 +202,7 @@ const userFuncs = {
 			alt=""
 		/>
 		{user.event.content.membership === "invite" ? <span className="invited-indicator">(invited) </span> : null}
+		{user.event.content.membership === "knock" ? <span className="invited-indicator">(knocked) </span> : null}
 		{user.displayName}
 	</>,
 }

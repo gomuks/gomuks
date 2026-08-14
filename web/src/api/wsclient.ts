@@ -20,7 +20,7 @@ import type { RPCCommand } from "./types"
 const PING_INTERVAL = 15_000
 const RECV_TIMEOUT = 4 * PING_INTERVAL
 
-function checkUpdate(etag: string) {
+export function checkUpdate(etag: string) {
 	if (!import.meta.env.PROD) {
 		return
 	} else if (!etag) {
@@ -54,7 +54,9 @@ export default class WSClient extends RPCClient {
 	#lastMessage: number = 0
 	#pingInterval: ReturnType<typeof setInterval> | null = null
 	#lastReceivedEvt: number = 0
+	#listenerID?: number
 	#resumeRunID: string = ""
+	#running = false
 	#stopped = false
 	#reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 	#connectFailures: number = 0
@@ -62,9 +64,38 @@ export default class WSClient extends RPCClient {
 
 	constructor(readonly addr: string, readonly compress: boolean = false) {
 		super()
+		window.addEventListener("focus", this.#onFocus)
+	}
+
+	#onFocus = () => {
+		if (this.#reconnectTimeout !== null) {
+			console.log("Window focused, reconnecting immediately")
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
+			this.checkAuthAndStart()
+		}
+	}
+
+	checkAuthAndStart() {
+		this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)
+		this.doAuth().then(
+			() => this.start(),
+			err => {
+				const errStr = err instanceof Error ? err.message : String(err)
+				if (errStr.includes("Authentication failed")) {
+					this.#dispatchConnectionStatus(false, false, errStr)
+				} else {
+					this.#doReconnect(errStr)
+				}
+			},
+		)
 	}
 
 	start() {
+		if (this.#running) {
+			throw new Error("Tried to start new websocket while one is already running")
+		}
+		this.#running = true
 		if (this.compress) {
 			const dc = new DecompressionStream("deflate-raw")
 			this.#decompWriter = dc.writable.getWriter()
@@ -78,6 +109,13 @@ export default class WSClient extends RPCClient {
 			if (this.#lastReceivedEvt && this.#resumeRunID) {
 				params.set("run_id", this.#resumeRunID)
 				params.set("last_received_event", this.#lastReceivedEvt.toString())
+				if (this.#listenerID) {
+					params.set("prev_listener_id", this.#listenerID.toString())
+				}
+			}
+			const serverTS = this.getCachedServerTimestamp?.()
+			if (serverTS) {
+				params.set("last_server_ts", serverTS.toString())
 			}
 			if (this.compress) {
 				params.set("compress", "1")
@@ -115,6 +153,10 @@ export default class WSClient extends RPCClient {
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
+		}
+		if (this.#reconnectTimeout !== null) {
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
 		}
 		this.#conn?.close(1000, "Client closed")
 	}
@@ -191,6 +233,7 @@ export default class WSClient extends RPCClient {
 		} else if (parsed.command === "run_id") {
 			console.log("Received run ID", parsed.data)
 			this.#resumeRunID = parsed.data.run_id
+			this.#listenerID = parsed.data.listener_id
 			window.vapidPublicKey = parsed.data.vapid_key
 			checkUpdate(parsed.data.etag)
 		}
@@ -202,7 +245,11 @@ export default class WSClient extends RPCClient {
 			connected,
 			reconnecting,
 			error,
-			nextAttempt: nextAttempt ? new Date(nextAttempt).toLocaleTimeString() : undefined,
+			nextAttempt: nextAttempt ?
+				nextAttempt === -1
+					? "currently trying to connect"
+					: `next attempt at ${new Date(nextAttempt).toLocaleTimeString()}`
+				: undefined,
 		})
 	}
 
@@ -227,19 +274,24 @@ export default class WSClient extends RPCClient {
 	#onClose = (ev: CloseEvent) => {
 		this.#decompWriter?.close()
 		this.#decompWriter = null
-		this.#connectFailures++
 		console.warn("Websocket closed:", ev)
 		this.#clearPending()
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
 		}
+		this.#running = false
+		this.#doReconnect(`Websocket closed: ${ev.code} ${ev.reason}`)
+	}
+
+	#doReconnect(errStr: string) {
+		this.#connectFailures++
 		const willReconnect = !this.#stopped && !this.#reconnectTimeout
 		const backoff = Math.min(2 ** (this.#connectFailures - 4), 10) * 1000
 		this.#dispatchConnectionStatus(
 			false,
 			willReconnect,
-			`Websocket closed: ${ev.code} ${ev.reason}`,
+			errStr,
 			Date.now() + backoff,
 		)
 		if (willReconnect) {
@@ -247,7 +299,11 @@ export default class WSClient extends RPCClient {
 			this.#reconnectTimeout = setTimeout(() => {
 				console.log("Reconnecting now")
 				this.#reconnectTimeout = null
-				this.start()
+				if (this.#connectFailures === 1) {
+					this.start()
+				} else {
+					this.checkAuthAndStart()
+				}
 			}, backoff)
 		} else {
 			console.log(`Not reconnecting (stopped=${this.#stopped}, reconnectTimeout=${this.#reconnectTimeout})`)

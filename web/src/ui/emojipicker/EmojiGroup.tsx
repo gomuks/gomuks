@@ -29,6 +29,7 @@ interface EmojiGroupProps {
 	onSelect: (emoji?: Emoji) => void
 	setPreviewEmoji?: (emoji?: Emoji) => void
 	imageType: "emoji" | "sticker"
+	listWidth: number
 }
 
 export const EmojiGroup = ({
@@ -40,6 +41,7 @@ export const EmojiGroup = ({
 	onSelect,
 	setPreviewEmoji,
 	imageType,
+	listWidth,
 }: EmojiGroupProps) => {
 	const client = use(ClientContext)!
 	const [isVisible, divRef] = useContentVisibility<HTMLDivElement>(true)
@@ -85,7 +87,8 @@ export const EmojiGroup = ({
 	} else {
 		categoryName = "Unknown category"
 	}
-	const itemsPerRow = imageType === "sticker" ? 4 : 8
+	const itemWidth = imageType === "sticker" ? 80 : 40
+	const itemsPerRow = Math.floor(listWidth / itemWidth)
 	const rowSize = imageType === "sticker" ? 5 : 2.5
 	return <div
 		ref={divRef}

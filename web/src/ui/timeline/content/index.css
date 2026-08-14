@@ -85,6 +85,7 @@ div.html-body {
 		   Middle may be nicer for emojis, but that doesn't work nicely with pills. */
 		vertical-align: bottom;
 		height: 2rem; /* text height is 1.5rem, so this will make lines a bit taller */
+		aspect-ratio: auto 1/1;
 		width: auto;
 		max-width: 5rem;
 	}
@@ -186,6 +187,23 @@ div.html-body {
 		&:last-child {
 			margin: 0;
 		}
+	}
+
+	ul {
+		padding-inline-start: 0;
+
+		li {
+			margin-inline-start: 2rem;
+		}
+
+		li:has(> input[type="checkbox"]) {
+			margin-inline-start: .625rem;
+			list-style: none;
+		}
+	}
+
+	ol {
+		padding-inline-start: 2rem;
 	}
 }
 
@@ -289,4 +307,87 @@ div.location-importer {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+div.poll-body {
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+	padding-bottom: .5rem;
+	max-width: 40rem;
+
+	> div.poll-question {
+		font-weight: bold;
+		white-space: pre-wrap;
+	}
+
+	> button {
+		padding: .25rem .5rem;
+	}
+
+	> div.poll-answers {
+		display: flex;
+		flex-direction: column;
+		gap: .25rem;
+
+		> div.poll-rules {
+			font-size: .75rem;
+			color: var(--semisecondary-text-color);
+		}
+
+		> label.poll-answer {
+			width: 100%;
+			display: grid;
+			align-items: center;
+			border: 1px solid var(--border-color);
+			border-radius: .25rem;
+			padding: .5rem;
+			grid-column-gap: .5rem;
+			box-sizing: border-box;
+			grid-template:
+				"checkbox answer  count"   auto
+				"votebar  votebar votebar" auto
+				/ 1.25rem 1fr     auto;
+			background-color: var(--background-color);
+
+			&:hover.can-vote {
+				background-color: var(--light-hover-color);
+			}
+
+			> input {
+				width: 1.25rem;
+				height: 1.25rem;
+				margin: 0;
+				accent-color: var(--primary-color-dark);
+			}
+
+			> .poll-answer-checkbox {
+				grid-area: checkbox;
+			}
+
+			> div.answer-text {
+				grid-area: answer;
+				white-space: pre-wrap;
+			}
+
+			> div.vote-bar {
+				margin-top: .5rem;
+				grid-area: votebar;
+				border-radius: .5rem;
+				background-color: var(--poll-vote-bar-background-color);
+
+				> div.bar-filler {
+					height: .5rem;
+					border-radius: .5rem;
+					background-color: var(--poll-vote-bar-highlight-color);
+				}
+			}
+
+			> div.vote-count {
+				grid-area: count;
+				font-size: .75rem;
+				color: var(--semisecondary-text-color);
+			}
+		}
+	}
 }

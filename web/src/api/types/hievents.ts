@@ -25,6 +25,7 @@ import {
 	TimelineRowTuple,
 } from "./hitypes.ts"
 import {
+	ContentURI,
 	DeviceID,
 	EventID,
 	EventType,
@@ -71,14 +72,14 @@ export interface ImageAuthTokenEvent extends BaseRPCCommand<string> {
 }
 
 export interface SyncRoom {
-	meta: DBRoom
-	timeline: TimelineRowTuple[] | null
-	events: RawDBEvent[] | null
-	state: Record<EventType, Record<string, EventRowID>> | null
-	reset: boolean
-	notifications: SyncNotification[] | null
-	account_data: Record<EventType, DBRoomAccountData> | null
-	receipts: Record<EventID, DBReceipt[]> | null
+	meta?: DBRoom
+	timeline?: TimelineRowTuple[] | null
+	events?: RawDBEvent[] | null
+	state?: Record<EventType, Record<string, EventRowID>> | null
+	reset?: boolean
+	notifications?: SyncNotification[] | null
+	account_data?: Record<EventType, DBRoomAccountData> | null
+	receipts?: Record<EventID, DBReceipt[]> | null
 	sticky?: EventRowID[] | null
 }
 
@@ -95,15 +96,17 @@ export interface SyncToDevice {
 }
 
 export interface SyncCompleteData {
-	rooms: Record<RoomID, SyncRoom> | null
-	invited_rooms: DBInvitedRoom[] | null
-	left_rooms: RoomID[] | null
-	account_data: Record<EventType, DBAccountData> | null
-	space_edges: Record<RoomID, DBSpaceEdge[]> | null
-	top_level_spaces: RoomID[] | null
+	rooms?: Record<RoomID, SyncRoom> | null
+	invited_rooms?: DBInvitedRoom[] | null
+	left_rooms?: RoomID[] | null
+	account_data?: Record<EventType, DBAccountData> | null
+	space_edges?: Record<RoomID, DBSpaceEdge[]> | null
+	top_level_spaces?: RoomID[] | null
 	since?: string
 	clear_state?: boolean
+	catchup?: boolean
 	to_device?: SyncToDevice[] | null
+	server_timestamp?: number
 }
 
 export interface SyncCompleteEvent extends BaseRPCCommand<SyncCompleteData> {
@@ -129,6 +132,8 @@ export type ClientState = {
 	user_id: UserID
 	device_id: DeviceID
 	homeserver_url: string
+	displayname?: string
+	avatar_url?: ContentURI
 }
 
 export interface ClientStateEvent extends BaseRPCCommand<ClientState> {
@@ -154,6 +159,7 @@ export interface RunData {
 	run_id: string
 	etag: string
 	vapid_key: string
+	listener_id: number
 }
 
 export interface RunIDEvent extends BaseRPCCommand<RunData> {

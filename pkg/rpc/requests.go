@@ -11,10 +11,13 @@ import (
 
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
+
+var _ jsoncmd.GomuksAPI = (*GomuksRPC)(nil)
 
 func (gr *GomuksRPC) GetState(ctx context.Context) (*jsoncmd.ClientState, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetState, nil)
@@ -68,7 +71,7 @@ func (gr *GomuksRPC) SetTyping(ctx context.Context, params *jsoncmd.SetTypingPar
 	return executeRequestNoResponse(gr, ctx, jsoncmd.SetTyping, params)
 }
 
-func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*mautrix.RespUserProfile, error) {
+func (gr *GomuksRPC) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfile, params)
 }
 
@@ -84,12 +87,24 @@ func (gr *GomuksRPC) TrackUserDevices(ctx context.Context, params *jsoncmd.GetPr
 	return executeRequest(gr, ctx, jsoncmd.TrackUserDevices, params)
 }
 
+func (gr *GomuksRPC) ResetMasterKeyTOFU(ctx context.Context, params *jsoncmd.ResetMasterKeyTOFUParams) (*jsoncmd.ProfileEncryptionInfo, error) {
+	return executeRequest(gr, ctx, jsoncmd.ResetMasterKeyTOFU, params)
+}
+
 func (gr *GomuksRPC) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.ProfileEncryptionInfo, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetProfileEncryptionInfo, params)
 }
 
+func (gr *GomuksRPC) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetOwnDevices, nil)
+}
+
 func (gr *GomuksRPC) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) (*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetEvent, params)
+}
+
+func (gr *GomuksRPC) GetEventByRowID(ctx context.Context, params *jsoncmd.GetEventByRowIDParams) (*database.Event, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetEventByRowID, params)
 }
 
 func (gr *GomuksRPC) GetRelatedEvents(ctx context.Context, params *jsoncmd.GetRelatedEventsParams) ([]*database.Event, error) {
@@ -124,6 +139,14 @@ func (gr *GomuksRPC) PaginateManual(ctx context.Context, params *jsoncmd.Paginat
 	return executeRequest(gr, ctx, jsoncmd.PaginateManual, params)
 }
 
+func (gr *GomuksRPC) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchLocal, params)
+}
+
+func (gr *GomuksRPC) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.SearchServer, params)
+}
+
 func (gr *GomuksRPC) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMentions, params)
 }
@@ -154,6 +177,10 @@ func (gr *GomuksRPC) CreateRoom(ctx context.Context, params *mautrix.ReqCreateRo
 
 func (gr *GomuksRPC) MuteRoom(ctx context.Context, params *jsoncmd.MuteRoomParams) (bool, error) {
 	return executeRequest(gr, ctx, jsoncmd.MuteRoom, params)
+}
+
+func (gr *GomuksRPC) UpdatePushRule(ctx context.Context, params *jsoncmd.UpdatePushRuleParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.UpdatePushRule, params)
 }
 
 func (gr *GomuksRPC) EnsureGroupSessionShared(ctx context.Context, params *jsoncmd.EnsureGroupSessionSharedParams) error {
@@ -192,8 +219,36 @@ func (gr *GomuksRPC) DiscoverHomeserver(ctx context.Context, params *jsoncmd.Dis
 	return executeRequest(gr, ctx, jsoncmd.DiscoverHomeserver, params)
 }
 
-func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlowsParams) (*mautrix.RespLoginFlows, error) {
+func (gr *GomuksRPC) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlowsParams) (*jsoncmd.LoginFlowsResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetLoginFlows, params)
+}
+
+func (gr *GomuksRPC) GetVersions(ctx context.Context) (*mautrix.RespVersions, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetVersions, nil)
+}
+
+func (gr *GomuksRPC) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthRegisterClient, params)
+}
+
+func (gr *GomuksRPC) OAuthGetAuthorizationURL(ctx context.Context, params *jsoncmd.OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthGetAuthorizationURL, params)
+}
+
+func (gr *GomuksRPC) OAuthExchangeToken(ctx context.Context, params *jsoncmd.OAuthExchangeTokenParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthExchangeToken, params)
+}
+
+func (gr *GomuksRPC) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncmd.OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthGenerateDeviceCode, params)
+}
+
+func (gr *GomuksRPC) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.OAuthSimpleDeviceCode, params)
+}
+
+func (gr *GomuksRPC) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuthPollDeviceCodeParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.OAuthPollDeviceCode, params)
 }
 
 func (gr *GomuksRPC) RegisterPush(ctx context.Context, params *database.PushRegistration) error {
@@ -206,6 +261,10 @@ func (gr *GomuksRPC) ListenToDevice(ctx context.Context, listen bool) (bool, err
 
 func (gr *GomuksRPC) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetTurnServers, nil)
+}
+
+func (gr *GomuksRPC) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetRTCTransports, nil)
 }
 
 func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {

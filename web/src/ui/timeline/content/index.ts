@@ -8,6 +8,7 @@ import MediaMessageBody from "./MediaMessageBody.tsx"
 import MemberBody from "./MemberBody.tsx"
 import PinnedEventsBody from "./PinnedEventsBody.tsx"
 import PolicyRuleBody from "./PolicyRuleBody.tsx"
+import PollMessageBody from "./PollMessageBody.tsx"
 import PowerLevelBody from "./PowerLevelBody.tsx"
 import RedactedBody from "./RedactedBody.tsx"
 import RoomAvatarBody from "./RoomAvatarBody.tsx"
@@ -107,6 +108,13 @@ export function getBodyType(
 				return TextMessageBody
 			}
 			return MediaMessageBody
+		case "org.matrix.msc3381.poll.start":
+			if (isRedacted) {
+				return RedactedBody
+			} else if (forReply) {
+				return HiddenEvent // TODO proper poll reply rendering
+			}
+			return PollMessageBody
 		case "m.room.encrypted":
 			if (isRedacted) {
 				return RedactedBody

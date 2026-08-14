@@ -54,9 +54,9 @@ main.matrix-main {
 		left: 0;
 		right: 0;
 		font-weight: bold;
-		height: calc(5rem + env(safe-area-inset-bottom, 0));
+		height: calc(5rem + var(--window-bottom-margin));
 		padding-top: .5rem;
-		padding-bottom: env(safe-area-inset-bottom, 0);
+		padding-bottom: var(--window-bottom-margin);
 		background-color: var(--primary-color);
 		text-align: center;
 		text-wrap: nowrap;

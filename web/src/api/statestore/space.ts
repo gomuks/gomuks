@@ -73,6 +73,14 @@ export abstract class Space implements RoomListFilter {
 	}
 }
 
+export class HomeSpace extends Space {
+	id = "fi.mau.gomuks.home"
+
+	include(): boolean {
+		return true
+	}
+}
+
 export class DirectChatSpace extends Space {
 	id = "fi.mau.gomuks.direct_chats"
 

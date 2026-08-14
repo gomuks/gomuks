@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -58,19 +60,19 @@ func (h *HiClient) GetUnredactedEvent(ctx context.Context, roomID id.RoomID, eve
 	}
 }
 
-func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err error) {
+func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err error) bool {
 	if !errors.Is(err, mautrix.MForbidden) {
-		return
+		return false
 	}
 	log := zerolog.Ctx(ctx)
 	joinedRooms, err := h.Client.JoinedRooms(ctx)
 	if err != nil {
 		log.Err(err).Msg("Failed to fetch joined rooms to check if join event was reset")
-		return
+		return false
 	}
 	if slices.Contains(joinedRooms.JoinedRooms, roomID) {
 		log.Debug().Msg("Fetching state failed, but room is still in joined rooms")
-		return
+		return false
 	}
 	log.Info().Msg("Fetching room state failed and room is not in joined rooms, deleting from database")
 	err = h.DB.Room.Delete(ctx, roomID)
@@ -80,6 +82,7 @@ func (h *HiClient) processStateReset(ctx context.Context, roomID id.RoomID, err 
 	h.EventHandler(&jsoncmd.SyncComplete{
 		LeftRooms: []id.RoomID{roomID},
 	})
+	return true
 }
 
 func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fetchMembers, refetch, dispatchEvt bool) error {
@@ -108,6 +111,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 	mediaCacheEntries := make([]*database.PlainMedia, 0, len(evts))
 	var joinedMembers, invitedMembers int
 	var joinedOrInvitedMemberIDs, leftMemberIDs []id.UserID
+	var hasSelf bool
 	for i, evt := range evts {
 		if err := h.fillPrevContent(ctx, evt); err != nil {
 			return err
@@ -132,6 +136,7 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 					leftMemberIDs = append(leftMemberIDs, userID)
 				}
 			} else if membership == event.MembershipJoin {
+				hasSelf = true
 				joinedMembers++
 			}
 			currentStateEntries[i].Membership = membership
@@ -145,6 +150,14 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 				MediaMXC: mxc,
 			}
 		}
+	}
+	// World-readable rooms may allow fetching state even if the user has left,
+	// so make sure our own member event is present.
+	if !hasSelf {
+		if h.processStateReset(context.WithoutCancel(ctx), roomID, mautrix.MForbidden) {
+			return nil
+		}
+		zerolog.Ctx(ctx).Warn().Msg("Own member event not found in state, but listing rooms didn't delete it")
 	}
 	llSummary := &mautrix.LazyLoadSummary{
 		JoinedMemberCount:  &joinedMembers,
@@ -224,26 +237,43 @@ func (h *HiClient) processGetRoomState(ctx context.Context, roomID id.RoomID, fe
 				updatedRoom.Avatar = &dmAvatarURL
 			}
 		}
-		roomChanged := updatedRoom.CheckChangesAndCopyInto(room)
-		// TODO dispatch space edge changes if something changed? (fairly unlikely though)
-		err = sdc.Apply(ctx, room, h.DB.SpaceEdge)
+		roomChanged, syncRoomChanged := updatedRoom.CheckChangesAndCopyInto(room)
+		err = sdc.Apply(ctx, room, h.DB.Room, h.DB.SpaceEdge)
 		if err != nil {
 			return err
 		}
-		if roomChanged {
+		if roomChanged || len(sdc.Children) > 0 {
 			// Only set this here so it doesn't unconditionally flag the room as changed
 			updatedRoom.LazyLoadSummary = llSummary
-			err = h.DB.Room.Upsert(ctx, updatedRoom)
+			err = h.DB.Room.Update(ctx, updatedRoom)
 			if err != nil {
 				return fmt.Errorf("failed to save room data: %w", err)
 			}
-			if dispatchEvt {
+			// TODO also dispatch parent spaces? those are usually less important though
+			var spaceEdges map[id.RoomID][]*database.SpaceEdge
+			var topLevelSpaces []id.RoomID
+			if room.GetType() == event.RoomTypeSpace {
+				spaceEdges, err = h.DB.SpaceEdge.GetAll(ctx, room.ID)
+				if err != nil {
+					return fmt.Errorf("failed to get space edges: %w", err)
+				}
+				topLevelSpaces, err = h.DB.SpaceEdge.GetTopLevelIDs(ctx, h.Account.UserID)
+				if err != nil {
+					return fmt.Errorf("failed to get top-level spaces: %w", err)
+				}
+				if _, edgesFound := spaceEdges[room.ID]; !edgesFound {
+					spaceEdges[room.ID] = []*database.SpaceEdge{}
+				}
+			}
+			if dispatchEvt && syncRoomChanged {
 				h.EventHandler(&jsoncmd.SyncComplete{
 					Rooms: map[id.RoomID]*jsoncmd.SyncRoom{
 						roomID: {
 							Meta: room,
 						},
 					},
+					SpaceEdges:     spaceEdges,
+					TopLevelSpaces: topLevelSpaces,
 				})
 			}
 		}
@@ -391,6 +421,11 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 	if err != nil {
 		return nil, fmt.Errorf("failed to get messages from server: %w", err)
 	}
+	zerolog.Ctx(ctx).Debug().
+		Int("event_count", len(resp.Chunk)).
+		Str("start", resp.Start).
+		Str("end", resp.End).
+		Msg("Got pagination response from server")
 	events := make([]*database.Event, len(resp.Chunk))
 	if resp.End == "" {
 		resp.End = database.PrevBatchPaginationComplete
@@ -407,7 +442,7 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}, nil
 	}
 	wakeupSessionRequests := false
-	err = h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
+	paginationTxn := func(ctx context.Context) error {
 		if err = ctx.Err(); err != nil {
 			return err
 		}
@@ -433,6 +468,10 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		}
 		if iOffset >= len(events) {
 			events = events[:0]
+			err = h.DB.Room.SetPrevBatch(ctx, room.ID, resp.End)
+			if err != nil {
+				return fmt.Errorf("failed to set prev_batch: %w", err)
+			}
 			return nil
 		}
 		events = events[:len(events)-iOffset]
@@ -465,6 +504,9 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 			evt.TimelineRowID = tuples[i].Timeline
 		}
 		return nil
+	}
+	err = h.withEventDecryptionLock(ctx, "", false, func(ctx context.Context) error {
+		return h.DB.DoTxn(ctx, nil, paginationTxn)
 	})
 	if err == nil && wakeupSessionRequests {
 		h.WakeupRequestQueue()
@@ -481,6 +523,8 @@ func (h *HiClient) GetEventContext(ctx context.Context, roomID id.RoomID, eventI
 	resp, err := h.Client.Context(ctx, roomID, eventID, filter, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get event context: %w", err)
+	} else if resp.Event == nil {
+		return nil, fmt.Errorf("server didn't return response for context request")
 	}
 	wrappedResp := &jsoncmd.EventContextResponse{
 		Start:  resp.Start,
@@ -564,6 +608,72 @@ func (h *HiClient) PaginateManual(
 		h.WakeupRequestQueue()
 	}
 	return &wrappedResp, nil
+}
+
+func (h *HiClient) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
+	var offset int
+	if params.NextBatch != "" {
+		var ok bool
+		params.NextBatch, ok = strings.CutPrefix(params.NextBatch, "local_offset:")
+		offset, _ = strconv.Atoi(params.NextBatch)
+		if !ok || offset <= 0 {
+			return nil, fmt.Errorf("invalid next_batch value: %q", params.NextBatch)
+		}
+	}
+	resp, err := h.DB.Event.Search(
+		ctx,
+		params.SearchTerm,
+		params.RawLike,
+		params.RoomIDs,
+		params.Senders,
+		params.MinTimestamp.Time,
+		params.MaxTimestamp.Time,
+		params.IncludeRedacted,
+		params.SortByTime,
+		params.Limit,
+		offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	var nextBatch string
+	if len(resp) >= params.Limit {
+		nextBatch = fmt.Sprintf("local_offset:%d", offset+params.Limit)
+	}
+	return &jsoncmd.ManualPaginationResponse{
+		Events:    resp,
+		NextBatch: nextBatch,
+	}, nil
+}
+
+func (h *HiClient) SearchServer(ctx context.Context, params *jsoncmd.SearchServerParams) (*jsoncmd.ManualPaginationResponse, error) {
+	orderBy := "rank"
+	if params.SortByTime {
+		orderBy = "recent"
+	}
+	resp, err := h.Client.Search(ctx, &mautrix.ReqSearch{
+		NextBatch:  params.NextBatch,
+		SearchTerm: params.SearchTerm,
+		Filter: &mautrix.FilterPart{
+			Rooms:   params.RoomIDs,
+			Senders: params.Senders,
+			Limit:   params.Limit,
+		},
+		OrderBy: orderBy,
+	})
+	if err != nil {
+		return nil, err
+	}
+	wrappedResp := &jsoncmd.ManualPaginationResponse{
+		Events:    make([]*database.Event, len(resp.Results)),
+		NextBatch: resp.NextBatch,
+	}
+	for i, res := range resp.Results {
+		if wrappedResp.Events[i], err = h.processEvent(ctx, res.Event, nil, nil, true); err != nil {
+			return nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
+		}
+	}
+	return wrappedResp, nil
 }
 
 func (h *HiClient) GetMentions(ctx context.Context, maxTS time.Time, unreadType database.UnreadType, limit int, roomID id.RoomID) ([]*database.Event, error) {

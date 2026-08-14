@@ -10,10 +10,13 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -21,9 +24,7 @@ import (
 var InitialDeviceDisplayName = "mautrix hiclient"
 
 func (h *HiClient) LoginPassword(ctx context.Context, homeserverURL, username, password string) error {
-	var err error
-	h.Client.HomeserverURL, err = url.Parse(homeserverURL)
-	if err != nil {
+	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
 		return err
 	}
 	return h.Login(ctx, &mautrix.ReqLogin{
@@ -33,6 +34,69 @@ func (h *HiClient) LoginPassword(ctx context.Context, homeserverURL, username, p
 			User: username,
 		},
 		Password: password,
+	})
+}
+
+func (h *HiClient) ensureHomeserverURL(homeserverURL string) error {
+	if homeserverURL == "" {
+		if h.Client.HomeserverURL == nil {
+			return fmt.Errorf("no homeserver URL provided")
+		}
+		return nil
+	}
+	newURL, err := url.Parse(homeserverURL)
+	if err != nil {
+		return err
+	} else if h.Client.HomeserverURL == nil || *newURL != *h.Client.HomeserverURL {
+		h.Client.HomeserverURL = newURL
+		h.Client.OAuthSetServerMetadata(nil)
+	}
+	return nil
+}
+
+func loginOAuthPrepare[T any](h *HiClient, homeserverURL string, cb func() (*T, error)) (*T, error) {
+	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
+		return nil, err
+	}
+	h.loginLock.Lock()
+	defer h.loginLock.Unlock()
+	if h.IsLoggedIn() {
+		return nil, fmt.Errorf("already logged in")
+	}
+	return cb()
+}
+
+func (h *HiClient) loginOAuth(ctx context.Context, homeserverURL, clientID string, cb func() (*oauth.TokenResponse, error)) error {
+	h.loginLock.Lock()
+	defer h.loginLock.Unlock()
+	if h.IsLoggedIn() {
+		return fmt.Errorf("already logged in")
+	}
+	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
+		return err
+	}
+	err := h.CheckServerVersions(ctx)
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	resp, err := cb()
+	if err != nil {
+		return err
+	}
+	exp := start.Add(resp.ExpiresIn.Duration)
+	whoamiResp, err := h.Client.Whoami(ctx)
+	if err != nil {
+		return err
+	}
+	return h.postLogin(ctx, &database.Account{
+		UserID:        whoamiResp.UserID,
+		DeviceID:      whoamiResp.DeviceID,
+		AccessToken:   resp.AccessToken,
+		HomeserverURL: homeserverURL,
+		ClientID:      clientID,
+		RefreshToken:  resp.RefreshToken,
+		Expiry:        jsontime.UM(exp),
 	})
 }
 
@@ -54,20 +118,33 @@ func (h *HiClient) Login(ctx context.Context, req *mautrix.ReqLogin) error {
 	if err != nil {
 		return err
 	}
-	defer h.dispatchCurrentState()
-	h.Account = &database.Account{
+	return h.postLogin(ctx, &database.Account{
 		UserID:        resp.UserID,
 		DeviceID:      resp.DeviceID,
 		AccessToken:   resp.AccessToken,
 		HomeserverURL: h.Client.HomeserverURL.String(),
-	}
-	h.CryptoStore.AccountID = resp.UserID.String()
-	h.CryptoStore.DeviceID = resp.DeviceID
+	})
+}
+
+func (h *HiClient) postLogin(ctx context.Context, acc *database.Account) error {
+	defer h.dispatchCurrentState()
+	h.Account = acc
+	h.Client.UserID = acc.UserID
+	h.Client.DeviceID = acc.DeviceID
+	h.CryptoStore.AccountID = acc.UserID.String()
+	h.CryptoStore.DeviceID = acc.DeviceID
 	log := zerolog.Ctx(ctx)
 	log.Debug().Msg("Saving account to database after login")
-	err = h.DB.Account.Put(ctx, h.Account)
+	err := h.DB.Account.Put(ctx, h.Account)
 	if err != nil {
 		return err
+	}
+	if acc.ClientID != "" {
+		// There's no initial_device_display_name in OAuth, so need to set it manually
+		err = h.Client.SetDeviceInfo(ctx, acc.DeviceID, &mautrix.ReqDeviceInfo{DisplayName: InitialDeviceDisplayName})
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to update device displayname for OAuth login")
+		}
 	}
 	log.Debug().Msg("Creating Olm account instance")
 	err = h.Crypto.Load(ctx)

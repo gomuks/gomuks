@@ -14,29 +14,38 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { MouseEvent } from "react"
+import { CancellablePromise } from "@/util/promise.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
+import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
+import { getTabsAPI } from "./tabs.ts"
 import {
 	ClientState,
 	ElementRecentEmoji,
 	EventID,
+	EventRowID,
 	EventType,
 	GomuksAndroidMessageToWeb,
 	ImagePackRooms,
+	LocalSearchParams,
+	MemDBEvent,
 	RPCEvent,
 	RawDBEvent,
 	RelationType,
 	RespCapabilities,
 	RoomID,
 	RoomStateGUID,
+	ServerSearchParams,
 	SyncStatus,
 	UnreadType,
 	UserID,
+	UserProfile,
 } from "./types"
 
 export default class Client {
 	readonly state = new CachedEventDispatcher<ClientState>()
+	readonly profile = new NonNullCachedEventDispatcher<UserProfile>({})
 	readonly syncStatus = new NonNullCachedEventDispatcher<SyncStatus>({ type: "waiting", error_count: 0 })
 	readonly initComplete = new NonNullCachedEventDispatcher<boolean>(false)
 	readonly store = new StateStore()
@@ -48,20 +57,52 @@ export default class Client {
 	capabilities?: RespCapabilities
 
 	constructor(readonly rpc: RPCClient) {
+		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
 		this.rpc.event.listen(this.#handleEvent)
-		this.rpc.connect.listen(() => this.initComplete.emit(false))
+		this.rpc.connect.listen(() => {
+			this.initComplete.emit(false)
+			this.store.clearTyping()
+		})
 		this.store.accountDataSubs.getSubscriber("im.ponies.emote_rooms")(() =>
-			queueMicrotask(() => this.#handleEmoteRoomsChange()))
+			queueMicrotask(() => this.#handleEmoteRoomsChange(true)))
+		this.store.accountDataSubs.getSubscriber("m.image_pack.rooms")(() =>
+			queueMicrotask(() => this.#handleEmoteRoomsChange(false)))
+
+		const notifListener = getTabsAPI()?.setNotificationCount
+		if (notifListener) {
+			this.store.homeSpace.counts.listen(counts => {
+				if (this.initComplete.current) {
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+			this.initComplete.listen(complete => {
+				if (complete) {
+					const counts = this.store.homeSpace.counts.current
+					notifListener(counts.unread_highlights || counts.unread_notifications)
+				}
+			})
+		}
+		this.state.listen(state => {
+			if (state.is_logged_in) {
+				this.profile.emit({
+					displayname: state.displayname,
+					avatar_url: state.avatar_url,
+				})
+			}
+		})
 	}
 
 	async #reallyStart(signal: AbortSignal) {
-		if (!await this.rpc.doAuth(signal)) {
+		if (!await this.rpc.tryAuth(signal)) {
 			return
 		}
 		if (signal.aborted) {
 			return
 		}
 		console.log("Successfully authenticated, connecting to websocket")
+		if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
+			await this.store.loadCache()
+		}
 		this.rpc.start()
 		this.requestNotificationPermission()
 	}
@@ -112,6 +153,9 @@ export default class Client {
 					return
 				}
 				console.log("Successfully authenticated, connecting to websocket")
+				if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
+					await this.store.loadCache()
+				}
 				this.rpc.start()
 				return
 			case "share":
@@ -250,6 +294,7 @@ export default class Client {
 		}, window.gcSettings.interval)
 		return () => {
 			abort.abort()
+			this.store.closeCache()
 			this.rpc.stop()
 			clearInterval(this.#gcInterval)
 		}
@@ -262,7 +307,11 @@ export default class Client {
 	#handleEvent = (ev: RPCEvent) => {
 		if (ev.command === "client_state") {
 			this.state.emit(ev.data)
-			this.store.userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			const userID = ev.data.is_logged_in ? ev.data.user_id : ""
+			if (userID !== this.store.userID) {
+				this.store.userID = userID
+				this.store.stateCache?.setUserID(userID)
+			}
 			if (ev.data.is_verified) {
 				this.registerWebPush(true)
 			}
@@ -270,6 +319,7 @@ export default class Client {
 			this.syncStatus.emit(ev.data)
 		} else if (ev.command === "init_complete") {
 			this.initComplete.emit(true)
+			this.store.stateCache?.tryFlush()
 		} else if (ev.command === "sync_complete") {
 			this.store.applySync(ev.data)
 		} else if (ev.command === "events_decrypted") {
@@ -313,7 +363,7 @@ export default class Client {
 		if (typeof room === "string") {
 			room = this.store.rooms.get(room)
 		}
-		if (!room || (!unredact && room.eventsByID.has(eventID)) ||room.requestedEvents.has(eventID)) {
+		if (!room || (!unredact && room.eventsByID.has(eventID)) || room.requestedEvents.has(eventID)) {
 			return
 		}
 		room.requestedEvents.add(eventID)
@@ -334,14 +384,31 @@ export default class Client {
 		)
 	}
 
-	async getRelatedEvents(room: RoomStateStore | RoomID | undefined, eventID: EventID, relationType?: RelationType) {
+	requestEventByRowID(room: RoomStateStore, rowID: EventRowID) {
+		if (room.eventsByRowID.has(rowID) || room.requestedEventRowIDs.has(rowID)) {
+			return
+		}
+		room.requestedEventRowIDs.add(rowID)
+		this.rpc.getEventByRowID(rowID).then(
+			evt => {
+				room.applyEvent(evt, false)
+			},
+			err => {
+				console.error(`Failed to fetch event ${rowID}`, err)
+			},
+		)
+	}
+
+	async getRelatedEvents(
+		room: RoomStateStore | RoomID | undefined, eventID: EventID, relationType?: RelationType, eventType?: EventType,
+	) {
 		if (typeof room === "string") {
 			room = this.store.rooms.get(room)
 		}
 		if (!room) {
 			return []
 		}
-		const events = await this.rpc.getRelatedEvents(room.roomID, eventID, relationType)
+		const events = await this.rpc.getRelatedEvents(room.roomID, eventID, relationType, eventType)
 		return events.map(evt => room.getOrApplyEvent(evt))
 	}
 
@@ -369,6 +436,25 @@ export default class Client {
 			output.push(room.getOrApplyEvent(evt))
 		}
 		return output
+	}
+
+	search(
+		local: boolean, params: LocalSearchParams | ServerSearchParams,
+	): CancellablePromise<[MemDBEvent[], string | undefined]> {
+		const promise = local ? this.rpc.searchLocal(params) : this.rpc.searchServer(params)
+		return new CancellablePromise((resolve, reject) => {
+			promise.then(resp => {
+				const output = []
+				for (const evt of resp.events ?? []) {
+					const room = this.store.rooms.get(evt.room_id)
+					if (!room) {
+						continue
+					}
+					output.push(room.getOrApplyEvent(evt))
+				}
+				resolve([output, resp.next_batch] as const)
+			}, reject)
+		}, promise.cancel)
 	}
 
 	async pinMessage(room: RoomStateStore, evtID: EventID, wantPinned: boolean) {
@@ -432,7 +518,12 @@ export default class Client {
 	}
 
 	async subscribeToEmojiPack(pack: RoomStateGUID, subscribe: boolean = true) {
-		const emoteRooms = (this.store.accountData.get("im.ponies.emote_rooms") ?? {}) as ImagePackRooms
+		const hasNewAccountData = this.store.accountData.has("m.image_pack.rooms")
+		const emoteRooms = (
+			this.store.accountData.get("m.image_pack.rooms")
+			?? this.store.accountData.get("im.ponies.emote_rooms")
+			?? {}
+		) as ImagePackRooms
 		if (!emoteRooms.rooms) {
 			emoteRooms.rooms = {}
 		}
@@ -451,7 +542,10 @@ export default class Client {
 			emoteRooms.rooms[pack.room_id][pack.state_key] = {}
 		}
 		console.log("Changing subscription state for emoji pack", pack, "to", subscribe)
-		await this.rpc.setAccountData("im.ponies.emote_rooms", emoteRooms)
+		await Promise.all([
+			hasNewAccountData ? this.rpc.setAccountData("m.image_pack.rooms", emoteRooms) : Promise.resolve(),
+			this.rpc.setAccountData("im.ponies.emote_rooms", emoteRooms),
+		])
 	}
 
 	async incrementFrequentlyUsedEmoji(targetEmoji: string) {
@@ -478,7 +572,11 @@ export default class Client {
 		await this.rpc.setAccountData("io.element.recent_emoji", content)
 	}
 
-	#handleEmoteRoomsChange() {
+	#handleEmoteRoomsChange(oldEvent: boolean = false) {
+		if (oldEvent && this.store.accountData.has("m.image_pack.rooms")) {
+			// Ignore changes to the old account data event if the new one is set
+			return
+		}
 		this.store.invalidateEmojiPackKeyCache()
 		const keys = this.store.getEmojiPackKeys()
 		console.log("Loading subscribed emoji pack states", keys)
@@ -488,10 +586,17 @@ export default class Client {
 		)
 	}
 
-	async loadSpecificRoomState(keys: RoomStateGUID[]): Promise<void> {
+	async loadSpecificRoomState(keys: RoomStateGUID[], emojiPacks?: boolean): Promise<void> {
 		const missingKeys = keys.filter(key => {
 			const room = this.store.rooms.get(key.room_id)
+			const keyIsEmojiPack = emojiPacks &&
+				(key.type === "m.room.image_pack" || key.type === "im.ponies.room_emotes")
+			const altKey: RoomStateGUID | null = keyIsEmojiPack ? {
+				...key,
+				type: key.type === "m.room.image_pack" ? "im.ponies.emote_rooms" : "m.room.image_pack",
+			} : null
 			return room && room.getStateEvent(key.type, key.state_key) === undefined
+				&& (!altKey || room.getStateEvent(altKey.type, altKey.state_key) === undefined)
 		})
 		if (missingKeys.length === 0) {
 			return

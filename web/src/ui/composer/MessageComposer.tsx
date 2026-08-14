@@ -46,7 +46,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
 import { escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
-import { getRelatesTo, getServerName, isEventID } from "@/util/validation.ts"
+import { getRelatesTo, getServerName, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
@@ -210,7 +210,7 @@ const MessageComposer = () => {
 			setState(state => ({ startNewThread: !state.startNewThread }))
 		}
 	}, [])
-	roomCtx.setEditing = useCallback((evt: MemDBEvent | null) => {
+	roomCtx.setEditing = useCallback((evt: MemDBEvent | null, failed?: true) => {
 		if (evt === null) {
 			rawSetEditing(null)
 			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
@@ -223,7 +223,23 @@ const MessageComposer = () => {
 		}
 		const isMedia = mediaMsgTypes.includes(evtContent.msgtype)
 			&& Boolean(evt.content?.url || evt.content?.file?.url)
-		rawSetEditing(evt)
+		let replyTo: EventID | null = null
+		let silentReply  = false
+		let explicitReplyInThread = false
+		if (!failed) {
+			rawSetEditing(evt)
+		} else if (evt.relation_type === "m.replace" && evt.relates_to) {
+			rawSetEditing(room.eventsByID.get(evt.relates_to) ?? null)
+		} else {
+			const rel = getRelatesTo(evt)
+			const replyToEvtID = !rel?.is_falling_back && rel?.["m.in_reply_to"]?.event_id
+			if (isEventID(replyToEvtID)) {
+				replyTo = replyToEvtID
+				// this isn't a proper detection
+				silentReply = evt.content?.["m.mentions"]?.user_ids?.length === 0
+				explicitReplyInThread = rel?.is_falling_back === false
+			}
+		}
 		const textIsEditable = (evt.content.filename && evt.content.filename !== evt.content.body)
 			|| evt.type === "m.sticker"
 			|| !isMedia
@@ -232,18 +248,18 @@ const MessageComposer = () => {
 			text: textIsEditable
 				? (evt.local_content?.edit_source ?? evtContent.body ?? "")
 				: "",
-			replyTo: null,
-			silentReply: false,
-			explicitReplyInThread: false,
+			replyTo,
+			silentReply,
+			explicitReplyInThread,
 			startNewThread: false,
-			command: null,
+			command: null, // TODO allow editing command invocations?
 			previews:
 				evt.content["m.url_previews"] ??
 				evt.content["com.beeper.linkpreviews"] ??
 				[],
 		})
 		textInput.current?.focus()
-	}, [room.roomID, roomCtx.threadRoot])
+	}, [room, roomCtx.threadRoot])
 	const canSend = Boolean(state.text || state.media || state.location)
 	const onClickSend = (evt: React.FormEvent) => {
 		evt.preventDefault()
@@ -285,10 +301,8 @@ const MessageComposer = () => {
 			}
 		} else if (replyToEvt) {
 			const replyToEvtRelation = getRelatesTo(replyToEvt)
-			const isThread = !roomCtx.threadRoot
-				&& replyToEvtRelation?.rel_type === "m.thread"
-				&& isEventID(replyToEvtRelation?.event_id)
-			if (!state.silentReply && (!isThread || state.explicitReplyInThread)) {
+			const replyToThreadRoot = !roomCtx.threadRoot ? getThreadRoot(replyToEvtRelation) : undefined
+			if (!state.silentReply && (!replyToThreadRoot || state.explicitReplyInThread)) {
 				mentions.user_ids.push(replyToEvt.sender)
 			}
 			if (!relates_to) {
@@ -299,9 +313,9 @@ const MessageComposer = () => {
 			}
 			if (roomCtx.threadRoot) {
 				relates_to.is_falling_back = false
-			} else if (isThread) {
+			} else if (replyToThreadRoot) {
 				relates_to.rel_type = "m.thread"
-				relates_to.event_id = replyToEvtRelation.event_id
+				relates_to.event_id = replyToThreadRoot
 				relates_to.is_falling_back = !state.explicitReplyInThread
 			} else if (state.startNewThread) {
 				relates_to.rel_type = "m.thread"
@@ -356,7 +370,10 @@ const MessageComposer = () => {
 			url_previews: state.previews,
 		}).catch(err => window.alert("Failed to send message: " + err))
 	}
-	const onComposerCaretChange = (evt: CaretEvent<HTMLTextAreaElement>, newText?: string) => {
+	const onComposerCaretChange = (
+		evt: CaretEvent<HTMLTextAreaElement>, newText?: string, newCommand?: CommandState | null,
+	) => {
+		const command = newCommand !== undefined ? newCommand : state.command
 		const area = evt.currentTarget
 		if (area.selectionStart <= (autocomplete?.startPos ?? 0)) {
 			if (
@@ -386,7 +403,7 @@ const MessageComposer = () => {
 				setAutocomplete({ ...autocomplete, query: newQuery, endPos: newEndPos })
 			}
 		} else if (area.selectionStart === area.selectionEnd) {
-			if (newText && !state.command && canAutocompleteCommand(newText)) {
+			if (newText && !command && canAutocompleteCommand(newText)) {
 				setAutocomplete({
 					type: "command",
 					query: newText,
@@ -488,19 +505,22 @@ const MessageComposer = () => {
 				roomCtx.setReplyTo(newReplyEvt.event_id)
 				evt.preventDefault()
 			}
-		} else if (
-			!editing && fullKey === "Ctrl+ArrowDown" && replyToEvt !== null && room.preferences.ctrl_arrow_reply
-		) {
-			const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
-			if (replyToIdx >= room.timeline.length - 1) {
-				roomCtx.setReplyTo(null)
-				evt.preventDefault()
-			} else if (replyToIdx >= 0) {
-				const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
-				if (newReplyEvt) {
-					roomCtx.setReplyTo(newReplyEvt.event_id)
+		} else if (!editing && replyToEvt !== null) {
+			if (fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply) {
+				const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
+				if (replyToIdx >= room.timeline.length - 1) {
+					roomCtx.setReplyTo(null)
 					evt.preventDefault()
+				} else if (replyToIdx >= 0) {
+					const newReplyEvt = room.eventsByRowID.get(room.timeline[replyToIdx + 1].event_rowid)
+					if (newReplyEvt) {
+						roomCtx.setReplyTo(newReplyEvt.event_id)
+						evt.preventDefault()
+					}
 				}
+			} else if (fullKey === "Escape") {
+				evt.stopPropagation()
+				roomCtx.setReplyTo(null)
 			}
 		}
 	}
@@ -521,6 +541,11 @@ const MessageComposer = () => {
 				newState.command = null
 			} else {
 				newState.command = { ...state.command, inputArgs }
+			}
+		} else if (canAutocompleteCommand(newText) && newText === (evt.nativeEvent as InputEvent).data) {
+			const command = findCommandForPaste(newText)
+			if (command) {
+				newState.command = command
 			}
 		}
 		setState(newState)
@@ -544,14 +569,14 @@ const MessageComposer = () => {
 					.catch(err => console.error("Failed to send stop typing notification:", err))
 			}
 		}
-		onComposerCaretChange(evt, evt.target.value)
+		onComposerCaretChange(evt, newState.text, newState.command)
 	}
 	const doUploadFile = useCallback((
 		file: Blob,
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
 	) => {
-		const encryptUpload = Boolean(isEncrypted && !encodingOpts?._no_encrypt)
+		const encryptUpload = encodingOpts?._encrypt ?? isEncrypted
 		if (client.rpc.rpcMediaUpload) {
 			setLoadingMedia(0)
 			client.rpc.uploadMedia(file, filename, encryptUpload).then(
@@ -624,6 +649,22 @@ const MessageComposer = () => {
 			doUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
 		}
 	}
+	const findCommandForPaste = (text: string): CommandState | undefined => {
+		let matches: CommandState[] = []
+		let longestMatch = 0
+		for (const spec of room.getAllBotCommands()) {
+			const inputArgs = stringToCommandArgs(spec, text)
+			if (inputArgs !== null) {
+				if (spec.command.length > longestMatch) {
+					longestMatch = spec.command.length
+					matches = [{ spec, inputArgs }]
+				} else {
+					matches.push({ spec, inputArgs })
+				}
+			}
+		}
+		return matches[0]
+	}
 	const onPaste = (evt: React.ClipboardEvent<HTMLTextAreaElement>) => {
 		const file = evt.clipboardData?.files?.[0]
 		const text = evt.clipboardData.getData("text/plain")
@@ -641,24 +682,9 @@ const MessageComposer = () => {
 		} else if (
 			input.selectionStart === 0 && input.selectionEnd === state.text.length && canAutocompleteCommand(text)
 		) {
-			let matches: CommandState[] = []
-			let longestMatch = 0
-			for (const spec of room.getAllBotCommands()) {
-				const inputArgs = stringToCommandArgs(spec, text)
-				if (inputArgs !== null) {
-					if (spec.command.length > longestMatch) {
-						longestMatch = spec.command.length
-						matches = [{ spec, inputArgs }]
-					} else {
-						matches.push({ spec, inputArgs })
-					}
-				}
-			}
-			if (matches.length) {
-				setState({
-					text,
-					command: matches[0],
-				})
+			const command = findCommandForPaste(text)
+			if (command) {
+				setState({ text, command })
 				evt.preventDefault()
 			}
 			return
@@ -892,6 +918,7 @@ const MessageComposer = () => {
 			content: <div className="context-menu event-context-menu" style={style}>
 				{makeAttachmentButtons(true)}
 			</div>,
+			noHistory: true,
 		})
 	}
 	const collapseButtons = (composerRef.current ? composerRef.current.clientWidth : window.innerWidth - 16) < 600
@@ -970,7 +997,7 @@ const MessageComposer = () => {
 				roomCtx={roomCtx}
 				event={replyToEvt}
 				onClose={closeReply}
-				isThread={!roomCtx.threadRoot && getRelatesTo(replyToEvt)?.rel_type === "m.thread"}
+				isThread={!roomCtx.threadRoot && isThread(getRelatesTo(replyToEvt))}
 				isSilent={state.silentReply}
 				onSetSilent={setSilentReply}
 				isExplicitInThread={state.explicitReplyInThread}

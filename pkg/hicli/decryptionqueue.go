@@ -41,16 +41,20 @@ func (h *HiClient) fetchFromKeyBackup(ctx context.Context, roomID id.RoomID, ses
 }
 
 func (h *HiClient) handleReceivedMegolmSession(ctx context.Context, roomID id.RoomID, sessionID id.SessionID, firstKnownIndex uint32) {
-	log := zerolog.Ctx(ctx)
 	err := h.DB.SessionRequest.Remove(ctx, sessionID, firstKnownIndex)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to remove session request after receiving megolm session")
+		zerolog.Ctx(ctx).Warn().Err(err).Msg("Failed to remove session request after receiving megolm session")
 	}
 	// When receiving megolm sessions in sync, wake up the request queue to ensure they get uploaded to key backup
 	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
 	if ok {
 		syncCtx.shouldWakeupRequestQueue = true
 	}
+	go h.bgHandleReceivedMegolmSession(ctx, roomID, sessionID, firstKnownIndex)
+}
+
+func (h *HiClient) bgHandleReceivedMegolmSession(ctx context.Context, roomID id.RoomID, sessionID id.SessionID, firstKnownIndex uint32) {
+	log := zerolog.Ctx(ctx)
 	events, err := h.DB.Event.GetFailedByMegolmSessionID(ctx, roomID, sessionID)
 	if err != nil {
 		log.Err(err).Msg("Failed to get events that failed to decrypt to retry decryption")

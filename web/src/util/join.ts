@@ -13,15 +13,19 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+function stripBidi(text: string) {
+	return text.replace(/[\u202A-\u202E]/g, "")
+}
+
 export function humanJoin(arr: string[], sep: string = ", ", lastSep: string = " and "): string {
 	if (arr.length === 0) {
 		return ""
 	}
 	if (arr.length === 1) {
-		return arr[0]
+		return stripBidi(arr[0])
 	}
 	if (arr.length === 2) {
-		return arr.join(lastSep)
+		return arr.map(stripBidi).join(lastSep)
 	}
-	return arr.slice(0, -1).join(sep) + lastSep + arr[arr.length - 1]
+	return arr.slice(0, -1).map(stripBidi).join(sep) + lastSep + stripBidi(arr[arr.length - 1])
 }

@@ -116,14 +116,14 @@ blockquote.reply-body {
 			}
 		}
 
-		> div.per-message-event-sender {
+		> span.event-sender.original {
+			font-size: .75rem;
+		}
+
+		> span.via {
+			margin: 0 .25rem;
 			color: var(--secondary-text-color);
 			font-size: .75rem;
-			margin: 0 .25rem;
-
-			> span.via {
-				margin-right: .25rem;
-			}
 		}
 
 		> div.buttons {

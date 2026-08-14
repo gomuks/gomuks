@@ -30,7 +30,12 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 	log := zerolog.Ctx(ctx)
 	log.Info().Msg("Stopping client and logging out")
 	gmx.Client.Stop()
-	_, err := gmx.Client.Client.Logout(ctx)
+	var err error
+	if gmx.Client.Account.RefreshToken != "" {
+		err = gmx.Client.Client.OAuthRevokeToken(ctx)
+	} else {
+		_, err = gmx.Client.Client.Logout(ctx)
+	}
 	if err != nil && !errors.Is(err, mautrix.MUnknownToken) {
 		log.Warn().Err(err).Msg("Failed to log out")
 		return err
@@ -54,7 +59,7 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 		}
 	}
 	log.Info().Msg("Re-initializing directories")
-	gmx.InitDirectories("")
+	gmx.InitDirectories()
 	log.Info().Msg("Restarting client")
 	gmx.StartClient()
 	gmx.Client.EventHandler(gmx.Client.State())

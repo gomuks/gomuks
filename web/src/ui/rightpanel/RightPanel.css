@@ -38,7 +38,7 @@ div.right-panel-content {
 }
 
 div.right-panel-content.pinned-messages {
-	padding: .5rem;
+	padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 	display: flex;
 	flex-direction: column-reverse;
 
@@ -52,7 +52,7 @@ div.right-panel-content.pinned-messages {
 	}
 }
 
-div.right-panel-content.notifications {
+div.right-panel-content.notifications, div.right-panel-content.search {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -62,8 +62,50 @@ div.right-panel-content.notifications {
 		flex-shrink: 0;
 	}
 
-	> div.notification-panel-content {
-		padding: .5rem;
+	> div.search-controls {
+		flex-shrink: 0;
+
+		input[type="search"] {
+			border: none;
+			outline: none;
+			padding: .5rem;
+			border-bottom: 1px solid var(--border-color);
+			width: 100%;
+			box-sizing: border-box;
+
+			&.raw-like-input {
+				border: 1px solid var(--border-color);
+				border-radius: .25rem;
+				padding: .25rem .5rem;
+			}
+		}
+
+		> details {
+			padding: .5rem;
+			border-bottom: 1px solid var(--border-color);
+
+			> label, > input {
+				display: block;
+				width: 100%;
+				margin-top: .25rem;
+			}
+
+			input[type="date"] {
+				border: none;
+				outline: none;
+				border-bottom: 1px solid var(--border-color);
+				box-sizing: border-box;
+			}
+		}
+
+		> div.error {
+			color: var(--error-color);
+			padding: .5rem;
+		}
+	}
+
+	> div.notification-panel-content, > div.search-panel-content {
+		padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 		display: flex;
 		flex-direction: column;
 		overflow: auto;
@@ -90,7 +132,7 @@ div.right-panel-content.widgets {
 	display: flex;
 	flex-direction: column;
 	gap: .5rem;
-	padding: .5rem;
+	padding: .5rem .5rem calc(.5rem + var(--window-bottom-margin));
 
 	> button {
 		padding: .5rem;
@@ -102,8 +144,12 @@ div.right-panel-content.widgets {
 	}
 }
 
+div.right-panel-content.widget {
+	padding-bottom: var(--window-bottom-margin);
+}
+
 div.right-panel-content.user {
-	padding: 1rem;
+	padding: 1rem 1rem calc(1rem + var(--window-bottom-margin));
 
 	div.avatar-container {
 		width: calc((var(--right-panel-width) - 4rem));
@@ -141,7 +187,7 @@ div.right-panel-content.user {
 		max-height: 4rem;
 	}
 
-	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms, div.errors {
+	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms {
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: .5rem;
 		margin-bottom: .5rem;
@@ -150,7 +196,7 @@ div.right-panel-content.user {
 	div.extended-profile {
 		display: grid;
 		gap: 0.25rem;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: auto 1fr;
 
 		> input {
 			border: 0;
@@ -160,9 +206,54 @@ div.right-panel-content.user {
 			border-bottom: 1px solid var(--blockquote-border-color);
 		}
 
-		> button {
+		> div.view-buttons {
+			grid-column: span 2;
+			display: flex;
+
+			> button {
+				width: 100%;
+			}
+		}
+
+		button {
 			grid-column: span 2;
 			padding: .25rem;
+		}
+
+		.blur {
+			filter: blur(8px);
+			pointer-events: none;
+		}
+
+		> .user-info-loader {
+			grid-column: span 2;
+		}
+
+		> div.profile-small-bio {
+			grid-column: span 2;
+
+			border-left: 2px solid var(--blockquote-border-color);
+			padding-left: .5rem;
+
+			> div.html-body {
+				display: -webkit-box;
+				-webkit-line-clamp: 5;
+				-webkit-box-orient: vertical;
+				max-height: 12rem;
+				overflow: hidden;
+
+				img.hicli-custom-emoji {
+					height: 1.5rem;
+				}
+
+				img.hicli-inline-img {
+					max-width: 100%;
+				}
+			}
+
+			> button {
+				width: 100%;
+			}
 		}
 	}
 
@@ -204,6 +295,10 @@ div.right-panel-content.user {
 		&.tofu-broken {
 			color: darkorange;
 		}
+
+		> button {
+			padding: 0 .25rem;
+		}
 	}
 
 	div.devices > details > summary > h4 {
@@ -211,10 +306,14 @@ div.right-panel-content.user {
 	}
 
 	button.action {
-		padding: .5rem 1rem;
+		padding: .5rem;
 		width: 100%;
 		gap: .25rem;
 		justify-content: left;
+	}
+
+	div.devices > details:open {
+		margin-bottom: .5rem;
 	}
 
 	div.devices > details > ul {
@@ -257,17 +356,30 @@ div.right-panel-content.user {
 		display: flex;
 		flex-direction: column;
 
-		button.moderation-action {
+		.moderation-action {
 			padding: .5rem;
 			width: 100%;
 			gap: .5rem;
 			justify-content: left;
+			display: flex;
 
 			&.dangerous {
 				color: var(--error-color);
 			}
 			&.positive {
 				color: var(--primary-color);
+			}
+
+			> svg {
+				flex-shrink: 0;
+			}
+
+			> input {
+				border: none;
+				border-bottom: 1px solid var(--border-color);
+				outline: none;
+				height: 1.5rem;
+				box-sizing: border-box;
 			}
 		}
 	}
@@ -290,6 +402,38 @@ div.right-panel-content.user {
 				color: var(--error-color);
 				flex-shrink: 0;
 			}
+		}
+	}
+}
+
+div.profile-full-bio-modal-wrapper {
+	--modal-max-width: 40rem;
+	width: 100%;
+}
+
+div.profile-full-bio-modal {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+
+	> div.html-body {
+		overflow: scroll;
+	}
+
+	> textarea {
+		width: 100%;
+		box-sizing: border-box;
+		border: none;
+		outline: none;
+		resize: vertical;
+	}
+
+	> div.buttons {
+		display: flex;
+		justify-content: space-between;
+
+		> button {
+			padding: .5rem 1rem;
 		}
 	}
 }
@@ -321,6 +465,7 @@ div.right-panel-content.members {
 		display: flex;
 		flex-direction: column;
 		overflow: auto;
+		padding-bottom: var(--window-bottom-margin);
 
 		> div.member {
 			display: grid;

@@ -10,13 +10,62 @@ div.room-list-wrapper {
 		"spacebar search"   var(--window-top-margin)
 		"spacebar search"   3.5rem
 		"spacebar roomlist" 1fr
+		"profile  roomlist" 3rem
+		"blank    roomlist" var(--window-bottom-margin)
 		/ 3rem    1fr;
+
+	container-type: inline-size;
+	container-name: left-panel;
+
+	> div.blank {
+		grid-area: blank;
+		background-color: var(--space-list-background-overlay);
+	}
 }
 
 div.room-list {
 	background-color: var(--room-list-background-overlay);
 	overflow-y: auto;
 	grid-area: roomlist;
+}
+
+div.profile-switcher {
+	background-color: var(--space-list-background-overlay);
+	grid-area: profile;
+
+	> div.profile-switcher-item {
+		width: 2.5rem;
+		height: 2.5rem;
+		padding: .25rem;
+		cursor: var(--clickable-cursor);
+
+		&:hover, &:focus {
+			background-color: var(--room-list-entry-hover-color);
+		}
+	}
+}
+
+div.profile-switcher-menu {
+	> button {
+		justify-content: space-between;
+		height: 2.5rem;
+		padding: 0 .75rem;
+		gap: .25rem;
+
+		&.active {
+			background-color: var(--room-list-entry-selected-color);
+		}
+
+		> img.avatar {
+			height: 2rem;
+			width: 2rem;
+		}
+
+		> div.room-entry-unreads {
+			width: 2rem;
+			margin: 0;
+		}
+	}
 }
 
 div.space-bar {
@@ -53,21 +102,6 @@ div.space-bar {
 			width: 100%;
 			height: 100%;
 		}
-
-		> div.room-entry-unreads {
-			z-index: 2;
-			height: 0;
-			width: 0;
-			margin-left: auto;
-			position: relative;
-
-			> div.unread-count {
-				position: absolute;
-				/* This positioning doesn't feel very precise, but it looks correct enough */
-				margin-top: .75rem;
-				margin-right: .25rem;
-			}
-		}
 	}
 }
 
@@ -79,6 +113,20 @@ div.room-search-wrapper {
 	background-color: var(--room-list-search-background-overlay);
 	grid-area: search;
 	padding-top: var(--window-top-margin);
+	contain: strict;
+	container-type: inline-size;
+	container-name: room-search;
+
+	@container room-search (max-width: 8rem) {
+		/* TODO after switching to a room search modal, bring back the search button here */
+		> button.create-room-button {
+			margin: auto;
+		}
+
+		> button.search-clear-button, > input {
+			display: none;
+		}
+	}
 
 	> input {
 		padding: 0 0 0 1rem;
@@ -88,6 +136,7 @@ div.room-search-wrapper {
 		outline: none;
 		background-color: transparent;
 		flex: 1;
+		min-width: 0;
 	}
 
 	> button {
@@ -157,6 +206,40 @@ div.room-entry {
 			}
 		}
 	}
+
+	@container left-panel (max-width: 8rem) {
+		> div.room-entry-right {
+			display: none;
+		}
+
+		/* TODO this has partial duplication with the stuff below */
+		> div.room-entry-unreads {
+			z-index: 2;
+			height: 0;
+			width: 0;
+			margin-left: -.75rem;
+			margin-bottom: auto;
+			position: relative;
+
+			> div.unread-count {
+				position: absolute;
+				margin-top: 1rem;
+				margin-right: .25rem;
+				--unread-count-size: .75rem;
+				font-weight: normal;
+				font-size: .75em;
+				background-color: var(--space-unread-counter-message-bg);
+
+				&.notified {
+					background-color: var(--space-unread-counter-notification-bg);
+				}
+
+				&.highlighted {
+					background-color: var(--space-unread-counter-highlight-bg);
+				}
+			}
+		}
+	}
 }
 
 div.room-entry-unreads {
@@ -165,6 +248,22 @@ div.room-entry-unreads {
 	justify-content: center;
 	width: 3rem;
 	margin-right: .25rem;
+
+	&.floating {
+		z-index: 2;
+		height: 0;
+		width: 0;
+		margin-left: auto;
+		margin-bottom: auto;
+		position: relative;
+
+		> div.unread-count {
+			position: absolute;
+			/* This positioning doesn't feel very precise, but it looks correct enough */
+			margin-top: .75rem;
+			margin-right: .25rem;
+		}
+	}
 
 	> div.unread-count {
 		--unread-count-size: 1rem;

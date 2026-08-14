@@ -21,6 +21,12 @@ const (
 		FROM invited_room
 		ORDER BY received_at DESC
 	`
+	getInvitedRoomsAfterQuery = `
+		SELECT room_id, received_at, invite_state
+		FROM invited_room
+		WHERE mod_timestamp > $1
+		ORDER BY received_at DESC
+	`
 	getInvitedRoomQuery = `
 		SELECT room_id, received_at, invite_state
 		FROM invited_room
@@ -33,7 +39,7 @@ const (
 		INSERT INTO invited_room (room_id, received_at, invite_state)
 		VALUES ($1, $2, $3)
 		ON CONFLICT (room_id) DO UPDATE
-			SET received_at = $2, invite_state = $3
+			SET received_at = $2, invite_state = $3, mod_timestamp = unixepoch('subsec')*1000
 	`
 )
 
@@ -43,6 +49,10 @@ type InvitedRoomQuery struct {
 
 func (irq *InvitedRoomQuery) GetAll(ctx context.Context) ([]*InvitedRoom, error) {
 	return irq.QueryMany(ctx, getInvitedRoomsQuery)
+}
+
+func (irq *InvitedRoomQuery) GetAllSince(ctx context.Context, since int64) ([]*InvitedRoom, error) {
+	return irq.QueryMany(ctx, getInvitedRoomsAfterQuery, since)
 }
 
 func (irq *InvitedRoomQuery) Get(ctx context.Context, roomID id.RoomID) (*InvitedRoom, error) {

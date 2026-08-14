@@ -136,4 +136,8 @@ export class InvitedRoomStore implements RoomListEntry, RoomSummary {
 	get marked_unread(): boolean {
 		return true
 	}
+
+	get low_priority(): boolean {
+		return false
+	}
 }

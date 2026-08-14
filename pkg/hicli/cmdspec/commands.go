@@ -37,6 +37,8 @@ const (
 	DelAlias       = "alias del"
 	ConvertToDM    = "converttodm"
 	ConvertToRoom  = "converttoroom"
+	PowerLevel     = "powerlevel"
+	Poll           = "poll"
 )
 
 var CommandDefinitions = []*cmdschema.EventContent{{
@@ -49,6 +51,7 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 	}},
 }, {
 	Command:     Join,
+	Aliases:     []string{"open"},
 	Description: event.MakeExtensibleText("Jump to the join room view by ID, alias or link"),
 	Parameters: []*cmdschema.Parameter{{
 		Key:         "room_reference",
@@ -236,4 +239,33 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 }, {
 	Command:     ConvertToRoom,
 	Description: event.MakeExtensibleText("Remove marking the current room as a DM"),
+}, {
+	Command:     PowerLevel,
+	Description: event.MakeExtensibleText("Change a power level in the current room"),
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "thing",
+		Schema:      cmdschema.Union(cmdschema.PrimitiveTypeString.Schema(), cmdschema.PrimitiveTypeUserID.Schema()),
+		Description: event.MakeExtensibleText("The user ID, event type or top-level key of the power level to change."),
+	}, {
+		Key:         "value",
+		Schema:      cmdschema.PrimitiveTypeInteger.Schema(),
+		Description: event.MakeExtensibleText("The new power level for the thing"),
+	}},
+}, {
+	Command:     Poll,
+	Description: event.MakeExtensibleText("Create a new poll"),
+	Parameters: []*cmdschema.Parameter{{
+		Key:         "question",
+		Schema:      cmdschema.PrimitiveTypeString.Schema(),
+		Description: event.MakeExtensibleText("The question to ask in the poll"),
+	}, {
+		Key:          "max_selections",
+		Schema:       cmdschema.PrimitiveTypeInteger.Schema(),
+		Description:  event.MakeExtensibleText("The maximum number of answers a user can select. Defaults to 1."),
+		DefaultValue: 1,
+	}, {
+		Key:         "options",
+		Schema:      cmdschema.Array(cmdschema.PrimitiveTypeString.Schema()),
+		Description: event.MakeExtensibleText("The possible answers to the poll"),
+	}},
 }}

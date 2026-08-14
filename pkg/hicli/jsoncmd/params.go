@@ -11,8 +11,11 @@ import (
 
 	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto/attachment"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+	"maunium.net/go/mautrix/oauth"
+	"maunium.net/go/mautrix/pushrules"
 
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
@@ -119,6 +122,11 @@ type GetProfileParams struct {
 	UserID id.UserID `json:"user_id"`
 }
 
+type ResetMasterKeyTOFUParams struct {
+	UserID    id.UserID `json:"user_id"`
+	MasterKey string    `json:"master_key"`
+}
+
 type GetMutualRoomsParams struct {
 	UserID    id.UserID `json:"user_id"`
 	NextBatch string    `json:"next_batch,omitempty"`
@@ -133,6 +141,10 @@ type GetEventParams struct {
 	RoomID   id.RoomID  `json:"room_id"`
 	EventID  id.EventID `json:"event_id"`
 	Unredact bool       `json:"unredact"`
+}
+
+type GetEventByRowIDParams struct {
+	RowID database.EventRowID `json:"event_rowid"`
 }
 
 type GetEventContextParams struct {
@@ -156,7 +168,8 @@ type GetRelatedEventsParams struct {
 	RoomID  id.RoomID  `json:"room_id"`
 	EventID id.EventID `json:"event_id"`
 
-	RelationType event.RelationType `json:"relation_type"`
+	RelationType event.RelationType `json:"relation_type,omitempty"`
+	EventType    string             `json:"event_type,omitempty"`
 }
 
 type GetStickyEventsParams struct {
@@ -247,6 +260,42 @@ type PaginateManualParams struct {
 	Limit     int               `json:"limit"`
 }
 
+type SearchParams struct {
+	// The search term to search for. This is passed directly to an SQLite fts5 MATCH query.
+	SearchTerm string `json:"search_term"`
+	// An extra search term to match against the raw content JSON.
+	RawLike string `json:"raw_like,omitempty"`
+	// Maximum number of results to return.
+	Limit int `json:"limit"`
+	// Rooms in which to search. If empty, all rooms will be searched.
+	RoomIDs []id.RoomID `json:"room_ids,omitempty"`
+	// Users whose messages to search. If empty, messages from all users will be searched.
+	Senders      []id.UserID        `json:"senders,omitempty"`
+	MinTimestamp jsontime.UnixMilli `json:"min_timestamp,omitempty"`
+	MaxTimestamp jsontime.UnixMilli `json:"max_timestamp,omitempty"`
+	// Whether to also search redacted events.
+	IncludeRedacted bool `json:"include_redacted,omitempty"`
+	// Whether to sort results by timestamp instead of relevance.
+	SortByTime bool `json:"sort_by_time,omitempty"`
+	// The next batch value from a previous response. All other parameters must remain exactly the same.
+	NextBatch string `json:"next_batch,omitempty"`
+}
+
+type SearchServerParams struct {
+	// The search term to search for. The syntax is up to the homeserver.
+	SearchTerm string `json:"search_term"`
+	// Maximum number of results to return.
+	Limit int `json:"limit"`
+	// Rooms in which to search. If empty, all rooms will be searched.
+	RoomIDs []id.RoomID `json:"room_ids,omitempty"`
+	// Users whose messages to search. If empty, messages from all users will be searched.
+	Senders []id.UserID `json:"senders,omitempty"`
+	// Whether to sort results by timestamp instead of relevance.
+	SortByTime bool `json:"sort_by_time,omitempty"`
+	// The next batch value from a previous response. All other parameters must remain exactly the same.
+	NextBatch string `json:"next_batch,omitempty"`
+}
+
 type JoinRoomParams struct {
 	RoomIDOrAlias string `json:"room_id_or_alias"`
 	// Via servers to attempt to join through.
@@ -288,6 +337,38 @@ type MuteRoomParams struct {
 	Muted  bool      `json:"muted"`
 }
 
+type UpdatePushRuleAction string
+
+const (
+	UpdatePushRuleActionEnable     UpdatePushRuleAction = "enable"
+	UpdatePushRuleActionDisable    UpdatePushRuleAction = "disable"
+	UpdatePushRuleActionPut        UpdatePushRuleAction = "put"
+	UpdatePushRuleActionDelete     UpdatePushRuleAction = "delete"
+	UpdatePushRuleActionPutActions UpdatePushRuleAction = "put_actions"
+)
+
+type PushRulePutContent struct {
+	Actions pushrules.PushActionArray `json:"actions"`
+	// The conditions to match in order to trigger this rule.
+	// Only applicable to generic underride/override rules.
+	Conditions []*pushrules.PushCondition `json:"conditions,omitempty"`
+	// Pattern for content-specific push rules
+	Pattern string `json:"pattern,omitempty"`
+}
+
+type UpdatePushRuleParams struct {
+	Kind   pushrules.PushRuleType `json:"kind"`
+	RuleID string                 `json:"rule_id"`
+	Action UpdatePushRuleAction   `json:"action"`
+
+	// When action is put, the new content for the push rule
+	NewContent *mautrix.ReqPutPushRule `json:"new_content,omitempty"`
+
+	// When action is put_actions, the new list of actions for the push rule.
+	// This is mostly for default rules that can't be edited otherwise.
+	Actions []*pushrules.PushAction `json:"actions,omitempty"`
+}
+
 type PingParams struct {
 	LastReceivedID int64 `json:"last_received_id"`
 }
@@ -305,6 +386,8 @@ type UploadMediaParams struct {
 	Encrypt bool `json:"encrypt,omitempty"`
 	// Whether the upload is a voice message. If true, a waveform will be generated.
 	VoiceMessage bool `json:"voice_message,omitempty"`
+	// Force sending as `m.file` instead of image/video/audio based on mime type?
+	ForceFile bool `json:"force_file,omitempty"`
 
 	// Mime type to re-encode media to. Options below only apply if this is set.
 	EncodeTo string `json:"encode_to,omitempty"`
@@ -317,6 +400,28 @@ type UploadMediaParams struct {
 	Quality int `json:"quality,omitempty"`
 }
 
+type DownloadMediaParams struct {
+	MXC id.ContentURI `json:"mxc"`
+	// Whether the media is encrypted. The keys are fetched from the local database.
+	Encrypted bool `json:"encrypted,omitempty"`
+	// Optionally, the raw keys for the file. This is only used if the keys aren't found in the database.
+	// Using this field is not recommended, except for custom events which the backend doesn't extract keys from.
+	Keys *attachment.EncryptedFile `json:"keys,omitempty"`
+
+	// If the media is an avatar, the backend will ensure that the mime type is acceptable.
+	// It will also ignore the server returning application/octet-stream and detect the mime from the data instead.
+	IsAvatar bool `json:"is_avatar,omitempty"`
+	// Whether the client wants a thumbnail of the avatar. This will always return a square webp image.
+	ThumbnailAvatar bool `json:"thumbnail_avatar,omitempty"`
+}
+
+type GetURLPreviewParams struct {
+	// The URL to generate a preview for.
+	URL string `json:"url"`
+	// Whether potential preview images should be encrypted.
+	Encrypt bool `json:"encrypt,omitempty"`
+}
+
 type ExportKeysParams struct {
 	Passphrase string    `json:"passphrase"`
 	RoomID     id.RoomID `json:"room_id,omitempty"`
@@ -326,4 +431,34 @@ type RerequestSessionParams struct {
 	RoomID    id.RoomID    `json:"room_id"`
 	SessionID id.SessionID `json:"session_id"`
 	Sender    id.UserID    `json:"sender"`
+}
+
+type OAuthSimpleDeviceCodeParams struct {
+	HomeserverURL string    `json:"homeserver_url"`
+	UserIDHint    id.UserID `json:"user_id_hint,omitempty"`
+}
+
+type OAuthRegisterClientParams struct {
+	HomeserverURL string `json:"homeserver_url"`
+	oauth.ClientMetadata
+}
+
+type OAuthGetAuthorizationURLParams struct {
+	HomeserverURL string `json:"homeserver_url"`
+	oauth.GetAuthorizationURLParams
+}
+
+type OAuthGenerateDeviceCodeParams struct {
+	HomeserverURL string `json:"homeserver_url"`
+	oauth.GenerateDeviceCodeParams
+}
+
+type OAuthExchangeTokenParams struct {
+	HomeserverURL string `json:"homeserver_url"`
+	oauth.ExchangeTokenParams
+}
+
+type OAuthPollDeviceCodeParams struct {
+	HomeserverURL string `json:"homeserver_url"`
+	oauth.PollDeviceCodeParams
 }

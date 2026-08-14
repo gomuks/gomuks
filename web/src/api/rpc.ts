@@ -21,8 +21,12 @@ import {
 	Direction,
 	EventContextResponse,
 	EventID,
+	EventRowID,
 	EventType,
+	GetOwnDevicesResponse,
+	GetProfileResponse,
 	JSONValue,
+	LocalSearchParams,
 	LoginFlowsResponse,
 	LoginRequest,
 	ManualPaginationResponse,
@@ -31,8 +35,17 @@ import {
 	Mentions,
 	MessageEventContent,
 	MutualRoomsResponse,
+	OAuthAuthorizationState,
+	OAuthClientMetadata,
+	OAuthClientMetadataRequest,
+	OAuthDeviceCodeResponse,
+	OAuthExchangeTokenParams,
+	OAuthGenerateDeviceCodeParams,
+	OAuthGetAuthorizationURLParams,
 	PaginationResponse,
 	ProfileEncryptionInfo,
+	PushRuleKind,
+	PutPushRuleRequest,
 	RPCCommand,
 	RPCEvent,
 	RawDBEvent,
@@ -46,6 +59,7 @@ import {
 	RespCreateRoom,
 	RespMediaConfig,
 	RespOpenIDToken,
+	RespRTCTransports,
 	RespRoomJoin,
 	RespSpaceHierarchy,
 	RespTurnServer,
@@ -53,11 +67,11 @@ import {
 	RoomID,
 	RoomStateGUID,
 	RoomSummary,
+	ServerSearchParams,
 	TimelineRowID,
 	URLPreview,
 	UnreadType,
 	UserID,
-	UserProfile,
 } from "./types"
 
 export interface ConnectionEvent {
@@ -88,6 +102,7 @@ export default abstract class RPCClient {
 	public readonly connect: CachedEventDispatcher<ConnectionEvent> = new CachedEventDispatcher()
 	public readonly event: EventDispatcher<RPCEvent> = new EventDispatcher()
 	public readonly rpcMediaUpload: boolean = false
+	public getCachedServerTimestamp?: () => number | undefined
 	protected readonly pendingRequests: Map<number, {
 		resolve: (data: unknown) => void,
 		reject: (err: Error) => void
@@ -137,28 +152,33 @@ export default abstract class RPCClient {
 		throw new Error("Media upload not supported by this RPC client")
 	}
 
-	async doAuth(signal: AbortSignal): Promise<boolean> {
-		try {
-			const resp = await fetch(`_gomuks/auth?secure=${window.isSecureContext}`, {
-				method: "POST",
-				signal,
-			})
+	async doAuth(signal?: AbortSignal): Promise<void> {
+		const resp = await fetch(`_gomuks/auth?secure=${window.isSecureContext}`, {
+			method: "POST",
+			signal,
+		})
+		if (!resp.ok) {
 			let body = ""
 			try {
 				body = (await resp.text()).trim()
 			} catch {}
-			const authFailPrefix = `Authentication failed: ${resp.status} ${resp.statusText}`
-			if (!resp.ok && !signal.aborted) {
-				this.connect.emit({
-					connected: false,
-					reconnecting: false,
-					error: [authFailPrefix, body].filter(x => !!x).join(" - "),
-				})
-				return false
+			let errMsg = `Authentication failed: ${resp.status} ${resp.statusText}`
+			if (body) {
+				errMsg += ` - ${body}`
 			}
+			throw new Error(errMsg)
+		}
+	}
+
+	async tryAuth(signal: AbortSignal): Promise<boolean> {
+		try {
+			await this.doAuth(signal)
 			return true
 		} catch (err) {
-			this.connect.emit({ connected: false, reconnecting: false, error: `Authentication failed: ${err}` })
+			if (!signal.aborted) {
+				const errStr = err instanceof Error ? err.message : String(err)
+				this.connect.emit({ connected: false, reconnecting: false, error: errStr })
+			}
 			return false
 		}
 	}
@@ -258,7 +278,7 @@ export default abstract class RPCClient {
 		return this.request("set_typing", { room_id, timeout })
 	}
 
-	getProfile(user_id: UserID): Promise<UserProfile> {
+	getProfile(user_id: UserID): Promise<GetProfileResponse> {
 		return this.request("get_profile", { user_id })
 	}
 
@@ -274,8 +294,16 @@ export default abstract class RPCClient {
 		return this.request("get_profile_encryption_info", { user_id })
 	}
 
+	getOwnDevices(): Promise<GetOwnDevicesResponse> {
+		return this.request("get_own_devices", {})
+	}
+
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
 		return this.request("track_user_devices", { user_id })
+	}
+
+	resetMasterKeyTOFU(user_id: UserID, master_key: string): Promise<ProfileEncryptionInfo> {
+		return this.request("reset_master_key_tofu", { user_id, master_key })
 	}
 
 	ensureGroupSessionShared(room_id: RoomID): Promise<void> {
@@ -304,8 +332,14 @@ export default abstract class RPCClient {
 		return this.request("get_event", { room_id, event_id, unredact })
 	}
 
-	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
-		return this.request("get_related_events", { room_id, event_id, relation_type })
+	getEventByRowID(event_rowid: EventRowID): Promise<RawDBEvent> {
+		return this.request("get_event_by_rowid", { event_rowid })
+	}
+
+	getRelatedEvents(
+		room_id: RoomID, event_id: EventID, relation_type?: RelationType, event_type?: EventType,
+	): Promise<RawDBEvent[]> {
+		return this.request("get_related_events", { room_id, event_id, relation_type, event_type })
 	}
 
 	getStickyEvents(room_id: RoomID): Promise<RawDBEvent[]> {
@@ -332,6 +366,14 @@ export default abstract class RPCClient {
 		{ limit = 50, threadRoot }: { limit?: number, threadRoot?: EventID } = {},
 	): Promise<ManualPaginationResponse> {
 		return this.request("paginate_manual", { room_id, since, direction, limit, thread_root: threadRoot })
+	}
+
+	searchLocal(params: LocalSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_local", params)
+	}
+
+	searchServer(params: ServerSearchParams): CancellablePromise<ManualPaginationResponse> {
+		return this.request("search_server", params)
 	}
 
 	paginate(
@@ -383,6 +425,21 @@ export default abstract class RPCClient {
 		return this.request("mute_room", { room_id, muted })
 	}
 
+	updatePushRule(kind: PushRuleKind, rule_id: string, action: "enable" | "disable" | "delete"): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind, rule_id: string, action: "put" | "put_actions", new_content: PutPushRuleRequest,
+	): Promise<void>
+	updatePushRule(
+		kind: PushRuleKind,
+		rule_id: string,
+		action: "enable" | "disable" | "delete" | "put" | "put_actions",
+		new_content?: PutPushRuleRequest,
+	): Promise<void> {
+		const actions = action === "put_actions" ? new_content?.actions || [] : undefined
+		new_content = action === "put" ? new_content : undefined
+		return this.request("update_push_rule", { kind, rule_id, action, new_content, actions })
+	}
+
 	resolveAlias(alias: RoomAlias): Promise<ResolveAliasResponse> {
 		return this.request("resolve_alias", { alias })
 	}
@@ -393,6 +450,28 @@ export default abstract class RPCClient {
 
 	getLoginFlows(homeserver_url: string): Promise<LoginFlowsResponse> {
 		return this.request("get_login_flows", { homeserver_url })
+	}
+
+	oauthRegisterClient(
+		homeserver_url: string, metadata: OAuthClientMetadataRequest,
+	): Promise<OAuthClientMetadata> {
+		return this.request("oauth_register_client", { homeserver_url, ...metadata })
+	}
+
+	oauthGetAuthorizationURL(params: OAuthGetAuthorizationURLParams): Promise<OAuthAuthorizationState> {
+		return this.request("oauth_get_authorization_url", params)
+	}
+
+	oauthExchangeToken(params: OAuthExchangeTokenParams): Promise<void> {
+		return this.request("oauth_exchange_token", params)
+	}
+
+	oauthGenerateDeviceCode(params: OAuthGenerateDeviceCodeParams): Promise<OAuthDeviceCodeResponse> {
+		return this.request("oauth_generate_device_code", params)
+	}
+
+	oauthPollDeviceCode(homeserver_url: string, device_code: string, client_id?: string): Promise<void> {
+		return this.request("oauth_poll_device_code", { homeserver_url, device_code, client_id })
 	}
 
 	login(homeserver_url: string, username: string, password: string): Promise<void> {
@@ -425,6 +504,10 @@ export default abstract class RPCClient {
 
 	getTurnServers(): Promise<RespTurnServer> {
 		return this.request("get_turn_servers", {})
+	}
+
+	getRTCTransports(): Promise<RespRTCTransports> {
+		return this.request("get_rtc_transports", {})
 	}
 
 	getMediaConfig(): Promise<RespMediaConfig> {

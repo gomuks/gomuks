@@ -32,11 +32,15 @@ import (
 
 var wantHelp, _ = flag.MakeHelpFlag()
 var wantVersion = flag.MakeFull("v", "version", "View gomuks version and quit.", "false").Bool()
+var desktopMode = flag.MakeFull("", "desktop", "Indicate that the backend is running as a subprocess in the desktop app", "false").Bool()
 
 func main() {
 	gomuks.PromptInput = readline.Line
 	gomuks.PromptPassword = readline.Password
 	hicli.InitialDeviceDisplayName = "gomuks web"
+	if *desktopMode {
+		hicli.InitialDeviceDisplayName = "gomuks desktop"
+	}
 	exhttp.AutoAllowCORS = false
 	flag.SetHelpTitles(
 		"gomuks - A Matrix client written in Go.",
@@ -57,6 +61,9 @@ func main() {
 	}
 
 	gmx := gomuks.NewGomuks()
+	if *desktopMode {
+		gmx.DesktopKey = os.Getenv("GOMUKS_DESKTOP_KEY")
+	}
 	gmx.FrontendFS = web.Frontend
 	gmx.Run()
 }

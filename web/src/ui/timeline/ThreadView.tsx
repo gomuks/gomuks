@@ -56,7 +56,7 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 		setTimeline([])
 		client.rpc.paginateManual(room.roomID, "", "b", { threadRoot })
 			.then(res => {
-				setPrevBatch(res.next_batch)
+				setPrevBatch(res.next_batch ?? "")
 				setTimeline(res.events.reverse().map(evt => room.applyEvent(evt)))
 			}, err => {
 				console.error("Failed to load thread history", err)
@@ -83,7 +83,7 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 		client.rpc.paginateManual(room.roomID, prevBatch, "b", { threadRoot })
 			.then(res => {
 				scrollFixRef.current = viewRef.current?.scrollHeight ?? null
-				setPrevBatch(res.next_batch)
+				setPrevBatch(res.next_batch ?? "")
 				setTimeline(currentTimeline => [
 					...res.events.reverse().map(evt => room.applyEvent(evt)),
 					...currentTimeline,

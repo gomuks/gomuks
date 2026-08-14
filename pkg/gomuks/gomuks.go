@@ -17,8 +17,10 @@
 package gomuks
 
 import (
+	"cmp"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -51,6 +53,8 @@ type Gomuks struct {
 	Server *http.Server
 	Client *hicli.HiClient
 
+	RootOverride string
+
 	ConfigDir string
 	DataDir   string
 	CacheDir  string
@@ -63,6 +67,7 @@ type Gomuks struct {
 
 	Config      Config
 	DisableAuth bool
+	DesktopKey  string
 
 	GetDBConfig func() dbutil.PoolConfig
 
@@ -70,6 +75,7 @@ type Gomuks struct {
 	stopChan chan struct{}
 
 	EventBuffer *EventBuffer
+	execBuffer  *ExecutionBuffer[json.RawMessage, *mautrix.RespError]
 
 	// Maps from temporary MXC URIs from by the media repository for URL
 	// previews to permanent MXC URIs suitable for sending in an inline preview
@@ -85,6 +91,8 @@ func NewGomuks() *Gomuks {
 		temporaryMXCToPermanent:         map[id.ContentURIString]id.ContentURIString{},
 		temporaryMXCToEncryptedFileInfo: map[id.ContentURIString]*event.EncryptedFileInfo{},
 		temporaryMXCToBlurhash:          map[id.ContentURIString]string{},
+
+		execBuffer: NewExecutionBuffer[json.RawMessage, *mautrix.RespError](context.Background()),
 	}
 	gmx.GetDBConfig = func() dbutil.PoolConfig {
 		return dbutil.PoolConfig{
@@ -97,13 +105,12 @@ func NewGomuks() *Gomuks {
 	return gmx
 }
 
-func (gmx *Gomuks) InitDirectories(root string) {
+func (gmx *Gomuks) InitDirectories() {
 	// We need 4 directories: config, data, cache, logs
 	//
-	// 1. If root is provided as a parameter, all directories are created under that.
-	// 2. If GOMUKS_ROOT is set, all directories are created under that.
-	// 3. If GOMUKS_*_HOME is set, that value is used as the directory.
-	// 4. Use system-specific defaults as below
+	// 1. If GOMUKS_*_HOME is set, that value is used as the directory.
+	// 2. If GOMUKS_ROOT or the root argument is set, all directories are created under that.
+	// 3. Use system-specific defaults as below
 	//
 	// *nix:
 	// - Config: $XDG_CONFIG_HOME/gomuks or $HOME/.config/gomuks
@@ -120,43 +127,38 @@ func (gmx *Gomuks) InitDirectories(root string) {
 	// - Config and Data: $HOME/Library/Application Support/gomuks
 	// - Cache: $HOME/Library/Caches/gomuks
 	// - Logs: $HOME/Library/Logs/gomuks
-	gomuksRoot := ""
-	if root != "" {
-		gomuksRoot = root
-	} else {
-		gomuksRoot = os.Getenv("GOMUKS_ROOT")
-	}
+	gomuksRoot := cmp.Or(gmx.RootOverride, os.Getenv("GOMUKS_ROOT"))
+	gmx.CacheDir = os.Getenv("GOMUKS_CACHE_HOME")
+	gmx.ConfigDir = os.Getenv("GOMUKS_CONFIG_HOME")
+	gmx.DataDir = os.Getenv("GOMUKS_DATA_HOME")
+	gmx.LogDir = os.Getenv("GOMUKS_LOGS_HOME")
 	if gomuksRoot != "" {
 		exerrors.PanicIfNotNil(os.MkdirAll(gomuksRoot, 0700))
-		gmx.CacheDir = filepath.Join(gomuksRoot, "cache")
-		gmx.ConfigDir = filepath.Join(gomuksRoot, "config")
-		gmx.DataDir = filepath.Join(gomuksRoot, "data")
-		gmx.LogDir = filepath.Join(gomuksRoot, "logs")
+		gmx.CacheDir = cmp.Or(gmx.CacheDir, filepath.Join(gomuksRoot, "cache"))
+		gmx.ConfigDir = cmp.Or(gmx.ConfigDir, filepath.Join(gomuksRoot, "config"))
+		gmx.DataDir = cmp.Or(gmx.DataDir, filepath.Join(gomuksRoot, "data"))
+		gmx.LogDir = cmp.Or(gmx.LogDir, filepath.Join(gomuksRoot, "logs"))
 	} else {
 		homeDir := exerrors.Must(os.UserHomeDir())
-		if cacheDir := os.Getenv("GOMUKS_CACHE_HOME"); cacheDir != "" {
-			gmx.CacheDir = cacheDir
-		} else {
+		if gmx.CacheDir == "" {
 			gmx.CacheDir = filepath.Join(exerrors.Must(os.UserCacheDir()), "gomuks")
 		}
-		if configDir := os.Getenv("GOMUKS_CONFIG_HOME"); configDir != "" {
-			gmx.ConfigDir = configDir
-		} else {
+		if gmx.ConfigDir == "" {
 			gmx.ConfigDir = filepath.Join(exerrors.Must(os.UserConfigDir()), "gomuks")
 		}
-		if dataDir := os.Getenv("GOMUKS_DATA_HOME"); dataDir != "" {
-			gmx.DataDir = dataDir
-		} else if dataDir = os.Getenv("XDG_DATA_HOME"); dataDir != "" {
-			gmx.DataDir = filepath.Join(dataDir, "gomuks")
+		if gmx.DataDir != "" {
+			// already set
+		} else if xdgDataHome := os.Getenv("XDG_DATA_HOME"); xdgDataHome != "" {
+			gmx.DataDir = filepath.Join(xdgDataHome, "gomuks")
 		} else if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 			gmx.DataDir = gmx.ConfigDir
 		} else {
 			gmx.DataDir = filepath.Join(homeDir, ".local", "share", "gomuks")
 		}
-		if logDir := os.Getenv("GOMUKS_LOGS_HOME"); logDir != "" {
-			gmx.LogDir = logDir
-		} else if logDir = os.Getenv("XDG_STATE_HOME"); logDir != "" {
-			gmx.LogDir = filepath.Join(logDir, "gomuks")
+		if gmx.LogDir != "" {
+			// already set
+		} else if xdgStateHome := os.Getenv("XDG_STATE_HOME"); xdgStateHome != "" {
+			gmx.LogDir = filepath.Join(xdgStateHome, "gomuks")
 		} else if runtime.GOOS == "darwin" {
 			gmx.LogDir = filepath.Join(homeDir, "Library", "Logs", "gomuks")
 		} else if runtime.GOOS == "windows" {
@@ -226,8 +228,8 @@ func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 		gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to get first user ID")
 		return 11
 	}
-	err = gmx.Client.Start(ctx, userID, nil)
-	if errors.Is(err, mautrix.MUnknownToken) {
+	err = gmx.Client.Start(ctx, userID)
+	if errors.Is(err, mautrix.MUnknownToken) || errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		gmx.Log.Err(err).Msg("Failed to start client, logging out")
 		err = gmx.Logout(ctx)
 		if err != nil {
@@ -284,7 +286,7 @@ func (gmx *Gomuks) DirectStop() {
 }
 
 func (gmx *Gomuks) Run() {
-	gmx.InitDirectories("")
+	gmx.InitDirectories()
 	err := gmx.LoadConfig()
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Failed to load config:", err)

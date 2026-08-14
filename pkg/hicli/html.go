@@ -145,6 +145,12 @@ func attributeIsAllowed(tag atom.Atom, attr html.Attribute) bool {
 			_, err := strconv.Atoi(attr.Val)
 			return err == nil
 		}
+	case atom.Li:
+		switch attr.Key {
+		case "value":
+			_, err := strconv.Atoi(attr.Val)
+			return err == nil
+		}
 	case atom.Code:
 		switch attr.Key {
 		case "class":
@@ -501,6 +507,20 @@ func (ts *tagStack) contains(tags ...atom.Atom) bool {
 	return false
 }
 
+func (ts *tagStack) peek() atom.Atom {
+	if len(*ts) == 0 {
+		return atom.Atom(0)
+	}
+	return (*ts)[len(*ts)-1]
+}
+
+func (ts *tagStack) peek2() atom.Atom {
+	if len(*ts) < 2 {
+		return atom.Atom(0)
+	}
+	return (*ts)[len(*ts)-2]
+}
+
 func (ts *tagStack) push(tag atom.Atom) {
 	*ts = append(*ts, tag)
 }
@@ -530,13 +550,23 @@ func getCodeBlockLanguage(token html.Token) string {
 
 const builderPreallocBuffer = 100
 
-func sanitizeAndLinkifyHTML(body string) (string, []id.ContentURI, error) {
+func linkifyPlaintext(body string) string {
+	var builder strings.Builder
+	builder.Grow(len(body) + builderPreallocBuffer)
+	linkifyAndWriteBytes(&builder, []byte(body))
+	return builder.String()
+}
+
+const MaxHTMLDepth = 100
+
+func sanitizeAndLinkifyHTML(body string, ownMessage bool) (string, []id.ContentURI, error) {
 	tz := html.NewTokenizer(strings.NewReader(body))
 	var built strings.Builder
 	built.Grow(len(body) + builderPreallocBuffer)
 	var codeBlock *strings.Builder
 	var codeBlockLanguage string
 	var inlineImages []id.ContentURI
+	var checkboxIdx int
 	ts := make(tagStack, 0, 2)
 Loop:
 	for {
@@ -548,6 +578,9 @@ Loop:
 			}
 			return "", nil, err
 		case html.StartTagToken, html.SelfClosingTagToken:
+			if len(ts) >= MaxHTMLDepth {
+				continue
+			}
 			token := tz.Token()
 			if codeBlock != nil {
 				if token.DataAtom == atom.Code {
@@ -599,13 +632,21 @@ Loop:
 			case atom.Code:
 				built.WriteString(`<code class="hicli-inline-code"`)
 			case atom.Input:
+				if ts.peek2() != atom.Ul || ts.peek() != atom.Li {
+					continue
+				}
 				inputType, ok := getAttribute(token.Attr, "type")
 				if !ok || inputType != "checkbox" {
 					continue
 				}
 				_, checked := getAttribute(token.Attr, "checked")
-				// TODO allow checking checkboxes on own events
-				built.WriteString(`<input type="checkbox" class="hicli-checkbox" disabled`)
+				built.WriteString(`<input type="checkbox" class="hicli-checkbox"`)
+				if !ownMessage {
+					built.WriteString(" disabled")
+				} else {
+					writeAttribute(&built, "data-checkbox-index", strconv.Itoa(checkboxIdx))
+					checkboxIdx++
+				}
 				if checked {
 					built.WriteString(" checked")
 				}
@@ -660,8 +701,7 @@ Loop:
 			// ignore
 		}
 	}
-	slices.Reverse(ts)
-	for _, t := range ts {
+	for _, t := range slices.Backward(ts) {
 		built.WriteString("</")
 		built.WriteString(t.String())
 		built.WriteByte('>')

@@ -65,6 +65,8 @@ func (h *HiClient) ConvertToDM(ctx context.Context, roomID id.RoomID, recipient 
 }
 
 func (h *HiClient) GetDMUserID(ctx context.Context, roomID id.RoomID) (id.UserID, error) {
+	h.directChatLock.Lock()
+	defer h.directChatLock.Unlock()
 	rooms, err := h.unlockedGetDirectChatRooms(ctx)
 	if err != nil {
 		return "", err

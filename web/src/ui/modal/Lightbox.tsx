@@ -311,7 +311,7 @@ export class Lightbox extends Component<LightboxProps> {
 					href={this.props.src}
 					target="_blank"
 					rel="noopener noreferrer"
-					download={window.gomuksAndroid}
+					download={Boolean(window.gomuksAndroid)}
 				>
 					<DownloadIcon/>
 				</a>

@@ -17,7 +17,9 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/exstrings"
+	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -79,6 +81,10 @@ func (h *HiClient) ProcessCommand(
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdConvertToDM)
 	case cmdspec.ConvertToRoom:
 		responseText = h.handleCmdConvertToRoom(ctx, roomID)
+	case cmdspec.PowerLevel:
+		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdPowerLevel)
+	case cmdspec.Poll:
+		return callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdPoll)
 	default:
 		responseHTML = fmt.Sprintf("Unknown command <code>%s</code>", html.EscapeString(cmd.Command))
 	}
@@ -300,18 +306,25 @@ type rawArguments struct {
 	JSON      string  `json:"json"`
 }
 
-func (h *HiClient) handleCmdRaw(ctx context.Context, roomID id.RoomID, args rawArguments, _ *event.RelatesTo) *database.Event {
-	return h.handleCmdRawInternal(ctx, roomID, args, false)
+func (h *HiClient) handleCmdRaw(ctx context.Context, roomID id.RoomID, args rawArguments, rel *event.RelatesTo) *database.Event {
+	return h.handleCmdRawInternal(ctx, roomID, args, false, rel)
 }
 
-func (h *HiClient) handleCmdUnencryptedRaw(ctx context.Context, roomID id.RoomID, args rawArguments, _ *event.RelatesTo) *database.Event {
-	return h.handleCmdRawInternal(ctx, roomID, args, true)
+func (h *HiClient) handleCmdUnencryptedRaw(ctx context.Context, roomID id.RoomID, args rawArguments, rel *event.RelatesTo) *database.Event {
+	return h.handleCmdRawInternal(ctx, roomID, args, true, rel)
 }
 
-func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, args rawArguments, unencrypted bool) *database.Event {
+func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, args rawArguments, unencrypted bool, rel *event.RelatesTo) *database.Event {
 	jsonData := json.RawMessage(exstrings.UnsafeBytes(args.JSON))
 	if !json.Valid(jsonData) {
 		return database.MakeFakeEvent(roomID, "Invalid JSON entered")
+	}
+	if rel != nil {
+		var err error
+		jsonData, err = sjson.SetBytes(jsonData, exgjson.Path("m.relates_to"), rel)
+		if err != nil {
+			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to add relates_to: %s", html.EscapeString(err.Error())))
+		}
 	}
 	if args.StateKey != nil {
 		_, err := h.SetState(ctx, roomID, event.Type{Type: args.EventType, Class: event.StateEventType}, *args.StateKey, jsonData)
@@ -320,7 +333,7 @@ func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, a
 		}
 		return nil
 	} else {
-		evt, err := h.send(ctx, roomID, event.Type{Type: args.EventType}, jsonData, "", unencrypted, false, 0)
+		evt, err := h.send(ctx, roomID, event.Type{Type: args.EventType}, jsonData, "", unencrypted, false, true, 0)
 		if err != nil {
 			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
 		}
@@ -395,4 +408,101 @@ func (h *HiClient) handleCmdConvertToRoom(ctx context.Context, roomID id.RoomID)
 		return fmt.Sprintf("Failed to unmark room as a DM: %v", err)
 	}
 	return "Unmarked room as a DM"
+}
+
+type powerLevelParams struct {
+	Thing string `json:"thing"`
+	Value int    `json:"value"`
+}
+
+func (h *HiClient) handleCmdPowerLevel(ctx context.Context, roomID id.RoomID, args powerLevelParams, _ *event.RelatesTo) string {
+	pls, err := h.DB.CurrentState.Get(ctx, roomID, event.StatePowerLevels, "")
+	if err != nil {
+		return fmt.Sprintf("Failed to get current power level event: %v", err)
+	}
+	var plContent event.PowerLevelsEventContent
+	err = json.Unmarshal(pls.Content, &plContent)
+	if err != nil {
+		return fmt.Sprintf("Failed to parse current power level event content: %v", err)
+	}
+	switch args.Thing {
+	case "users_default":
+		plContent.UsersDefault = args.Value
+	case "events_default":
+		plContent.EventsDefault = args.Value
+	case "state_default":
+		plContent.StateDefaultPtr = &args.Value
+	case "invite":
+		plContent.InvitePtr = &args.Value
+	case "kick":
+		plContent.KickPtr = &args.Value
+	case "ban":
+		plContent.BanPtr = &args.Value
+	case "redact":
+		plContent.RedactPtr = &args.Value
+	case "room", "notifications.room":
+		if plContent.Notifications == nil {
+			plContent.Notifications = &event.NotificationPowerLevels{}
+		}
+		plContent.Notifications.RoomPtr = &args.Value
+	default:
+		var forceUser, forceEvent bool
+		args.Thing, forceUser = strings.CutPrefix(args.Thing, "users.")
+		args.Thing, forceEvent = strings.CutPrefix(args.Thing, "events.")
+		if strings.HasPrefix(args.Thing, "@") && !forceEvent {
+			plContent.SetUserLevel(id.UserID(args.Thing), args.Value)
+		} else {
+			if forceUser {
+				return "Invalid user power level key"
+			}
+			if plContent.Events == nil {
+				plContent.Events = make(map[string]int)
+			}
+			plContent.Events[args.Thing] = args.Value
+		}
+	}
+	_, err = h.SetState(ctx, roomID, event.StatePowerLevels, "", &plContent)
+	if err != nil {
+		return fmt.Sprintf("Failed to update power level event: %v", err)
+	}
+	return ""
+}
+
+type pollParams struct {
+	Question      string   `json:"question"`
+	Options       []string `json:"options"`
+	MaxSelections int      `json:"max_selections"`
+}
+
+func (h *HiClient) handleCmdPoll(ctx context.Context, roomID id.RoomID, args pollParams, rel *event.RelatesTo) *database.Event {
+	if len(args.Options) == 0 {
+		return database.MakeFakeEvent(roomID, "Poll must have at least one option")
+	}
+	if args.MaxSelections <= 0 || args.MaxSelections > len(args.Options) {
+		args.MaxSelections = len(args.Options)
+	}
+	content := &event.PollStartEventContent{
+		RelatesTo: rel,
+		PollStart: event.PollStart{
+			Kind:          "org.matrix.msc3381.disclosed",
+			MaxSelections: args.MaxSelections,
+			Question: event.MSC1767Message{
+				Text: args.Question,
+			},
+			Answers: make([]event.PollOption, len(args.Options)),
+		},
+	}
+	for i, option := range args.Options {
+		content.PollStart.Answers[i] = event.PollOption{
+			ID: random.String(8),
+			MSC1767Message: event.MSC1767Message{
+				Text: option,
+			},
+		}
+	}
+	evt, err := h.send(ctx, roomID, event.EventUnstablePollStart, content, "", false, false, true, 0)
+	if err != nil {
+		return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
+	}
+	return evt
 }

@@ -96,8 +96,7 @@ func (c *ClientStateStore) TryGetMember(ctx context.Context, roomID id.RoomID, u
 }
 
 func (c *ClientStateStore) IsConfusableName(ctx context.Context, roomID id.RoomID, currentUser id.UserID, name string) ([]id.UserID, error) {
-	//TODO implement me
-	panic("implement me")
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (c *ClientStateStore) GetPowerLevels(ctx context.Context, roomID id.RoomID) (content *event.PowerLevelsEventContent, err error) {
@@ -165,8 +164,20 @@ func (c *ClientStateStore) GetEncryptionEvent(ctx context.Context, roomID id.Roo
 	return
 }
 
-func (c *ClientStateStore) GetJoinRules(ctx context.Context, roomID id.RoomID) (*event.JoinRulesEventContent, error) {
-	return nil, fmt.Errorf("not implemented")
+func (c *ClientStateStore) GetHistoryVisibility(ctx context.Context, roomID id.RoomID) (content *event.HistoryVisibilityEventContent, err error) {
+	err = c.QueryRow(ctx, getStateEventContentQuery, roomID, event.StateHistoryVisibility.Type, "").Scan(&dbutil.JSON{Data: &content})
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return
+}
+
+func (c *ClientStateStore) GetJoinRules(ctx context.Context, roomID id.RoomID) (content *event.JoinRulesEventContent, err error) {
+	err = c.QueryRow(ctx, getStateEventContentQuery, roomID, event.StateJoinRules.Type, "").Scan(&dbutil.JSON{Data: &content})
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return
 }
 
 func (c *ClientStateStore) FindSharedRooms(ctx context.Context, userID id.UserID) ([]id.RoomID, error) {
@@ -208,5 +219,9 @@ func (c *ClientStateStore) ReplaceCachedMembers(ctx context.Context, roomID id.R
 }
 
 func (c *ClientStateStore) SetJoinRules(ctx context.Context, roomID id.RoomID, content *event.JoinRulesEventContent) error {
+	return nil
+}
+
+func (c *ClientStateStore) SetHistoryVisibility(ctx context.Context, roomID id.RoomID, content *event.HistoryVisibilityEventContent) error {
 	return nil
 }

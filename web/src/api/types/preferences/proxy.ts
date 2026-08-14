@@ -26,11 +26,17 @@ export function getPreferenceProxy(store: StateStore, room?: RoomStateStore): Re
 		},
 		get(_target: never, key: keyof Preferences | symbol): PreferenceValueType | undefined {
 			if (typeof key !== "string") {
-				return
+				if (process.env.NODE_ENV === "development") {
+					return undefined
+				}
+				throw new Error("Preference key must be a string")
 			}
 			const pref = preferences[key]
 			if (!pref) {
-				return
+				if (process.env.NODE_ENV === "development") {
+					return undefined
+				}
+				throw new Error(`Invalid preference key: ${key}`)
 			}
 			let val: typeof pref.defaultValue | undefined
 			for (const ctx of pref.allowedContexts) {

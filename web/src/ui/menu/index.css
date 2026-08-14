@@ -37,7 +37,7 @@ div.event-fixed-menu {
 		height: 3rem;
 		flex-shrink: 0;
 
-		&.redact-button {
+		&.redact-button:not(:disabled) {
 			color: var(--error-color);
 		}
 	}
@@ -71,18 +71,20 @@ div.context-menu {
 		}
 
 		&:first-child {
-			border-radius: .5rem .5rem 0 0;
+			border-top-left-radius: .5rem;
+			border-top-right-radius: .5rem;
 		}
 		&:last-child {
-			border-radius: 0 0 .5rem .5rem;
+			border-bottom-left-radius: .5rem;
+			border-bottom-right-radius: .5rem;
 		}
 
-		&.redact-button {
+		&.redact-button:not(:disabled) {
 			color: var(--error-color);
 		}
 	}
 
 	&.event-context-menu, &.room-list-menu {
-		width: 10rem;
+		width: auto;
 	}
 }

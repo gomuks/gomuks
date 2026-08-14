@@ -18,6 +18,8 @@ import Client from "@/api/client.ts"
 import { MemDBEvent } from "@/api/types"
 import { emojiToReactionContent } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
+import { getRelatesTo, getThreadRoot } from "@/util/validation.ts"
+import MainScreenContext from "../MainScreenContext.ts"
 import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
 import { ModalCloseContext, ModalContext } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
@@ -28,6 +30,8 @@ import MoreIcon from "@/icons/more.svg?react"
 import ReactIcon from "@/icons/react.svg?react"
 import RefreshIcon from "@/icons/refresh.svg?react"
 import ReplyIcon from "@/icons/reply.svg?react"
+import ThreadIcon from "@/icons/thread.svg?react"
+import UndoIcon from "@/icons/undo.svg?react"
 import "./index.css"
 
 const noop = () => {}
@@ -44,10 +48,22 @@ export const usePrimaryItems = (
 	const names = !isHover && !isFixed
 	const closeModal = !isHover ? use(ModalCloseContext) : noop
 	const openModal = use(ModalContext)
+	const mainScreen = use(MainScreenContext)
 
 	const onClickReply = () => {
 		roomCtx.setReplyTo(evt.event_id)
 		closeModal()
+	}
+	const threadRoot = getThreadRoot(getRelatesTo(evt))
+	const onClickOpenThread = () => {
+		closeModal()
+		if (evt.room_id !== roomCtx.store.roomID) {
+			mainScreen.setActiveRoom(evt.room_id)
+		}
+		mainScreen.setRightPanel({
+			type: "thread",
+			threadRoot: threadRoot ?? evt.event_id,
+		})
 	}
 	const onClickReact = (mevt: React.MouseEvent<HTMLButtonElement>) => {
 		const bodyStyle = getComputedStyle(document.body)
@@ -89,6 +105,11 @@ export const usePrimaryItems = (
 		client.resendEvent(evt.transaction_id)
 			.catch(err => window.alert(`Failed to resend message: ${err}`))
 	}
+	const onClickUndoSend = () => {
+		roomCtx.store.removeFailedEvent(evt)
+		roomCtx.setEditing(evt, true)
+		closeModal()
+	}
 	const onClickMore = (mevt: React.MouseEvent<HTMLButtonElement>) => {
 		const moreMenuHeight = 5 * 40
 		setForceOpen!(true)
@@ -99,6 +120,7 @@ export const usePrimaryItems = (
 				style={getModalStyleFromButton(mevt.currentTarget, moreMenuHeight)}
 			/>,
 			onClose: () => setForceOpen!(false),
+			noHistory: true,
 		})
 	}
 	const isEditing = useEventAsState(roomCtx.isEditing)
@@ -123,6 +145,10 @@ export const usePrimaryItems = (
 			<RefreshIcon/>
 			{names && "Resend"}
 		</button>}
+		{didFail && <button onClick={onClickUndoSend} title="Undo send">
+			<UndoIcon />
+			{names && "Undo"}
+		</button>}
 		{canReact && <button disabled={isPending} title={pendingTitle} onClick={onClickReact}>
 			<ReactIcon/>
 			{names && "React"}
@@ -134,6 +160,14 @@ export const usePrimaryItems = (
 		>
 			<ReplyIcon/>
 			{names && "Reply"}
+		</button>}
+		{canSend && !roomCtx.isThreadView && <button
+			disabled={isPending}
+			title={pendingTitle}
+			onClick={onClickOpenThread}
+		>
+			<ThreadIcon />
+			{names && "Open thread"}
 		</button>}
 		{canEdit && <button onClick={onClickEdit} disabled={isPending} title={pendingTitle}>
 			<EditIcon/>

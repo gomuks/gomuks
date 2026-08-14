@@ -70,6 +70,10 @@ div.image-pack-editor, div.image-pack-item-editor {
 		align-items: center;
 		gap: .25rem .5rem;
 		flex-shrink: 0;
+
+		> input:invalid {
+			border-color: var(--error-color);
+		}
 	}
 }
 
@@ -80,8 +84,14 @@ div.image-pack-view > div.image-pack-editor {
 	overflow: hidden;
 	gap: .2rem;
 
-	> button.global-save {
-		padding: .5rem;
+	> div.buttons {
+		display: flex;
+		gap: .5rem;
+
+		> button {
+			padding: .5rem;
+			width: 100%;
+		}
 	}
 
 	> div.images {

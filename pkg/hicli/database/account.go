@@ -10,21 +10,37 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"go.mau.fi/util/dbutil"
+	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix/id"
 )
 
 const (
-	getAccountQuery    = `SELECT user_id, device_id, access_token, homeserver_url, next_batch FROM account WHERE user_id = $1`
-	putNextBatchQuery  = `UPDATE account SET next_batch = $1 WHERE user_id = $2`
-	upsertAccountQuery = `
-		INSERT INTO account (user_id, device_id, access_token, homeserver_url, next_batch)
-		VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id)
+	getAccountQuery = `
+		SELECT user_id, device_id, access_token, homeserver_url, next_batch,
+		       client_id, refresh_token, expiry, displayname, avatar_url
+		FROM account WHERE user_id = $1
+	`
+	putNextBatchQuery    = `UPDATE account SET next_batch = $2 WHERE user_id = $1`
+	putRefreshTokenQuery = `UPDATE account SET refresh_token = $2, access_token = $3, expiry = $4 WHERE user_id = $1`
+	putProfileQuery      = `UPDATE account SET displayname = $2, avatar_url = $3 WHERE user_id = $1`
+	upsertAccountQuery   = `
+		INSERT INTO account (
+			user_id, device_id, access_token, homeserver_url, next_batch,
+			client_id, refresh_token, expiry, displayname, avatar_url
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (user_id)
 			DO UPDATE SET device_id = excluded.device_id,
 			              access_token = excluded.access_token,
 			              homeserver_url = excluded.homeserver_url,
-			              next_batch = excluded.next_batch
+			              next_batch = excluded.next_batch,
+			              client_id = excluded.client_id,
+			              refresh_token = excluded.refresh_token,
+			              expiry = excluded.expiry,
+			              displayname = excluded.displayname,
+			              avatar_url = excluded.avatar_url
 	`
 )
 
@@ -49,7 +65,15 @@ func (aq *AccountQuery) Get(ctx context.Context, userID id.UserID) (*Account, er
 }
 
 func (aq *AccountQuery) PutNextBatch(ctx context.Context, userID id.UserID, nextBatch string) error {
-	return aq.Exec(ctx, putNextBatchQuery, nextBatch, userID)
+	return aq.Exec(ctx, putNextBatchQuery, userID, nextBatch)
+}
+
+func (aq *AccountQuery) PutRefreshToken(ctx context.Context, userID id.UserID, refreshToken, accessToken string, expiry time.Time) error {
+	return aq.Exec(ctx, putRefreshTokenQuery, userID, refreshToken, accessToken, expiry.UnixMilli())
+}
+
+func (aq *AccountQuery) PutProfile(ctx context.Context, userID id.UserID, displayname string, avatarURL id.ContentURI) error {
+	return aq.Exec(ctx, putProfileQuery, userID, displayname, &avatarURL)
 }
 
 func (aq *AccountQuery) Put(ctx context.Context, account *Account) error {
@@ -62,12 +86,25 @@ type Account struct {
 	AccessToken   string      `json:"access_token,omitempty"`
 	HomeserverURL string      `json:"homeserver_url,omitempty"`
 	NextBatch     string      `json:"-"`
+
+	ClientID     string             `json:"client_id,omitempty"`
+	RefreshToken string             `json:"refresh_token,omitempty"`
+	Expiry       jsontime.UnixMilli `json:"expiry,omitzero"`
+
+	DisplayName string        `json:"display_name,omitempty"`
+	AvatarURL   id.ContentURI `json:"avatar_url,omitempty"`
 }
 
 func (a *Account) Scan(row dbutil.Scannable) (*Account, error) {
-	return dbutil.ValueOrErr(a, row.Scan(&a.UserID, &a.DeviceID, &a.AccessToken, &a.HomeserverURL, &a.NextBatch))
+	return dbutil.ValueOrErr(a, row.Scan(
+		&a.UserID, &a.DeviceID, &a.AccessToken, &a.HomeserverURL, &a.NextBatch,
+		&a.ClientID, &a.RefreshToken, &a.Expiry, &a.DisplayName, &a.AvatarURL,
+	))
 }
 
 func (a *Account) sqlVariables() []any {
-	return []any{a.UserID, a.DeviceID, a.AccessToken, a.HomeserverURL, a.NextBatch}
+	return []any{
+		a.UserID, a.DeviceID, a.AccessToken, a.HomeserverURL, a.NextBatch,
+		a.ClientID, a.RefreshToken, a.Expiry, a.DisplayName, &a.AvatarURL,
+	}
 }

@@ -78,12 +78,14 @@ function getFallbackCharacter(from: unknown, idx: number): string {
 	return Array.from(from.slice(0, (idx + 1) * 2))[idx]?.toUpperCase().toWellFormed() ?? ""
 }
 
+const disableThumbnails = localStorage.gomuks_disable_thumbnails === "true"
+
 export const getAvatarURL = (
 	userID: UserID,
 	content?: UserProfile | null,
 	thumbnail = false,
 	forceFallback = false,
-): string | undefined => {
+): string => {
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
 	const backgroundColor = getUserColor(userID)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
@@ -93,14 +95,14 @@ export const getAvatarURL = (
 	const encrypted = !!content?.avatar_file
 	const fallback = `${backgroundColor}:${fallbackCharacter}`
 	const url = `_gomuks/media/${server}/${mediaID}?encrypted=${encrypted}&fallback=${encodeURIComponent(fallback)}`
-	return thumbnail ? `${url}&thumbnail=avatar` : url
+	return thumbnail && !disableThumbnails ? `${url}&thumbnail=avatar` : url
 }
 
 export const getAvatarThumbnailURL = (
 	userID: UserID,
 	content?: UserProfile | null,
 	forceFallback = false,
-): string | undefined => {
+): string => {
 	return getAvatarURL(userID, content, true, forceFallback)
 }
 

@@ -76,7 +76,7 @@ func main() {
 		}
 	})
 	userID, _ := cli.DB.Account.GetFirstUserID(ctx)
-	exerrors.PanicIfNotNil(cli.Start(ctx, userID, nil))
+	exerrors.PanicIfNotNil(cli.Start(ctx, userID))
 	if !cli.IsLoggedIn() {
 		rl.SetPrompt("User ID: ")
 		userID := id.UserID(exerrors.Must(rl.Readline()))

@@ -28,6 +28,7 @@ type contextKey int
 
 const (
 	syncContextKey contextKey = iota
+	eventDecryptionLockContextKey
 )
 
 var isDatabaseBusyError = func(error) bool {
@@ -39,20 +40,26 @@ func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, 
 	c.lastSync = time.Now()
 	if since != "" {
 		ctx = context.WithValue(ctx, syncContextKey, &syncContext{evt: &jsoncmd.SyncComplete{
-			Since:        &since,
-			Rooms:        make(map[id.RoomID]*jsoncmd.SyncRoom, len(resp.Rooms.Join)),
-			InvitedRooms: make([]*database.InvitedRoom, 0, len(resp.Rooms.Invite)),
-			LeftRooms:    make([]id.RoomID, 0, len(resp.Rooms.Leave)),
+			Since:           &since,
+			Rooms:           make(map[id.RoomID]*jsoncmd.SyncRoom, len(resp.Rooms.Join)),
+			InvitedRooms:    make([]*database.InvitedRoom, 0, len(resp.Rooms.Invite)),
+			LeftRooms:       make([]id.RoomID, 0, len(resp.Rooms.Leave)),
+			ServerTimestamp: time.Now().UnixMilli(),
 		}})
 	}
-	err := c.preProcessSyncResponse(ctx, resp, since)
-	if err != nil {
-		return err
-	}
+	hasEncrypted := c.preProcessSyncResponse(ctx, resp)
 	for i := 0; ; i++ {
-		err = c.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
-			return c.processSyncResponse(ctx, resp, since)
-		})
+		doProcessTxn := func(ctx context.Context) error {
+			return c.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
+				return c.processSyncResponse(ctx, resp, since)
+			})
+		}
+		var err error
+		if hasEncrypted {
+			err = doProcessTxn(ctx)
+		} else {
+			err = c.withEventDecryptionLock(ctx, "", false, doProcessTxn)
+		}
 		if i < 24 && isDatabaseBusyError(err) {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("Database is busy, retrying")
 			c.markSyncErrored(err, false)
@@ -71,7 +78,7 @@ func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, 
 
 func (h *hiSyncer) OnFailedSync(_ *mautrix.RespSync, err error) (time.Duration, error) {
 	c := (*HiClient)(h)
-	if errors.Is(err, mautrix.MUnknownToken) {
+	if errors.Is(err, mautrix.MUnknownToken) || errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		return 0, err
 	}
 	c.syncErrors++

@@ -12,6 +12,7 @@ import (
 	"slices"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/exslices"
 
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto"
@@ -46,6 +47,17 @@ func (h *HiClient) GetMutualRooms(ctx context.Context, userID id.UserID, nextBat
 	return
 }
 
+func idToJSONDevice(dev *id.Device) *jsoncmd.ProfileDevice {
+	return &jsoncmd.ProfileDevice{
+		DeviceID:    dev.DeviceID,
+		Name:        dev.Name,
+		IdentityKey: dev.IdentityKey,
+		SigningKey:  dev.SigningKey,
+		Fingerprint: dev.Fingerprint(),
+		Trust:       dev.Trust,
+	}
+}
+
 func (h *HiClient) GetProfileEncryptionInfo(ctx context.Context, userID id.UserID) (*jsoncmd.ProfileEncryptionInfo, error) {
 	var resp jsoncmd.ProfileEncryptionInfo
 	log := zerolog.Ctx(ctx)
@@ -67,21 +79,22 @@ func (h *HiClient) GetProfileEncryptionInfo(ctx context.Context, userID id.UserI
 		resp.Errors = append(resp.Errors, "Cross-signing keys not found")
 	}
 	resp.UserTrusted = cachedDevices.MasterKeySignedByUs
-	resp.Devices = make([]*jsoncmd.ProfileDevice, len(cachedDevices.Devices))
-	for i, dev := range cachedDevices.Devices {
-		resp.Devices[i] = &jsoncmd.ProfileDevice{
-			DeviceID:    dev.DeviceID,
-			Name:        dev.Name,
-			IdentityKey: dev.IdentityKey,
-			SigningKey:  dev.SigningKey,
-			Fingerprint: dev.Fingerprint(),
-			Trust:       dev.Trust,
-		}
-	}
+	resp.Devices = exslices.CastFunc(cachedDevices.Devices, idToJSONDevice)
 	return &resp, nil
 }
 
-func (h *HiClient) TrackUserDevices(ctx context.Context, userID id.UserID) error {
-	_, err := h.Crypto.FetchKeys(ctx, []id.UserID{userID}, true)
-	return err
+func (h *HiClient) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
+	enc, err := h.GetProfileEncryptionInfo(ctx, h.Account.UserID)
+	if err != nil {
+		return nil, err
+	}
+	dev, err := h.Client.GetDevicesInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &jsoncmd.GetOwnDevicesResponse{
+		Encryption:    enc,
+		Devices:       dev.Devices,
+		CurrentDevice: idToJSONDevice(h.Crypto.OwnIdentity()),
+	}, nil
 }

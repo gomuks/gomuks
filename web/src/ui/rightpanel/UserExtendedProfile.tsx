@@ -1,14 +1,38 @@
-import { use, useEffect, useState } from "react"
+// gomuks - A Matrix client written in Go.
+// Copyright (C) 2026 Tulir Asokan
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import React, { use, useEffect, useState } from "react"
+import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
-import { JSONValue, PronounSet, UserID, UserProfile } from "@/api/types"
+import { RoomStateStore } from "@/api/statestore"
+import { GetProfileResponse, JSONValue, MemDBEvent, PronounSet, UserID } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
+import { EventKind } from "../settings/devtools-util.ts"
+import UserInfoError from "./UserInfoError.tsx"
+import { UserProfileSmallBio } from "./UserProfileBio.tsx"
 
 interface ExtendedProfileProps {
-	profile: UserProfile | null
+	room?: RoomStateStore
+	profileResp: GetProfileResponse | null
 	refreshProfile: () => void
+	memberEvt: MemDBEvent | null
+	loading: boolean
 	client: Client
 	userID: string
+	errors: string[] | null
 }
 
 interface SetTimezoneProps {
@@ -95,6 +119,7 @@ interface PronounInputProps {
 	client: Client
 	refreshProfile: () => void
 	userID: UserID
+	blur: boolean
 }
 
 const simplePronounOptions: PronounSet[] = [
@@ -119,10 +144,10 @@ function simplePronounID(pronouns: PronounSet[]): string | null {
 	}
 }
 
-const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInputProps) => {
+const SimplePronouns = ({ pronouns, client, refreshProfile, userID, blur }: PronounInputProps) => {
 	const id = simplePronounID(pronouns)
 	if (userID !== client.userID || id === null) {
-		return <div>
+		return <div className={blur ? "blur" : ""}>
 			{pronouns.map(pronounSet => ensureString(pronounSet.summary)).join(", ")}
 		</div>
 	}
@@ -145,34 +170,61 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 	</select>
 }
 
-const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: ExtendedProfileProps)=>  {
-	const openModal = use(ModalContext)!
-	if (!profile) {
-		return null
-	}
+const emptyBio = {
+	html: "",
+	edit_source: "",
+}
 
-	const hasExtendedProfile = Object.keys(profile).some((key) => key !== "displayname" && key !== "avatar_url")
-	if (!hasExtendedProfile && client.userID !== userID) {
-		return null
+const UserExtendedProfile = ({
+	room, profileResp, refreshProfile, memberEvt, client, userID, loading, errors,
+}: ExtendedProfileProps)=>  {
+	const profile = profileResp?.profile
+	const viewMemberEvent = () => {
+		openModal(modals.roomStateExplorer(room!, EventKind.State, "m.room.member", userID))
 	}
-
 	const viewExtensibleProfile = () => {
 		openModal(modals.jsonView(profile))
 	}
-	// Explicitly only return something if the profile has the keys we're looking for.
-	// otherwise there's an ugly and pointless <hr/> for no real reason.
+	const viewButtons = <div className="view-buttons">
+		{profile && <button onClick={viewExtensibleProfile}>Global profile</button>}
+		{memberEvt && room && <button onClick={viewMemberEvent}>Member event</button>}
+	</div>
+	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
+		{loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
+		<UserInfoError errors={errors}/>
+		{viewButtons}
+	</div> : null
+	const openModal = use(ModalContext)!
+	if (!profile) {
+		return baseContent
+	}
 
 	const pronouns = ensureArray(profile["io.fsky.nyx.pronouns"]) as PronounSet[]
 	const userTimeZone = ensureString(profile["m.tz"] ?? profile["us.cloke.msc4175.tz"])
+	const blurUserInput = memberEvt?.content?.membership === "ban"
 	return <div className="extended-profile">
+		{profileResp?.bio || userID === client.userID ? <UserProfileSmallBio
+			bio={profileResp?.bio ?? emptyBio}
+			userID={userID}
+			client={client}
+			refreshProfile={refreshProfile}
+			blur={blurUserInput}
+		/> : null}
 		{userTimeZone && <ClockElement tz={userTimeZone} />}
 		{userID === client.userID &&
 			<SetTimeZoneElement tz={userTimeZone} client={client} refreshProfile={refreshProfile} />}
 		{(pronouns.length > 0 || userID === client.userID) && <>
 			<div>Pronouns:</div>
-			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
+			<SimplePronouns
+				pronouns={pronouns}
+				client={client}
+				refreshProfile={refreshProfile}
+				userID={userID}
+				blur={blurUserInput}
+			/>
 		</>}
-		<button onClick={viewExtensibleProfile}>View raw profile</button>
+		<UserInfoError errors={errors}/>
+		{viewButtons}
 	</div>
 }
 

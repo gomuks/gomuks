@@ -9,16 +9,12 @@ default:
   - mkdir -p .cache
   - export GOPATH="$CI_PROJECT_DIR/.cache"
 
-cache:
-  paths:
-  - .cache
-
 variables:
   GOTOOLCHAIN: local
   MAU_VERSION_PACKAGE: go.mau.fi/gomuks/version
 
 wasm:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.25-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
   stage: frontend
   cache:
     paths:
@@ -29,6 +25,7 @@ wasm:
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   - apk add --no-cache git
   script:
+  - go run ./cmd/rpcdocgen -o rpc.html
   - cd web
   - go run ../pkg/hicli/cmdspec/print src/api/types/stdcommands.json src/api/types/stdcommands.d.ts
   - ./build-wasm.sh
@@ -36,6 +33,7 @@ wasm:
     paths:
     - web/src/api/wasm/_gomuks.wasm
     - web/src/api/types/stdcommands.json
+    - rpc.html
     expire_in: 1 hour
 
 frontend:
@@ -46,19 +44,18 @@ frontend:
     - web/node_modules
   script:
   - cd web
-  - npm install --include=dev
+  - npm ci --include=dev
   - npm run build
   artifacts:
     paths:
     - web/dist
+    - rpc.html
     expire_in: 1 hour
-  dependencies:
-  - wasm
   needs:
   - wasm
 
-deploy wasmuks:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.25-alpine
+deploy/wasmuks:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
   stage: frontend
   tags:
   - webdeploy
@@ -69,12 +66,11 @@ deploy wasmuks:
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
       rsync -rcthvl --delete web/dist/ /srv/web/demo.gomuks.app/
+      mv -f rpc.html /srv/web/spec.mau.fi/gomuks/rpc.html
     else
       mkdir -p /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
       rsync -rcthvl --delete web/dist/ /srv/web/branch.gomuks.app/$CI_COMMIT_BRANCH/
     fi
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -92,14 +88,12 @@ deploy wasmuks:
   # The maubuild tool will use TARGET_GOOS/GOARCH env vars for the actual build
   - export GOOS=$(go env GOHOSTOS) GOARCH=$(go env GOHOSTARCH)
   script:
-  - BINARY_NAME=gomuks go tool maubuild
-  - BINARY_NAME=gomuks-terminal go tool maubuild
+  - ./build-noweb.sh
+  - ./build-terminal.sh
   artifacts:
     paths:
     - gomuks
     - gomuks-terminal
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -160,20 +154,35 @@ macos/arm64:
   before_script:
   - export PATH=/opt/homebrew/bin:$PATH
   script:
-  - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" BINARY_NAME=gomuks go tool maubuild
-  - BINARY_NAME=gomuks-terminal go tool maubuild
+  - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" ./build-noweb.sh
+  - ./build-terminal.sh
   - install_name_tool -change $(brew --prefix)/opt/libolm/lib/libolm.3.dylib @rpath/libolm.3.dylib gomuks
   - install_name_tool -add_rpath @executable_path gomuks
   - install_name_tool -add_rpath /opt/homebrew/opt/libolm/lib gomuks
   - install_name_tool -add_rpath /usr/local/opt/libolm/lib gomuks
   - cp $(brew --prefix)/opt/libolm/lib/libolm.3.dylib .
+  - |
+    if [ -n "${APPLE_API_KEY_PATH:-}" ]; then
+      codesign --force --timestamp --options runtime --sign "$APPLE_CODESIGN_IDENTITY" libolm.3.dylib gomuks gomuks-terminal
+      codesign --verify --strict --verbose=2 libolm.3.dylib gomuks gomuks-terminal
+
+      zip -9 gomuks-cli-macos-arm64-notary.zip gomuks gomuks-terminal libolm.3.dylib
+
+      xcrun notarytool submit gomuks-cli-macos-arm64-notary.zip \
+        --key "$APPLE_API_KEY_PATH" \
+        --key-id "$APPLE_API_KEY_ID" \
+        --issuer "$APPLE_API_ISSUER" \
+        --wait
+
+      rm -f gomuks-cli-macos-arm64-notary.zip
+    else
+      echo "Skipping raw macOS binary notarization because APPLE_API_KEY_PATH is not set"
+    fi
   artifacts:
     paths:
     - gomuks
     - gomuks-terminal
     - libolm.3.dylib
-  dependencies:
-  - frontend
   needs:
   - frontend
 
@@ -182,8 +191,6 @@ docker/amd64:
   tags:
   - linux
   - amd64
-  dependencies:
-  - linux/amd64
   needs:
   - linux/amd64
   variables:
@@ -194,8 +201,6 @@ docker/arm64:
   tags:
   - linux
   - arm64
-  dependencies:
-  - linux/arm64
   needs:
   - linux/arm64
   variables:
@@ -241,87 +246,108 @@ docker/manifest:
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-amd64 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-arm64
 
 .build-desktop: &build-desktop
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
   stage: build desktop
   cache:
     paths:
-    - .cache
-  before_script:
-  - mkdir -p .cache
-  - export GOPATH="$CI_PROJECT_DIR/.cache"
-  - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+    - desktop/node_modules
   script:
+  - export GIT_DESCRIBE=$(git describe --tags)
+  - echo $GIT_DESCRIBE
   - cd desktop
-  - wails3 task $PLATFORM:package
-  - ls bin
+  - npm ci --include=dev
+  - npm run make -- --platform=$PLATFORM --arch=$ARCH
+  - tree out/make/
   artifacts:
     paths:
-    - desktop/bin/*
-  dependencies:
-  - frontend
-  needs:
-  - frontend
+    - desktop/out/make/
+    expire_in: 1 day
 
 desktop/linux/amd64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:linux-amd64
   variables:
     PLATFORM: linux
-  after_script:
-  - mv desktop/bin/gomuks-desktop .
-  - mv desktop/build/nfpm/bin/gomuks-desktop.deb .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    - gomuks-desktop.deb
-  tags:
-  - linux
-  - amd64
+    ARCH: x64
+  before_script:
+  - apk add --no-cache fakeroot dpkg git zip
+  needs:
+  - linux/amd64
 
 desktop/linux/arm64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:linux-arm64-native
   variables:
     PLATFORM: linux
-  after_script:
-  - mv desktop/bin/gomuks-desktop .
-  - mv desktop/build/nfpm/bin/gomuks-desktop.deb .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    - gomuks-desktop.deb
-  tags:
-  - linux
-  - arm64
+    ARCH: arm64
+  before_script:
+  - apk add --no-cache fakeroot dpkg git zip
+  needs:
+  - linux/arm64
 
 desktop/windows/amd64:
   <<: *build-desktop
-  image: dock.mau.dev/tulir/gomuks-build-docker/wails:windows-amd64
-  after_script:
-  - mv desktop/bin/gomuks-desktop.exe .
-  artifacts:
-    paths:
-    - gomuks-desktop.exe
   variables:
-    PLATFORM: windows
+    PLATFORM: win32
+    ARCH: x64
+  before_script:
+  - apk add --no-cache wine mono ca-certificates git zip
+  - cert-sync /etc/ssl/certs/ca-certificates.crt
+  tags:
+  - linux
+  - amd64 # wine on aarch64 alpine doesn't include wine64, which electron-forge wants
+  needs:
+  - windows/amd64
 
 desktop/macos/arm64:
   <<: *build-desktop
   cache: {}
-  before_script:
-  - export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
-  - export LIBRARY_PATH=$(brew --prefix)/lib
-  - export CPATH=$(brew --prefix)/include
-  after_script:
-  - hdiutil create -srcFolder ./desktop/bin/gomuks-desktop.app/ -o ./gomuks-desktop.dmg
-  - codesign -s - --timestamp -i fi.mau.gomuks.desktop.mac gomuks-desktop.dmg
-  - mv desktop/bin/gomuks-desktop .
-  artifacts:
-    paths:
-    - gomuks-desktop
-    # TODO generate proper dmgs
-    #- gomuks-desktop.dmg
   variables:
     PLATFORM: darwin
+    ARCH: arm64
   tags:
   - macos
   - arm64
+  needs:
+  - macos/arm64
+
+deploy/desktop:
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  stage: build desktop
+  tags:
+  - webdeploy
+  script:
+  - apk add --no-cache rsync
+  - |
+    cd desktop/out/make
+    mv zip/darwin .
+    mv zip/linux .
+    mv deb/arm64/* linux/arm64/
+    mv deb/x64/* linux/x64/
+    mv *.dmg darwin/arm64/
+    mv squirrel.windows win32
+    rmdir deb/arm64 deb/x64 deb zip
+    cd ../../..
+  - |
+    if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
+      RELEASE_TYPE=nightly
+    else
+      RELEASE_TYPE=stable
+    fi
+    mkdir desktop/out/make/latest
+    cd desktop/out/make/latest
+    ln -sf ../darwin/arm64/*-arm64.dmg gomuks-desktop-macos-arm64.dmg
+    ln -sf ../linux/x64/*.deb gomuks-desktop-linux-amd64.deb
+    ln -sf ../linux/arm64/*.deb gomuks-desktop-linux-arm64.deb
+    ln -sf ../linux/x64/*.zip gomuks-desktop-linux-amd64.zip
+    ln -sf ../linux/arm64/*.zip gomuks-desktop-linux-arm64.zip
+    ln -sf ../win32/x64/*.exe gomuks-desktop-windows-amd64.exe
+    cd ..
+    TARGET_DIR=/srv/web/update.gomuks.app/desktop-$RELEASE_TYPE
+    rsync -rcthvl . $TARGET_DIR
+  only:
+    - main
+    - tags
+  needs:
+  - desktop/linux/amd64
+  - desktop/linux/arm64
+  - desktop/windows/amd64
+  - desktop/macos/arm64

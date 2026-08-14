@@ -38,6 +38,21 @@ form.create-room-view {
 		}
 	}
 
+	div.room-templates {
+		display: flex;
+		align-items: center;
+		grid-column: span 2;
+		> span {
+			margin: 0 .25rem;
+			&:first-of-type {
+				margin-left: 0;
+			}
+		}
+		> button {
+			padding: 0 .25rem;
+		}
+	}
+
 	div.form-fields {
 		display: grid;
 		grid-template-columns: auto 1fr;

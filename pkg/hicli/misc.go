@@ -43,20 +43,18 @@ func (h *HiClient) CalculateRoomID(timestamp int64, content json.RawMessage) (id
 		Type:           event.StateCreate,
 		Content:        content,
 	}
-	pduJSON, err := json.Marshal(pdu)
+	pduJSON, err := canonicaljson.Marshal(pdu)
 	if err != nil {
 		return "", err
 	}
-	pduJSON = canonicaljson.CanonicalJSONAssumeValid(pduJSON)
 	pduHash := sha256.Sum256(pduJSON)
 	pdu.Hashes = &Hashes{
 		SHA256: base64.RawStdEncoding.EncodeToString(pduHash[:]),
 	}
-	pduJSON, err = json.Marshal(pdu)
+	pduJSON, err = canonicaljson.Marshal(pdu)
 	if err != nil {
 		return "", err
 	}
-	pduJSON = canonicaljson.CanonicalJSONAssumeValid(pduJSON)
 	pduHash = sha256.Sum256(pduJSON)
 	return id.RoomID("!" + base64.RawURLEncoding.EncodeToString(pduHash[:])), nil
 }

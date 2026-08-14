@@ -40,28 +40,28 @@ func EventTypeName(evt any) Name {
 
 type SyncRoom struct {
 	// Metadata about the room. The frontend should replace the entire cached object rather than merging.
-	Meta *database.Room `json:"meta"`
+	Meta *database.Room `json:"meta,omitempty"`
 	// New timeline events to append to the existing list
 	// (except if `reset` is set, in which case this replaces the existing list).
-	Timeline []database.TimelineRowTuple `json:"timeline"`
+	Timeline []database.TimelineRowTuple `json:"timeline,omitempty"`
 	// If true, the frontend should discard the existing timeline cache for this room.
-	Reset bool `json:"reset"`
+	Reset bool `json:"reset,omitempty"`
 	// New state events. This nested map should be deeply merged into the existing state map.
-	State map[event.Type]map[string]database.EventRowID `json:"state"`
+	State map[event.Type]map[string]database.EventRowID `json:"state,omitempty"`
 	// New room account data events. Like global account data, only changes are listed,
 	// but the entire content of changed events should be replaced.
-	AccountData map[event.Type]*database.AccountData `json:"account_data"`
+	AccountData map[event.Type]*database.AccountData `json:"account_data,omitempty"`
 	// Events that the frontend needs to handle this sync. This may include old events, as well as
 	// events the frontend already has. The `timeline` and `state` fields are the ones that decide
 	// where the events are actually used.
-	Events []*database.Event `json:"events"`
+	Events []*database.Event `json:"events,omitempty"`
 	// New read receipts. The frontend should only keep the latest receipt per user.
-	Receipts map[id.EventID][]*database.Receipt `json:"receipts"`
+	Receipts map[id.EventID][]*database.Receipt `json:"receipts,omitempty"`
 	// New MSC4354 sticky events that aren't included in timeline.
 	Sticky []database.EventRowID `json:"sticky,omitempty"`
 
-	DismissNotifications bool               `json:"dismiss_notifications"`
-	Notifications        []SyncNotification `json:"notifications"`
+	DismissNotifications bool               `json:"dismiss_notifications,omitempty"`
+	Notifications        []SyncNotification `json:"notifications,omitempty"`
 }
 
 type SyncNotification struct {
@@ -83,24 +83,29 @@ type SyncComplete struct {
 	// The `since` token sent to the server in the /sync request.
 	// This is only for debugging, the frontend doesn't need to care about it.
 	Since *string `json:"since,omitempty"`
+	// Server timestamp which can be used for catchup syncs after a longer disconnect
+	// that doesn't allow stream resumption.
+	ServerTimestamp int64 `json:"server_timestamp,omitempty"`
+	// Catchup is set to true when the previous server timestamp was used for a catchup sync.
+	Catchup bool `json:"catchup,omitempty"`
 	// If true, the frontend should throw away all state it has before applying this sync.
 	// This is used on the first payload after connecting if resuming wasn't used or didn't succeed.
 	ClearState bool `json:"clear_state,omitempty"`
 	// New global account data events. Only changed events are listed here, but the entire content
 	// of each changed event should be replaced.
-	AccountData map[event.Type]*database.AccountData `json:"account_data"`
+	AccountData map[event.Type]*database.AccountData `json:"account_data,omitempty"`
 	// List of rooms that the user is participating in that have new data available.
-	Rooms map[id.RoomID]*SyncRoom `json:"rooms"`
+	Rooms map[id.RoomID]*SyncRoom `json:"rooms,omitempty"`
 	// List of rooms that the user has left. The frontend should delete all state associated with these rooms.
-	LeftRooms []id.RoomID `json:"left_rooms"`
+	LeftRooms []id.RoomID `json:"left_rooms,omitempty"`
 	// List of new rooms that the user has been invited to.
-	InvitedRooms []*database.InvitedRoom `json:"invited_rooms"`
+	InvitedRooms []*database.InvitedRoom `json:"invited_rooms,omitempty"`
 	// List of spaces and their edges. When an edge in a space changes, all edges in that space are resent,
 	// so the frontend should replace the entire list for that space.
-	SpaceEdges map[id.RoomID][]*database.SpaceEdge `json:"space_edges"`
+	SpaceEdges map[id.RoomID][]*database.SpaceEdge `json:"space_edges,omitempty"`
 	// List of room IDs that should be considered as top-level spaces.
 	// The frontend should replace the entire list if this field is set.
-	TopLevelSpaces []id.RoomID `json:"top_level_spaces"`
+	TopLevelSpaces []id.RoomID `json:"top_level_spaces,omitempty"`
 
 	// New to-device events. This is only used for widgets and only emitted
 	// if opted in with the send_to_device command.
@@ -168,6 +173,9 @@ type ClientState struct {
 	UserID            id.UserID         `json:"user_id,omitempty"`
 	DeviceID          id.DeviceID       `json:"device_id,omitempty"`
 	HomeserverURL     string            `json:"homeserver_url,omitempty"`
+
+	Displayname string              `json:"displayname,omitempty"`
+	AvatarURL   id.ContentURIString `json:"avatar_url,omitempty"`
 }
 
 type ImageAuthToken string
@@ -175,7 +183,14 @@ type ImageAuthToken string
 type InitComplete struct{}
 
 type RunData struct {
-	RunID    string `json:"run_id"`
-	ETag     string `json:"etag"`
+	// RunID is a random string that changes whenever the backend is restarted.
+	// This is sent with the last received event ID when resuming connections, as resume data is only stored in memory.
+	RunID string `json:"run_id"`
+	// ETag is a hash of the frontend. If the ETag meta value in index.html doesn't match this,
+	// the web interface will reload itself to update. Non-web clients don't need to care about this.
+	ETag string `json:"etag"`
+	// VAPIDKey is the server key used for web push sent by the gomuks backend.
 	VAPIDKey string `json:"vapid_key"`
+	// ListenerID is an ID used to acknowledge events received via server-sent events.
+	ListenerID uint64 `json:"listener_id,omitempty"`
 }

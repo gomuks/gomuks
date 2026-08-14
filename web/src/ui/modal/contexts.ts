@@ -34,6 +34,7 @@ export interface ModalState {
 	onClose?: () => void
 	captureInput?: boolean
 	noDismiss?: boolean
+	noHistory?: boolean
 }
 
 export interface NonNestableModalState extends ModalState {

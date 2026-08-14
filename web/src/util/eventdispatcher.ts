@@ -36,6 +36,10 @@ export class EventDispatcher<T> {
 		return this.#listen(listener)
 	}
 
+	get hasListeners() {
+		return this.#listeners.length > 0
+	}
+
 	once(listener: (data: T) => void): () => void {
 		let unsub: (() => void) | undefined = undefined
 		const wrapped = (data: T) => {

@@ -36,7 +36,7 @@ type Preferences struct {
 	ReuploadGIFs            bool   `json:"reupload_gifs,omitempty"`
 	MessageContextMenu      bool   `json:"message_context_menu,omitempty"`
 	CtrlEnterSend           bool   `json:"ctrl_enter_send,omitempty"`
-	CustomNotificationSound string `json:"custom_notification_sound,omitempty"`
+	NotificationSound       string `json:"notification_sound,omitempty"`
 	RoomWindowTitle         string `json:"room_window_title,omitempty"`
 	WindowTitle             string `json:"window_title,omitempty"`
 	Favicon                 string `json:"favicon,omitempty"`

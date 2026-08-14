@@ -60,20 +60,20 @@ func (o Orientation) Fix(img image.Image) image.Image {
 	return img
 }
 
+const (
+	markerSOI      = 0xffd8
+	markerAPP1     = 0xffe1
+	exifHeader     = 0x45786966
+	byteOrderBE    = 0x4d4d
+	byteOrderLE    = 0x4949
+	orientationTag = 0x0112
+)
+
 // Read tries to read the orientation EXIF flag from image data in r.
 // If the EXIF data block is not found or the orientation flag is not found
 // or any other error occures while reading the data, it returns the
 // Unspecified (0) value.
 func Read(r io.Reader) Orientation {
-	const (
-		markerSOI      = 0xffd8
-		markerAPP1     = 0xffe1
-		exifHeader     = 0x45786966
-		byteOrderBE    = 0x4d4d
-		byteOrderLE    = 0x4949
-		orientationTag = 0x0112
-	)
-
 	// Check if JPEG SOI marker is present.
 	var soi uint16
 	if err := binary.Read(r, binary.BigEndian, &soi); err != nil {
@@ -105,7 +105,10 @@ func Read(r io.Reader) Orientation {
 			return Unspecified
 		}
 	}
+	return ReadEXIF(r)
+}
 
+func ReadEXIF(r io.Reader) Orientation {
 	// Check if EXIF header is present.
 	var header uint32
 	if err := binary.Read(r, binary.BigEndian, &header); err != nil {

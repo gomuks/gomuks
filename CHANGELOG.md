@@ -1,3 +1,143 @@
+# v26.08 (unreleased)
+
+### Backend
+* Added streaming HTTP response as an alternative for websockets.
+  * The stream can either use server-sent events (`text/event-stream`)
+    or plain JSON objects (`application/jsonl`) based on the `Accept` header.
+* Added support for room list catch-up syncs for frontends.
+* Added media download method to C FFI.
+* Added support for using the reply UI with the `/raw` command.
+* Added `/htmlmd` command which allows sending messages that mix HTML and
+  markdown.
+* Added support for calling any HTTP endpoint with basic auth without having
+  to exchange it for an auth cookie first.
+* Added `get_versions` command to get spec versions supported by the homeserver.
+* Changed format of `get_profile` responses to allow locally generated fields.
+* Changed sync responses to allow omitting any field in room entries.
+* Changed HTML sanitizer to only allow checkboxes inside unordered list items.
+* Changed room state resync to send space edges to clients if the room being
+  resynced is a space.
+* Fixed HTML sanitizer not applying the depth limit specified by Matrix.
+* Fixed `prev_batch` token not being saved when paginating messages from the
+  server returns no new messages.
+* Fixed `prev_batch` not being reset on limited syncs.
+* Fixed clients never receiving initial sync payload if they connect during
+  database initialization.
+
+### Web
+* Added option to use server-sent events instead of websockets.
+* Added optional client-side room list cache, which is used to reduce the
+  initial payload size when reloading the page. The cache is enabled when both
+  SSE and low-bandwidth mode are enabled.
+* Added knocked users to room user list.
+* Added option to pin low priority rooms to bottom of room list.
+* Added option to stop counting unread messages in low priority rooms.
+* Added button to reset TOFU status after another user's master key changed.
+* Added hacky support for checking/unchecking todo list items in own messages.
+* Added button to subscribe to image packs in the image pack editor.
+* Added button to open the user's member event from the right panel user info.
+* Added button for fetching previous state events in the room state explorer.
+* Added support for [MSC4440] profile biographies.
+* Fixed websocket auto-reconnection getting throttled by browsers.
+* Fixed typing notifications getting stuck when the websocket reconnects.
+* Fixed unread counts and space bar not being visible when the room list was
+  resized to be too small.
+
+[MSC4440]: https://github.com/matrix-org/matrix-spec-proposals/pull/4440
+
+### Desktop
+* Added UI for managing backends.
+* Added option to disable tray icon.
+  * Closing the main window will stop the backend too when the tray is disabled.
+* Added option to disable notifications per backend.
+
+# v26.07
+
+### Backend
+* Updated Docker image to Alpine 3.24.
+* Added support for OAuth login.
+* Added command to create polls.
+* Fixed own profile being refetched too often.
+* Fixed initial sync of very big spaces.
+* Fixed direct chat status getting out of sync with `m.direct` in some rare cases.
+* Removed support for legacy SSO (legacy password auth is still supported).
+
+### Web
+* Added support for OAuth login.
+  * Device code login is the default. On servers that don't support it,
+    authorization code redirect login is supported in some limited cases.
+* Added rendering for polls.
+* Added power level changer in user info panel.
+* Added default aspect ratio for custom emojis to avoid timeline jumping when
+  lots of them are loaded.
+* Added own device list to settings.
+* Added room metadata changing to settings.
+* Added button to open settings without being in a room.
+* Split settings view into tabs so things are easier to find.
+* Changed behavior of escape key: it will now clear any reply state in the
+  composer (like it already did for edits) and/or close the right panel before
+  closing the room view.
+* Fixed sidebars not being properly resizable on small screens.
+* Fixed pasting commands (like `/raw`) on mobile.
+
+# v26.06
+
+### Backend
+* Added local full-text search support.
+  * Upgrading may take a few minutes if your database is large.
+  * The backend must now be compiled with the `sqlite_fts5` build tag. The build
+    scripts will add it by default, but if you run `go build` manually, you need
+    to add the tag yourself.
+* Added support for thumbnailing animated webp avatars.
+* Added support for correctly rotating HEIC images when re-encoding uploads.
+* Added documentation generator for RPC API and an OpenAPI spec for the HTTP API.
+* Added `/powerlevel` command to change individual power levels.
+* Changed environment variable processing to prefer `GOMUKS_*_HOME` over
+  `GOMUKS_ROOT` to allow finer control.
+* Fixed panic when cancelling media uploads.
+
+### Web
+* Rewrote desktop wrapper to use Electron instead of Wails.
+  * Linux builds now have an actually usable browser engine,
+    and macOS builds are signed to allow installing without workarounds.
+  * The new wrapper supports both embedded and remote backends and can have
+    multiple backends at once. Extra backends have to be added manually for now,
+    management UI will be added later.
+* Added message search panel.
+* Added separate message context menu button to open thread panel.
+* Added undo button to move a failed message send back into the composer.
+* Added push rule editor to devtools.
+* Fixed reaction images not having a maximum width.
+* Fixed successfully decrypted events with an empty `type` showing up as waiting
+  for decryption.
+* Fixed pinned messages view not showing edits of old messages.
+* Fixed emoji/sticker picker categories not adjusting to picker width properly.
+* Fixed bottom safe area inset not being applied properly when using Android
+  wrapper.
+
+# v26.05
+
+### Backend
+* Added support for `Range` requests when downloading media.
+* Added support for sending per-message profiles with [MSC4461].
+* Changed resyncing state to detect the user being state reset out of the room
+  even if the request doesn't fail (e.g. due to the room being world-readable).
+* Fixed login failing if the user has no SSSS set up.
+
+### Web
+* Added support for reading stable [MSC2545] event types.
+* Added support for per-room notification sounds.
+* Added option to force sending an attachment as a file.
+* Added the `value` to the whitelisted attributes for `li` tags
+  (allows ordered lists where the indexes jump arbitrarily).
+* Changed `/join` command to accept user IDs and event links in addition to
+  plain room links/aliases.
+* Fixed SSO login not working if the homeserver URL had a trailing slash.
+* Fixed unicode RTL overrides not being isolated properly in some contexts.
+
+[MSC2545]: https://github.com/matrix-org/matrix-spec-proposals/pull/2545
+[MSC4461]: https://github.com/matrix-org/matrix-spec-proposals/pull/4461
+
 # v26.04
 
 ### Backend

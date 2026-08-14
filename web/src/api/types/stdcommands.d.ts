@@ -25,5 +25,7 @@ export type CommandName =
 	| "alias del"
 	| "converttodm"
 	| "converttoroom"
+	| "powerlevel"
+	| "poll"
 
 export default BotCommandList

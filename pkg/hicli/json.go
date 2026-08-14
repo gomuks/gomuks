@@ -21,7 +21,7 @@ type JSONCommand = jsoncmd.Container[json.RawMessage]
 
 func (h *HiClient) State() *jsoncmd.ClientState {
 	state := &jsoncmd.ClientState{
-		Initialized: h.Initialized,
+		Initialized: h.Initialized.IsSet(),
 	}
 	if acc := h.Account; acc != nil {
 		state.IsLoggedIn = true
@@ -30,6 +30,8 @@ func (h *HiClient) State() *jsoncmd.ClientState {
 		state.HomeserverURL = acc.HomeserverURL
 		state.IsVerified = h.VerificationState.IsVerified
 		state.VerificationState = h.VerificationState
+		state.Displayname = acc.DisplayName
+		state.AvatarURL = acc.AvatarURL.CUString()
 	}
 	return state
 }

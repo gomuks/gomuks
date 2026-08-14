@@ -31,6 +31,14 @@ interface initialStateEntry {
 	content: string
 }
 
+function tryParseJSON(json: string) {
+	try {
+		return JSON.parse(json)
+	} catch {
+		return undefined
+	}
+}
+
 const CreateRoomView = () => {
 	const client = use(ClientContext)!
 	const closeModal = use(ModalCloseContext)
@@ -46,16 +54,49 @@ const CreateRoomView = () => {
 	const [isEncrypted, setIsEncrypted] = useState(true)
 	const [initialState, setInitialState] = useState<initialStateEntry[]>([])
 	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">(
-		client.capabilities?.capabilities?.["m.room_versions"]?.default || "",
+		client.capabilities?.capabilities?.["m.room_versions"]?.default || "12",
 	)
 	const [roomID, setRoomID] = useState("")
 	const [roomCreateTS, setRoomCreateTS] = useState<number>(0)
 	const [creationContent, setCreationContent] = useState<string>("{\n\n}")
-	const [powerLevelContentOverride, setPowerLevelContentOverride] = useState<string>(() => `{
-  "users": {
-    ${JSON.stringify(client.store.userID)}: 9001
-  }
-}`)
+	const [powerLevelContentOverride, setPowerLevelContentOverride] = useState<string>("{\n\n}")
+
+	const updatePreset = (newPreset: RoomPreset) => {
+		if (newPreset === "public_chat") {
+			setIsEncrypted(false)
+		}
+		setPreset(newPreset)
+	}
+
+	const setDMConfig = () => {
+		if (invite.length === 0) {
+			setInvite([""])
+		}
+		setIsDirect(true)
+		setIsEncrypted(true)
+		setPreset("trusted_private_chat")
+		setCreationContent(JSON.stringify({
+			...tryParseJSON(creationContent),
+			type: undefined,
+		}, null, 4))
+		setPowerLevelContentOverride(JSON.stringify({
+			...tryParseJSON(powerLevelContentOverride),
+			events_default: undefined,
+		}, null, 4))
+	}
+	const setSpaceConfig = () => {
+		setCreationContent(JSON.stringify({
+			...tryParseJSON(creationContent),
+			type: "m.space",
+		}, null, 4))
+		setPowerLevelContentOverride(JSON.stringify({
+			...tryParseJSON(powerLevelContentOverride),
+			events_default: 100,
+		}, null, 4))
+		setIsDirect(false)
+		setIsEncrypted(false)
+		setPreset(preset === "public_chat" ? "public_chat" : "private_chat")
+	}
 
 	const isRoomV12 = !preV12.has(roomVersion)
 	const onSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
@@ -155,6 +196,13 @@ const CreateRoomView = () => {
 		<h2>Create a new room</h2>
 
 		<div className="form-fields">
+			<div className="room-templates">
+				<span>Apply template:</span>
+				<button type="button" onClick={setDMConfig}>DM</button>
+				<span>/</span>
+				<button type="button" onClick={setSpaceConfig}>Space</button>
+			</div>
+
 			<label htmlFor="room-create-name" title="The name of the room">Name</label>
 			<input
 				id="room-create-name"
@@ -194,7 +242,7 @@ const CreateRoomView = () => {
 			/>
 
 			<label htmlFor="room-create-preset" title="Preset for join rules and history visibility">Preset</label>
-			<select id="room-create-preset" value={preset} onChange={e => setPreset(e.target.value as RoomPreset)}>
+			<select id="room-create-preset" value={preset} onChange={e => updatePreset(e.target.value as RoomPreset)}>
 				<option value="public_chat">Public chat</option>
 				<option value="private_chat">Private chat</option>
 				<option value="trusted_private_chat">Trusted private chat</option>
@@ -250,7 +298,7 @@ const CreateRoomView = () => {
 				<input
 					id="room-create-version"
 					type="text"
-					placeholder="11"
+					placeholder="server default"
 					value={roomVersion}
 					onChange={e => setRoomVersion(e.target.value as RoomVersion)}
 				/>

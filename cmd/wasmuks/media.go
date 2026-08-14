@@ -53,7 +53,7 @@ func uploadMedia(ctx context.Context, fileName string, encrypt bool, payload []b
 		FileName: fileName,
 	}
 	checksum := sha256.Sum256(payload)
-	content.File, content.URL, err = gmx.UploadFile(
+	content.File, content.URL, err = gmx.UploadFileDirect(
 		ctx,
 		checksum[:],
 		bytes.NewReader(payload),

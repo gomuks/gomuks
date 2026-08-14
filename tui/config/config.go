@@ -114,19 +114,19 @@ type Config struct {
 }
 
 func GetConfigDirectory() string {
-	if gomuksRoot := os.Getenv("GOMUKS_ROOT"); gomuksRoot != "" {
-		return filepath.Join(gomuksRoot, "config")
-	} else if gomuksConfigHome := os.Getenv("GOMUKS_CONFIG_HOME"); gomuksConfigHome != "" {
+	if gomuksConfigHome := os.Getenv("GOMUKS_CONFIG_HOME"); gomuksConfigHome != "" {
 		return gomuksConfigHome
+	} else if gomuksRoot := os.Getenv("GOMUKS_ROOT"); gomuksRoot != "" {
+		return filepath.Join(gomuksRoot, "config")
 	}
 	return filepath.Join(exerrors.Must(os.UserConfigDir()), "gomuks")
 }
 
 func GetLogDirectory() string {
-	if gomuksRoot := os.Getenv("GOMUKS_ROOT"); gomuksRoot != "" {
-		return filepath.Join(gomuksRoot, "logs")
-	} else if gomuksLogsHome := os.Getenv("GOMUKS_LOGS_HOME"); gomuksLogsHome != "" {
+	if gomuksLogsHome := os.Getenv("GOMUKS_LOGS_HOME"); gomuksLogsHome != "" {
 		return gomuksLogsHome
+	} else if gomuksRoot := os.Getenv("GOMUKS_ROOT"); gomuksRoot != "" {
+		return filepath.Join(gomuksRoot, "logs")
 	} else if xdgStateHome := os.Getenv("XDG_STATE_HOME"); xdgStateHome != "" {
 		return filepath.Join(xdgStateHome, "gomuks")
 	} else if runtime.GOOS == "darwin" {

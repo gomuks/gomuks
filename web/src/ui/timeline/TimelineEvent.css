@@ -70,21 +70,15 @@ div.timeline-event {
 			font-weight: bold;
 			user-select: none;
 			cursor: var(--clickable-cursor);
+
+			&.original {
+				font-size: .75rem;
+			}
 		}
 
-		> div.per-message-event-sender {
+		> span.via {
 			color: var(--secondary-text-color);
 			font-size: .75rem;
-
-			> span.via {
-				margin-right: .25rem;
-			}
-
-			> span.event-sender {
-				font-weight: bold;
-				user-select: none;
-				cursor: var(--clickable-cursor);
-			}
 		}
 
 		> span.event-time {
@@ -217,7 +211,7 @@ div.timeline-event {
 	}
 }
 
-div.pinned-event > div.timeline-event, div.notification-panel-content > div.timeline-event {
+div.pinned-event > div.timeline-event, div.notification-panel-content > div.timeline-event, div.search-panel-content > div.timeline-event {
 	--timeline-status-size: 0;
 	--timeline-horizontal-padding: 0;
 
@@ -276,6 +270,7 @@ div.event-reactions {
 
 		> img.reaction-emoji {
 			height: 1.5rem;
+			max-width: 10rem;
 		}
 	}
 }

@@ -20,6 +20,9 @@ import IgnoreIcon from "@/icons/block.svg?react"
 
 const UserIgnoreButton = ({ userID, client }: { userID: string; client: Client }) => {
 	const ignoredUsers = useAccountData(client.store, "m.ignored_user_list") as IgnoredUsersEventContent | null
+	if (userID === client.userID) {
+		return null
+	}
 
 	const isIgnored = Boolean(ignoredUsers?.ignored_users?.[userID])
 	const ignoreUser = () => {

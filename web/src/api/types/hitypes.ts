@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import {
+import type {
 	ContentURI,
 	CreateEventContent,
 	DeviceID,
@@ -30,7 +30,9 @@ import {
 	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
+	UserProfile,
 } from "./mxtypes.ts"
+import type { OAuthServerMetadata } from "./oauth.ts"
 
 export type EventRowID = number
 export type TimelineRowID = number
@@ -70,8 +72,6 @@ export interface DBRoom {
 	unread_notifications: number
 	unread_messages: number
 	marked_unread: boolean
-
-	prev_batch: string
 }
 
 export interface DBSpaceEdge {
@@ -203,9 +203,19 @@ export interface MutualRoomsResponse {
 	next_batch?: string
 }
 
+export interface SanitizedBio {
+	html: string
+	edit_source?: string
+}
+
+export interface GetProfileResponse {
+	profile: UserProfile
+	bio?: SanitizedBio
+}
+
 export interface ManualPaginationResponse {
 	events: RawDBEvent[]
-	next_batch: string
+	next_batch?: string
 }
 
 export interface ResolveAliasResponse {
@@ -214,9 +224,10 @@ export interface ResolveAliasResponse {
 }
 
 export interface LoginFlowsResponse {
-	flows: {
+	flows?: {
 		type: string
 	}[]
+	oauth?: OAuthServerMetadata
 }
 
 export interface EventUnsigned {
@@ -245,7 +256,7 @@ export function stringToRoomStateGUID(str?: string | null): RoomStateGUID | unde
 		return
 	}
 	const [roomID, type, stateKey] = str.split("/")
-	if (!roomID || !type || !stateKey) {
+	if (!roomID || !type || stateKey === undefined) {
 		return
 	}
 	return {
@@ -304,6 +315,19 @@ export interface ProfileEncryptionInfo {
 	errors: string[]
 }
 
+export interface OwnDevice {
+	device_id: DeviceID
+	display_name: string
+	last_seen_ip: string
+	last_seen_ts: number
+}
+
+export interface GetOwnDevicesResponse {
+	encryption: ProfileEncryptionInfo
+	devices: OwnDevice[]
+	current_device: ProfileDevice
+}
+
 export interface DBPushRegistration {
 	device_id: string
 	type: "fcm" | "web"
@@ -318,13 +342,14 @@ export interface MediaEncodingOptions {
 	resize_width?: number
 	resize_height?: number
 	resize_percent?: number
-	_no_encrypt?: boolean
+	_encrypt?: boolean
 	voice_message?: boolean
+	force_file?: boolean
 }
 
 export type MembershipAction = "invite" | "kick" | "ban" | "unban"
 
-export interface KeyRestoreProgress  {
+export interface KeyRestoreProgress {
 	current_room_id: RoomID
 	stage: "fetching" | "decrypting" | "saving" | "postprocessing" | "done"
 	decrypted: number
@@ -345,4 +370,27 @@ export interface PassphraseMetadata {
 export interface RecoveryKeyResponse {
 	recovery_key: string
 	passphrase_meta?: PassphraseMetadata
+	cross_signing_keys: {
+		"m.cross_signing.master": string
+		"m.cross_signing.self_signing": string
+		"m.cross_signing.user_signing": string
+	}
+}
+
+interface BaseSearchParams {
+	search_term: string
+	limit: number
+	room_ids?: RoomID[]
+	senders?: UserID[]
+	next_batch?: string
+	sort_by_time?: boolean
+}
+
+export type ServerSearchParams = BaseSearchParams
+
+export interface LocalSearchParams extends BaseSearchParams {
+	raw_like?: string
+	min_timestamp?: number
+	max_timestamp?: number
+	include_redacted?: boolean
 }

@@ -11,6 +11,7 @@ div.room-view {
 		"autocomplete" 0
 		"input" auto
 		"typing" auto
+		"blank" var(--window-bottom-margin)
 		/ 1fr;
 	contain: strict;
 

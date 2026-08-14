@@ -21,6 +21,7 @@ import { RoomStateStore, maybeRedactMemberEvent, useRoomMember, useRoomState } f
 import { EventID, MemDBEvent, UserID } from "@/api/types"
 import { getPowerLevels } from "@/ui/menu/util.ts"
 import { LightboxContext } from "@/ui/modal/contexts.ts"
+import { formatFullTime, newSafeDate } from "@/util/datetime.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
 import { ensureString, getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -65,7 +66,7 @@ const mapReactionEvents = (reactions: MemDBEvent[]) => {
 		return info
 	}
 	for (const evt of reactions) {
-		if (evt.redacted_by) {
+		if (evt.redacted_by || !evt.event_id.startsWith("$")) {
 			continue
 		}
 		const key = ensureString(evt.content["m.relates_to"]?.key)
@@ -108,15 +109,6 @@ interface ReactionSenderProps {
 	removeReactionCache: (userID: UserID, eventID: EventID) => void
 }
 
-const fullTimeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
-const newSafeDate = (val: number) => {
-	const date = new Date(val)
-	if (isNaN(+date)) {
-		return new Date(0)
-	}
-	return date
-}
-
 const ReactionSender = ({ client, userID, events, room, canDelete, removeReactionCache }: ReactionSenderProps) => {
 	const memberEvt = useRoomMember(client, room, userID)
 	const member = maybeRedactMemberEvent(memberEvt)
@@ -130,7 +122,7 @@ const ReactionSender = ({ client, userID, events, room, canDelete, removeReactio
 			).finally(() => setDeleting(false))
 		}
 	}
-	return <div className="reaction-sender" title={fullTimeFormatter.format(events.firstTimestamp)}>
+	return <div className="reaction-sender" title={formatFullTime(events.firstTimestamp)}>
 		{canDelete && <button className="delete-button" onClick={onClickDelete} disabled={deleting}>
 			<DeleteIcon />
 		</button>}

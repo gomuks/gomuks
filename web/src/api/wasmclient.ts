@@ -39,9 +39,7 @@ export default class WasmClient extends RPCClient {
 		}).catch(err => console.error("Failed to register media service worker", err))
 	}
 
-	async doAuth(): Promise<boolean> {
-		return true
-	}
+	async doAuth(): Promise<void> {}
 
 	async uploadMedia(file: Blob, filename: string, encrypt: boolean): Promise<MediaMessageEventContent> {
 		const request_id = this.nextRequestID

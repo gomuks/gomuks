@@ -23,9 +23,10 @@ import {
 	useRoomMember,
 } from "@/api/statestore"
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
+import { formatDate, formatFullTime, formatShortTime, newSafeDate } from "@/util/datetime.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { getDisplayname, getRelatesTo, isEventID } from "@/util/validation.ts"
+import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
@@ -52,20 +53,6 @@ export interface TimelineEventProps {
 	smallThreads?: boolean
 	isFocused?: boolean
 	viewType: TimelineEventViewType
-}
-
-const fullTimeFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "medium" })
-const dateFormatter = new Intl.DateTimeFormat("en-GB", { dateStyle: "full" })
-const formatShortTime = (time: Date) =>
-	`${time.getHours().toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}`
-const formatFullTime = (time: Date) => fullTimeFormatter.format(time)
-const formatDate = (time: Date) => dateFormatter.format(time)
-const newSafeDate = (val: number) => {
-	const date = new Date(val)
-	if (isNaN(+date)) {
-		return new Date(0)
-	}
-	return date
 }
 
 interface EventReactionsProps {
@@ -124,6 +111,9 @@ const TimelineEvent = ({
 	const openNestableModal = use(NestableModalContext)
 	const [forceContextMenuOpen, setForceContextMenuOpen] = useState(false)
 	const onContextMenu = (mouseEvt: React.MouseEvent) => {
+		if (mouseEvt.shiftKey) {
+			return
+		}
 		const targetElem = mouseEvt.target as HTMLElement
 		if (
 			!roomCtx.store.preferences.message_context_menu
@@ -195,8 +185,7 @@ const TimelineEvent = ({
 	const relatesTo = getRelatesTo(evt)
 	const replyTo = relatesTo?.["m.in_reply_to"]?.event_id
 	const isFallbackReply = relatesTo?.is_falling_back
-	const threadRoot = relatesTo?.rel_type === "m.thread" && isEventID(relatesTo.event_id)
-		? relatesTo.event_id : undefined
+	const threadRoot = getThreadRoot(relatesTo)
 	const isSmallThreadMessage = Boolean(threadRoot && smallThreads)
 	const BodyType = getBodyType(evt, isRedacted, isSmallThreadMessage)
 	if (evt.unread_type & UnreadType.Highlight) {
@@ -256,7 +245,7 @@ const TimelineEvent = ({
 		const replyElem = <ReplyIDBody
 			roomCtx={roomCtx}
 			eventID={replyTo}
-			isThread={viewType !== "thread" && relatesTo?.rel_type === "m.thread"}
+			isThread={viewType !== "thread" && isThread(relatesTo)}
 			threadRoot={threadRoot}
 			small={!!smallReplies}
 		/>
@@ -292,7 +281,7 @@ const TimelineEvent = ({
 	}
 	if (isSmallThreadMessage) {
 		const prevRelatesTo = getRelatesTo(prevEvt)
-		if (dateSeparator === null && prevRelatesTo?.rel_type === "m.thread" && prevRelatesTo.event_id === threadRoot) {
+		if (dateSeparator === null && getThreadRoot(prevRelatesTo) === threadRoot) {
 			wrapperClassNames.push("same-thread")
 		}
 		wrapperClassNames.push("small-thread-message")
@@ -303,6 +292,8 @@ const TimelineEvent = ({
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)
+	const renderMemberEventDisplayname = getDisplayname(evt.sender, renderMemberEvtContent)
+	const mainMemberEventDisplayname = getDisplayname(evt.sender, memberEvtContent)
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
@@ -342,19 +333,19 @@ const TimelineEvent = ({
 				onClick={perMessageSender ? undefined : roomCtx.appendMentionToComposer}
 				title={perMessageSender ? perMessageSender.id : evt.sender}
 			>
-				{getDisplayname(evt.sender, renderMemberEvtContent)}
+				{renderMemberEventDisplayname}
 			</span>
-			{perMessageSender && <div className="per-message-event-sender">
+			{renderMemberEventDisplayname !== mainMemberEventDisplayname && <>
 				<span className="via">via</span>
 				<span
-					className={`event-sender sender-color-${getUserColorIndex(evt.sender)}`}
+					className={`event-sender original sender-color-${getUserColorIndex(evt.sender)}`}
 					data-target-user={evt.sender}
 					onClick={roomCtx.appendMentionToComposer}
 					title={evt.sender}
 				>
-					{getDisplayname(evt.sender, memberEvtContent)}
+					{mainMemberEventDisplayname}
 				</span>
-			</div>}
+			</>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
 		</div> : <div className="event-time-only" onClick={onClickTimestamp}>
 			<span className="event-time" title={fullTime}>{shortTime}</span>

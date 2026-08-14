@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useCallback, useRef, useState } from "react"
 import { BarLoader } from "react-spinners"
+import { getAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListFilter, Space as SpaceStore, SpaceUnreadCounts, usePreference } from "@/api/statestore"
+import { useTabs } from "@/api/tabs.ts"
 import type { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import reverseMap from "@/util/reversemap.ts"
@@ -23,9 +25,11 @@ import toSearchableString from "@/util/searchablestring.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { keyToString } from "../keybindings.ts"
-import { ModalContext, modals } from "../modal"
+import { getRightOpeningModalStyleFromButton } from "../menu/util.ts"
+import { ModalContext, NestableModalContext, modals } from "../modal"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
+import ProfileSwitcher from "./ProfileSwitcher.tsx"
 import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
@@ -40,12 +44,16 @@ interface RoomListProps {
 const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const client = use(ClientContext)!
 	const openModal = use(ModalContext)
+	const openNestableModal = use(NestableModalContext)
 	const mainScreen = use(MainScreenContext)
 	const roomList = useEventAsState(client.store.roomList)
 	const spaces = useEventAsState(client.store.topLevelSpaces)
 	const initComplete = useEventAsState(client.initComplete)
+	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
+	const { tabs, currentTabID, totalUnreads, switchTab } = useTabs()
+	const currentTabIndex = tabs.findIndex(t => t.id === currentTabID)
 
 	const setQuery = (evt: React.ChangeEvent<HTMLInputElement>) => {
 		client.store.currentRoomListQuery = toSearchableString(evt.target.value)
@@ -140,10 +148,10 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				ref={searchInputRef}
 				id="room-search"
 			/>
-			{query === "" && <button onClick={openCreateRoom} title="Create room">
+			{query === "" && <button onClick={openCreateRoom} title="Create room" className="create-room-button">
 				<AddCircleIcon/>
 			</button>}
-			<button onClick={clearQuery} disabled={query === ""}>
+			<button onClick={clearQuery} disabled={query === ""} className="search-clear-button">
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
@@ -165,6 +173,33 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				onClickUnread={onClickSpaceUnread}
 			/>)}
 		</div>
+		<div className="profile-switcher">
+			<div
+				className="profile-switcher-item"
+				onClick={evt => {
+					openNestableModal({
+						content: <ProfileSwitcher
+							tabs={tabs}
+							currentTabID={currentTabID}
+							switchTab={switchTab}
+							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * (tabs.length+1) + 4)}
+						/>,
+					})
+				}}
+			>
+				{totalUnreads > 0 ? <div className="room-entry-unreads floating">
+					<div className="unread-count space notified">
+						{totalUnreads > 999 ? "99+" : totalUnreads}
+					</div>
+				</div> : null}
+				<img
+					src={tabs[currentTabIndex]?.icon ?? getAvatarThumbnailURL(client.userID, ownProfile)}
+					className="avatar"
+					alt="Profile switcher"
+				/>
+			</div>
+		</div>
+		<div className="blank" />
 		<div className="room-list">
 			{initComplete ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}

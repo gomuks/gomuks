@@ -10,9 +10,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"go.mau.fi/util/dbutil"
+	"go.mau.fi/util/exslices"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -29,13 +32,14 @@ const (
 		FROM room
 	`
 	getRoomsBySortingTimestampQuery = getRoomBaseQuery + `WHERE sorting_timestamp < $1 AND sorting_timestamp > 0 AND room_type<>'m.space' ORDER BY sorting_timestamp DESC LIMIT $2`
+	getRoomsByModTimestampQuery     = getRoomBaseQuery + `WHERE mod_timestamp > $1`
 	getRoomsByTypeQuery             = getRoomBaseQuery + `WHERE room_type = $1`
 	getRoomByIDQuery                = getRoomBaseQuery + `WHERE room_id = $1`
 	ensureRoomExistsQuery           = `
 		INSERT INTO room (room_id) VALUES ($1)
 		ON CONFLICT (room_id) DO NOTHING
 	`
-	upsertRoomFromSyncQuery = `
+	updateRoomFromSyncQuery = `
 		UPDATE room
 		SET room_type = COALESCE(room.room_type, json($2)->>'$.type', ''),
 		    creation_content = COALESCE(room.creation_content, $2),
@@ -52,6 +56,7 @@ const (
 			has_member_list = room.has_member_list OR $13,
 			preview_event_rowid = COALESCE($14, room.preview_event_rowid),
 			sorting_timestamp = COALESCE($15, room.sorting_timestamp),
+			mod_timestamp = unixepoch('subsec')*1000,
 			unread_highlights = COALESCE($16, room.unread_highlights),
 			unread_notifications = COALESCE($17, room.unread_notifications),
 			unread_messages = COALESCE($18, room.unread_messages),
@@ -59,15 +64,24 @@ const (
 			prev_batch = COALESCE($20, room.prev_batch)
 		WHERE room_id = $1
 	`
-	setRoomPrevBatchQuery = `
-		UPDATE room SET prev_batch = $2 WHERE room_id = $1
+	bumpRoomModTimestampQuery = `
+		UPDATE room SET mod_timestamp = unixepoch('subsec')*1000 WHERE room_id IN (%s)
 	`
-	deleteRoomQuery = `
+	// TODO this might not need to bump mod timestamp
+	setRoomPrevBatchQuery = `
+		UPDATE room SET prev_batch = $2, mod_timestamp = unixepoch('subsec')*1000 WHERE room_id = $1
+	`
+	addLeftRoomRowQuery = `
+		INSERT INTO left_room (room_id) VALUES ($1) ON CONFLICT (room_id) DO UPDATE
+			SET mod_timestamp = unixepoch('subsec') * 1000
+	`
+	getLeftRoomsQuery = `SELECT room_id FROM left_room WHERE mod_timestamp > $1`
+	deleteRoomQuery   = `
 		DELETE FROM room WHERE room_id = $1
 	`
 	updateRoomPreviewIfLaterOnTimelineQuery = `
 		UPDATE room
-		SET preview_event_rowid = $2
+		SET preview_event_rowid = $2, mod_timestamp = unixepoch('subsec')*1000
 		WHERE room_id = $1
 		  AND COALESCE((SELECT rowid FROM timeline WHERE event_rowid = $2), -1)
 		          > COALESCE((SELECT rowid FROM timeline WHERE event_rowid = preview_event_rowid), 0)
@@ -101,16 +115,28 @@ func (rq *RoomQuery) GetBySortTS(ctx context.Context, maxTS time.Time, limit int
 	return rq.QueryMany(ctx, getRoomsBySortingTimestampQuery, maxTS.UnixMilli(), limit)
 }
 
+func (rq *RoomQuery) GetAllChangedSince(ctx context.Context, since int64) ([]*Room, error) {
+	return rq.QueryMany(ctx, getRoomsByModTimestampQuery, since)
+}
+
 func (rq *RoomQuery) GetAllSpaces(ctx context.Context) ([]*Room, error) {
 	return rq.QueryMany(ctx, getRoomsByTypeQuery, event.RoomTypeSpace)
 }
 
-func (rq *RoomQuery) Upsert(ctx context.Context, room *Room) error {
-	return rq.Exec(ctx, upsertRoomFromSyncQuery, room.sqlVariables()...)
+func (rq *RoomQuery) Update(ctx context.Context, room *Room) error {
+	return rq.Exec(ctx, updateRoomFromSyncQuery, room.sqlVariables()...)
 }
 
 func (rq *RoomQuery) Delete(ctx context.Context, roomID id.RoomID) error {
+	err := rq.Exec(ctx, addLeftRoomRowQuery, roomID)
+	if err != nil {
+		return err
+	}
 	return rq.Exec(ctx, deleteRoomQuery, roomID)
+}
+
+func (rq *RoomQuery) GetLeftRoomsSince(ctx context.Context, since int64) ([]id.RoomID, error) {
+	return roomIDScanner.NewRowIter(rq.GetDB().Query(ctx, getLeftRoomsQuery, since)).AsList()
 }
 
 func (rq *RoomQuery) CreateRow(ctx context.Context, roomID id.RoomID) error {
@@ -119,6 +145,16 @@ func (rq *RoomQuery) CreateRow(ctx context.Context, roomID id.RoomID) error {
 
 func (rq *RoomQuery) SetPrevBatch(ctx context.Context, roomID id.RoomID, prevBatch string) error {
 	return rq.Exec(ctx, setRoomPrevBatchQuery, roomID, prevBatch)
+}
+
+func (rq *RoomQuery) BumpModTimestamp(ctx context.Context, roomIDs ...id.RoomID) error {
+	if len(roomIDs) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(roomIDs))
+	placeholders = placeholders[:len(placeholders)-1]
+	query := fmt.Sprintf(bumpRoomModTimestampQuery, placeholders)
+	return rq.Exec(ctx, query, exslices.CastToAny(roomIDs)...)
 }
 
 func (rq *RoomQuery) UpdatePreviewIfLaterOnTimeline(ctx context.Context, roomID id.RoomID, rowID EventRowID) (previewChanged bool, err error) {
@@ -174,7 +210,7 @@ type Room struct {
 	UnreadCounts
 	MarkedUnread *bool `json:"marked_unread,omitempty"`
 
-	PrevBatch string `json:"prev_batch"`
+	PrevBatch string `json:"-"`
 }
 
 func (r *Room) GetType() event.RoomType {
@@ -213,7 +249,7 @@ func (r *Room) VisibleMetaIsEqual(other *Room) bool {
 		r.HasMemberList == other.HasMemberList
 }
 
-func (r *Room) CheckChangesAndCopyInto(other *Room) (hasChanges bool) {
+func (r *Room) CheckChangesAndCopyInto(other *Room) (hasChanges, hasSyncableChanges bool) {
 	if r.CreationContent != nil {
 		other.CreationContent = r.CreationContent
 		hasChanges = true
@@ -276,11 +312,12 @@ func (r *Room) CheckChangesAndCopyInto(other *Room) (hasChanges bool) {
 		other.UnreadMessages = r.UnreadMessages
 		hasChanges = true
 	}
-	if r.MarkedUnread != other.MarkedUnread {
+	if r.MarkedUnread != nil && ptr.Val(r.MarkedUnread) != ptr.Val(other.MarkedUnread) {
 		other.MarkedUnread = r.MarkedUnread
 		hasChanges = true
 	}
-	if r.PrevBatch != "" && other.PrevBatch == "" {
+	hasSyncableChanges = hasChanges
+	if r.PrevBatch != "" && r.PrevBatch != other.PrevBatch {
 		other.PrevBatch = r.PrevBatch
 		hasChanges = true
 	}
