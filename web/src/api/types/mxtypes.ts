@@ -533,14 +533,17 @@ export interface RespMediaConfig {
 export interface BooleanCapability {
 	enabled: boolean
 }
+
 export interface RoomVersionsCapability {
 	default: RoomVersion
-	available: {RoomVersion: string},
+	available: {[key in RoomVersion]: "stable" | "unstable"},
 }
+
 export interface AccountModerationCapability {
 	lock?: boolean
 	suspend?: boolean
 }
+
 export interface Capabilities {
 	"m.room_versions"?: RoomVersionsCapability
 	"m.change_password"?: BooleanCapability
@@ -550,6 +553,7 @@ export interface Capabilities {
 	"m.get_login_token"?: BooleanCapability
 	"uk.timedout.msc4323"?: AccountModerationCapability
 }
+
 export interface RespCapabilities {
 	capabilities: Capabilities
 }

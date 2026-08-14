@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useReducer, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
 import type { CustomEmojiPack } from "@/util/emoji"
+import { useEventAsState } from "@/util/eventdispatcher.ts"
 import type {
 	BeeperPerMessageProfile,
 	DBSpaceEdge,
@@ -43,6 +44,11 @@ export function useRoomTimeline(room: RoomStateStore | undefined): (MemDBEvent |
 
 export function useRoomTyping(room: RoomStateStore): string[] {
 	return useSyncExternalStore(room.typingSub.subscribe, () => room.typing)
+}
+
+export function useCapabilities(client: Client) {
+	client.fetchCapabilities()
+	return useEventAsState(client.capabilities)
 }
 
 function getAllReceipts(

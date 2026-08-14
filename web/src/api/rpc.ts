@@ -417,8 +417,8 @@ export default abstract class RPCClient {
 		return this.request("create_room", request)
 	}
 
-	capabilities(): Promise<RespCapabilities> {
-		return this.request("capabilities", {})
+	getCapabilities(): Promise<RespCapabilities> {
+		return this.request("get_capabilities", {})
 	}
 
 	muteRoom(room_id: RoomID, muted: boolean): Promise<boolean> {

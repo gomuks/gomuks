@@ -125,8 +125,6 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.LeaveRoom.RunCtx(ctx, req.Data, h.API.LeaveRoom)
 	case jsoncmd.ReqCreateRoom:
 		return jsoncmd.CreateRoom.RunCtx(ctx, req.Data, h.API.CreateRoom)
-	case jsoncmd.ReqCapabilities:
-		return jsoncmd.Capabilities.RunCtx(ctx, req.Data, h.Client.Capabilities)
 	case jsoncmd.ReqMuteRoom:
 		return jsoncmd.MuteRoom.RunCtx(ctx, req.Data, h.API.MuteRoom)
 	case jsoncmd.ReqUpdatePushRule:
@@ -169,6 +167,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetLoginFlows.RunCtx(ctx, req.Data, h.API.GetLoginFlows)
 	case jsoncmd.ReqGetVersions:
 		return jsoncmd.GetVersions.RunCtx(ctx, req.Data, h.API.GetVersions)
+	case jsoncmd.ReqGetCapabilities:
+		return jsoncmd.GetCapabilities.RunCtx(ctx, req.Data, h.API.GetCapabilities)
 	case jsoncmd.ReqRegisterPush:
 		return jsoncmd.RegisterPush.RunCtx(ctx, req.Data, h.API.RegisterPush)
 	case jsoncmd.ReqListenToDevice:
@@ -635,6 +635,10 @@ func (h *JSONAPI) GetLoginFlows(ctx context.Context, params *jsoncmd.GetLoginFlo
 
 func (h *JSONAPI) GetVersions(_ context.Context) (*mautrix.RespVersions, error) {
 	return h.Client.SpecVersions, nil
+}
+
+func (h *JSONAPI) GetCapabilities(ctx context.Context) (*mautrix.RespCapabilities, error) {
+	return h.Client.Capabilities(ctx)
 }
 
 func (h *JSONAPI) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {

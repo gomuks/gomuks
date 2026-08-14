@@ -54,7 +54,8 @@ export default class Client {
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 	passwordCache?: string
-	#capabilities?: Promise<Capabilities> | null = null
+	readonly capabilities = new CachedEventDispatcher<Capabilities>()
+	#capabilitiesRequest?: Promise<Capabilities> | null = null
 
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
@@ -262,18 +263,21 @@ export default class Client {
 		})
 	}
 
-	async getCapabilities(): Promise<Capabilities> {
-		if (!this.#capabilities) {
-			this.#capabilities = this.rpc.capabilities().then(
-				resp => resp.capabilities,
+	async fetchCapabilities(): Promise<Capabilities> {
+		if (!this.#capabilitiesRequest) {
+			this.#capabilitiesRequest = this.rpc.getCapabilities().then(
+				resp => {
+					this.capabilities.emit(resp.capabilities)
+					return resp.capabilities
+				},
 				err => {
 					console.error("Failed to fetch capabilities", err)
-					this.#capabilities = null
-					return {}
+					this.#capabilitiesRequest = null
+					throw err
 				},
 			)
 		}
-		return this.#capabilities
+		return this.#capabilitiesRequest
 	}
 
 	registerURIHandler = () => {
