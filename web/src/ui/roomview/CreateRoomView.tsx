@@ -98,7 +98,7 @@ const CreateRoomView = () => {
 
 	const isRoomV12 = !preV12.has(roomVersion)
 	const onSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
-		let creation_content, power_level_content_override: Record<string, unknown>
+		let creation_content, power_level_content_override
 		try {
 			creation_content = JSON.parse(creationContent)
 		} catch (err) {
@@ -132,17 +132,6 @@ const CreateRoomView = () => {
 					algorithm: "m.megolm.v1.aes-sha2",
 				},
 			})
-		}
-		if (isRoomV12) {
-			// Hack: remove room creators from power level content override to prevent creation errors
-			const users = power_level_content_override.users
-			if (users && typeof users === "object") {
-				const userPowerLevels = users as Record<string, unknown>
-				delete userPowerLevels[client.store.userID]
-				creation_content.additional_creators?.forEach((userID: UserID) => {
-					delete userPowerLevels[userID]
-				})
-			}
 		}
 		client.rpc.createRoom({
 			name: name || undefined,
