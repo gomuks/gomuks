@@ -192,8 +192,7 @@ div.right-panel-content.user {
 	div.profile-notes,
 	div.devices,
 	div.user-moderation,
-	div.mutual-rooms,
-	> div.errors {
+	div.mutual-rooms {
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: .5rem;
 		margin-bottom: .5rem;
@@ -212,9 +211,23 @@ div.right-panel-content.user {
 			border-bottom: 1px solid var(--blockquote-border-color);
 		}
 
+		> div.view-buttons {
+			grid-column: span 2;
+			display: flex;
+
+			> button {
+				width: 100%;
+			}
+		}
+
 		button {
 			grid-column: span 2;
 			padding: .25rem;
+		}
+
+		.blur {
+			filter: blur(8px);
+			pointer-events: none;
 		}
 
 		> .user-info-loader {

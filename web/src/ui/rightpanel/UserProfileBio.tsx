@@ -25,6 +25,7 @@ interface UserProfileBioProps {
 	refreshProfile: () => void
 	userID: UserID
 	editByDefault?: boolean
+	blur?: boolean
 }
 
 const UserProfileFullBio = ({ bio, client, userID, refreshProfile, editByDefault }: UserProfileBioProps) => {
@@ -71,7 +72,7 @@ const UserProfileFullBio = ({ bio, client, userID, refreshProfile, editByDefault
 	</>
 }
 
-export const UserProfileSmallBio = ({ bio, ...rest }: UserProfileBioProps) => {
+export const UserProfileSmallBio = ({ bio, blur, ...rest }: UserProfileBioProps) => {
 	const openModal = use(ModalContext)
 	const editByDefault = rest.userID === rest.client.userID && !bio.html
 	const viewFull = () => {
@@ -87,7 +88,7 @@ export const UserProfileSmallBio = ({ bio, ...rest }: UserProfileBioProps) => {
 		return null
 	}
 	return <div className="profile-small-bio">
-		<SanitizedHTMLView html={bio.html} />
+		<SanitizedHTMLView html={bio.html} className={blur ? "blur" : ""} />
 		<button onClick={viewFull}>{editByDefault ? "Edit bio" : "View full bio"}</button>
 	</div>
 }

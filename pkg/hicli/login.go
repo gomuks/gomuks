@@ -75,6 +75,10 @@ func (h *HiClient) loginOAuth(ctx context.Context, homeserverURL, clientID strin
 	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
 		return err
 	}
+	err := h.CheckServerVersions(ctx)
+	if err != nil {
+		return err
+	}
 	start := time.Now()
 	resp, err := cb()
 	if err != nil {

@@ -89,7 +89,8 @@ type HiClient struct {
 	directChatUsers     event.DirectChatsEventContent
 	directChatRooms     map[id.RoomID]id.UserID
 
-	perMessageProfiles atomic.Pointer[event.StoredProfilesEventContent]
+	globalPerMessageProfiles atomic.Pointer[*event.PerMessageProfilesEventContent]
+	roomPerMessageProfiles   *exsync.Map[id.RoomID, *event.PerMessageProfilesEventContent]
 
 	pendingOAuthAutoDeviceCode atomic.Pointer[jsoncmd.OAuthPollDeviceCodeParams]
 
@@ -127,6 +128,8 @@ func New(rawDB, cryptoDB *dbutil.Database, log zerolog.Logger, pickleKey []byte,
 		jsonRequests:          make(map[int64]context.CancelCauseFunc),
 		paginationInterrupter: make(map[id.RoomID]context.CancelCauseFunc),
 		sendLock:              make(map[id.RoomID]*sync.Mutex),
+
+		roomPerMessageProfiles: exsync.NewMap[id.RoomID, *event.PerMessageProfilesEventContent](),
 
 		Initialized: exsync.NewEvent(),
 

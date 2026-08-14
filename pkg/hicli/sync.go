@@ -287,8 +287,9 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 				syncCtx.changedDMs = changes
 			}
 		case event.AccountDataPerMessageProfiles:
-			content, _ := evt.Content.Parsed.(*event.StoredProfilesEventContent)
-			h.perMessageProfiles.Store(content)
+			_ = evt.Content.ParseRaw(evt.Type)
+			content, _ := evt.Content.Parsed.(*event.PerMessageProfilesEventContent)
+			h.globalPerMessageProfiles.Store(&content)
 		}
 	}
 	if syncCtx != nil {
@@ -418,6 +419,12 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		accountData[evt.Type], err = h.DB.AccountData.PutRoom(ctx, h.Account.UserID, roomID, evt.Type, evt.Content.VeryRaw)
 		if err != nil {
 			return fmt.Errorf("failed to save account data event %s: %w", evt.Type.Type, err)
+		}
+		switch evt.Type {
+		case event.AccountDataPerMessageProfiles:
+			_ = evt.Content.ParseRaw(evt.Type)
+			content, _ := evt.Content.Parsed.(*event.PerMessageProfilesEventContent)
+			h.roomPerMessageProfiles.Set(roomID, content)
 		}
 	}
 	var receiptsList []*database.Receipt
@@ -645,12 +652,12 @@ func (h *HiClient) cacheMedia(ctx context.Context, evt *event.Event, rowID datab
 
 func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Event, evt *event.Event) (*database.LocalContent, []id.ContentURI) {
 	if evt.Type != event.EventMessage {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	_ = evt.Content.ParseRaw(evt.Type)
 	content, ok := evt.Content.Parsed.(*event.MessageEventContent)
 	if !ok {
-		return nil, nil
+		return dbEvt.LocalContent, nil
 	}
 	if dbEvt.RelationType == event.RelReplace && content.NewContent != nil {
 		content = content.NewContent

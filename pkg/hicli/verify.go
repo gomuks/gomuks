@@ -36,9 +36,8 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 		return
 	}
 	state.HasCrossSigning = true
-	state.IsVerified, err = h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, keys.SelfSigningKey)
+	state.IsVerified, err = h.loadPrivateKeys(ctx, keys.SelfSigningKey)
 	if err != nil {
-		err = fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
 		return
 	}
 	if !state.IsVerified {
@@ -51,10 +50,6 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 		err = nil
 		state.HasSSSS = defaultKeyID != ""
 	} else {
-		err = h.loadPrivateKeys(ctx)
-		if err != nil {
-			return
-		}
 		// Assume SSSS is there if we found all keys in the local DB
 		state.HasSSSS = true
 	}
@@ -151,19 +146,25 @@ func (h *HiClient) getAndDecodeSecret(ctx context.Context, secret id.Secret) ([]
 	return data, nil
 }
 
-func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
+func (h *HiClient) loadPrivateKeys(ctx context.Context, ssk id.Ed25519) (bool, error) {
+	isVerified, err := h.Crypto.CryptoStore.IsKeySignedBy(ctx, h.Account.UserID, h.Crypto.GetAccount().SigningKey(), h.Account.UserID, ssk)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if current device is signed by own self-signing key: %w", err)
+	} else if !isVerified {
+		return false, nil
+	}
 	zerolog.Ctx(ctx).Debug().Msg("Loading cross-signing private keys")
 	masterKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSMaster)
 	if err != nil {
-		return fmt.Errorf("failed to get master key: %w", err)
+		return false, fmt.Errorf("failed to get master key: %w", err)
 	}
 	selfSigningKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSSelfSigning)
 	if err != nil {
-		return fmt.Errorf("failed to get self-signing key: %w", err)
+		return false, fmt.Errorf("failed to get self-signing key: %w", err)
 	}
 	userSigningKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSUserSigning)
 	if err != nil {
-		return fmt.Errorf("failed to get user signing key: %w", err)
+		return false, fmt.Errorf("failed to get user signing key: %w", err)
 	}
 	err = h.Crypto.ImportCrossSigningKeys(crypto.CrossSigningSeeds{
 		MasterKey:      masterKeySeed,
@@ -171,21 +172,24 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 		UserSigningKey: userSigningKeySeed,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to import cross-signing private keys: %w", err)
+		return false, fmt.Errorf("failed to import cross-signing private keys: %w", err)
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Loading key backup key")
 	keyBackupKey, err := h.getAndDecodeSecret(ctx, id.SecretMegolmBackupV1)
 	if err != nil {
-		return fmt.Errorf("failed to get megolm backup key: %w", err)
+		return false, fmt.Errorf("failed to get megolm backup key: %w", err)
 	}
 	h.KeyBackupKey, err = backup.MegolmBackupKeyFromBytes(keyBackupKey)
 	if err != nil {
-		return fmt.Errorf("failed to parse megolm backup key: %w", err)
+		return false, fmt.Errorf("failed to parse megolm backup key: %w", err)
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Fetching key backup version")
 	latestVersion, err := h.Client.GetKeyBackupLatestVersion(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get key backup latest version: %w", err)
+		if errors.Is(err, mautrix.MNotFound) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get key backup latest version: %w", err)
 	}
 	prevVersion := h.Crypto.KeyBackupVersion()
 	if prevVersion == latestVersion.Version {
@@ -196,7 +200,7 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 	} else if latestVersion.AuthData.PublicKey == stringifyKeyBackupKey(h.KeyBackupKey) && latestVersion.Algorithm == id.KeyBackupAlgorithmMegolmBackupV1 {
 		err = h.Crypto.SetKeyBackupVersion(ctx, latestVersion.Version)
 		if err != nil {
-			return fmt.Errorf("failed to set key backup version in crypto store: %w", err)
+			return false, fmt.Errorf("failed to set key backup version in crypto store: %w", err)
 		}
 		h.KeyBackupVersion = latestVersion.Version
 		zerolog.Ctx(ctx).Warn().
@@ -212,10 +216,10 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context) error {
 			Str("server_version", latestVersion.Version.String()).
 			Str("server_public_key", latestVersion.AuthData.PublicKey.Fingerprint()).
 			Msg("Key backup key mismatch between local store and server")
-		// TODO fall back to unverified?
+		return false, nil
 	}
 	zerolog.Ctx(ctx).Debug().Msg("Secrets loaded")
-	return nil
+	return true, nil
 }
 
 func (h *HiClient) storeCrossSigningPrivateKeys(ctx context.Context) error {
@@ -287,7 +291,13 @@ func (h *HiClient) verifyWithKey(ctx context.Context, key *ssss.Key, wasReset bo
 	return nil
 }
 
-func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, passphrase *ssss.PassphraseMetadata, userPassword string) error {
+func (h *HiClient) ResetEncryption(
+	ctx context.Context,
+	recoveryKey string,
+	passphrase *ssss.PassphraseMetadata,
+	keys crypto.CrossSigningSeeds,
+	userPassword string,
+) error {
 	keyBytes := utils.DecodeBase58RecoveryKey(recoveryKey)
 	if keyBytes == nil {
 		return ssss.ErrInvalidRecoveryKey
@@ -298,11 +308,20 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	}
 	defer h.dispatchCurrentState()
 
-	keysCache, err := h.Crypto.GenerateCrossSigningKeys()
+	keysCache, err := keys.Decode()
 	if err != nil {
-		return fmt.Errorf("failed to generate cross-signing keys: %w", err)
+		return fmt.Errorf("failed to decode cross-signing keys: %w", err)
 	}
-	err = h.Crypto.PublishCrossSigningKeys(ctx, keysCache, func(uia *mautrix.RespUserInteractive) any {
+	err = h.Crypto.PublishCrossSigningKeys(ctx, &keysCache, func(uia *mautrix.RespUserInteractive) any {
+		// Continuwuity compatibility: auto-retry with the returned UIA session ID.
+		// MAS doesn't need this, it works on the first try if the user allowed it beforehand.
+		if uia.HasSingleStageFlow(mautrix.AuthTypeOAuth) {
+			return &mautrix.BaseAuthData{
+				Session: uia.Session,
+				// This field isn't even in the spec for the m.oauth UIA type, but continuwuity requires it
+				Type: mautrix.AuthTypeOAuth,
+			}
+		}
 		if userPassword == "" {
 			return nil
 		}
@@ -322,7 +341,7 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	if err != nil {
 		return fmt.Errorf("failed to store SSSS key data: %w", err)
 	}
-	err = h.Crypto.UploadCrossSigningKeysToSSSS(ctx, key, keysCache)
+	err = h.Crypto.UploadCrossSigningKeysToSSSS(ctx, key, &keysCache)
 	if err != nil {
 		return fmt.Errorf("failed to upload cross-signing keys to SSSS: %w", err)
 	}
@@ -330,7 +349,7 @@ func (h *HiClient) ResetEncryption(ctx context.Context, recoveryKey string, pass
 	if err != nil {
 		return fmt.Errorf("failed to set default SSSS key: %w", err)
 	}
-	h.Crypto.CrossSigningKeys = keysCache
+	h.Crypto.CrossSigningKeys = &keysCache
 	err = h.storeCrossSigningPrivateKeys(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to store cross-signing private keys: %w", err)

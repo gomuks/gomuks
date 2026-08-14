@@ -370,6 +370,11 @@ export interface PassphraseMetadata {
 export interface RecoveryKeyResponse {
 	recovery_key: string
 	passphrase_meta?: PassphraseMetadata
+	cross_signing_keys: {
+		"m.cross_signing.master": string
+		"m.cross_signing.self_signing": string
+		"m.cross_signing.user_signing": string
+	}
 }
 
 interface BaseSearchParams {

@@ -16,6 +16,10 @@
 import { use, useState } from "react"
 import ClientContext from "../ClientContext.ts"
 
+const currentVersion = (
+	document.querySelector("meta[name=gomuks-version-description]") as HTMLMetaElement
+)?.content
+
 const MiscButtons = () => {
 	const client = use(ClientContext)!
 	const onClickLogout = () => {
@@ -60,6 +64,9 @@ const MiscButtons = () => {
 		</button> : null}
 		<p>
 			State cache status: {client.store.stateCacheStatus}
+		</p>
+		<p>
+			{currentVersion || "Version unknown"}
 		</p>
 		<div className="spacer" />
 		<button className="logout" onClick={onClickLogout}>Logout</button>

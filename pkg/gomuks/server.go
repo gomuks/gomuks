@@ -78,6 +78,7 @@ func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 
 const metaTagsTemplate = `
 	<meta name="gomuks-frontend-etag" content="%s">
+	<meta name="gomuks-version-description" content="%s">
 	<meta name="gomuks-vapid-key" content="%s">
 `
 
@@ -112,6 +113,7 @@ func (gmx *Gomuks) StartServer() {
 			[]byte(fmt.Sprintf(
 				metaTagsTemplate,
 				html.EscapeString(gmx.frontendETag),
+				html.EscapeString(version.Gomuks.VersionDescription),
 				gmx.Config.Push.VAPIDPublicKey,
 			)),
 			1,

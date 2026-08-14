@@ -629,14 +629,19 @@ func (h *JSONAPI) GenerateRecoveryKey(params *jsoncmd.GenerateRecoveryKeyParams)
 	if err != nil {
 		return nil, err
 	}
+	keys, err := h.Crypto.GenerateCrossSigningKeys()
+	if err != nil {
+		return nil, err
+	}
 	return &jsoncmd.RecoveryKeyResponse{
-		RecoveryKey:    key.RecoveryKey(),
-		PassphraseMeta: key.Metadata.Passphrase,
+		RecoveryKey:      key.RecoveryKey(),
+		PassphraseMeta:   key.Metadata.Passphrase,
+		CrossSigningKeys: keys.Seeds(),
 	}, nil
 }
 
 func (h *JSONAPI) ResetEncryption(ctx context.Context, params *jsoncmd.ResetEncryptionParams) error {
-	return h.HiClient.ResetEncryption(ctx, params.RecoveryKey, params.PassphraseMeta, params.AccountPassword)
+	return h.HiClient.ResetEncryption(ctx, params.RecoveryKey, params.PassphraseMeta, params.CrossSigningKeys, params.AccountPassword)
 }
 
 func (h *JSONAPI) DiscoverHomeserver(ctx context.Context, params *jsoncmd.DiscoverHomeserverParams) (*mautrix.ClientWellKnown, error) {

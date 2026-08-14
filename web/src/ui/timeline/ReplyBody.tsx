@@ -125,6 +125,8 @@ export const ReplyBody = ({
 			jumpToEvent(roomCtx, event.event_id)
 		}
 	}
+	const renderMemberEventDisplayname = getDisplayname(event.sender, renderMemberEvtContent)
+	const mainMemberEventDisplayname = getDisplayname(event.sender, memberEvtContent)
 	return <blockquote className={classNames.join(" ")} onClick={onClick}>
 		{small && <div className="reply-spine"/>}
 		<div className="reply-sender">
@@ -143,7 +145,7 @@ export const ReplyBody = ({
 				className={`event-sender sender-color-${userColorIndex}`}
 				title={perMessageSender ? perMessageSender.id : event.sender}
 			>
-				{getDisplayname(event.sender, renderMemberEvtContent)}
+				{renderMemberEventDisplayname}
 			</span>
 			{isThread ? <span className="sender-extra thread-logo">
 				(<ThreadIcon width=".75rem" height=".75rem" /> thread)
@@ -151,13 +153,13 @@ export const ReplyBody = ({
 			{isEditing ? <span className="sender-extra editing-logo">
 				(<EditIcon width="1rem" height="1rem"/> editing)
 			</span> : null}
-			{perMessageSender && <>
+			{renderMemberEventDisplayname !== mainMemberEventDisplayname && <>
 				<span className="via">via</span>
 				<span
 					className={`event-sender original sender-color-${getUserColorIndex(event.sender)}`}
 					title={event.sender}
 				>
-					{getDisplayname(event.sender, memberEvtContent)}
+					{mainMemberEventDisplayname}
 				</span>
 			</>}
 			{onClose && <div className="buttons">
