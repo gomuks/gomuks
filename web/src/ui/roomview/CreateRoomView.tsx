@@ -53,9 +53,7 @@ const CreateRoomView = () => {
 	const [isDirect, setIsDirect] = useState(false)
 	const [isEncrypted, setIsEncrypted] = useState(true)
 	const [initialState, setInitialState] = useState<initialStateEntry[]>([])
-	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">(
-		client.capabilities?.capabilities?.["m.room_versions"]?.default || "12",
-	)
+	const [roomVersion, setRoomVersion] = useState<RoomVersion | "">("12")
 	const [roomID, setRoomID] = useState("")
 	const [roomCreateTS, setRoomCreateTS] = useState<number>(0)
 	const [creationContent, setCreationContent] = useState<string>("{\n\n}")

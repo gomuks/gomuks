@@ -428,9 +428,6 @@ const MainScreen = () => {
 		}
 	}, [context, client])
 	useEffect(() => context.keybindings.listen(), [context])
-	useEffect(() => {
-		client.rpc.capabilities().then((caps) => client.capabilities = caps)
-	}, [client])
 	const [roomListWidth, resizeHandle1] = useResizeHandle(
 		350, 96, Math.min(900, Math.max(window.innerWidth * 0.4, 350)),
 		"roomListWidth", { className: "room-list-resizer" },

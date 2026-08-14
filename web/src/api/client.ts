@@ -21,6 +21,7 @@ import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
 import { getTabsAPI } from "./tabs.ts"
 import {
+	Capabilities,
 	ClientState,
 	ElementRecentEmoji,
 	EventID,
@@ -33,7 +34,6 @@ import {
 	RPCEvent,
 	RawDBEvent,
 	RelationType,
-	RespCapabilities,
 	RoomID,
 	RoomStateGUID,
 	ServerSearchParams,
@@ -54,7 +54,7 @@ export default class Client {
 	#gcInterval: ReturnType<typeof setInterval> | undefined
 	#toDeviceRequested = false
 	passwordCache?: string
-	capabilities?: RespCapabilities
+	#capabilities?: Promise<Capabilities> | null = null
 
 	constructor(readonly rpc: RPCClient) {
 		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
@@ -260,6 +260,20 @@ export default class Client {
 			console.error("Failed to register push service worker", err)
 			this.store.localPreferenceCache.web_push = false
 		})
+	}
+
+	async getCapabilities(): Promise<Capabilities> {
+		if (!this.#capabilities) {
+			this.#capabilities = this.rpc.capabilities().then(
+				resp => resp.capabilities,
+				err => {
+					console.error("Failed to fetch capabilities", err)
+					this.#capabilities = null
+					return {}
+				},
+			)
+		}
+		return this.#capabilities
 	}
 
 	registerURIHandler = () => {
