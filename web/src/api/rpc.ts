@@ -55,6 +55,7 @@ import {
 	RelationType,
 	ReqCreateRoom,
 	ResolveAliasResponse,
+	RespCapabilities,
 	RespCreateRoom,
 	RespMediaConfig,
 	RespOpenIDToken,
@@ -414,6 +415,10 @@ export default abstract class RPCClient {
 
 	createRoom(request: ReqCreateRoom): Promise<RespCreateRoom> {
 		return this.request("create_room", request)
+	}
+
+	getCapabilities(): Promise<RespCapabilities> {
+		return this.request("get_capabilities", {})
 	}
 
 	muteRoom(room_id: RoomID, muted: boolean): Promise<boolean> {

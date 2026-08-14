@@ -98,6 +98,7 @@ const (
 	ReqDiscoverHomeserver       Name = "discover_homeserver"
 	ReqGetLoginFlows            Name = "get_login_flows"
 	ReqGetVersions              Name = "get_versions"
+	ReqGetCapabilities          Name = "get_capabilities"
 	ReqRegisterPush             Name = "register_push"
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
@@ -236,6 +237,8 @@ var (
 	LeaveRoom = &CommandSpec[*LeaveRoomParams, *mautrix.RespLeaveRoom]{Name: ReqLeaveRoom}
 	// CreateRoom creates a new room.
 	CreateRoom = &CommandSpec[*mautrix.ReqCreateRoom, *mautrix.RespCreateRoom]{Name: ReqCreateRoom}
+	// GetCapabilities fetches the user's capabilities.
+	GetCapabilities = &CommandSpecWithoutRequest[*mautrix.RespCapabilities]{Name: ReqGetCapabilities}
 	// MuteRoom mutes or unmutes a room by manipulating push rules. It returns the previous mute state.
 	MuteRoom = &CommandSpec[*MuteRoomParams, bool]{Name: ReqMuteRoom}
 	// UpdatePushRule is used to create, edit, delete, enable or disable push rules.
@@ -413,6 +416,7 @@ var AllNames = []Name{
 	ReqKnockRoom,
 	ReqLeaveRoom,
 	ReqCreateRoom,
+	ReqGetCapabilities,
 	ReqMuteRoom,
 	ReqUpdatePushRule,
 	ReqEnsureGroupSessionShared,
