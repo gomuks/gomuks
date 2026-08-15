@@ -68,6 +68,7 @@ type Gomuks struct {
 	Config      Config
 	DisableAuth bool
 	DesktopKey  string
+	EmbeddedTUI bool
 
 	GetDBConfig func() dbutil.PoolConfig
 
@@ -188,6 +189,17 @@ func (gmx *Gomuks) StartClient() {
 	if exitCode != 0 {
 		os.Exit(exitCode)
 	}
+}
+
+func (gmx *Gomuks) GetAPI() jsoncmd.GomuksAPI {
+	return gmx.Client.API
+}
+
+func (gmx *Gomuks) AddEventListener(listener func(context.Context, any)) {
+	ctx := gmx.Log.WithContext(context.Background())
+	gmx.EventBuffer.Subscribe(0, nil, func(bufferedEvent *BufferedEvent) {
+		listener(ctx, bufferedEvent.Data)
+	})
 }
 
 func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
