@@ -134,6 +134,8 @@ if [ "$MODE" = "server" ]; then
 else
 	# TUI client needs a TTY (panics headless) — smoke = ELF + entry point check
 	file "$BIN_DIR/$BIN_NAME" | grep -q ELF || { echo "❌ not an ELF binary"; exit 1; }
-	strings "$BIN_DIR/$BIN_NAME" | grep -q "go.mau.fi/gomuks/tui" || { echo "❌ binary lacks gomuks/tui build path"; exit 1; }
+	# note: use process substitution, not a pipe — grep -q early-exit + pipefail
+	# makes strings die on SIGPIPE and the check false-fail.
+	grep -q "go.mau.fi/gomuks/tui" <(strings "$BIN_DIR/$BIN_NAME") || { echo "❌ binary lacks gomuks/tui build path"; exit 1; }
 	echo "✅ deployed $BIN_NAME [$MODE]: ELF ok, gomuks/tui build path ok (TUI needs TTY to run)"
 fi
