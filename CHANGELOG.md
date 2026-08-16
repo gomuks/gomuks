@@ -1,4 +1,4 @@
-# v26.08 (unreleased)
+# v26.08
 
 ### Backend
 * Added streaming HTTP response as an alternative for websockets.
@@ -11,12 +11,19 @@
   markdown.
 * Added support for calling any HTTP endpoint with basic auth without having
   to exchange it for an auth cookie first.
-* Added `get_versions` command to get spec versions supported by the homeserver.
+* Added `get_versions` and `get_capabilities` commands to get features supported
+  by the homeserver.
+* Switched to latest revision of [MSC4461] for sending per-message profiles.
+* Changed recovery key reset RPC API generate cross-signing with the recovery
+  key and taking them as a parameter to the upload request instead of generating
+  at upload time.
 * Changed format of `get_profile` responses to allow locally generated fields.
 * Changed sync responses to allow omitting any field in room entries.
 * Changed HTML sanitizer to only allow checkboxes inside unordered list items.
 * Changed room state resync to send space edges to clients if the room being
   resynced is a space.
+* Changed verification check to fall back to the verify screen if the key backup
+  encryption key has changed.
 * Fixed HTML sanitizer not applying the depth limit specified by Matrix.
 * Fixed `prev_batch` token not being saved when paginating messages from the
   server returns no new messages.
@@ -37,7 +44,12 @@
 * Added button to subscribe to image packs in the image pack editor.
 * Added button to open the user's member event from the right panel user info.
 * Added button for fetching previous state events in the room state explorer.
+* Added current backend version string to settings.
 * Added support for [MSC4440] profile biographies.
+* Changed user info panel to blur any user-defined fields if the user is banned
+  in the current room.
+* Changed per-message profile rendering to not render "via" if the name is the
+  same.
 * Fixed websocket auto-reconnection getting throttled by browsers.
 * Fixed typing notifications getting stuck when the websocket reconnects.
 * Fixed unread counts and space bar not being visible when the room list was
