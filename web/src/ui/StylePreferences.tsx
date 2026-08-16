@@ -125,9 +125,17 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 	useEffect(() => {
 		favicon.href = preferences.favicon
 	}, [preferences.favicon])
+	useEffect(() => {
+		themeColorLight.content = preferences.theme_color_light
+	}, [preferences.theme_color_light])
+	useEffect(() => {
+		themeColorDark.content = preferences.theme_color_dark
+	}, [preferences.theme_color_dark])
 	return null
 }
 
 const favicon = document.getElementById("favicon") as HTMLLinkElement
+const themeColorLight = document.getElementById("theme-color-light") as HTMLMetaElement
+const themeColorDark = document.getElementById("theme-color-dark") as HTMLMetaElement
 
 export default React.memo(StylePreferences)

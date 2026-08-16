@@ -296,6 +296,20 @@ export const preferences = {
 		defaultValue: "gomuks.png",
 		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
 	}),
+	theme_color_light: new Preference<string>({
+		displayName: "Light mode title bar color",
+		description: "The color of the window title bar when installed as a PWA, and of the browser toolbar on mobile, while the system is in light mode. Does not affect any colors inside the app.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "#f5f5f5",
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
+	}),
+	theme_color_dark: new Preference<string>({
+		displayName: "Dark mode title bar color",
+		description: "The color of the window title bar when installed as a PWA, and of the browser toolbar on mobile, while the system is in dark mode. Does not affect any colors inside the app.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "#222222",
+		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
+	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",
 		description: "Use a specific view for this room instead of the default based on its type.",
