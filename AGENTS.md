@@ -73,12 +73,16 @@ See `flow/intentions/configurable-hotkeys.md` for full plan.
 Mirrors `../pi-plugins` deploy pattern (lockfile guard, atomic install, manifest, smoke test).
 
 ```bash
-mise run deploy          # build (noweb) → ~/.local/bin/gomuks-dev   ← DEFAULT
+mise run deploy          # SERVER: build (noweb) → ~/.local/bin/gomuks-dev   ← DEFAULT
+mise run deploy-client   # CLIENT: build terminal → ~/.local/bin/gomuks-terminal-dev
 cd web && npm ci         # only needed for deploy-full
 mise run deploy-full     # full build (web assets) → gomuks-dev
 mise run deploy-prod     # PROD bin gomuks-daemon-patched (use with care)
-mise run deploy-status   # show manifests (commit/branch/time)
+mise run deploy-status   # show manifests (mode/commit/branch/time)
 ```
+
+- **server** = daemon (`cmd/gomuks`) — singleton: lock + `.bak` rollback + manifest.
+- **client** = terminal (`cmd/gomuks-terminal`) — multiple installs: default `gomuks-terminal-dev`; extra copies via `MODE=client BIN_NAME=gomuks-terminal-dev2 bash ops/deploy/deploy-local.sh` (each gets own manifest). `FORCE_BAK=1` to back up on same-name overwrite.
 
 - Config parity: `gomuks-dev` reads prod config `~/.config/gomuks` + data `~/.local/share/gomuks` unchanged.
 - Isolated run: `GOMUKS_ROOT=~/.local/share/gomuks-dev gomuks-dev`

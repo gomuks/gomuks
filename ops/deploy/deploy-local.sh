@@ -1,28 +1,54 @@
 #!/usr/bin/env bash
-# deploy-local.sh — Build gomuks daemon and install to ~/.local/bin/<BIN_NAME>.
-# Default target: gomuks-dev (NOT gomuks — prod bins untouched by default).
+# deploy-local.sh — Build gomuks and install to ~/.local/bin/<BIN_NAME>.
+# Default target: gomuks-dev (SERVER). Prod bins untouched by default.
+#
+# Modes:
+#   server (default) = cmd/gomuks          — daemon, single instance per host
+#   client           = cmd/gomuks-terminal — terminal UI, connect to daemon,
+#                                            can deploy MULTIPLE versions side by side
 #
 # Mirrors ../pi-plugins deploy pattern (simplified): lockfile guard, atomic
 # install, .bak rollback, deploy manifest, smoke test.
 #
 # Config parity: installed binary inherits env unchanged → reads prod config
 # (~/.config/gomuks), data (~/.local/share/gomuks) exactly like prod.
-# To isolate instead: run with GOMUKS_ROOT=~/.local/share/gomuks-dev gomuks-dev
+# Isolated server run: GOMUKS_ROOT=~/.local/share/gomuks-dev gomuks-dev
 #
 # Env:
-#   BIN_NAME     target bin name (default: gomuks-dev)
+#   MODE         server | client (default: server)
+#   BIN_NAME     target bin name (default: gomuks-dev / gomuks-terminal-dev)
+#                client mode allows suffixed names (gomuks-terminal-dev2, ...)
 #   BIN_DIR      target dir (default: ~/.local/bin)
-#   DEPLOY_FULL  1 = full build ./build.sh (web assets; needs web npm ci)
-#                0/empty = ./build-noweb.sh (daemon only, fast)
+#   DEPLOY_FULL  1 = full build ./build.sh (server only; web assets, needs web npm ci)
+#                0/empty = daemon/terminal-only build (fast)
 #
 # Usage:
-#   bash ops/deploy/deploy-local.sh            # deploy gomuks-dev
-#   bash ops/deploy/deploy-local.sh --status   # show deployed manifests
+#   bash ops/deploy/deploy-local.sh                  # deploy server → gomuks-dev
+#   MODE=client bash ops/deploy/deploy-local.sh      # deploy client → gomuks-terminal-dev
+#   MODE=client BIN_NAME=gomuks-terminal-dev2 bash ops/deploy/deploy-local.sh
+#   bash ops/deploy/deploy-local.sh --status         # show deployed manifests
 set -euo pipefail
 
-BIN_NAME="${BIN_NAME:-gomuks-dev}"
+MODE="${MODE:-server}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 LOCK_BASE="${XDG_RUNTIME_DIR:-/tmp}/gomuks-deploy-locks"
+
+case "$MODE" in
+server)
+	# Daemon = singleton per host: always keep .bak rollback.
+	DEFAULT_BIN="gomuks-dev"
+	KEEP_BAK=1
+	;;
+client)
+	DEFAULT_BIN="gomuks-terminal-dev"
+	KEEP_BAK=0
+	;;
+*)
+	echo "❌ unknown MODE '$MODE' (server|client)"
+	exit 2
+	;;
+esac
+BIN_NAME="${BIN_NAME:-$DEFAULT_BIN}"
 
 if [ "${1:-}" = "--status" ]; then
 	for m in "$BIN_DIR"/*.manifest.json; do
@@ -53,27 +79,34 @@ echo $$ >"$LOCK/pid"
 release_lock() { rm -rf "$LOCK"; }
 trap release_lock EXIT
 
-echo "=== gomuks deploy: $BIN_NAME → $BIN_DIR ==="
+echo "=== gomuks deploy [$MODE]: $BIN_NAME → $BIN_DIR ==="
 
 # ── Build ──
 cd "$ROOT"
-if [ "${DEPLOY_FULL:-0}" = "1" ]; then
+if [ "$MODE" = "server" ] && [ "${DEPLOY_FULL:-0}" = "1" ]; then
 	echo "-- full build (web + daemon)"
 	./build.sh
 else
-	echo "-- noweb build (daemon only)"
-	./build-noweb.sh
+	echo "-- $MODE build (no web)"
+	if [ "$MODE" = "client" ]; then
+		./build-terminal.sh
+	else
+		./build-noweb.sh
+	fi
 fi
-[ -x ./gomuks ] || { echo "❌ build output ./gomuks missing"; exit 1; }
+SRC="./gomuks-terminal"
+[ "$MODE" = "server" ] && SRC="./gomuks"
+[ -x "$SRC" ] || { echo "❌ build output $SRC missing"; exit 1; }
 
-# ── Backup previous ──
-if [ -e "$BIN_DIR/$BIN_NAME" ]; then
+# Client multi-install → same-name overwrites NOT backed up (keep both old
+# suffixed bins + manifests instead). FORCE_BAK=1 overrides.
+if [ -e "$BIN_DIR/$BIN_NAME" ] && { [ "${FORCE_BAK:-0}" = "1" ] || [ "$KEEP_BAK" = "1" ]; }; then
 	cp "$BIN_DIR/$BIN_NAME" "$BIN_DIR/$BIN_NAME.bak"
 	echo "-- previous version → $BIN_NAME.bak"
 fi
 
 # ── Atomic install ──
-install -m 0755 ./gomuks "$BIN_DIR/.$BIN_NAME.tmp"
+install -m 0755 "$SRC" "$BIN_DIR/.$BIN_NAME.tmp"
 mv "$BIN_DIR/.$BIN_NAME.tmp" "$BIN_DIR/$BIN_NAME"
 
 # ── Manifest ──
@@ -84,6 +117,7 @@ ts="$(date -Iseconds)"
 cat >"$BIN_DIR/$BIN_NAME.manifest.json" <<EOF
 {
   "bin": "$BIN_NAME",
+  "mode": "$MODE",
   "commit": "$commit",
   "branch": "$branch",
   "describe": "$describe",
@@ -93,6 +127,6 @@ cat >"$BIN_DIR/$BIN_NAME.manifest.json" <<EOF
 EOF
 
 # ── Smoke test ──
-ver="$("$BIN_DIR/$BIN_NAME" --version)"
+ver="$("$BIN_DIR/$BIN_NAME" --version 2>/dev/null || echo "(no --version)")"
 echo "$ver" | grep -q "${commit:0:7}" || echo "⚠ version string lacks current commit"
-echo "✅ deployed $BIN_NAME: $ver"
+echo "✅ deployed $BIN_NAME [$MODE]: $ver"
