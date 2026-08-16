@@ -54,6 +54,13 @@ Source: `web/src/ui/keybindings.ts` → `keyDownMap` object.
 | Alt+↓ | Previous room in list |
 | Ctrl+f | Open search panel |
 
+## Testing
+
+- `cd web && npx vitest --run` — 354+ unit tests (jsdom, v8 coverage)
+- `./scripts/cov-gaps.sh` — per-file coverage gap list
+- Coverage target: >=80%/file × 4 categories (lines/statements/functions/branches)
+- Config: `web/vitest.config.ts` (plain object — see comment re vite8 rolldown bug)
+
 ## Fork intention
 
 **Goal**: Make hotkeys user-configurable (config file + UI settings panel).
