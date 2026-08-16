@@ -127,6 +127,13 @@ cat >"$BIN_DIR/$BIN_NAME.manifest.json" <<EOF
 EOF
 
 # ── Smoke test ──
-ver="$("$BIN_DIR/$BIN_NAME" --version 2>/dev/null || echo "(no --version)")"
-echo "$ver" | grep -q "${commit:0:7}" || echo "⚠ version string lacks current commit"
-echo "✅ deployed $BIN_NAME [$MODE]: $ver"
+if [ "$MODE" = "server" ]; then
+	ver="$($BIN_DIR/$BIN_NAME --version 2>/dev/null || true)"
+	echo "$ver" | grep -q "${commit:0:7}" || echo "⚠ version string lacks current commit"
+	echo "✅ deployed $BIN_NAME [$MODE]: $ver"
+else
+	# TUI client needs a TTY (panics headless) — smoke = ELF + entry point check
+	file "$BIN_DIR/$BIN_NAME" | grep -q ELF || { echo "❌ not an ELF binary"; exit 1; }
+	strings "$BIN_DIR/$BIN_NAME" | grep -q "go.mau.fi/gomuks" || { echo "❌ binary lacks gomuks build path"; exit 1; }
+	echo "✅ deployed $BIN_NAME [$MODE]: ELF ok, gomuks build path ok (TUI needs TTY to run)"
+fi
