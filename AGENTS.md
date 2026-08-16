@@ -68,6 +68,23 @@ Source: `web/src/ui/keybindings.ts` → `keyDownMap` object.
 
 See `flow/intentions/configurable-hotkeys.md` for full plan.
 
+## Deployment (local bin via mise)
+
+Mirrors `../pi-plugins` deploy pattern (lockfile guard, atomic install, manifest, smoke test).
+
+```bash
+mise run deploy          # build (noweb) → ~/.local/bin/gomuks-dev   ← DEFAULT
+cd web && npm ci         # only needed for deploy-full
+mise run deploy-full     # full build (web assets) → gomuks-dev
+mise run deploy-prod     # PROD bin gomuks-daemon-patched (use with care)
+mise run deploy-status   # show manifests (commit/branch/time)
+```
+
+- Config parity: `gomuks-dev` reads prod config `~/.config/gomuks` + data `~/.local/share/gomuks` unchanged.
+- Isolated run: `GOMUKS_ROOT=~/.local/share/gomuks-dev gomuks-dev`
+- Previous version kept as `<bin>.bak`; manifest `<bin>.manifest.json` beside bin.
+- ⚠ Don't run `gomuks-dev` daemon while prod daemon runs — same sqlite DB (`_txlock=immediate`) conflicts.
+
 ## Gotchas
 
 - `keyDownMap` = runtime object, NOT loaded from config (yet)

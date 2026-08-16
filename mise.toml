@@ -1,0 +1,18 @@
+# gomuks fork local deployment (mirrors ../pi-plugins mise pattern)
+# Default target = gomuks-dev (prod bins gomuks / gomuks-daemon-patched NOT touched).
+
+[tasks.deploy]
+run = "bash ops/deploy/deploy-local.sh"
+description = "Build + install daemon to ~/.local/bin/gomuks-dev. Shares prod config for parity."
+
+[tasks.deploy-prod]
+run = "BIN_NAME=gomuks-daemon-patched bash ops/deploy/deploy-local.sh"
+description = "Deploy to PROD daemon bin (gomuks-daemon-patched). Overwrites live daemon bin."
+
+[tasks.deploy-full]
+run = "DEPLOY_FULL=1 bash ops/deploy/deploy-local.sh"
+description = "Full build (web assets via ./build.sh) then deploy gomuks-dev. Needs web npm ci."
+
+[tasks.deploy-status]
+run = "bash ops/deploy/deploy-local.sh --status"
+description = "Show deployed bin manifests (commit, branch, time)."
