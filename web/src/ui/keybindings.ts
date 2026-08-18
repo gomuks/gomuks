@@ -49,6 +49,7 @@ export default class Keybindings {
 			}
 		},
 		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
+		"Ctrl+Shift+K": () => document.getElementById("space-search")?.focus(),
 		"Alt+ArrowUp": () => {
 			if (!this.activeRoom) {
 				return

@@ -75,6 +75,39 @@ div.space-bar {
 	scrollbar-width: none;
 	padding-top: var(--window-top-margin);
 
+	> div.space-search-container {
+		display: flex;
+		align-items: center;
+		padding: .25rem .125rem;
+		margin-bottom: .25rem;
+		border-bottom: 1px solid var(--room-list-divider-color);
+
+		> input.space-search {
+			flex: 1;
+			min-width: 0;
+			padding: .25rem .5rem;
+			font-size: .75rem;
+			border: none;
+			border-radius: .25rem;
+			background-color: var(--room-list-search-background);
+			color: var(--room-list-text-color);
+			outline: none;
+
+			&::placeholder {
+				color: var(--room-list-search-placeholder-color);
+			}
+		}
+
+		> button.clear-query {
+			background: none;
+			border: none;
+			cursor: pointer;
+			color: var(--room-list-text-color);
+			display: flex;
+			align-items: center;
+		}
+	}
+
 	> div.space-entry {
 		width: 2rem;
 		height: 2rem;

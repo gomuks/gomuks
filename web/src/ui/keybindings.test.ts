@@ -81,6 +81,7 @@ function setup(rooms: Array<{ room_id: string }> = [], rightPanel: object | null
 
 let composer: HTMLInputElement | undefined
 let search: HTMLInputElement | undefined
+let spaceSearch: HTMLInputElement | undefined
 
 beforeEach(() => {
 	composer = document.createElement("input")
@@ -91,11 +92,16 @@ beforeEach(() => {
 	search.id = "room-search"
 	document.body.appendChild(search)
 	vi.spyOn(search, "focus")
+	spaceSearch = document.createElement("input")
+	spaceSearch.id = "space-search"
+	document.body.appendChild(spaceSearch)
+	vi.spyOn(spaceSearch, "focus")
 })
 
 afterEach(() => {
 	composer?.remove()
 	search?.remove()
+	spaceSearch?.remove()
 })
 
 describe("keyToString", () => {
@@ -174,6 +180,22 @@ describe("Keybindings keyDownMap", () => {
 		search!.remove()
 		const { kb } = setup()
 		kb.onKeyDown(fakeKeyEvent({ key: "k", ctrlKey: true }))
+		expect(composer!.focus).not.toHaveBeenCalled()
+	})
+	test("Ctrl+Shift+K focuses space search", () => {
+		const { kb } = setup()
+		kb.onKeyDown(fakeKeyEvent({ key: "K", ctrlKey: true, shiftKey: true }))
+		expect(spaceSearch!.focus).toHaveBeenCalledTimes(1)
+		expect(search!.focus).not.toHaveBeenCalled()
+		expect(composer!.focus).not.toHaveBeenCalled()
+	})
+	test("Ctrl+Shift+K is handled even when space search is missing", () => {
+		spaceSearch!.remove()
+		const { kb } = setup()
+		const evt = fakeKeyEvent({ key: "K", ctrlKey: true, shiftKey: true })
+		kb.onKeyDown(evt)
+		// The binding must still claim the event so the composer never steals focus.
+		expect(evt.preventDefault).toHaveBeenCalledTimes(1)
 		expect(composer!.focus).not.toHaveBeenCalled()
 	})
 

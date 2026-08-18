@@ -51,7 +51,9 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const initComplete = useEventAsState(client.initComplete)
 	const ownProfile = useEventAsState(client.profile)
 	const searchInputRef = useRef<HTMLInputElement>(null)
+	const spaceSearchRef = useRef<HTMLInputElement>(null)
 	const [query, directSetQuery] = useState("")
+	const [spaceQuery, setSpaceQuery] = useState("")
 	const { tabs, currentTabID, totalUnreads, switchTab } = useTabs()
 	const currentTabIndex = tabs.findIndex(t => t.id === currentTabID)
 
@@ -119,6 +121,22 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 		directSetQuery("")
 		searchInputRef.current?.focus()
 	}
+	const clearSpaceQuery = () => {
+		setSpaceQuery("")
+		spaceSearchRef.current?.focus()
+	}
+	const onSpaceSearchKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
+		const key = keyToString(evt)
+		if (key === "Escape") {
+			clearSpaceQuery()
+			evt.stopPropagation()
+			evt.preventDefault()
+		}
+	}
+	const filteredSpaces = spaceQuery.trim() ? spaces.filter(roomID =>
+		(client.store.rooms.get(roomID)?.meta.current.name ?? "")
+			.toLowerCase().includes(spaceQuery.trim().toLowerCase()),
+	) : spaces
 	const onKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
 		const key = keyToString(evt)
 		if (key === "Escape") {
@@ -156,6 +174,21 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 			</button>
 		</div>
 		<div className="space-bar">
+			<div className="space-search-container">
+				<input
+					id="space-search"
+					ref={spaceSearchRef}
+					className="space-search"
+					type="text"
+					placeholder="Filter spaces..."
+					value={spaceQuery}
+					onChange={evt => setSpaceQuery(evt.target.value)}
+					onKeyDown={onSpaceSearchKeyDown}
+				/>
+				<button onClick={clearSpaceQuery} className="clear-query">
+					{spaceQuery !== "" ? <CloseIcon/> : <SearchIcon/>}
+				</button>
+			</div>
 			<FakeSpace space={null} setSpace={mainScreen.setSpace} isActive={space === null} />
 			{client.store.pseudoSpaces.map(pseudoSpace => <FakeSpace
 				key={pseudoSpace.id}
@@ -164,7 +197,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				onClickUnread={onClickSpaceUnread}
 				isActive={space?.id === pseudoSpace.id}
 			/>)}
-			{spaces.map(roomID => <Space
+			{filteredSpaces.map(roomID => <Space
 				key={roomID}
 				roomID={roomID}
 				client={client}
