@@ -34,6 +34,7 @@ import { ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
+import { useHorizontalSwipe } from "../util/swipe.ts"
 import ReadReceipts from "./ReadReceipts.tsx"
 import { ReplyBody, ReplyIDBody } from "./ReplyBody.tsx"
 import { ContentErrorBoundary, HiddenEvent, getBodyType, getPerMessageProfile, isSmallEvent } from "./content"
@@ -166,6 +167,16 @@ const TimelineEvent = ({
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
+	const [onTouchStart, onTouchMove, onTouchEnd] = useHorizontalSwipe({
+		onTrigger: () => {
+			roomCtx.setReplyTo(evt.event_id)
+		},
+		startThreshold: 10,
+		minTriggerDistance: 70,
+		maxDistance: 100,
+		left: true,
+		enabled: viewType === "timeline" || viewType === "thread",
+	})
 	const openEditHistory = () => {
 		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
@@ -298,6 +309,9 @@ const TimelineEvent = ({
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
 		onContextMenu={onContextMenu}
+		onTouchStart={onTouchStart}
+		onTouchMove={onTouchMove}
+		onTouchEnd={onTouchEnd}
 		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
 			? onClick : undefined}
 	>

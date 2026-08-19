@@ -11,6 +11,7 @@ div.timeline-event {
 		/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
 	contain: layout;
 	margin-top: var(--timeline-message-gap);
+	touch-action: pan-y;
 
 	&.highlight {
 		background-color: var(--timeline-highlight-bg-color);
