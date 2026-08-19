@@ -11,8 +11,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/rs/zerolog"
+	"go.mau.fi/util/exslices"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/crypto/backup"
@@ -64,7 +67,7 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context, background 
 	return
 }
 
-func (h *HiClient) fetchKeyBackupKey(ctx context.Context, ssssKey *ssss.Key) error {
+func (h *HiClient) fetchKeyBackupVersion(ctx context.Context) error {
 	latestVersion, err := h.Client.GetKeyBackupLatestVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get key backup latest version: %w", err)
@@ -76,19 +79,6 @@ func (h *HiClient) fetchKeyBackupKey(ctx context.Context, ssssKey *ssss.Key) err
 	if err != nil {
 		return fmt.Errorf("failed to set key backup version in crypto store: %w", err)
 	}
-	data, err := h.Crypto.SSSS.GetDecryptedAccountData(ctx, event.AccountDataMegolmBackupKey, ssssKey)
-	if err != nil {
-		return fmt.Errorf("failed to get megolm backup key from SSSS: %w", err)
-	}
-	key, err := backup.MegolmBackupKeyFromBytes(data)
-	if err != nil {
-		return fmt.Errorf("failed to parse megolm backup key: %w", err)
-	}
-	err = h.CryptoStore.PutSecret(ctx, id.SecretMegolmBackupV1, base64.StdEncoding.EncodeToString(key.Bytes()))
-	if err != nil {
-		return fmt.Errorf("failed to store megolm backup key: %w", err)
-	}
-	h.KeyBackupKey = key
 	return nil
 }
 
@@ -198,6 +188,9 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context, ssk id.Ed25519) (bool, e
 }
 
 func (h *HiClient) checkKeyBackupVersion(ctx context.Context) (bool, error) {
+	if h.KeyBackupKey == nil {
+		return false, nil
+	}
 	zerolog.Ctx(ctx).Debug().Msg("Fetching key backup version")
 	latestVersion, err := h.Client.GetKeyBackupLatestVersion(ctx)
 	if err != nil {
@@ -256,31 +249,76 @@ func (h *HiClient) storeCrossSigningPrivateKeys(ctx context.Context) error {
 
 func (h *HiClient) Verify(ctx context.Context, code string) error {
 	defer h.dispatchCurrentState()
-	keyID, keyData, err := h.Crypto.SSSS.GetDefaultKeyData(ctx)
+	datas, err := h.loadSSSSAccountData(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get default SSSS key data: %w", err)
-	}
-	h.VerificationState.HasSSSS = true
-	key, err := keyData.VerifyRecoveryKey(keyID, code)
-	if errors.Is(err, ssss.ErrInvalidRecoveryKey) && keyData.Passphrase != nil {
-		key, err = keyData.VerifyPassphrase(keyID, code)
-	}
-	if errors.Is(err, ssss.ErrUnverifiableKey) {
-		zerolog.Ctx(ctx).Warn().
-			Str("key_id", keyID).
-			Msg("SSSS key is unverifiable, trying to use without verifying")
-	} else if err != nil {
 		return err
 	}
-	return h.verifyWithKey(ctx, key, false)
+	err = h.fetchKeyBackupVersion(ctx)
+	if err != nil {
+		return err
+	}
+	keyIDs := datas.findMutualKeyIDs()
+	if len(keyIDs) == 0 {
+		return fmt.Errorf("account is corrupted: no key IDs have access to all necessary secrets")
+	}
+	defaultKeyID, err := h.Crypto.SSSS.GetDefaultKeyID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get default SSSS key ID: %w", err)
+	}
+	if defaultKeyIdx := slices.Index(keyIDs, defaultKeyID); defaultKeyIdx < 0 {
+		zerolog.Ctx(ctx).Warn().Msg("Default SSSS key doesn't have access to all secrets")
+	} else if defaultKeyIdx > 0 {
+		// Move the default key to the front of the list so we try it first
+		keyIDs[0], keyIDs[defaultKeyIdx] = keyIDs[defaultKeyIdx], keyIDs[0]
+	}
+	zerolog.Ctx(ctx).Debug().Strs("key_ids", keyIDs).Msg("Trying to decrypt SSSS")
+	var key *ssss.Key
+	for _, keyID := range keyIDs {
+		var keyData *ssss.KeyMetadata
+		keyData, err = h.Crypto.SSSS.GetKeyData(ctx, keyID)
+		if err != nil {
+			return fmt.Errorf("failed to get SSSS key data for %s: %w", keyID, err)
+		}
+		h.VerificationState.HasSSSS = true
+		key, err = keyData.VerifyRecoveryKey(keyID, code)
+		if errors.Is(err, ssss.ErrInvalidRecoveryKey) && keyData.Passphrase != nil {
+			key, err = keyData.VerifyPassphrase(keyID, code)
+		}
+		if errors.Is(err, ssss.ErrUnverifiableKey) {
+			zerolog.Ctx(ctx).Warn().
+				Str("key_id", keyID).
+				Msg("SSSS key is unverifiable, trying to use without verifying")
+			err = nil
+		} else if err == nil {
+			zerolog.Ctx(ctx).Debug().
+				Str("key_id", keyID).
+				Msg("SSSS key verified, decrypting secrets")
+			break
+		}
+		zerolog.Ctx(ctx).Warn().
+			Str("key_id", keyID).
+			Msg("Failed to verify SSSS key")
+	}
+	if err != nil {
+		if len(keyIDs) > 1 {
+			return fmt.Errorf("%w (tried %d keys)", err, len(keyIDs))
+		}
+		return err
+	}
+	cs, backupKey, err := datas.DecryptKeys(key)
+	if err != nil {
+		return err
+	}
+	err = h.Crypto.ImportCrossSigningKeys(*cs)
+	if err != nil {
+		return fmt.Errorf("failed to import cross-signing keys: %w", err)
+	}
+	h.KeyBackupKey = backupKey
+	return h.finishVerification(ctx)
 }
 
-func (h *HiClient) verifyWithKey(ctx context.Context, key *ssss.Key, wasReset bool) error {
-	err := h.Crypto.FetchCrossSigningKeysFromSSSS(ctx, key)
-	if err != nil {
-		return fmt.Errorf("failed to fetch cross-signing keys from SSSS: %w", err)
-	}
-	err = h.Crypto.SignOwnDevice(ctx, h.Crypto.OwnIdentity())
+func (h *HiClient) finishVerification(ctx context.Context) error {
+	err := h.Crypto.SignOwnDevice(ctx, h.Crypto.OwnIdentity())
 	if err != nil {
 		return fmt.Errorf("failed to sign own device: %w", err)
 	}
@@ -292,11 +330,9 @@ func (h *HiClient) verifyWithKey(ctx context.Context, key *ssss.Key, wasReset bo
 	if err != nil {
 		return fmt.Errorf("failed to store cross-signing private keys: %w", err)
 	}
-	if !wasReset || h.KeyBackupKey == nil {
-		err = h.fetchKeyBackupKey(ctx, key)
-		if err != nil {
-			return fmt.Errorf("failed to fetch key backup key: %w", err)
-		}
+	err = h.CryptoStore.PutSecret(ctx, id.SecretMegolmBackupV1, base64.StdEncoding.EncodeToString(h.KeyBackupKey.Bytes()))
+	if err != nil {
+		return fmt.Errorf("failed to store megolm backup key: %w", err)
 	}
 	h.VerificationState.IsVerified = true
 	h.VerificationState.StateChecked = true
@@ -373,5 +409,89 @@ func (h *HiClient) ResetEncryption(
 	if err != nil {
 		return fmt.Errorf("failed to set up key backup: %w", err)
 	}
-	return h.verifyWithKey(ctx, key, true)
+	return h.finishVerification(ctx)
+}
+
+type ssssAccountDatas struct {
+	MasterKey       ssss.EncryptedAccountDataEventContent
+	SelfSigningKey  ssss.EncryptedAccountDataEventContent
+	UserSigningKey  ssss.EncryptedAccountDataEventContent
+	MegolmBackupKey ssss.EncryptedAccountDataEventContent
+}
+
+func (h *HiClient) loadSSSSAccountData(ctx context.Context) (ret ssssAccountDatas, err error) {
+	err = h.Client.GetAccountData(ctx, event.AccountDataCrossSigningMaster.Type, &ret.MasterKey)
+	if err != nil {
+		err = fmt.Errorf("failed to get master signing key from account data: %w", err)
+		return
+	}
+	err = h.Client.GetAccountData(ctx, event.AccountDataCrossSigningSelf.Type, &ret.SelfSigningKey)
+	if err != nil {
+		err = fmt.Errorf("failed to get self-signing key from account data: %w", err)
+		return
+	}
+	err = h.Client.GetAccountData(ctx, event.AccountDataCrossSigningUser.Type, &ret.UserSigningKey)
+	if err != nil {
+		err = fmt.Errorf("failed to get user-signing key from account data: %w", err)
+		return
+	}
+	err = h.Client.GetAccountData(ctx, event.AccountDataMegolmBackupKey.Type, &ret.MegolmBackupKey)
+	if err != nil {
+		err = fmt.Errorf("failed to get megolm backup key from account data: %w", err)
+		return
+	}
+	return
+}
+
+func (sad *ssssAccountDatas) findMutualKeyIDs() []string {
+	allMaps := []map[string]ssss.EncryptedKeyData{
+		sad.MasterKey.Encrypted,
+		sad.SelfSigningKey.Encrypted,
+		sad.UserSigningKey.Encrypted,
+		sad.MegolmBackupKey.Encrypted,
+	}
+	var allKeys []string
+	for _, m := range allMaps {
+		allKeys = slices.AppendSeq(allKeys, maps.Keys(m))
+	}
+	allKeys = exslices.DeduplicateUnsorted(allKeys)
+	mutualKeys := make([]string, 0, len(allKeys))
+Outer:
+	for _, key := range allKeys {
+		for _, m := range allMaps {
+			if _, ok := m[key]; !ok {
+				continue Outer
+			}
+		}
+		mutualKeys = append(mutualKeys, key)
+	}
+	return mutualKeys
+}
+
+func (sad *ssssAccountDatas) DecryptKeys(key *ssss.Key) (*crypto.CrossSigningSeeds, *backup.MegolmBackupKey, error) {
+	masterKey, err := sad.MasterKey.Decrypt(event.AccountDataCrossSigningMaster.Type, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decrypt master signing key: %w", err)
+	}
+	selfSigningKey, err := sad.SelfSigningKey.Decrypt(event.AccountDataCrossSigningSelf.Type, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decrypt self-signing key: %w", err)
+	}
+	userSigningKey, err := sad.UserSigningKey.Decrypt(event.AccountDataCrossSigningUser.Type, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decrypt user-signing key: %w", err)
+	}
+	data, err := sad.MegolmBackupKey.Decrypt(event.AccountDataMegolmBackupKey.Type, key)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decrypt megolm backup key: %w", err)
+	}
+	backupKey, err := backup.MegolmBackupKeyFromBytes(data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse megolm backup key: %w", err)
+	}
+	return &crypto.CrossSigningSeeds{
+		MasterKey:      masterKey,
+		SelfSigningKey: selfSigningKey,
+		UserSigningKey: userSigningKey,
+	}, backupKey, nil
 }
