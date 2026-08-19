@@ -100,6 +100,7 @@ const (
 	ReqGetVersions              Name = "get_versions"
 	ReqGetCapabilities          Name = "get_capabilities"
 	ReqRegisterPush             Name = "register_push"
+	ReqRegisterHomeserverPush   Name = "register_homeserver_push"
 	ReqListenToDevice           Name = "listen_to_device"
 	ReqGetTurnServers           Name = "get_turn_servers"
 	ReqGetRTCTransports         Name = "get_rtc_transports"
@@ -309,6 +310,9 @@ var (
 	// pusher on the homeserver. Push notifications will not work without the gomuks backend
 	// being online.
 	RegisterPush = &CommandSpecWithoutResponse[*database.PushRegistration]{Name: ReqRegisterPush}
+	// RegisterHomeserverPush registers a pusher on the homeserver. This is only meant to be used
+	// when gomuks is embedded as a library. Remote frontends should use `register_push` instead.
+	RegisterHomeserverPush = &CommandSpecWithoutResponse[*mautrix.Pusher]{Name: ReqRegisterHomeserverPush}
 	// ListenToDevice toggles including to-device messages in `sync_complete` events. Only relevant for widgets.
 	// Returns the previous value of the setting.
 	ListenToDevice = &CommandSpec[bool, bool]{Name: ReqListenToDevice}
@@ -437,6 +441,7 @@ var AllNames = []Name{
 	ReqDiscoverHomeserver,
 	ReqGetLoginFlows,
 	ReqRegisterPush,
+	ReqRegisterHomeserverPush,
 	ReqListenToDevice,
 	ReqGetTurnServers,
 	ReqGetMediaConfig,

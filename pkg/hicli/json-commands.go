@@ -171,6 +171,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetCapabilities.RunCtx(ctx, req.Data, h.API.GetCapabilities)
 	case jsoncmd.ReqRegisterPush:
 		return jsoncmd.RegisterPush.RunCtx(ctx, req.Data, h.API.RegisterPush)
+	case jsoncmd.ReqRegisterHomeserverPush:
+		return jsoncmd.RegisterHomeserverPush.RunCtx(ctx, req.Data, h.API.RegisterHomeserverPush)
 	case jsoncmd.ReqListenToDevice:
 		return jsoncmd.ListenToDevice.RunCtx(ctx, req.Data, h.API.ListenToDevice)
 	case jsoncmd.ReqGetTurnServers:
@@ -723,6 +725,10 @@ func (h *JSONAPI) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuth
 
 func (h *JSONAPI) RegisterPush(ctx context.Context, params *database.PushRegistration) error {
 	return h.DB.PushRegistration.Put(ctx, params)
+}
+
+func (h *JSONAPI) RegisterHomeserverPush(ctx context.Context, params *mautrix.Pusher) error {
+	return h.Client.SetPusher(ctx, params)
 }
 
 func (h *JSONAPI) ListenToDevice(ctx context.Context, listen bool) (bool, error) {

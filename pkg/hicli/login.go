@@ -162,7 +162,7 @@ func (h *HiClient) postLogin(ctx context.Context, acc *database.Account) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch own devices: %w", err)
 	}
-	h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx)
+	h.VerificationState, err = h.checkIsCurrentDeviceVerified(ctx, false)
 	if err != nil {
 		return err
 	}

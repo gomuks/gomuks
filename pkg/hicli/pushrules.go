@@ -152,6 +152,22 @@ func (h *HiClient) LoadPushRules(ctx context.Context) {
 	zerolog.Ctx(ctx).Debug().Msg("Updated push rules from fetch")
 }
 
+func (h *HiClient) loadStoredPushRules(ctx context.Context) {
+	pushRules, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataPushRules)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("Failed to load stored push rules")
+	} else if pushRules != nil {
+		var rs pushrules.EventContent
+		err = json.Unmarshal(pushRules.Content, &rs)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to unmarshal stored push rules")
+		} else {
+			h.receiveNewPushRules(ctx, rs.Ruleset)
+			zerolog.Ctx(ctx).Debug().Msg("Loaded push rules from database")
+		}
+	}
+}
+
 func (h *HiClient) receiveNewPushRules(ctx context.Context, rules *pushrules.PushRuleset) {
 	h.PushRules.Store(rules)
 	// TODO set mute flag in rooms

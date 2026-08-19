@@ -25,7 +25,7 @@ import (
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
 
-func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state jsoncmd.VerificationState, err error) {
+func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context, background bool) (state jsoncmd.VerificationState, err error) {
 	var keys *crypto.CrossSigningPublicKeysCache
 	keys, err = h.Crypto.GetOwnCrossSigningPublicKeys(ctx)
 	if err != nil {
@@ -40,6 +40,14 @@ func (h *HiClient) checkIsCurrentDeviceVerified(ctx context.Context) (state json
 	if err != nil {
 		return
 	}
+	if background {
+		return
+	}
+	backupOK, err := h.checkKeyBackupVersion(ctx)
+	if err != nil {
+		return
+	}
+	state.IsVerified = state.IsVerified && backupOK
 	if !state.IsVerified {
 		var defaultKeyID string
 		defaultKeyID, err = h.Crypto.SSSS.GetDefaultKeyID(ctx)
@@ -153,6 +161,9 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context, ssk id.Ed25519) (bool, e
 	} else if !isVerified {
 		return false, nil
 	}
+	if h.Crypto.CrossSigningKeys != nil && h.KeyBackupKey != nil {
+		return true, nil
+	}
 	zerolog.Ctx(ctx).Debug().Msg("Loading cross-signing private keys")
 	masterKeySeed, err := h.getAndDecodeSecret(ctx, id.SecretXSMaster)
 	if err != nil {
@@ -183,6 +194,10 @@ func (h *HiClient) loadPrivateKeys(ctx context.Context, ssk id.Ed25519) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("failed to parse megolm backup key: %w", err)
 	}
+	return true, nil
+}
+
+func (h *HiClient) checkKeyBackupVersion(ctx context.Context) (bool, error) {
 	zerolog.Ctx(ctx).Debug().Msg("Fetching key backup version")
 	latestVersion, err := h.Client.GetKeyBackupLatestVersion(ctx)
 	if err != nil {

@@ -185,7 +185,7 @@ func (h *HiClient) maybeDiscardOutboundSession(ctx context.Context, newMembershi
 
 func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) {
 	h.Crypto.HandleOTKCounts(ctx, &resp.DeviceOTKCount)
-	go h.asyncPostProcessSyncResponse(ctx, resp, since)
+	go h.asyncPostProcessSyncResponse(ctx, resp)
 	syncCtx, ok := ctx.Value(syncContextKey).(*syncContext)
 	if !ok || syncCtx.shouldWakeupRequestQueue {
 		h.WakeupRequestQueue()
@@ -234,7 +234,7 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 	}
 }
 
-func (h *HiClient) asyncPostProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync, since string) {
+func (h *HiClient) asyncPostProcessSyncResponse(ctx context.Context, resp *mautrix.RespSync) {
 	for _, evt := range resp.ToDevice.Events {
 		ctx := zerolog.Ctx(ctx).With().
 			Stringer("sender", evt.Sender).
