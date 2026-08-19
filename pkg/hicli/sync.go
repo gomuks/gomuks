@@ -986,7 +986,7 @@ func (h *HiClient) processStateAndTimeline(
 					megolmSessionDiscarded = h.maybeDiscardOutboundSession(ctx, membership, evt)
 				}
 				if evt.GetStateKey() == h.Account.UserID.String() {
-					go h.maybeUpdateOwnProfile(ctx, evt.Content.VeryRaw)
+					go h.maybeUpdateOwnProfile(evt.Content.VeryRaw)
 				}
 			} else if evt.Type == event.StateElementFunctionalMembers {
 				heroesChanged = true
