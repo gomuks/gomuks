@@ -137,6 +137,15 @@ type SetProfileFieldParams struct {
 	Value json.RawMessage `json:"value,omitempty"`
 }
 
+type GetProfileAnnotationParams struct {
+	UserID id.UserID `json:"user_id"`
+}
+
+type SetProfileAnnotationParams struct {
+	UserID id.UserID `json:"user_id"`
+	Note   string    `json:"note,omitempty"`
+}
+
 type GetEventParams struct {
 	RoomID   id.RoomID  `json:"room_id"`
 	EventID  id.EventID `json:"event_id"`
