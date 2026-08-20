@@ -17,3 +17,4 @@ export const isMobileDevice = window.ontouchstart !== undefined && window.innerW
 export const hackyIsSafari = navigator.userAgent.includes("WebKit")
 	&& !navigator.userAgent.includes("Chrome")
 	&& !Object.hasOwn(window, "chrome")
+export const isPWA = window.matchMedia("(display-mode: standalone)").matches

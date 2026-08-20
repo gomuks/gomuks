@@ -40,6 +40,8 @@ type Preferences struct {
 	RoomWindowTitle         string `json:"room_window_title,omitempty"`
 	WindowTitle             string `json:"window_title,omitempty"`
 	Favicon                 string `json:"favicon,omitempty"`
+	ThemeColorLight         string `json:"theme_color_light,omitempty"`
+	ThemeColorDark          string `json:"theme_color_dark,omitempty"`
 	LowBandwidth            bool   `json:"low_bandwidth,omitempty"`
 	WebPush                 bool   `json:"web_push,omitempty"`
 }

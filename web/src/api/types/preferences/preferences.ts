@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { isMobileDevice } from "@/util/ismobile.ts"
+import { isMobileDevice, isPWA } from "@/util/ismobile.ts"
 import type { ContentURI, RoomType } from "../../types"
 import { Preference, anyContext, anyGlobalContext, globalDeviceSpecific, roomSpecific } from "./types.ts"
 
@@ -295,6 +295,20 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: "gomuks.png",
 		hidden: Boolean(window.gomuksAndroid || window.gomuksDesktop),
+	}),
+	theme_color_light: new Preference<string>({
+		displayName: "Light mode title bar color",
+		description: "PWA theme color when in light mode.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "",
+		hidden: !isPWA,
+	}),
+	theme_color_dark: new Preference<string>({
+		displayName: "Dark mode title bar color",
+		description: "PWA theme color when in dark mode.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: "",
+		hidden: !isPWA,
 	}),
 	room_view_type: new Preference<RoomType | null>({
 		displayName: "Room type override",

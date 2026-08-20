@@ -27,6 +27,5 @@
 		"url": "#/uri/%s"
 	}],
 	"start_url": ".",
-	"display": "standalone",
-	"theme_color": "#00c853"
+	"display": "standalone"
 }
