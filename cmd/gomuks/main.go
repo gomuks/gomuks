@@ -37,6 +37,7 @@ import (
 var wantHelp, _ = flag.MakeHelpFlag()
 var wantVersion = flag.MakeFull("v", "version", "View gomuks version and quit.", "false").Bool()
 var versionJSON = flag.Make().LongKey("version-json").Usage("Print a JSON object representing the gomuks version and quit.").Default("false").Bool()
+var update = flag.MakeFull("u", "update", "Update the binary in-place and quit.", "false").Bool()
 var desktopMode = flag.MakeFull("", "desktop", "Indicate that the backend is running as a subprocess in the desktop app", "false").Bool()
 
 type VersionJSONOutput struct {
@@ -85,6 +86,15 @@ func main() {
 		output.Mautrix.Commit = mautrix.Commit
 		output.Mautrix.Version = mautrix.Version
 		_ = json.NewEncoder(os.Stdout).Encode(output)
+		os.Exit(0)
+	} else if *update {
+		updated, err := doUpdate()
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "Update failed:", err)
+			os.Exit(1)
+		} else if !updated {
+			os.Exit(2)
+		}
 		os.Exit(0)
 	}
 
