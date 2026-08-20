@@ -17,12 +17,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/chzyer/readline"
 	"go.mau.fi/util/exhttp"
+	"go.mau.fi/util/progver"
 	flag "maunium.net/go/mauflag"
+	"maunium.net/go/mautrix"
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli"
@@ -32,7 +36,20 @@ import (
 
 var wantHelp, _ = flag.MakeHelpFlag()
 var wantVersion = flag.MakeFull("v", "version", "View gomuks version and quit.", "false").Bool()
+var versionJSON = flag.Make().LongKey("version-json").Usage("Print a JSON object representing the gomuks version and quit.").Default("false").Bool()
 var desktopMode = flag.MakeFull("", "desktop", "Indicate that the backend is running as a subprocess in the desktop app", "false").Bool()
+
+type VersionJSONOutput struct {
+	progver.ProgramVersion
+
+	OS   string
+	Arch string
+
+	Mautrix struct {
+		Version string
+		Commit  string
+	}
+}
 
 func main() {
 	gomuks.PromptInput = readline.Line
@@ -57,6 +74,17 @@ func main() {
 		os.Exit(0)
 	} else if *wantVersion {
 		fmt.Println(version.Gomuks.VersionDescription)
+		os.Exit(0)
+	} else if *versionJSON {
+		output := VersionJSONOutput{
+			ProgramVersion: version.Gomuks,
+
+			OS:   runtime.GOOS,
+			Arch: runtime.GOARCH,
+		}
+		output.Mautrix.Commit = mautrix.Commit
+		output.Mautrix.Version = mautrix.Version
+		_ = json.NewEncoder(os.Stdout).Encode(output)
 		os.Exit(0)
 	}
 
