@@ -167,17 +167,6 @@ const TimelineEvent = ({
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
-	const [onTouchStart, onTouchMove, onTouchEnd, onTouchCancel] = useHorizontalSwipe({
-		onTrigger: () => {
-			roomCtx.setReplyTo(evt.event_id)
-		},
-		startThreshold: 20,
-		verticalLimit: 10,
-		minTriggerDistance: 60,
-		maxDistance: 90,
-		left: true,
-		enabled: viewType === "timeline" || viewType === "thread",
-	})
 	const openEditHistory = () => {
 		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
@@ -199,6 +188,19 @@ const TimelineEvent = ({
 	const isFallbackReply = relatesTo?.is_falling_back
 	const threadRoot = getThreadRoot(relatesTo)
 	const isSmallThreadMessage = Boolean(threadRoot && smallThreads)
+
+	const [onTouchStart, onTouchMove, onTouchEnd, onTouchCancel] = useHorizontalSwipe({
+		onTrigger: () => {
+			roomCtx.setReplyTo(evt.event_id)
+		},
+		startThreshold: 20,
+		verticalLimit: 10,
+		minTriggerDistance: 60,
+		maxDistance: 90,
+		left: true,
+		enabled: (viewType === "timeline" || viewType === "thread") && !isSmallThreadMessage,
+	})
+
 	const BodyType = getBodyType(evt, isRedacted, isSmallThreadMessage)
 	if (evt.unread_type & UnreadType.Highlight) {
 		wrapperClassNames.push("highlight")
