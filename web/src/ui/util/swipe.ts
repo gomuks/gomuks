@@ -36,6 +36,7 @@ const hasHorizontalScroller = (target: HTMLElement | null, parent: HTMLDivElemen
 
 export interface UseSwipeParams {
 	startThreshold: number
+	verticalLimit: number
 	maxDistance: number
 	minTriggerDistance: number
 	left: boolean
@@ -46,11 +47,11 @@ export interface UseSwipeParams {
 const noopFunc = () => {}
 
 export const useHorizontalSwipe = ({
-	startThreshold, minTriggerDistance, maxDistance, left, onTrigger, enabled,
+	startThreshold, verticalLimit, minTriggerDistance, maxDistance, left, onTrigger, enabled,
 }: UseSwipeParams) => {
 	const swipeState = useRef<SwipeState | null>(null)
 	if (!enabled || window.ontouchstart === undefined) {
-		return [noopFunc, noopFunc, noopFunc] as const
+		return [noopFunc, noopFunc, noopFunc, noopFunc] as const
 	}
 	const onEndSwipe = (target: HTMLDivElement) => {
 		if (swipeState.current) {
@@ -80,7 +81,7 @@ export const useHorizontalSwipe = ({
 		if (!swipeState.current.triggered) {
 			if (deltaX > startThreshold) {
 				swipeState.current.triggered = true
-			} else if (deltaY > startThreshold) {
+			} else if (deltaY > verticalLimit) {
 				onEndSwipe(evt.currentTarget)
 				return
 			} else {
@@ -99,9 +100,13 @@ export const useHorizontalSwipe = ({
 		}
 		onEndSwipe(evt.currentTarget)
 	}
+	const onTouchCancel = (evt: React.TouchEvent<HTMLDivElement>) => {
+		onEndSwipe(evt.currentTarget)
+	}
 	return  [
 		onTouchStart,
 		onTouchMove,
 		onTouchEnd,
+		onTouchCancel,
 	] as const
 }

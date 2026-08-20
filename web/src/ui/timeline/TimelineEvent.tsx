@@ -167,13 +167,14 @@ const TimelineEvent = ({
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
-	const [onTouchStart, onTouchMove, onTouchEnd] = useHorizontalSwipe({
+	const [onTouchStart, onTouchMove, onTouchEnd, onTouchCancel] = useHorizontalSwipe({
 		onTrigger: () => {
 			roomCtx.setReplyTo(evt.event_id)
 		},
-		startThreshold: 10,
-		minTriggerDistance: 70,
-		maxDistance: 100,
+		startThreshold: 20,
+		verticalLimit: 10,
+		minTriggerDistance: 60,
+		maxDistance: 90,
 		left: true,
 		enabled: viewType === "timeline" || viewType === "thread",
 	})
@@ -312,6 +313,7 @@ const TimelineEvent = ({
 		onTouchStart={onTouchStart}
 		onTouchMove={onTouchMove}
 		onTouchEnd={onTouchEnd}
+		onTouchCancel={onTouchCancel}
 		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
 			? onClick : undefined}
 	>
