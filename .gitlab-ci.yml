@@ -158,6 +158,10 @@ macos/arm64:
   before_script:
   - export PATH=/opt/homebrew/bin:$PATH
   script:
+  - |
+    if [ "$CI_COMMIT_BRANCH" == "main" ]; then
+      export GO_LDFLAGS="-X 'main.UpdateJobID=$CI_JOB_ID' -X 'main.UpdateJobName=$CI_JOB_NAME' -X 'main.UpdateBaseURL=$CI_SERVER_URL/$CI_PROJECT_PATH' -X 'main.UpdateBranch=$CI_COMMIT_BRANCH'"
+    fi
   - CGO_LDFLAGS="-Wl,-headerpad_max_install_names" ./build-noweb.sh
   - ./build-terminal.sh
   - install_name_tool -change $(brew --prefix)/opt/libolm/lib/libolm.3.dylib @rpath/libolm.3.dylib gomuks
