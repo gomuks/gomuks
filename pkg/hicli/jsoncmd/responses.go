@@ -7,8 +7,8 @@
 package jsoncmd
 
 import (
+	"go.mau.fi/util/jsonbytes"
 	"maunium.net/go/mautrix"
-	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
@@ -61,9 +61,15 @@ type ManualPaginationResponse struct {
 	NextBatch string            `json:"next_batch,omitempty"`
 }
 
+type CrossSigningSeeds = struct {
+	MasterKey      jsonbytes.UnpaddedURLBytes `json:"m.cross_signing.master"`
+	SelfSigningKey jsonbytes.UnpaddedURLBytes `json:"m.cross_signing.self_signing"`
+	UserSigningKey jsonbytes.UnpaddedURLBytes `json:"m.cross_signing.user_signing"`
+}
+
 type RecoveryKeyResponse struct {
 	RecoveryKey      string                   `json:"recovery_key"`
-	CrossSigningKeys crypto.CrossSigningSeeds `json:"cross_signing_keys"`
+	CrossSigningKeys CrossSigningSeeds        `json:"cross_signing_keys"`
 	PassphraseMeta   *ssss.PassphraseMetadata `json:"passphrase_meta,omitempty"`
 }
 
