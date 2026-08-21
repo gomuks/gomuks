@@ -229,7 +229,8 @@ const TimelineEvent = ({
 		wrapperClassNames.push("policy-server-spammy")
 	}
 	let dateSeparator = null
-	const showInitialDateSeparator = viewType === "timeline" || viewType === "thread" || viewType === "context"
+	const showInitialDateSeparator = viewType === "timeline" || viewType === "thread"
+		|| viewType === "context" || viewType === "notifications"
 	const prevEvtDate = prevEvt ? newSafeDate(prevEvt.timestamp) : null
 	if (
 		(showInitialDateSeparator && !prevEvt)
