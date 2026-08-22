@@ -136,6 +136,9 @@ export const usePrimaryItems = (
 		&& !evt.redacted_by
 	const canReact = !didFail && ownPL >= reactPL
 
+	if (!didFail && !canReact && !canSend && !canEdit && !isHover) {
+		return null
+	}
 	return <>
 		{didFail && <button onClick={onClickResend} title="Resend message">
 			<RefreshIcon/>

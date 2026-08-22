@@ -50,7 +50,7 @@ export const EventFullMenu = ({ ref, evt, roomCtx, style }: EventContextMenuProp
 	const secondary = useSecondaryItems(client, roomCtx, evt)
 	return <div style={style} className="context-menu event-context-menu full" ref={ref}>
 		{primary}
-		<hr/>
+		{primary ? <hr/> : null}
 		{secondary}
 	</div>
 }
