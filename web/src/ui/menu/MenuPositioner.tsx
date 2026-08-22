@@ -75,7 +75,7 @@ export const MenuPositioner = <T extends object, P extends HTMLElement>({
 			let transformTop = standardTop
 			if (standardTop + height + bottomMargin > window.innerHeight) {
 				finalStyle.bottom = "calc(var(--window-bottom-margin) + 4px)"
-				transformTop = window.innerHeight - bottomMargin - height - 4
+				transformTop = window.innerHeight - height - 4
 			} else {
 				finalStyle.top = standardTop
 			}
