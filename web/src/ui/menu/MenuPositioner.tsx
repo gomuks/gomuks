@@ -13,20 +13,30 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import React, { CSSProperties, ComponentType, useLayoutEffect, useRef, useState } from "react"
 import { getWindowMargins } from "@/util/cssparse.ts"
+import { getModalStyleFromButton, getRightOpeningModalStyleFromButton } from "./util.ts"
 
 interface ChildProps<T extends HTMLElement> {
 	ref: React.Ref<T>
 	style: CSSProperties
 }
 
-interface PositioningProps {
+interface ExactPosition {
 	x: number
 	y: number
+	element?: never
 	anchor: "click" | "touch"
 }
+
+interface ElementPosition {
+	x?: never
+	y?: never
+	element: HTMLElement
+	anchor: "left" | "right"
+}
+
+type PositioningProps = ExactPosition | ElementPosition
 
 type MenuPositionerProps<T extends object, P extends HTMLElement> = T & PositioningProps & {
 	Child: ComponentType<Omit<T, "Child" | keyof PositioningProps> & ChildProps<P>>
@@ -35,7 +45,7 @@ type MenuPositionerProps<T extends object, P extends HTMLElement> = T & Position
 const defaultStyle: CSSProperties = { visibility: "hidden" }
 
 export const MenuPositioner = <T extends object, P extends HTMLElement>({
-	Child, x, y, anchor, ...props
+	Child, x, y, element, anchor, ...props
 }: MenuPositionerProps<T, P>) => {
 	const ref = useRef<P>(null)
 	const [style, setStyle] = useState<CSSProperties>(defaultStyle)
@@ -73,8 +83,15 @@ export const MenuPositioner = <T extends object, P extends HTMLElement>({
 				finalStyle.animation = "modal-grow 100ms linear"
 			}
 			finalStyle.transformOrigin = `${x - standardLeft}px ${y - transformTop}px`
+		} else if (element) {
+			if (anchor === "left") {
+				setStyle(getModalStyleFromButton(element, height))
+			} else {
+				setStyle(getRightOpeningModalStyleFromButton(element, height))
+			}
+			return
 		}
 		setStyle(finalStyle)
-	}, [x, y, anchor])
+	}, [x, y, element, anchor])
 	return <Child ref={ref} style={style} {...props} />
 }
