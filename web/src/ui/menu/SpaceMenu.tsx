@@ -49,17 +49,10 @@ const ChildSpace = ({ client, child, onClick }: ChildSpaceProps) => {
 		))
 		setMouseOver(true)
 	}
-	const onFocus = (evt: React.FocusEvent<HTMLDivElement>) => {
-		setOpenStyle(getRightOpeningModalStyleFromButton(
-			evt.currentTarget, SpaceMenu.height + child.childSpaces.size * 40,
-		))
-		setFocused(true)
-	}
 	return <div
 		className="context-menu-item space-list-child"
 		data-target-space={child.id}
 		onMouseEnter={onMouseEnter}
-		onFocus={onFocus}
 		onMouseLeave={() => setMouseOver(false)}
 		onBlur={() => setFocused(false)}
 		onClick={evt => {
@@ -86,9 +79,10 @@ interface SpaceMenuProps {
 	space: SpaceEdgeStore
 	style: CSSProperties
 	onClick: (evt: React.MouseEvent<HTMLDivElement>) => void
+	ref?: React.Ref<HTMLDivElement>
 }
 
-export const SpaceMenu = ({ room, space, style, onClick }: SpaceMenuProps) => {
+export const SpaceMenu = ({ room, space, style, onClick, ref }: SpaceMenuProps) => {
 	const openModal = use(ModalContext)
 	const closeModal = use(ModalCloseContext)
 	const mainScreen = use(MainScreenContext)!
@@ -105,14 +99,14 @@ export const SpaceMenu = ({ room, space, style, onClick }: SpaceMenuProps) => {
 		openModal(modals.shareRoom(room))
 	}
 
-	return <div className="context-menu space-list-menu" style={style}>
+	return <div className="context-menu space-list-menu" style={style} ref={ref}>
 		<button className="context-menu-item" onClick={openSettings}><SettingsIcon /> Settings</button>
 		<button onClick={onClickShare}><ShareIcon /> Share</button>
-		<button className="context-menu-item" onClick={openTimeline}><ChatIcon /> View timeline</button>
+		<button className="context-menu-item" onClick={openTimeline}><ChatIcon /> View space</button>
 		{space.childSpaces.values()
 			.map(child => <ChildSpace client={client} child={child} key={child.id} onClick={onClick} />)
 			.toArray()}
 	</div>
 }
 
-SpaceMenu.height = 2 * 40
+SpaceMenu.height = 3 * 40

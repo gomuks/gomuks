@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { CSSProperties, JSX, use } from "react"
+import { CSSProperties, JSX, Ref, use } from "react"
 import { RoomListEntry, RoomStateStore, useAccountData } from "@/api/statestore"
 import { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -36,6 +36,7 @@ interface RoomMenuProps {
 	room: RoomStateStore
 	entry: RoomListEntry
 	style: CSSProperties
+	ref?: Ref<HTMLDivElement>
 }
 
 const hasNotifyingActions = (actions: unknown) => {
@@ -122,7 +123,7 @@ const MarkReadButton = ({ room }: { room: RoomStateStore }) => {
 	</button>
 }
 
-export const RoomMenu = ({ room, style }: RoomMenuProps) => {
+export const RoomMenu = ({ room, style, ref }: RoomMenuProps) => {
 	const openModal = use(ModalContext)
 	const closeModal = use(ModalCloseContext)
 	const client = use(ClientContext)!
@@ -145,7 +146,7 @@ export const RoomMenu = ({ room, style }: RoomMenuProps) => {
 	}
 	const showLowPriority = client.store.preferences.pin_low_priority || client.store.preferences.mute_low_priority
 	const showFavorite = client.store.preferences.pin_favorites
-	return <div className="context-menu room-list-menu" style={style}>
+	return <div className="context-menu room-list-menu" style={style} ref={ref}>
 		<MarkReadButton room={room} />
 		<MuteButton roomID={room.roomID}/>
 		{showFavorite ? <TagButton

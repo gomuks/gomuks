@@ -18,7 +18,7 @@ import Client from "@/api/client.ts"
 import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import type { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
-import { SpaceMenu, getModalStyleFromMouse } from "../menu"
+import { MenuPositioner, SpaceMenu } from "../menu"
 import { ModalContext } from "../modal"
 import UnreadCount from "./UnreadCount.tsx"
 import "./RoomList.css"
@@ -53,11 +53,14 @@ const Space = ({
 			return
 		}
 		openModal({
-			content: <SpaceMenu
+			content: <MenuPositioner
+				x={evt.clientX}
+				y={evt.clientY}
+				anchor="click"
+				Child={SpaceMenu}
 				room={roomStore}
 				space={edgeStore}
 				onClick={onClick}
-				style={getModalStyleFromMouse(evt, SpaceMenu.height + edgeStore.childSpaces.size * 40)}
 			/>,
 			noHistory: true,
 		})

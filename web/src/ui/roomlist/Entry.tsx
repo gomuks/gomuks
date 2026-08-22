@@ -21,7 +21,7 @@ import useContentVisibility from "@/util/contentvisibility.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { RoomMenu, getModalStyleFromMouse } from "../menu"
+import { MenuPositioner, RoomMenu } from "../menu"
 import { ModalContext } from "../modal"
 import UnreadCount from "./UnreadCount.tsx"
 
@@ -96,10 +96,13 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 			return
 		}
 		openModal({
-			content: <RoomMenu
+			content: <MenuPositioner
+				x={evt.clientX}
+				y={evt.clientY}
+				anchor="click"
+				Child={RoomMenu}
 				room={realRoom}
 				entry={room}
-				style={getModalStyleFromMouse(evt, RoomMenu.height)}
 			/>,
 			noHistory: true,
 		})
