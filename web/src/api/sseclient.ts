@@ -28,12 +28,11 @@ export default class SSEClient extends RPCClient {
 	#lastAckedEvt?: number
 	#listenerID?: number
 	#resumeRunID?: string
-	#stopped = true
+	#stopped = false
 	#connectFailures = 0
 
 	constructor() {
 		super()
-		window.addEventListener("focus", this.#onFocus)
 	}
 
 	#onFocus = () => {
@@ -47,10 +46,15 @@ export default class SSEClient extends RPCClient {
 
 	start() {
 		this.#stopped = false
+		window.addEventListener("focus", this.#onFocus)
 		this.#restart()
 	}
 
 	#restart() {
+		if (this.#conn && this.#conn.readyState !== EventSource.CLOSED) {
+			console.warn("Not starting new SSE connection")
+			return
+		}
 		try {
 			const params = new URLSearchParams()
 			if (this.#lastReceivedEvt && this.#resumeRunID) {
@@ -77,6 +81,7 @@ export default class SSEClient extends RPCClient {
 	}
 
 	stop() {
+		window.removeEventListener("focus", this.#onFocus)
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
@@ -87,6 +92,7 @@ export default class SSEClient extends RPCClient {
 		}
 		this.#stopped = true
 		this.#conn?.close()
+		this.#conn = null
 	}
 
 	get isConnected() {
@@ -121,6 +127,7 @@ export default class SSEClient extends RPCClient {
 	#onError = (ev: Event) => {
 		console.error("SSE error:", ev)
 		this.#conn?.close()
+		this.#conn = null
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null

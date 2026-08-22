@@ -102,7 +102,10 @@ export default class Client {
 		}
 		console.log("Successfully authenticated, connecting to websocket")
 		if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
-			await this.store.loadCache()
+			await this.store.loadCache(signal)
+		}
+		if (signal.aborted) {
+			return
 		}
 		this.rpc.start()
 		this.requestNotificationPermission()
@@ -155,7 +158,10 @@ export default class Client {
 				}
 				console.log("Successfully authenticated, connecting to websocket")
 				if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
-					await this.store.loadCache()
+					await this.store.loadCache(signal)
+				}
+				if (signal.aborted) {
+					return
 				}
 				this.rpc.start()
 				return
@@ -311,6 +317,7 @@ export default class Client {
 			console.log("Garbage collection completed:", this.store.doGarbageCollection())
 		}, window.gcSettings.interval)
 		return () => {
+			console.log("Stopping client")
 			abort.abort()
 			this.store.closeCache()
 			this.rpc.stop()

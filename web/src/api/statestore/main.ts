@@ -205,10 +205,13 @@ export class StateStore {
 		return StateCache.delete()
 	}
 
-	loadCache() {
+	loadCache(signal?: AbortSignal) {
 		const cache = new StateCache()
 		this.tmpStateCache = cache
 		return cache.load().then(data => {
+			if (signal?.aborted) {
+				return
+			}
 			if (!data) {
 				console.info("No state cache found")
 				this.stateCacheStatus = "no data"
