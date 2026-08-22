@@ -16,6 +16,7 @@
 import React, { CSSProperties, use } from "react"
 import Client from "@/api/client.ts"
 import { MemDBEvent } from "@/api/types"
+import { parseSimpleCSSUnit } from "@/util/cssparse.ts"
 import { emojiToReactionContent } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { getRelatesTo, getThreadRoot } from "@/util/validation.ts"
@@ -68,13 +69,8 @@ export const usePrimaryItems = (
 	const onClickReact = (mevt: React.MouseEvent<HTMLButtonElement>) => {
 		const bodyStyle = getComputedStyle(document.body)
 		const rawHeight = bodyStyle.getPropertyValue("--image-picker-height")
-		let emojiPickerHeight: number
-		if (rawHeight.endsWith("px")) {
-			emojiPickerHeight = +rawHeight.slice(0, -2)
-		} else if (rawHeight.endsWith("rem")) {
-			const fontSize = +bodyStyle.getPropertyValue("font-size").replace("px", "")
-			emojiPickerHeight = +rawHeight.slice(0, -3) * fontSize
-		} else {
+		let emojiPickerHeight = parseSimpleCSSUnit(rawHeight, bodyStyle)
+		if (isNaN(emojiPickerHeight)) {
 			console.warn("Invalid --image-picker-height value", rawHeight)
 			emojiPickerHeight = 34 * 16
 		}

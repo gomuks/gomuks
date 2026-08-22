@@ -16,4 +16,5 @@
 export { EventExtraMenu, EventFullMenu, EventHoverMenu } from "./EventMenu.tsx"
 export { RoomMenu } from "./RoomMenu.tsx"
 export { SpaceMenu } from "./SpaceMenu.tsx"
+export { MenuPositioner } from "./MenuPositioner.tsx"
 export { getModalStyleFromButton, getModalStyleFromMouse, getModalStyleFromTouch } from "./util.ts"

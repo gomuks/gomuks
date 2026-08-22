@@ -90,14 +90,6 @@ div.context-menu {
 
 	&.event-context-menu {
 		width: 10rem;
-
-		&.animated {
-			animation: modal-grow 100ms linear;
-
-			@media (prefers-reduced-motion: reduce) {
-				animation: none;
-			}
-		}
 	}
 }
 

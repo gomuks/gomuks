@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { CSSProperties, use } from "react"
+import { CSSProperties, Ref, use } from "react"
 import { MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
@@ -36,7 +36,7 @@ export const EventHoverMenu = ({ evt, roomCtx, setForceOpen }: EventHoverMenuPro
 
 interface EventContextMenuProps extends BaseEventMenuProps {
 	style: CSSProperties
-	className?: string
+	ref?: Ref<HTMLDivElement>
 }
 
 export const EventExtraMenu = ({ evt, roomCtx, style }: EventContextMenuProps) => {
@@ -44,15 +44,13 @@ export const EventExtraMenu = ({ evt, roomCtx, style }: EventContextMenuProps) =
 	return <div style={style} className="context-menu event-context-menu extra">{elements}</div>
 }
 
-export const EventFullMenu = ({ evt, roomCtx, style, className }: EventContextMenuProps) => {
+export const EventFullMenu = ({ ref, evt, roomCtx, style }: EventContextMenuProps) => {
 	const client = use(ClientContext)!
 	const primary = usePrimaryItems(client, roomCtx, evt, false, false, style, undefined)
 	const secondary = useSecondaryItems(client, roomCtx, evt)
-	return <div style={style} className={`context-menu event-context-menu full ${className ?? ""}`}>
+	return <div style={style} className="context-menu event-context-menu full" ref={ref}>
 		{primary}
 		<hr/>
 		{secondary}
 	</div>
 }
-
-EventFullMenu.height = 10 * 40

@@ -28,7 +28,7 @@ import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { EventFullMenu, EventHoverMenu, getModalStyleFromMouse, getModalStyleFromTouch } from "../menu"
+import { EventFullMenu, EventHoverMenu, MenuPositioner } from "../menu"
 import { ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
@@ -127,10 +127,13 @@ const TimelineEvent = ({
 		}
 		mouseEvt.preventDefault()
 		openModal({
-			content: <EventFullMenu
+			content: <MenuPositioner
+				x={mouseEvt.clientX}
+				y={mouseEvt.clientY}
+				anchor="click"
+				Child={EventFullMenu}
 				evt={evt}
 				roomCtx={roomCtx}
-				style={getModalStyleFromMouse(mouseEvt, EventFullMenu.height)}
 			/>,
 		})
 	}
@@ -198,11 +201,13 @@ const TimelineEvent = ({
 		isFocused.current = true
 		eventRef.current?.classList.add("focused-event")
 		openModal({
-			content: <EventFullMenu
+			content: <MenuPositioner
+				x={mouseEvt.clientX}
+				y={mouseEvt.clientY}
+				anchor="touch"
+				Child={EventFullMenu}
 				evt={evt}
 				roomCtx={roomCtx}
-				style={getModalStyleFromTouch(mouseEvt, EventFullMenu.height)}
-				className="animated"
 			/>,
 			onClose: () => {
 				isFocused.current = false
