@@ -110,6 +110,7 @@ async function searchGiphy(signal: AbortSignal, query: string): Promise<GIF[]> {
 async function searchTenor(signal: AbortSignal, query: string): Promise<GIF[]> {
 	const url = new URL("https://tenor.googleapis.com/v2/search")
 	url.searchParams.set("key", TENOR_API_KEY)
+	url.searchParams.set("client_key", "tenor_web")
 	url.searchParams.set("media_filter", "webp")
 	url.searchParams.set("q", query)
 	url.searchParams.set("limit", "50")
@@ -135,6 +136,7 @@ async function getGiphyTrending(): Promise<GIF[]> {
 async function getTenorTrending(): Promise<GIF[]> {
 	const url = new URL("https://tenor.googleapis.com/v2/featured")
 	url.searchParams.set("key", TENOR_API_KEY)
+	url.searchParams.set("client_key", "tenor_web")
 	url.searchParams.set("media_filter", "webp")
 	url.searchParams.set("limit", "50")
 	return mapTenorResults((await doRequest(url)).results)
