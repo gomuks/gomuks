@@ -78,12 +78,6 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 	useEffect(() => {
 		roomContextData.scrollToBottom()
 	}, [roomContextData, hasRightPanel])
-	const onClick = (evt: React.MouseEvent<HTMLDivElement>) => {
-		if (roomContextData.focusedEventRowID) {
-			roomContextData.setFocusedEventRowID(null)
-			evt.stopPropagation()
-		}
-	}
 	const viewType = forceViewType ?? settingsViewType ?? room.meta.current.creation_content?.type
 	const view = getViewForRoomType(viewType) ?? <>
 		<TimelineView/>
@@ -91,9 +85,8 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 		<TypingNotifications/>
 	</>
 	return <RoomContext value={roomContextData}>
-		<div className="room-view" onClick={onClick}>
+		<div className="room-view">
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
-				<div className="mobile-event-menu-container" id="mobile-event-menu-container"/>
 				<RoomViewHeader room={room}/>
 			</ErrorBoundary>
 			<ErrorBoundary thing="room timeline" wrapperClassName="room-timeline-error">

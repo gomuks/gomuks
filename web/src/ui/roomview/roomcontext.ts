@@ -13,9 +13,9 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { RefObject, createContext, createRef, use } from "react"
+import React, { RefObject, createContext, createRef, use } from "react"
 import { RoomStateStore } from "@/api/statestore"
-import { EventID, EventRowID, MemDBEvent, RoomType } from "@/api/types"
+import { EventID, MemDBEvent, RoomType } from "@/api/types"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 
@@ -29,8 +29,6 @@ export class RoomContextData {
 	public setEditing: (evt: MemDBEvent | null, failed?: true) => void = noop("setEditing")
 	public insertText: (text: string) => void = noop("insertText")
 	public lastThreadEventID: EventID | null = null
-	public directSetFocusedEventRowID: (eventRowID: EventRowID | null) => void = noop("setFocusedEventRowID")
-	public focusedEventRowID: EventRowID | null = null
 	public readonly isEditing = new NonNullCachedEventDispatcher<boolean>(false)
 	public scrolledToBottom = true
 	public isFake = false
@@ -57,12 +55,8 @@ export class RoomContextData {
 		}
 	}
 
-	setFocusedEventRowID = (eventRowID: number | null) => {
-		this.directSetFocusedEventRowID(eventRowID)
-		this.focusedEventRowID = eventRowID
-	}
-
 	appendMentionToComposer = (evt: React.MouseEvent<HTMLSpanElement>) => {
+		evt.stopPropagation()
 		const targetUser = evt.currentTarget.getAttribute("data-target-user")
 		if (!targetUser) {
 			return

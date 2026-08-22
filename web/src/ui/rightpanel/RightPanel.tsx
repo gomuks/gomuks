@@ -120,7 +120,6 @@ const RightPanel = (props: RightPanelProps) => {
 		><BackIcon/></button>
 	}
 	return <div className="right-panel">
-		<div className="mobile-event-menu-container" id="mobile-thread-event-menu-container"/>
 		<div className="right-panel-header">
 			<div className="left-side">
 				{backButton}

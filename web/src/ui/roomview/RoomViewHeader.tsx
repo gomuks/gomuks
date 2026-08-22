@@ -16,7 +16,7 @@
 import React, { use } from "react"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { getModalStyleFromButton } from "@/ui/menu/util.ts"
+import { getModalStyleFromButton } from "@/ui/menu"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { LightboxContext, NestableModalContext, modals } from "../modal"

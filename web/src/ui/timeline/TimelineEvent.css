@@ -13,6 +13,10 @@ div.timeline-event {
 	margin-top: var(--timeline-message-gap);
 	touch-action: pan-y;
 
+	&.mobile-menu {
+		/*user-select: none;*/
+	}
+
 	&.highlight {
 		background-color: var(--timeline-highlight-bg-color);
 	}

@@ -116,6 +116,7 @@ export const ReplyBody = ({
 	}
 	classNames.push(`sender-color-${userColorIndex}`)
 	const onClick = (evt: MouseEvent<HTMLQuoteElement>) => {
+		evt.stopPropagation()
 		if (isThread && threadRoot) {
 			mainScreen.setRightPanel({
 				type: "thread",

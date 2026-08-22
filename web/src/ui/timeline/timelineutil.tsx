@@ -20,7 +20,6 @@ import TimelineEvent, { TimelineEventViewType } from "./TimelineEvent.tsx"
 import { HiddenEvent, getBodyType } from "./content"
 
 interface renderTimelineListParams {
-	focusedEventRowID?: number | null
 	prevEventOverride?: MemDBEvent
 }
 
@@ -68,7 +67,7 @@ export function renderTimelineList(
 	viewType: TimelineEventViewType,
 	timeline: (MemDBEvent | null)[],
 	prefs: Preferences,
-	{ focusedEventRowID, prevEventOverride }: renderTimelineListParams = {},
+	{ prevEventOverride }: renderTimelineListParams = {},
 ): (JSX.Element | null)[] {
 	let prevEvt: MemDBEvent | null = prevEventOverride ?? null
 	let receiptMergeIdx: number | null = null
@@ -115,7 +114,6 @@ export function renderTimelineList(
 			prevEvt={prevEvt}
 			smallReplies={flattenedPrefs.small_replies}
 			smallThreads={flattenedPrefs.small_threads}
-			isFocused={focusedEventRowID === entry.rowid}
 			viewType={viewType}
 		/>
 		prevEvt = entry

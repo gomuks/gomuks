@@ -13,10 +13,10 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { use, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { use, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import { usePreferences, useRoomEvent } from "@/api/statestore"
-import { EventID, EventRowID, MemDBEvent } from "@/api/types"
+import { EventID, MemDBEvent } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
 import MessageComposer from "../composer/MessageComposer.tsx"
 import { RoomContext, RoomContextData, useRoomContext } from "../roomview/roomcontext.ts"
@@ -36,7 +36,6 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 	const [prevBatch, setPrevBatch] = useState("")
 	const [loading, setLoading] = useState(false)
 	const [timeline, setTimeline] = useState<MemDBEvent[]>([])
-	const [focusedEventRowID, directSetFocusedEventRowID] = useState<EventRowID | null>(null)
 	const scrollFixRef = useRef<number>(null)
 	const bottomRef = useRef<HTMLDivElement>(null)
 	const viewRef = useRef<HTMLDivElement>(null)
@@ -45,7 +44,6 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 	client.requestEvent(room, threadRoot)
 
 	useEffect(() => {
-		threadRoomCtx.directSetFocusedEventRowID = directSetFocusedEventRowID
 		window.addEventListener("resize", threadRoomCtx.scrollToBottom)
 		return () => {
 			window.removeEventListener("resize", threadRoomCtx.scrollToBottom)
@@ -72,12 +70,6 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 		})
 	}, [client, room, threadRoot])
 
-	const onClick = (evt: React.MouseEvent<HTMLDivElement>) => {
-		if (threadRoomCtx.focusedEventRowID) {
-			threadRoomCtx.setFocusedEventRowID(null)
-			evt.stopPropagation()
-		}
-	}
 	const loadHistory = () => {
 		setLoading(true)
 		client.rpc.paginateManual(room.roomID, prevBatch, "b", { threadRoot })
@@ -125,18 +117,16 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 				prevEvt={null}
 				evt={rootEvent}
 				smallReplies={room.preferences.small_replies}
-				isFocused={focusedEventRowID === rootEvent.rowid}
 				viewType="thread"
 			/> : null}
 			{renderTimelineList("thread", timeline, room.preferences, {
 				prevEventOverride: prependRoot ? rootEvent : undefined,
-				focusedEventRowID,
 			})}
 			<div className="timeline-bottom-ref" ref={bottomRef}/>
 		</div>
 	</div>
 	return <RoomContext value={threadRoomCtx}>
-		<div className="thread-view" onClick={onClick}>
+		<div className="thread-view">
 			{timelineDiv}
 			<MessageComposer/>
 			<div className="typing-notifications empty" />

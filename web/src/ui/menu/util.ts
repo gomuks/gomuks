@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { CSSProperties } from "react"
+import { CSSProperties } from "react"
 import Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { MemDBEvent, PowerLevelEventContent } from "@/api/types"
@@ -40,8 +40,13 @@ export const getEncryption = (room: RoomStateStore): boolean =>{
 	return encryptionEvent?.content?.algorithm === "m.megolm.v1.aes-sha2"
 }
 
+interface MouseEvent {
+	clientX: number
+	clientY: number
+}
+
 export function getModalStyleFromMouse(
-	evt: React.MouseEvent, modalHeight: number, modalWidth = 10 * 16,
+	evt: MouseEvent, modalHeight: number, modalWidth = 10 * 16,
 ): CSSProperties {
 	const style: CSSProperties = { left: evt.clientX }
 	if (evt.clientX + modalWidth > window.innerWidth) {
@@ -52,6 +57,25 @@ export function getModalStyleFromMouse(
 		style.bottom = window.innerHeight - evt.clientY
 	} else {
 		style.top = evt.clientY
+	}
+	return style
+}
+
+export function getModalStyleFromTouch(
+	evt: MouseEvent, modalMaxHeight: number, modalWidth = 10 * 16,
+): CSSProperties {
+	const topMargin = getComputedStyle(document.documentElement).getPropertyValue("--window-top-margin")
+	const safeAreaTop = parseInt(topMargin || "0", 10) || 0
+	//eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const style: any = {
+		left: Math.max(evt.clientX - modalWidth - 16, 4),
+		top: Math.max(evt.clientY - modalMaxHeight / 2, 4) + safeAreaTop,
+	}
+	style.transformOrigin = `${evt.clientX - style.left}px ${evt.clientY - style.top}px`
+	console.log(style.transformOrigin)
+	if (style.top + modalMaxHeight > window.innerHeight) {
+		delete style.top
+		style.bottom = "calc(var(--window-bottom-margin) + 4px)"
 	}
 	return style
 }

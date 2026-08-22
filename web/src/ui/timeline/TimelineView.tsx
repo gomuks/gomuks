@@ -16,7 +16,6 @@
 import { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import { usePreferences, useRoomTimeline } from "@/api/statestore"
-import { EventRowID } from "@/api/types"
 import useFocus from "@/util/focus.ts"
 import ClientContext from "../ClientContext.ts"
 import { useRoomContext } from "../roomview/roomcontext.ts"
@@ -29,7 +28,6 @@ const TimelineView = () => {
 	const timeline = useRoomTimeline(room)
 	const client = use(ClientContext)!
 	const [isLoadingHistory, setLoadingHistory] = useState(false)
-	const [focusedEventRowID, directSetFocusedEventRowID] = useState<EventRowID | null>(null)
 	const loadHistory = useCallback(() => {
 		setLoadingHistory(true)
 		client.loadMoreHistory(room.roomID)
@@ -69,9 +67,6 @@ const TimelineView = () => {
 		}
 		prevOldestTimelineRow.current = timeline[0]?.timeline_rowid ?? 0
 	}, [client.userID, roomCtx, timeline])
-	useEffect(() => {
-		roomCtx.directSetFocusedEventRowID = directSetFocusedEventRowID
-	}, [roomCtx])
 	useEffect(() => {
 		const newestEvent = timeline[timeline.length - 1]
 		if (
@@ -124,7 +119,7 @@ const TimelineView = () => {
 		</div>
 		<div className="timeline-list">
 			<div className="timeline-top-ref" ref={topRef}/>
-			{renderTimelineList("timeline", timeline, room.preferences, { focusedEventRowID })}
+			{renderTimelineList("timeline", timeline, room.preferences)}
 			<div className="timeline-bottom-ref" ref={bottomRef}/>
 		</div>
 	</div>

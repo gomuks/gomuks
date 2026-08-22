@@ -13,8 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { JSX, use, useCallback, useState } from "react"
-import { createPortal } from "react-dom"
+import React, { JSX, use, useCallback, useRef, useState } from "react"
 import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex } from "@/api/media.ts"
 import {
 	RoomStateStore,
@@ -29,7 +28,7 @@ import { isMobileDevice } from "@/util/ismobile.ts"
 import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
-import { EventFixedMenu, EventFullMenu, EventHoverMenu, getModalStyleFromMouse } from "../menu"
+import { EventFullMenu, EventHoverMenu, getModalStyleFromMouse, getModalStyleFromTouch } from "../menu"
 import { ModalContext, NestableModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
@@ -52,7 +51,6 @@ export interface TimelineEventProps {
 	disableMenu?: boolean
 	smallReplies?: boolean
 	smallThreads?: boolean
-	isFocused?: boolean
 	viewType: TimelineEventViewType
 }
 
@@ -103,7 +101,7 @@ const EventURLPreviews = ({ event, room }: {
 }
 
 const TimelineEvent = ({
-	evt, prevEvt, disableMenu, smallReplies, smallThreads, isFocused, viewType,
+	evt, prevEvt, disableMenu, smallReplies, smallThreads, viewType,
 }: TimelineEventProps) => {
 	const roomCtx = useRoomContext()
 	const client = use(ClientContext)!
@@ -111,8 +109,10 @@ const TimelineEvent = ({
 	const openModal = use(ModalContext)
 	const openNestableModal = use(NestableModalContext)
 	const [forceContextMenuOpen, setForceContextMenuOpen] = useState(false)
+	const isFocused = useRef(false)
+	const eventRef = useRef<HTMLDivElement>(null)
 	const onContextMenu = (mouseEvt: React.MouseEvent) => {
-		if (mouseEvt.shiftKey) {
+		if (mouseEvt.shiftKey || disableMenu) {
 			return
 		}
 		const targetElem = mouseEvt.target as HTMLElement
@@ -145,29 +145,19 @@ const TimelineEvent = ({
 			console.error("Failed to send reaction", err)
 			window.alert(`Failed to send reaction: ${err}`)
 		})
-	}, [client, evt])
-	const onClick = (mouseEvt: React.MouseEvent) => {
-		const targetElem = mouseEvt.target as HTMLElement
-		if (
-			targetElem.tagName === "A"
-			|| targetElem.tagName === "IMG"
-			|| targetElem.tagName === "VIDEO"
-			|| targetElem.tagName === "SUMMARY"
-		) {
-			return
-		}
-		mouseEvt.preventDefault()
 		mouseEvt.stopPropagation()
-		roomCtx.setFocusedEventRowID(roomCtx.focusedEventRowID === evt.rowid ? null : evt.rowid)
-	}
-	const onClickTimestamp = () => {
+	}, [client, evt])
+	const onClickTimestamp = (mouseEvt: React.MouseEvent) => {
 		if (viewType === "pinned" || (viewType === "notifications" && evt.room_id === roomCtx.store.roomID)) {
+			mouseEvt.stopPropagation()
 			jumpToEventInView(roomCtx, evt.event_id, document.querySelector("div.room-view"))
 		} else if (viewType === "notifications") {
+			mouseEvt.stopPropagation()
 			mainScreen.setActiveRoom(evt.room_id, { openEventID: evt.event_id })
 		}
 	}
-	const openEditHistory = () => {
+	const openEditHistory = (mouseEvt: React.MouseEvent) => {
+		mouseEvt.stopPropagation()
 		openNestableModal(modals.eventEditHistory(roomCtx, evt))
 	}
 	const perMessageSender = getPerMessageProfile(evt)
@@ -178,11 +168,7 @@ const TimelineEvent = ({
 
 	const eventTS = newSafeDate(evt.timestamp)
 	const editEventTS = evt.last_edit ? newSafeDate(evt.last_edit.timestamp) : null
-	const wrapperClassNames = ["timeline-event"]
-	const isRedacted = displayAsRedacted(evt, memberEvt, roomCtx.store)
-	if (isRedacted) {
-		wrapperClassNames.push("redacted-event")
-	}
+
 	const relatesTo = getRelatesTo(evt)
 	const replyTo = relatesTo?.["m.in_reply_to"]?.event_id
 	const isFallbackReply = relatesTo?.is_falling_back
@@ -200,8 +186,37 @@ const TimelineEvent = ({
 		left: true,
 		enabled: (viewType === "timeline" || viewType === "thread") && !isSmallThreadMessage,
 	})
+	const enableTouchMenu = isMobileDevice && !disableMenu
+	const onClick = (mouseEvt: React.MouseEvent<HTMLDivElement>) => {
+		const targetElem = mouseEvt.target as HTMLElement
+		if (targetElem.closest("a, img, video, summary")) {
+			return
+		}
 
+		mouseEvt.preventDefault()
+		mouseEvt.stopPropagation()
+		isFocused.current = true
+		eventRef.current?.classList.add("focused-event")
+		openModal({
+			content: <EventFullMenu
+				evt={evt}
+				roomCtx={roomCtx}
+				style={getModalStyleFromTouch(mouseEvt, EventFullMenu.height)}
+				className="animated"
+			/>,
+			onClose: () => {
+				isFocused.current = false
+				eventRef.current?.classList.remove("focused-event")
+			},
+		})
+	}
+
+	const wrapperClassNames = ["timeline-event"]
+	const isRedacted = displayAsRedacted(evt, memberEvt, roomCtx.store)
 	const BodyType = getBodyType(evt, isRedacted, isSmallThreadMessage)
+	if (isRedacted) {
+		wrapperClassNames.push("redacted-event")
+	}
 	if (evt.unread_type & UnreadType.Highlight) {
 		wrapperClassNames.push("highlight")
 	}
@@ -214,12 +229,13 @@ const TimelineEvent = ({
 	if (evt.sender === client.userID) {
 		wrapperClassNames.push("own-event")
 	}
-	const forceContextMenuOnMobile =
-		viewType === "edit-history" || viewType === "context" || viewType === "pinned" || viewType === "notifications"
-	if ((isMobileDevice && !forceContextMenuOnMobile) || disableMenu) {
+	if (enableTouchMenu) {
+		wrapperClassNames.push("mobile-menu")
+	}
+	if (isMobileDevice || disableMenu) {
 		wrapperClassNames.push("no-hover")
 	}
-	if (isFocused) {
+	if (isFocused.current) {
 		wrapperClassNames.push("focused-event")
 	}
 	if (evt.unsigned["io.element.synapse.soft_failed"]) {
@@ -312,24 +328,19 @@ const TimelineEvent = ({
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
-		onContextMenu={onContextMenu}
+		onContextMenu={!isMobileDevice ? onContextMenu : undefined}
 		onTouchStart={onTouchStart}
 		onTouchMove={onTouchMove}
 		onTouchEnd={onTouchEnd}
 		onTouchCancel={onTouchCancel}
-		onClick={!disableMenu && viewType !== "edit-history" && isMobileDevice && !isSmallThreadMessage
-			? onClick : undefined}
+		onClick={enableTouchMenu ? onClick : undefined}
+		ref={eventRef}
 	>
-		{!disableMenu && (!isMobileDevice || forceContextMenuOnMobile) && <div
+		{!disableMenu && !isMobileDevice ? <div
 			className={`context-menu-container ${forceContextMenuOpen ? "force-open" : ""}`}
 		>
 			<EventHoverMenu evt={evt} roomCtx={roomCtx} setForceOpen={setForceContextMenuOpen}/>
-		</div>}
-		{isMobileDevice && isFocused && createPortal(
-			<EventFixedMenu evt={evt} roomCtx={roomCtx} />,
-			document.getElementById(roomCtx.threadRoot
-				? "mobile-thread-event-menu-container" : "mobile-event-menu-container")!,
-		)}
+		</div> : null}
 		{replyAboveMessage}
 		{renderAvatar && <div
 			className="sender-avatar"
