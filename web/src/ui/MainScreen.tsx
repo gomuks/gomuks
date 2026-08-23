@@ -93,6 +93,8 @@ class ContextFields implements MainScreenContextFields {
 	setPendingShare = (share: File | null) => {
 		if (share !== null) {
 			this.setActiveRoom(null)
+			window.closeModal()
+			window.closeNestableModal()
 		}
 		this.pendingShareRef.current = share
 		this.markPendingShareChanged()
