@@ -59,7 +59,14 @@ export const EmojiGroup = ({
 	}
 	const onMouseOverEmoji = setPreviewEmoji && ((evt: React.MouseEvent<HTMLButtonElement>) =>
 		setPreviewEmoji(getEmojiFromAttrs(evt.currentTarget)))
-	const onMouseOutEmoji = setPreviewEmoji && (() => setPreviewEmoji(undefined))
+	const clearPreviewEmoji = setPreviewEmoji && (() => setPreviewEmoji(undefined))
+	const onFocusEmoji = setPreviewEmoji && ((evt: React.FocusEvent<HTMLButtonElement>) =>
+		setPreviewEmoji(getEmojiFromAttrs(evt.currentTarget)))
+	const onClickEmoji = (evt: React.MouseEvent<HTMLButtonElement>) => {
+		onSelect(getEmojiFromAttrs(evt.currentTarget))
+		evt.stopPropagation()
+		evt.preventDefault()
+	}
 	const onClickSubscribePack = (evt: React.MouseEvent<HTMLButtonElement>) => {
 		const guid = stringToRoomStateGUID(evt.currentTarget.getAttribute("data-pack-id"))
 		if (!guid) {
@@ -111,8 +118,10 @@ export const EmojiGroup = ({
 				className={`${imageType} ${selected?.includes(emoji.u) ? "selected" : ""}`}
 				data-emoji-index={idx}
 				onMouseOver={onMouseOverEmoji}
-				onMouseOut={onMouseOutEmoji}
-				onClick={evt => onSelect(getEmojiFromAttrs(evt.currentTarget))}
+				onMouseOut={clearPreviewEmoji}
+				onFocus={onFocusEmoji}
+				onBlur={clearPreviewEmoji}
+				onClick={onClickEmoji}
 				title={emoji.t}
 			>{renderEmoji(emoji)}</button>) : null}
 		</div>

@@ -111,6 +111,7 @@ div.emoji-picker, div.sticker-picker {
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+		user-select: none;
 	}
 
 	div.emoji-preview {
