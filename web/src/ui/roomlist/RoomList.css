@@ -27,6 +27,7 @@ div.room-list {
 	background-color: var(--room-list-background-overlay);
 	overflow-y: auto;
 	grid-area: roomlist;
+	padding-bottom: var(--window-bottom-margin);
 }
 
 div.profile-switcher {
