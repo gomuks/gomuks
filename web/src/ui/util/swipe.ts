@@ -81,6 +81,8 @@ export const useHorizontalSwipe = ({
 		if (swipeState.current) {
 			target.style.transition = swipeState.current.triggered ? "translate 0.1s linear" : "none"
 			target.style.translate = ""
+			target.style.willChange = ""
+			target.classList.remove("swipe-active")
 			swipeState.current = null
 		}
 	}
@@ -93,6 +95,8 @@ export const useHorizontalSwipe = ({
 				feedback: false,
 			}
 			evt.currentTarget.style.transition = "none"
+			evt.currentTarget.style.willChange = "translate"
+			evt.currentTarget.classList.add("swipe-active")
 		} else {
 			onEndSwipe(evt.currentTarget)
 		}
@@ -114,12 +118,13 @@ export const useHorizontalSwipe = ({
 			}
 		}
 		const translate = Math.min(Math.max(deltaX - startThreshold, 0), maxDistance)
+		const percentageActivated = Math.min(translate / minTriggerDistance, 1)
 		evt.currentTarget.style.translate = `${left ? "-" : ""}${translate}px 0`
-		const canTrigger = deltaX > minTriggerDistance + startThreshold
-		if (canTrigger && !swipeState.current.feedback) {
+		evt.currentTarget.style.setProperty("--swipe-activation", percentageActivated.toString())
+		if (percentageActivated === 1 && !swipeState.current.feedback) {
 			swipeState.current.feedback = true
 			hapticFeedback("GESTURE_THRESHOLD_ACTIVATE")
-		} else if (!canTrigger && swipeState.current.feedback) {
+		} else if (percentageActivated < 1 && swipeState.current.feedback) {
 			swipeState.current.feedback = false
 			hapticFeedback("GESTURE_THRESHOLD_DEACTIVATE")
 		}

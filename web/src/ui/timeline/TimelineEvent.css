@@ -17,6 +17,20 @@ div.timeline-event {
 		/*user-select: none;*/
 	}
 
+	--swipe-activation: 0;
+
+	&.swipe-active::after {
+		position: absolute;
+		left: 100%;
+		width: 2rem;
+		height: 2rem;
+		content: "";
+		background-color: var(--text-color);
+		mask: url("@/icons/reply.svg") center / contain no-repeat;
+		opacity: pow(var(--swipe-activation), 2);
+		align-self: center;
+	}
+
 	&.highlight {
 		background-color: var(--timeline-highlight-bg-color);
 	}
