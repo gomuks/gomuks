@@ -19,6 +19,7 @@ interface SwipeState {
 	startX: number
 	startY: number
 	triggered: boolean
+	feedback: boolean
 }
 
 const hasHorizontalScroller = (target: HTMLElement | null, parent: HTMLDivElement) => {
@@ -44,6 +45,29 @@ export interface UseSwipeParams {
 	onTrigger: () => void
 }
 
+type HapticFeedbackType = "LONG_PRESS" |
+	"TEXT_HANDLE_MOVE" |
+	"GESTURE_START" |
+	"GESTURE_END" |
+	"CONFIRM" |
+	"REJECT" |
+	"TOGGLE_ON" |
+	"TOGGLE_OFF" |
+	"GESTURE_THRESHOLD_ACTIVATE" |
+	"GESTURE_THRESHOLD_DEACTIVATE" |
+	"DRAG_START" |
+	"SEGMENT_TICK" |
+	"SEGMENT_FREQUENT_TICK"
+
+function hapticFeedback(name: HapticFeedbackType) {
+	if (!window.gomuksAndroid) {
+		return
+	}
+	window.dispatchEvent(new CustomEvent("GomuksWebMessageToAndroid", {
+		detail: { event: "haptic_feedback", name },
+	}))
+}
+
 const noopFunc = () => {}
 
 export const useHorizontalSwipe = ({
@@ -66,6 +90,7 @@ export const useHorizontalSwipe = ({
 				startX: evt.touches[0].clientX,
 				startY: evt.touches[0].clientY,
 				triggered: false,
+				feedback: false,
 			}
 			evt.currentTarget.style.transition = "none"
 		} else {
@@ -90,6 +115,14 @@ export const useHorizontalSwipe = ({
 		}
 		const translate = Math.min(Math.max(deltaX - startThreshold, 0), maxDistance)
 		evt.currentTarget.style.translate = `${left ? "-" : ""}${translate}px 0`
+		const canTrigger = deltaX > minTriggerDistance + startThreshold
+		if (canTrigger && !swipeState.current.feedback) {
+			swipeState.current.feedback = true
+			hapticFeedback("GESTURE_THRESHOLD_ACTIVATE")
+		} else if (!canTrigger && swipeState.current.feedback) {
+			swipeState.current.feedback = false
+			hapticFeedback("GESTURE_THRESHOLD_DEACTIVATE")
+		}
 	}
 	const onTouchEnd = (evt: React.TouchEvent<HTMLDivElement>) => {
 		if (swipeState.current?.triggered) {
