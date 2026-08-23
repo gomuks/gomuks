@@ -232,14 +232,29 @@ div.emoji-picker, div.sticker-picker {
 
 @media screen and (max-width: 37.5rem) {
 	div.emoji-picker, div.gif-picker, div.sticker-picker {
-		inset: var(--window-top-margin) 0 3rem 0 !important;
+		inset: auto 0 var(--window-bottom-margin) 0 !important;
 		width: 100%;
-		height: calc(100% - 3rem);
+		max-height: calc(100vh - 4rem - var(--window-top-margin));
 		border-radius: 0;
+		animation: picker-slide-up 100ms linear;
+
+		@media (prefers-reduced-motion: reduce) {
+			animation: none;
+		}
 	}
 
 	div.gif-picker > div.gif-list > div.gif-entry {
 		max-width: 33%;
+	}
+}
+
+@keyframes picker-slide-up {
+	from {
+		transform: translateY(100%);
+	}
+
+	to {
+		transform: translateY(0);
 	}
 }
 
