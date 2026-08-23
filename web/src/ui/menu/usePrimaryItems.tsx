@@ -75,9 +75,15 @@ export const usePrimaryItems = (
 			emojiPickerHeight = 34 * 16
 		}
 		setForceOpen?.(true)
+		const emojiPickerStyle = style ? {
+			top: style.top,
+			bottom: style.bottom,
+			left: style.left,
+			right: style.right,
+		} : getModalStyleFromButton(mevt.currentTarget, emojiPickerHeight)
 		openModal({
 			content: <EmojiPicker
-				style={style ?? getModalStyleFromButton(mevt.currentTarget, emojiPickerHeight)}
+				style={emojiPickerStyle}
 				onSelect={emoji => {
 					client.sendEvent(evt.room_id, "m.reaction", emojiToReactionContent(emoji, evt.event_id))
 						.catch(err => window.alert(`Failed to send reaction: ${err}`))
