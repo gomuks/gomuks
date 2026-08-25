@@ -26,6 +26,7 @@ div.room-list-wrapper {
 div.room-list {
 	background-color: var(--room-list-background-overlay);
 	overflow-y: auto;
+	overscroll-behavior-y: contain;
 	grid-area: roomlist;
 	padding-bottom: var(--window-bottom-margin);
 }
@@ -73,6 +74,7 @@ div.space-bar {
 	background-color: var(--space-list-background-overlay);
 	grid-area: spacebar;
 	overflow: auto;
+	overscroll-behavior-y: contain;
 	scrollbar-width: none;
 	padding-top: var(--window-top-margin);
 

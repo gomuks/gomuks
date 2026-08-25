@@ -1,6 +1,7 @@
 div.timeline-view {
 	overflow-y: scroll;
 	overflow-x: hidden;
+	overscroll-behavior-y: contain;
 
 	display: flex;
 	flex-direction: column;

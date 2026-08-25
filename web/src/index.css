@@ -204,6 +204,11 @@ html {
 	inset: 0;
 }
 
+html, body, #root {
+	overflow: hidden;
+	overscroll-behavior-y: none;
+}
+
 main {
 	background-color: var(--background-color);
 }
