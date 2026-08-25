@@ -18,4 +18,5 @@ var upgrades embed.FS
 var Table = dbutil.BuildUpgradeTable().
 	WithFS(upgrades).
 	With(upgradeV17).
+	With(upgradeV27).
 	Finish()
