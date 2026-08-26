@@ -28,3 +28,7 @@ div.timeline-view {
 		padding-bottom: 2rem;
 	}
 }
+
+div.modal-box-inner > div.timeline-view {
+	overscroll-behavior-y: auto;
+}
