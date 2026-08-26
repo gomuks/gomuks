@@ -17,10 +17,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/tidwall/gjson"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
-	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -250,6 +248,7 @@ Loop:
 	}
 	if perMessageProfile != nil {
 		content.BeeperPerMessageProfile = perMessageProfile
+		content.AddPerMessageProfileFallback()
 	}
 	if content.Mentions == nil {
 		content.Mentions = &event.Mentions{}
@@ -299,7 +298,7 @@ Loop:
 		content.MsgType = ""
 		evtType = event.EventSticker
 	}
-	return h.send(ctx, roomID, evtType, &event.Content{Parsed: content, Raw: extra}, origText, unencrypted, false, false, ts)
+	return h.send(ctx, roomID, evtType, &event.Content{Parsed: content, Raw: extra}, origText, unencrypted, false, ts)
 }
 
 func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.EventID, receiptType event.ReceiptType) error {
@@ -370,7 +369,7 @@ func (h *HiClient) Send(
 	disableEncryption bool,
 	synchronous bool,
 ) (*database.Event, error) {
-	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, false, 0)
+	return h.send(ctx, roomID, evtType, content, "", disableEncryption, synchronous, 0)
 }
 
 func (h *HiClient) Resend(ctx context.Context, txnID string) (*database.Event, error) {
@@ -389,7 +388,7 @@ func (h *HiClient) Resend(ctx context.Context, txnID string) (*database.Event, e
 		return nil, fmt.Errorf("unknown room")
 	}
 	dbEvt.SendError = ""
-	go h.actuallySend(context.WithoutCancel(ctx), room, dbEvt, event.Type{Type: dbEvt.Type, Class: event.MessageEventType}, false, false, false)
+	go h.actuallySend(context.WithoutCancel(ctx), room, dbEvt, event.Type{Type: dbEvt.Type, Class: event.MessageEventType}, false, false)
 	return dbEvt, nil
 }
 
@@ -401,7 +400,6 @@ func (h *HiClient) send(
 	overrideEditSource string,
 	disableEncryption bool,
 	synchronous bool,
-	noFallbacks bool,
 	ts int64,
 ) (*database.Event, error) {
 	room, err := h.DB.Room.Get(ctx, roomID)
@@ -467,9 +465,9 @@ func (h *HiClient) send(
 		}
 	}()
 	if synchronous {
-		h.actuallySend(ctx, room, dbEvt, evtType, true, overrideTimestamp, noFallbacks)
+		h.actuallySend(ctx, room, dbEvt, evtType, true, overrideTimestamp)
 	} else {
-		go h.actuallySend(ctx, room, dbEvt, evtType, false, overrideTimestamp, noFallbacks)
+		go h.actuallySend(ctx, room, dbEvt, evtType, false, overrideTimestamp)
 	}
 	return dbEvt, nil
 }
@@ -485,36 +483,6 @@ func (h *HiClient) getSendLock(roomID id.RoomID) *sync.Mutex {
 	return l
 }
 
-var pmpPath = exgjson.Path("com.beeper.per_message_profile")
-var editPMPPath = exgjson.Path("m.new_content", "com.beeper.per_message_profile")
-
-func (h *HiClient) addFallbacks(ctx context.Context, evtType string, content json.RawMessage) json.RawMessage {
-	if evtType != event.EventMessage.Type {
-		return content
-	}
-	if gjson.GetBytes(content, pmpPath).IsObject() || gjson.GetBytes(content, editPMPPath).IsObject() {
-		var parsedContent event.Content
-		if json.Unmarshal(content, &parsedContent) != nil || parsedContent.ParseRaw(event.EventMessage) != nil {
-			return content
-		}
-		msg, ok := parsedContent.Parsed.(*event.MessageEventContent)
-		if !ok {
-			return content
-		}
-		if msg.NewContent != nil {
-			msg = msg.NewContent
-		}
-		if msg.BeeperPerMessageProfile != nil && !msg.BeeperPerMessageProfile.HasFallback && msg.BeeperPerMessageProfile.Displayname != "" {
-			msg.AddPerMessageProfileFallback()
-			updatedContent, _ := json.Marshal(&parsedContent)
-			if updatedContent != nil {
-				content = updatedContent
-			}
-		}
-	}
-	return content
-}
-
 func (h *HiClient) actuallySend(
 	ctx context.Context,
 	room *database.Room,
@@ -522,7 +490,6 @@ func (h *HiClient) actuallySend(
 	evtType event.Type,
 	synchronous bool,
 	overrideTimestamp bool,
-	noFallbacks bool,
 ) {
 	if !synchronous {
 		l := h.getSendLock(room.ID)
@@ -548,11 +515,7 @@ func (h *HiClient) actuallySend(
 	var sendContent json.RawMessage
 	if dbEvt.Decrypted != nil && len(dbEvt.Content) <= 2 {
 		var encryptedContent *event.EncryptedEventContent
-		decryptedContent := dbEvt.Decrypted
-		if !noFallbacks {
-			decryptedContent = h.addFallbacks(ctx, dbEvt.DecryptedType, dbEvt.Decrypted)
-		}
-		encryptedContent, err = h.Encrypt(ctx, room, evtType, decryptedContent)
+		encryptedContent, err = h.Encrypt(ctx, room, evtType, dbEvt.Decrypted)
 		if err != nil {
 			dbEvt.SendError = fmt.Sprintf("failed to encrypt: %v", err)
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to encrypt event")
@@ -573,8 +536,6 @@ func (h *HiClient) actuallySend(
 			zerolog.Ctx(ctx).Err(err).Msg("Failed to save event after encryption")
 			return
 		}
-	} else if !noFallbacks {
-		sendContent = h.addFallbacks(ctx, dbEvt.Type, dbEvt.Content)
 	} else {
 		sendContent = dbEvt.Content
 	}

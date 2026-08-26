@@ -102,6 +102,7 @@ export enum UnreadType {
 
 export interface LocalContent {
 	sanitized_html?: string
+	preview_text?: string
 	edit_source?: string
 	html_version?: number
 	was_plaintext?: boolean

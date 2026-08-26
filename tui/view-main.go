@@ -285,13 +285,10 @@ func (view *MainView) NotifyMessage(room *store.RoomStore, notif jsoncmd.SyncNot
 		debug.Print("Not sending notification: room is focused")
 		return
 	}
-	body := notif.Event.GetMautrixContent().AsMessage().Body
+	body := notif.Event.LocalContent.PreviewText
 	if len(body) == 0 {
 		debug.Print("Not sending notification with empty body")
 		return
-	}
-	if len(body) > 400 {
-		body = body[:350] + " […]"
 	}
 	memberEvt := room.GetMember(notif.Event.Sender)
 	notifTitle := notif.Event.Sender.Localpart()

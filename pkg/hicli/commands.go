@@ -333,7 +333,7 @@ func (h *HiClient) handleCmdRawInternal(ctx context.Context, roomID id.RoomID, a
 		}
 		return nil
 	} else {
-		evt, err := h.send(ctx, roomID, event.Type{Type: args.EventType}, jsonData, "", unencrypted, false, true, 0)
+		evt, err := h.send(ctx, roomID, event.Type{Type: args.EventType}, jsonData, "", unencrypted, false, 0)
 		if err != nil {
 			return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
 		}
@@ -500,7 +500,7 @@ func (h *HiClient) handleCmdPoll(ctx context.Context, roomID id.RoomID, args pol
 			},
 		}
 	}
-	evt, err := h.send(ctx, roomID, event.EventUnstablePollStart, content, "", false, false, true, 0)
+	evt, err := h.send(ctx, roomID, event.EventUnstablePollStart, content, "", false, false, 0)
 	if err != nil {
 		return database.MakeFakeEvent(roomID, fmt.Sprintf("Failed to send event: %s", html.EscapeString(err.Error())))
 	}

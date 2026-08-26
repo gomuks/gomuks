@@ -36,18 +36,15 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 	if (!evt) {
 		return ["", null]
 	}
-	if ((evt.type === "m.room.message" || evt.type === "m.sticker") && typeof evt.content.body === "string") {
+	const previewText = evt.local_content?.preview_text
+	if (previewText) {
 		// eslint-disable-next-line react-hooks/rules-of-hooks
 		const client = use(ClientContext)!
 		const displayname = evt.sender === client.userID
 			? "You"
 			: getDisplayname(evt.sender, senderMemberEvt?.content as MemberEventContent)
-		let previewText = evt.content.body
-		if (evt.content.formatted_body?.includes?.("data-mx-spoiler")) {
-			previewText = "<message contains spoilers>"
-		}
 		return [
-			`${displayname}: ${evt.content.body}`,
+			`${displayname}: ${previewText}`,
 			<>
 				<span className="bidi-isolate">
 					{displayname.length > 16 ? displayname.slice(0, 12) + "…" : displayname}

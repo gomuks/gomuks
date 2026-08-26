@@ -666,7 +666,7 @@ export class StateStore {
 
 	showNotification(room: RoomStateStore, rowid: EventRowID, sound: boolean) {
 		const evt = room.eventsByRowID.get(rowid)
-		if (!evt || typeof evt.content.body !== "string") {
+		if (!evt || !evt.local_content?.preview_text) {
 			return
 		}
 		if (sound) {
@@ -676,17 +676,13 @@ export class StateStore {
 			// Notifications are sent by the main process
 			return
 		}
-		let body = evt.content.body
-		if (body.length > 400) {
-			body = body.slice(0, 350) + " […]"
-		}
 		const memberEvt = room.getStateEvent("m.room.member", evt.sender)
 		const icon = `${getAvatarThumbnailURL(evt.sender, memberEvt?.content)}&image_auth=${this.imageAuthToken}`
 		const roomName = room.meta.current.name ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
 		const notif = new Notification(title, {
-			body,
+			body: evt.local_content?.preview_text,
 			icon,
 			badge: "gomuks.png",
 			// timestamp: evt.timestamp,
