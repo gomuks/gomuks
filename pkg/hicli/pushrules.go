@@ -127,7 +127,7 @@ func (h *HiClient) evaluatePushRules(ctx context.Context, llSummary *mautrix.Laz
 		msg, ok := evt.Content.Parsed.(*event.MessageEventContent)
 		// TODO make the number configurable and/or consider room settings?
 		if ok && msg.Mentions != nil && len(msg.Mentions.UserIDs) > 15 {
-			return baseType, combinedRuleID
+			return baseType, "gomuks:suppress_mention_spam"
 		}
 	}
 	if should.Notify {
