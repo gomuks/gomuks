@@ -189,7 +189,7 @@ const UserExtendedProfile = ({
 		{profile && <button onClick={viewExtensibleProfile}>Global profile</button>}
 		{memberEvt && room && <button onClick={viewMemberEvent}>Member event</button>}
 	</div>
-	const baseContent = ((memberEvt && room) || loading) ? <div className="extended-profile">
+	const baseContent = ((memberEvt && room) || loading || errors) ? <div className="extended-profile">
 		{loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
 		<UserInfoError errors={errors}/>
 		{viewButtons}
