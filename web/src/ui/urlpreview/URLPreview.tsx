@@ -80,10 +80,17 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 
 	const previewingURL = preview["og:url"] ?? preview.matched_url ?? url
 	const title = preview["og:title"] ?? preview["og:url"] ?? previewingURL
+	const onClickContainer = (evt: React.MouseEvent<HTMLDivElement>) => {
+		if (!forceShowImage) {
+			setForceShowImage(true)
+			evt.preventDefault()
+			evt.stopPropagation()
+		}
+	}
 	const mediaContainer = <div
 		className="media-container"
 		style={style.container}
-		onClick={() => setForceShowImage(true)}
+		onClick={onClickContainer}
 	>
 		{showPreviewImages ? <img
 			loading="lazy"
