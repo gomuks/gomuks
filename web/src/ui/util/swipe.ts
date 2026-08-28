@@ -26,6 +26,9 @@ const hasHorizontalScroller = (target: HTMLElement | null, parent: HTMLDivElemen
 	if (target === parent || !target) {
 		return false
 	}
+	if (target.classList.contains("leaflet-container") || target.nodeName === "IFRAME") {
+		return true
+	}
 	if (target.scrollWidth > target.clientWidth) {
 		const style = window.getComputedStyle(target)
 		if (style.overflowX === "scroll" || style.overflowX === "auto") {
