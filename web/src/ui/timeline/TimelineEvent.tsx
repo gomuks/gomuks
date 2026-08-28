@@ -192,7 +192,7 @@ const TimelineEvent = ({
 	const enableTouchMenu = isMobileDevice && !disableMenu
 	const onClick = (mouseEvt: React.MouseEvent<HTMLDivElement>) => {
 		const targetElem = mouseEvt.target as HTMLElement
-		if (targetElem.closest("a, img, video, summary")) {
+		if (targetElem.closest("a, img, video, summary, iframe, div.media-container, div.location-container.leaflet")) {
 			return
 		}
 
