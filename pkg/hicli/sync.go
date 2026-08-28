@@ -769,15 +769,18 @@ const CurrentHTMLSanitizerVersion = 16
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
 	realType := cmp.Or(evt.DecryptedType, evt.Type)
 	if (realType != event.EventMessage.Type && realType != event.EventSticker.Type) ||
-		evt.LocalContent == nil || evt.LocalContent.HTMLVersion >= CurrentHTMLSanitizerVersion {
+		(evt.LocalContent != nil && evt.LocalContent.HTMLVersion >= CurrentHTMLSanitizerVersion) {
 		return
 	}
+	origVal := evt.LocalContent
 	evt.LocalContent, _ = h.calculateLocalContent(ctx, evt, evt.AsRawMautrix())
-	err := h.DB.Event.UpdateLocalContent(ctx, evt)
-	if err != nil {
-		zerolog.Ctx(ctx).Err(err).
-			Stringer("event_id", evt.ID).
-			Msg("Failed to update local content")
+	if origVal != evt.LocalContent {
+		err := h.DB.Event.UpdateLocalContent(ctx, evt)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).
+				Stringer("event_id", evt.ID).
+				Msg("Failed to update local content")
+		}
 	}
 }
 
