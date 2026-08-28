@@ -398,6 +398,9 @@ const TimelineEvent = ({
 				<BodyType room={roomCtx.store} sender={memberEvt} event={evt}/>
 				{!isSmallBodyType && !isRedacted && <EventURLPreviews room={roomCtx.store} event={evt}/>}
 			</ContentErrorBoundary>
+			{evt.send_error && evt.send_error !== "not sent" ? <div className="event-send-error">
+				{evt.send_error}
+			</div> : null}
 			{(viewType !== "edit-history" && editEventTS) ? <div
 				className="event-edited"
 				title={`Edited at ${formatFullTime(editEventTS)}`}

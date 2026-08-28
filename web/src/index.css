@@ -23,6 +23,7 @@
 	--primary-color: #00c853;
 	--primary-color-dark: #00b24a;
 	--error-color: red;
+	--error-text-color: darkred;
 
 	--border-color: #ccc;
 	--pill-background-color: #ccc;
@@ -129,6 +130,7 @@
 		--primary-color: #00b24a;
 		--primary-color-dark: #00c853;
 		--error-color: red;
+		--error-text-color: pink;
 
 		--border-color: #222;
 		--pill-background-color: #222;

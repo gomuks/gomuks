@@ -128,6 +128,12 @@ div.timeline-event {
 			user-select: none;
 			cursor: var(--clickable-cursor);
 		}
+
+		> div.event-send-error {
+			color: var(--error-text-color);
+			font-weight: bold;
+			font-family: var(--monospace-font-stack);
+		}
 	}
 
 	> div.event-send-status {
