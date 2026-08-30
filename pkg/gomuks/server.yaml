@@ -68,14 +68,69 @@ paths:
   /websocket:
     get:
       tags: [rpc]
-      summary: Connect to the RPC API
+      summary: Connect to the RPC API via websocket
       description: See the [RPC API docs](https://spec.mau.fi/gomuks/rpc.html) for more info
       operationId: websocket
       security:
+        - basic_auth:
         - cookie_auth:
       responses:
         "101":
           description: Connection successful
+        "401":
+          description: Auth cookie missing
+  /sse:
+    get:
+      tags: [rpc]
+      summary: Connect to the RPC API via Server-Sent Events
+      description: See the [RPC API docs](https://spec.mau.fi/gomuks/rpc.html) for more info
+      operationId: sse
+      security:
+      - basic_auth:
+      - cookie_auth:
+      responses:
+        "200":
+          description: Connection successful
+          content:
+            text/event-stream:
+              schema:
+                type: string
+            application/jsonl:
+              schema:
+                oneOf:
+                - type: null
+                - $ref: "#/components/schemas/Event"
+        "401":
+          description: Auth cookie missing
+  /sse/ping:
+    get:
+      tags: [rpc]
+      summary: Send an acknowledgement for events received via the SSE endpoint.
+      operationId: ssePing
+      parameters:
+      - name: run_id
+        in: query
+        description: The run ID received from the SSE connection
+        schema:
+          type: integer
+      - name: listener_id
+        in: query
+        description: The listener ID received from the SSE connection
+        schema:
+          type: integer
+      - name: last_received_event
+        in: query
+        description: The ID of the most recently received event
+        schema:
+          type: integer
+      security:
+      - basic_auth:
+      - cookie_auth:
+      responses:
+        "200":
+          description: Events acknowledged successfully
+        "400":
+          description: Mismatching parameters
         "401":
           description: Auth cookie missing
   /exec/{command}:
@@ -115,6 +170,7 @@ paths:
         "401":
           description: Auth cookie missing
       security:
+        - basic_auth:
         - cookie_auth:
   /upload:
     post:
@@ -189,6 +245,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
       security:
+        - basic_auth:
         - cookie_auth:
   /media/{server}/{media_id}:
     get:
@@ -246,6 +303,8 @@ paths:
         - image_auth:
 components:
   schemas:
+    Event:
+      type: object
     Error:
       type: object
       properties:
