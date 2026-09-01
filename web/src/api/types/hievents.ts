@@ -60,6 +60,7 @@ export interface SendCompleteEvent extends BaseRPCCommand<SendCompleteData> {
 export interface EventsDecryptedData {
 	room_id: RoomID
 	preview_event_rowid?: EventRowID
+	sorting_timestamp?: number
 	events: RawDBEvent[]
 }
 

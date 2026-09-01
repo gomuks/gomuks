@@ -135,13 +135,12 @@ func (gmx *Gomuks) getNotificationUser(ctx context.Context, roomID id.RoomID, us
 }
 
 func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif jsoncmd.SyncNotification) *PushNewMessage {
-	evtType := notif.Event.Type
+	evtType := notif.Event.GetType()
 	rawContent := notif.Event.Content
-	if evtType == event.EventEncrypted.Type {
-		evtType = notif.Event.DecryptedType
+	if notif.Event.Decrypted != nil {
 		rawContent = notif.Event.Decrypted
 	}
-	if evtType != event.EventMessage.Type && evtType != event.EventSticker.Type {
+	if evtType != event.EventMessage && evtType != event.EventSticker {
 		return nil
 	}
 	var content event.MessageEventContent
@@ -167,7 +166,7 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 	if len(roomName) > 50 {
 		roomName = roomName[:50] + "…"
 	}
-	if content.MsgType == event.MsgImage || evtType == event.EventSticker.Type {
+	if content.MsgType == event.MsgImage || evtType == event.EventSticker {
 		if content.File != nil && content.File.URL != "" {
 			parsed := content.File.URL.ParseOrIgnore()
 			if len(content.File.URL) < 255 && parsed.IsValid() {

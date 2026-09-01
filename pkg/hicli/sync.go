@@ -7,7 +7,6 @@
 package hicli
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -680,11 +679,30 @@ func (h *HiClient) generatePreviewText(content *event.MessageEventContent) strin
 	return text
 }
 
+func (h *HiClient) calculatePollStartLocalContent(ctx context.Context, dbEvt *database.Event, evt *event.Event) (*database.LocalContent, []id.ContentURI) {
+	content, ok := evt.Content.Parsed.(*event.PollStartEventContent)
+	if !ok {
+		return dbEvt.LocalContent, nil
+	}
+	question := "Poll: " + content.PollStart.Question.GetText()
+	if len(question) > 400 {
+		question = question[:350] + " […]"
+	}
+	return &database.LocalContent{
+		PreviewText: question,
+		HTMLVersion: CurrentHTMLSanitizerVersion,
+		PushRuleID:  dbEvt.LocalContent.GetPushRuleID(),
+	}, nil
+}
+
 func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Event, evt *event.Event) (*database.LocalContent, []id.ContentURI) {
-	if evt.Type != event.EventMessage && evt.Type != event.EventSticker {
+	if evt.Type != event.EventMessage && evt.Type != event.EventSticker && evt.Type != event.EventUnstablePollStart {
 		return dbEvt.LocalContent, nil
 	}
 	_ = evt.Content.ParseRaw(evt.Type)
+	if evt.Type == event.EventUnstablePollStart {
+		return h.calculatePollStartLocalContent(ctx, dbEvt, evt)
+	}
 	content, ok := evt.Content.Parsed.(*event.MessageEventContent)
 	if !ok {
 		return dbEvt.LocalContent, nil
@@ -767,8 +785,8 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 const CurrentHTMLSanitizerVersion = 16
 
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
-	realType := cmp.Or(evt.DecryptedType, evt.Type)
-	if (realType != event.EventMessage.Type && realType != event.EventSticker.Type) ||
+	evtType := evt.GetType()
+	if (evtType != event.EventMessage && evtType != event.EventSticker && evtType != event.EventUnstablePollStart) ||
 		(evt.LocalContent != nil && evt.LocalContent.HTMLVersion >= CurrentHTMLSanitizerVersion) {
 		return
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/tidwall/gjson"
 	"go.mau.fi/util/exstrings"
+	"go.mau.fi/util/jsontime"
 	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -101,6 +102,7 @@ func (h *HiClient) bgHandleReceivedMegolmSession(
 	}
 	if len(decrypted) > 0 {
 		var newPreview database.EventRowID
+		var newSortingTimestamp jsontime.UnixMilli
 		err := h.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 			for _, evt := range decrypted {
 				err := h.DB.Event.UpdateDecrypted(ctx, evt)
@@ -108,12 +110,15 @@ func (h *HiClient) bgHandleReceivedMegolmSession(
 					return fmt.Errorf("failed to save decrypted content for %s: %w", evt.ID, err)
 				}
 				if evt.CanUseForPreview() {
-					var previewChanged bool
-					previewChanged, err = h.DB.Room.UpdatePreviewIfLaterOnTimeline(ctx, evt.RoomID, evt.RowID)
+					changedPreview, changedSortingTimestamp, err := h.DB.Room.UpdatePreviewIfLaterOnTimeline(ctx, evt.RoomID, evt.RowID, evt.Timestamp)
 					if err != nil {
 						return fmt.Errorf("failed to update room %s preview to %d: %w", evt.RoomID, evt.RowID, err)
-					} else if previewChanged {
-						newPreview = evt.RowID
+					}
+					if changedPreview != 0 {
+						newPreview = changedPreview
+					}
+					if !changedSortingTimestamp.IsZero() {
+						newSortingTimestamp = changedSortingTimestamp
 					}
 				}
 			}
@@ -122,7 +127,12 @@ func (h *HiClient) bgHandleReceivedMegolmSession(
 		if err != nil {
 			log.Err(err).Msg("Failed to save decrypted events")
 		} else {
-			h.EventHandler(&jsoncmd.EventsDecrypted{Events: decrypted, PreviewEventRowID: newPreview, RoomID: roomID})
+			h.EventHandler(&jsoncmd.EventsDecrypted{
+				Events:            decrypted,
+				PreviewEventRowID: newPreview,
+				SortingTimestamp:  newSortingTimestamp,
+				RoomID:            roomID,
+			})
 		}
 	}
 }

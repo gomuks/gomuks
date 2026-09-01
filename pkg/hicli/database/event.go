@@ -745,28 +745,20 @@ func (e *Event) GetNonPushUnreadType() UnreadType {
 	if e.RelationType == event.RelReplace || e.RedactedBy != "" {
 		return UnreadTypeNone
 	}
-	switch e.Type {
-	case event.EventMessage.Type, event.EventSticker.Type, event.EventUnstablePollStart.Type:
+	switch e.GetType() {
+	case event.EventMessage, event.EventSticker, event.EventUnstablePollStart:
 		return UnreadTypeNormal
-	case event.EventEncrypted.Type:
-		switch e.DecryptedType {
-		case event.EventMessage.Type, event.EventSticker.Type, event.EventUnstablePollStart.Type:
-			return UnreadTypeNormal
-		}
 	}
 	return UnreadTypeNone
 }
 
 func (e *Event) CanUseForPreview() bool {
-	return (e.Type == event.EventMessage.Type || e.Type == event.EventSticker.Type ||
-		(e.Type == event.EventEncrypted.Type &&
-			(e.DecryptedType == event.EventMessage.Type || e.DecryptedType == event.EventSticker.Type))) &&
-		e.RelationType != event.RelReplace && e.RedactedBy == ""
-}
-
-func (e *Event) BumpsSortingTimestamp() bool {
-	return (e.Type == event.EventMessage.Type || e.Type == event.EventSticker.Type || e.Type == event.EventEncrypted.Type) &&
-		e.RelationType != event.RelReplace
+	switch e.GetType() {
+	case event.EventMessage, event.EventSticker, event.EventUnstablePollStart:
+		return e.RelationType != event.RelReplace && e.RedactedBy == ""
+	default:
+		return false
+	}
 }
 
 func MakeFakeEvent(roomID id.RoomID, html string) *Event {

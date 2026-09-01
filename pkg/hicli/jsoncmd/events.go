@@ -139,12 +139,13 @@ type SyncStatus struct {
 	Type       SyncStatusType     `json:"type"`
 	Error      string             `json:"error,omitempty"`
 	ErrorCount int                `json:"error_count"`
-	LastSync   jsontime.UnixMilli `json:"last_sync,omitempty"`
+	LastSync   jsontime.UnixMilli `json:"last_sync,omitzero"`
 }
 
 type EventsDecrypted struct {
 	RoomID            id.RoomID           `json:"room_id"`
-	PreviewEventRowID database.EventRowID `json:"preview_event_rowid,omitempty"`
+	PreviewEventRowID database.EventRowID `json:"preview_event_rowid,omitzero"`
+	SortingTimestamp  jsontime.UnixMilli  `json:"sorting_timestamp,omitzero"`
 	Events            []*database.Event   `json:"events"`
 }
 

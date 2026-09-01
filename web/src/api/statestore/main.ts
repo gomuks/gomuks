@@ -388,6 +388,20 @@ export class StateStore {
 		}
 	}
 
+	get #sortFunc(): SortFunc {
+		let sortFunc: SortFunc = timestampSort
+		if (this.preferences.alphabetical_order) {
+			sortFunc = alphabeticalSort
+		}
+		if (this.preferences.pin_favorites) {
+			sortFunc = chainedSort(favoriteSort, sortFunc)
+		}
+		if (this.preferences.pin_low_priority) {
+			sortFunc = chainedSort(lowPrioritySort, sortFunc)
+		}
+		return sortFunc
+	}
+
 	applySync(sync: SyncCompleteData) {
 		let prevActiveRoom: RoomID | null = null
 		if (sync.clear_state && this.rooms.size > 0) {
@@ -499,17 +513,6 @@ export class StateStore {
 			this.stateCache?.deleteInvitedRoom(roomID)
 		}
 
-		let sortFunc: SortFunc = timestampSort
-		if (this.preferences.alphabetical_order) {
-			sortFunc = alphabeticalSort
-		}
-		if (this.preferences.pin_favorites) {
-			sortFunc = chainedSort(favoriteSort, sortFunc)
-		}
-		if (this.preferences.pin_low_priority) {
-			sortFunc = chainedSort(lowPrioritySort, sortFunc)
-		}
-
 		if (sync.space_edges) {
 			// Ensure all space stores exist first
 			for (const spaceID of Object.keys(sync.space_edges)) {
@@ -526,6 +529,7 @@ export class StateStore {
 			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
 		}
 
+		const sortFunc = this.#sortFunc
 		let updatedRoomList: RoomListEntry[] | undefined
 		if (resyncRoomList) {
 			updatedRoomList = this.inviteRooms.values().toArray()
@@ -717,14 +721,20 @@ export class StateStore {
 			return
 		}
 		room.applyDecrypted(decrypted)
-		if (decrypted.preview_event_rowid) {
+		if (decrypted.preview_event_rowid || decrypted.sorting_timestamp) {
 			const idx = this.roomList.current.findIndex(entry => entry.room_id === decrypted.room_id)
 			if (idx !== -1) {
-				const updatedRoomList = [...this.roomList.current]
-				updatedRoomList[idx] = {
-					...updatedRoomList[idx],
-					preview_event: room.eventsByRowID.get(decrypted.preview_event_rowid),
+				const updatedEntry = { ...this.roomList.current[idx] }
+				if (decrypted.preview_event_rowid) {
+					updatedEntry.preview_event = room.eventsByRowID.get(decrypted.preview_event_rowid)
 				}
+				if (decrypted.sorting_timestamp) {
+					updatedEntry.sorting_timestamp = decrypted.sorting_timestamp
+				}
+				const updatedRoomList = this.roomList.current.filter(entry => entry.room_id !== decrypted.room_id)
+				const sortFunc = this.#sortFunc
+				const indexToPushAt = updatedRoomList.findLastIndex(val => sortFunc(val, updatedEntry) <= 0)
+				updatedRoomList.splice(indexToPushAt + 1, 0, updatedEntry)
 				this.roomList.emit(updatedRoomList)
 			}
 		}

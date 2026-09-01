@@ -81,11 +81,13 @@ const (
 	`
 	updateRoomPreviewIfLaterOnTimelineQuery = `
 		UPDATE room
-		SET preview_event_rowid = $2, mod_timestamp = unixepoch('subsec')*1000
+		SET preview_event_rowid = $2,
+		    sorting_timestamp = CASE WHEN $3 > sorting_timestamp THEN $3 ELSE sorting_timestamp END,
+		    mod_timestamp = unixepoch('subsec')*1000
 		WHERE room_id = $1
 		  AND COALESCE((SELECT rowid FROM timeline WHERE event_rowid = $2), -1)
 		          > COALESCE((SELECT rowid FROM timeline WHERE event_rowid = preview_event_rowid), 0)
-		RETURNING preview_event_rowid
+		RETURNING preview_event_rowid, sorting_timestamp
 	`
 	recalculateRoomPreviewEventQuery = `
 		SELECT rowid
@@ -157,13 +159,15 @@ func (rq *RoomQuery) BumpModTimestamp(ctx context.Context, roomIDs ...id.RoomID)
 	return rq.Exec(ctx, query, exslices.CastToAny(roomIDs)...)
 }
 
-func (rq *RoomQuery) UpdatePreviewIfLaterOnTimeline(ctx context.Context, roomID id.RoomID, rowID EventRowID) (previewChanged bool, err error) {
-	var newPreviewRowID EventRowID
-	err = rq.GetDB().QueryRow(ctx, updateRoomPreviewIfLaterOnTimelineQuery, roomID, rowID).Scan(&newPreviewRowID)
+func (rq *RoomQuery) UpdatePreviewIfLaterOnTimeline(
+	ctx context.Context, roomID id.RoomID, rowID EventRowID, sortingTimestamp jsontime.UnixMilli,
+) (newPreviewRowID EventRowID, newSortingTimestamp jsontime.UnixMilli, err error) {
+	if sortingTimestamp.After(time.Now()) {
+		sortingTimestamp = jsontime.UnixMilliNow()
+	}
+	err = rq.GetDB().QueryRow(ctx, updateRoomPreviewIfLaterOnTimelineQuery, roomID, rowID, sortingTimestamp).Scan(&newPreviewRowID, &newSortingTimestamp)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
-	} else if err == nil {
-		previewChanged = newPreviewRowID == rowID
 	}
 	return
 }
@@ -384,7 +388,7 @@ func (r *Room) sqlVariables() []any {
 }
 
 func (r *Room) BumpSortingTimestamp(evt *Event) bool {
-	if !evt.BumpsSortingTimestamp() || evt.Timestamp.Before(r.SortingTimestamp.Time) {
+	if !evt.CanUseForPreview() || evt.Timestamp.Before(r.SortingTimestamp.Time) {
 		return false
 	}
 	r.SortingTimestamp = evt.Timestamp
