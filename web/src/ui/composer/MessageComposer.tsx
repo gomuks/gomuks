@@ -53,6 +53,7 @@ import EmojiPicker from "../emojipicker/EmojiPicker.tsx"
 import GIFPicker from "../emojipicker/GIFPicker.tsx"
 import StickerPicker from "../emojipicker/StickerPicker.tsx"
 import { keyToString } from "../keybindings.ts"
+import { buildEffectiveKeymap, loadKeybindOverrides } from "../keyconfig.ts"
 import { ModalContext, modals } from "../modal"
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import { ReplyBody } from "../timeline/ReplyBody.tsx"
@@ -434,6 +435,7 @@ const MessageComposer = () => {
 	const onComposerKeyDown = (evt: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		const inp = evt.currentTarget
 		const fullKey = keyToString(evt)
+		const replyKeys = buildEffectiveKeymap(loadKeybindOverrides())
 		const sendKey = fullKey === "Enter" || fullKey === "Ctrl+Enter"
 			? (room.preferences.ctrl_enter_send ? "Ctrl+Enter" : "Enter")
 			: null
@@ -491,7 +493,7 @@ const MessageComposer = () => {
 		} else if (editing && fullKey === "Escape") {
 			evt.stopPropagation()
 			roomCtx.setEditing(null)
-		} else if (!editing && fullKey === "Ctrl+ArrowUp" && room.preferences.ctrl_arrow_reply) {
+		} else if (!editing && fullKey === replyKeys.reply_prev && room.preferences.ctrl_arrow_reply) {
 			let replyToIdx = replyToEvt ? room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid) : -1
 			if (replyToIdx === -1) {
 				replyToIdx = room.timeline.length - 1
@@ -506,7 +508,7 @@ const MessageComposer = () => {
 				evt.preventDefault()
 			}
 		} else if (!editing && replyToEvt !== null) {
-			if (fullKey === "Ctrl+ArrowDown" && room.preferences.ctrl_arrow_reply) {
+			if (fullKey === replyKeys.reply_next && room.preferences.ctrl_arrow_reply) {
 				const replyToIdx = room.timeline.findIndex(item => item.event_rowid === replyToEvt.rowid)
 				if (replyToIdx >= room.timeline.length - 1) {
 					roomCtx.setReplyTo(null)
