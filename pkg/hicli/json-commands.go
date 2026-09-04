@@ -21,7 +21,6 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
-	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
@@ -77,6 +76,10 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetProfile.RunCtx(ctx, req.Data, h.API.GetProfile)
 	case jsoncmd.ReqSetProfileField:
 		return jsoncmd.SetProfileField.RunCtx(ctx, req.Data, h.API.SetProfileField)
+	case jsoncmd.ReqGetProfileAnnotation:
+		return jsoncmd.GetProfileAnnotation.RunCtx(ctx, req.Data, h.API.GetProfileAnnotation)
+	case jsoncmd.ReqSetProfileAnnotation:
+		return jsoncmd.SetProfileAnnotation.RunCtx(ctx, req.Data, h.API.SetProfileAnnotation)
 	case jsoncmd.ReqGetMutualRooms:
 		return jsoncmd.GetMutualRooms.RunCtx(ctx, req.Data, h.API.GetMutualRooms)
 	case jsoncmd.ReqTrackUserDevices:
@@ -289,26 +292,7 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 		var text event.ExtensibleTextContainer
 		d, _ := json.Marshal(bioData)
 		_ = json.Unmarshal(d, &text)
-		var bioHTML, bioEditSource string
-		for _, repr := range text.Text {
-			switch repr.MimeType {
-			case "text/html":
-				if bioHTML == "" {
-					bioHTML, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
-				}
-			case "text/plain", "":
-				if bioHTML == "" {
-					bioHTML = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
-				}
-			case gomuksInputMime:
-				if params.UserID == h.Account.UserID {
-					bioEditSource = repr.Body
-				}
-			}
-		}
-		if bioEditSource == "" && bioHTML != "" && params.UserID == h.Account.UserID {
-			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bioHTML)
-		}
+		bioHTML, bioEditSource := h.SanitizeUserProfileExtensibleText(params.UserID, text)
 		bio = &jsoncmd.ProfileBio{
 			HTML:       bioHTML,
 			EditSource: bioEditSource,
@@ -363,6 +347,72 @@ func (h *JSONAPI) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.
 
 func (h *JSONAPI) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
 	return h.HiClient.GetOwnDevices(ctx)
+}
+
+func (h *JSONAPI) GetProfileAnnotation(ctx context.Context, params *jsoncmd.GetProfileAnnotationParams) (*jsoncmd.GetProfileAnnotationResponse, error) {
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.NewEventType("dev.zirco.msc4441.profile_annotations"))
+	if err != nil {
+		return nil, err
+	}
+	if accountDataJSON == nil {
+		return &jsoncmd.GetProfileAnnotationResponse{}, nil
+	}
+
+	allAnnotations := make(map[string]event.ExtensibleTextContainer)
+	err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
+	if err != nil {
+		return nil, err
+	}
+
+	userAnnotation, ok := allAnnotations[string(params.UserID)]
+	if !ok {
+		return &jsoncmd.GetProfileAnnotationResponse{}, nil
+	}
+
+	html, editSource := h.SanitizeUserProfileExtensibleText(params.UserID, userAnnotation)
+
+	return &jsoncmd.GetProfileAnnotationResponse{
+		Note: &jsoncmd.ProfileNote{
+			HTML:       html,
+			EditSource: editSource,
+		},
+	}, nil
+}
+
+func (h *JSONAPI) SetProfileAnnotation(ctx context.Context, params *jsoncmd.SetProfileAnnotationParams) (*jsoncmd.SetProfileAnnotationResponse, error) {
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.NewEventType("dev.zirco.msc4441.profile_annotations"))
+	if err != nil {
+		return nil, err
+	}
+
+	allAnnotations := make(map[string]event.ExtensibleTextContainer)
+	if accountDataJSON != nil {
+		err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	extensible := inputTextToExtensible(params.Note)
+
+	allAnnotations[string(params.UserID)] = *extensible
+
+	err = h.Client.SetAccountData(ctx, "dev.zirco.msc4441.profile_annotations", allAnnotations)
+	if err != nil {
+		return nil, err
+	}
+
+	// We send the santitized HTML back, because refreshing the profile
+	// will result in a race condition where the new data has yet to be
+	// echoed back to the client.
+	sanitizedHTML, editSource := h.SanitizeUserProfileExtensibleText(params.UserID, *extensible)
+
+	return &jsoncmd.SetProfileAnnotationResponse{
+		Note: &jsoncmd.ProfileNote{
+			HTML:       sanitizedHTML,
+			EditSource: editSource,
+		},
+	}, nil
 }
 
 func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) (*database.Event, error) {

@@ -10,9 +10,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 
 	"maunium.net/go/mautrix/crypto/canonicaljson"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 )
 
@@ -57,4 +59,25 @@ func (h *HiClient) CalculateRoomID(timestamp int64, content json.RawMessage) (id
 	}
 	pduHash = sha256.Sum256(pduJSON)
 	return id.RoomID("!" + base64.RawURLEncoding.EncodeToString(pduHash[:])), nil
+}
+
+func (h *JSONAPI) SanitizeUserProfileExtensibleText(userID id.UserID, text event.ExtensibleTextContainer) (html string, editSource string) {
+	for _, repr := range text.Text {
+		switch repr.MimeType {
+		case "text/html":
+			if html == "" {
+				html, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
+			}
+		case "text/plain", "":
+			if html == "" {
+				html = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
+			}
+		case gomuksInputMime:
+			editSource = repr.Body
+		}
+	}
+	if editSource == "" && html != "" && userID == h.Account.UserID {
+		editSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, html)
+	}
+	return
 }
