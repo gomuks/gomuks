@@ -33,16 +33,17 @@ export interface RoomPreviewProps {
 	via?: string[]
 	alias?: string
 	invite?: InvitedRoomStore
+	joinReason?: string
 }
 
-const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
+const RoomPreview = ({ roomID, via, alias, invite, joinReason }: RoomPreviewProps) => {
 	const client = use(ClientContext)!
 	const mainScreen = use(MainScreenContext)
 	const [summary, setSummary] = useState<RoomSummary | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [buttonClicked, setButtonClicked] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const [knockRequest, setKnockRequest] = useState<string>("")
+	const [knockRequest, setKnockRequest] = useState<string>(joinReason ?? "")
 	const doKnockRoom = () => {
 		setButtonClicked(true)
 		client.rpc.knockRoom(alias || roomID, alias ? undefined : via, knockRequest || undefined).then(
@@ -63,7 +64,7 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 			realVia = [getServerName(invite.invited_by)]
 		}
 		setButtonClicked(true)
-		client.rpc.joinRoom(alias || roomID, alias ? undefined : realVia, undefined, !!invite).then(
+		client.rpc.joinRoom(alias || roomID, alias ? undefined : realVia, joinReason, !!invite).then(
 			() => console.info("Successfully joined", roomID),
 			err => {
 				setError(`Failed to join room: ${err}`)
@@ -73,7 +74,7 @@ const RoomPreview = ({ roomID, via, alias, invite }: RoomPreviewProps) => {
 	}
 	const doRejectInvite = () => {
 		setButtonClicked(true)
-		client.rpc.leaveRoom(roomID).then(
+		client.rpc.leaveRoom(roomID, joinReason).then(
 			() => {
 				console.info("Successfully rejected invite to", roomID)
 				mainScreen.clearActiveRoom()

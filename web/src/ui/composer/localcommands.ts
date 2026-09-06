@@ -25,7 +25,7 @@ import { RoomContextData } from "../roomview/roomcontext.ts"
 import { jumpToEvent } from "../util/jumpToEvent.tsx"
 
 const commandHandlers: { [K in CommandName]?: CommandCallback } = {
-	join: ({ client, mainScreen, reply }, { room_reference }) => {
+	join: ({ client, mainScreen, reply }, { room_reference, reason }) => {
 		if (typeof room_reference !== "string") {
 			return
 		}
@@ -47,6 +47,7 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 						previewMeta: {
 							alias: room_reference,
 							via: res.servers.slice(0, 3),
+							joinReason: reason,
 						},
 					})
 				},
@@ -54,7 +55,7 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 			)
 		} else if (room_reference.startsWith("!")) {
 			mainScreen.setActiveRoom(room_reference, {
-				previewMeta: { via },
+				previewMeta: { via, joinReason: reason },
 				openEventID,
 			})
 		} else if (room_reference.startsWith("@")) {
