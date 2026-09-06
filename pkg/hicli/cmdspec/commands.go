@@ -33,6 +33,7 @@ const (
 	DiscardSession = "discardsession"
 	Devtools       = "devtools"
 	Meow           = "meow"
+	Version        = "version"
 	AddAlias       = "alias add"
 	DelAlias       = "alias del"
 	ConvertToDM    = "converttodm"
@@ -49,6 +50,9 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 		Schema:      cmdschema.PrimitiveTypeString.Schema(),
 		Description: event.MakeExtensibleText("Meow"),
 	}},
+}, {
+	Command:     Version,
+	Description: event.MakeExtensibleText("Get the running version of the gomuks backend"),
 }, {
 	Command:     Join,
 	Aliases:     []string{"open"},

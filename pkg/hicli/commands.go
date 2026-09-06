@@ -22,10 +22,12 @@ import (
 	"go.mau.fi/util/random"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 
 	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 	"go.mau.fi/gomuks/pkg/hicli/database"
+	"go.mau.fi/gomuks/version"
 )
 
 func (h *HiClient) ProcessCommand(
@@ -43,6 +45,8 @@ func (h *HiClient) ProcessCommand(
 		responseText = h.handleCmdDiscardSession(ctx, roomID)
 	case cmdspec.Meow:
 		responseText = "Meow " + gjson.GetBytes(cmd.Arguments, "meow").Str
+	case cmdspec.Version:
+		responseHTML = format.RenderMarkdown(version.Gomuks.MarkdownDescription(), true, false).FormattedBody
 	case cmdspec.Invite:
 		responseText, retErr = callWithParsedArgs(ctx, roomID, cmd.Arguments, relatesTo, h.handleCmdInvite)
 	case cmdspec.Kick:

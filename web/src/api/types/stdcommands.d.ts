@@ -4,6 +4,7 @@ import type { BotCommandList } from "./mxtypes.ts"
 
 export type CommandName =
 	"meow"
+	| "version"
 	| "join"
 	| "leave"
 	| "invite"
