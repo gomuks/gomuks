@@ -166,18 +166,22 @@ func (h *HiClient) handleCmdBan(ctx context.Context, roomID id.RoomID, args invi
 }
 
 type joinArgs struct {
-	RoomReference string `json:"room_reference"`
-	Reason        string `json:"reason"`
+	RoomReference string   `json:"room_reference"`
+	Reason        string   `json:"reason"`
+	Via           []string `json:"via"`
 }
 
 func (h *HiClient) handleCmdJoin(ctx context.Context, _ id.RoomID, args joinArgs, _ *event.RelatesTo) string {
 	roomRef := args.RoomReference
 	req := &mautrix.ReqJoinRoom{
 		Reason: args.Reason,
+		Via:    args.Via,
 	}
 	if url, _ := id.ParseMatrixURIOrMatrixToURL(roomRef); url != nil {
 		roomRef = url.PrimaryIdentifier()
-		req.Via = url.Via
+		if len(url.Via) > 0 {
+			req.Via = url.Via
+		}
 	}
 	if len(roomRef) == 0 || (roomRef[0] != '!' && roomRef[0] != '#') {
 		return "Input is not a room ID or alias"

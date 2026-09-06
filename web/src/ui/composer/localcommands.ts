@@ -18,25 +18,25 @@ import { fakeGomuksSender } from "@/api/statestore"
 import { BotArgumentValue, EventID, RawDBEvent, RoomID, WrappedBotCommand } from "@/api/types"
 import type { CommandName } from "@/api/types/stdcommands.d.ts"
 import { escapeHTML } from "@/util/markdown.ts"
-import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
+import { ensureString, ensureStringArray, matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
 import { MainScreenContextFields } from "../MainScreenContext.ts"
 import { modals } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
 import { jumpToEvent } from "../util/jumpToEvent.tsx"
 
 const commandHandlers: { [K in CommandName]?: CommandCallback } = {
-	join: ({ client, mainScreen, reply }, { room_reference, reason }) => {
+	join: ({ client, mainScreen, reply }, { room_reference, reason, via }) => {
 		if (typeof room_reference !== "string") {
 			return
 		}
 		room_reference = matrixToToMatrixURI(room_reference) ?? room_reference
-		let via: string[] = []
+		let parsedVia = ensureStringArray(via)
 		let openEventID: EventID | undefined
 		if (room_reference.startsWith("matrix:")) {
 			const parsed = parseMatrixURI(room_reference)
 			if (parsed) {
 				room_reference = parsed.identifier
-				via = parsed.params.getAll("via")
+				parsedVia = parsed.params.getAll("via")
 				openEventID = parsed.eventID
 			}
 		}
@@ -47,7 +47,7 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 						previewMeta: {
 							alias: room_reference,
 							via: res.servers.slice(0, 3),
-							joinReason: reason,
+							joinReason: ensureString(reason) || undefined,
 						},
 					})
 				},
@@ -55,7 +55,10 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 			)
 		} else if (room_reference.startsWith("!")) {
 			mainScreen.setActiveRoom(room_reference, {
-				previewMeta: { via, joinReason: reason },
+				previewMeta: {
+					via: parsedVia,
+					joinReason: ensureString(reason) || undefined,
+				},
 				openEventID,
 			})
 		} else if (room_reference.startsWith("@")) {
