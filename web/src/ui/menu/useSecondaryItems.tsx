@@ -15,11 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use } from "react"
 import Client from "@/api/client.ts"
-import { fakeGomuksSender, useRoomMember, useRoomState } from "@/api/statestore"
+import { fakeGomuksMember, fakeGomuksSender, useRoomMember, useRoomState } from "@/api/statestore"
 import { MemDBEvent } from "@/api/types"
 import { quote } from "@/api/types/commands.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { getEventLevel } from "@/util/powerlevel.ts"
+import { ensureString, getLocalpart } from "@/util/validation.ts"
 import { ConfirmWithMessageModal, ModalCloseContext, ModalContext, modals } from "../modal"
 import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
 import JSONView from "../util/JSONView.tsx"
@@ -43,8 +44,8 @@ export const useSecondaryItems = (
 	const closeModal = use(ModalCloseContext)
 	const openModal = use(ModalContext)
 	const onClickViewSource = () => {
-		const copyRawCommand = () => {
-			const contentJSON = JSON.stringify(evt.content, null, "  ")
+		const copyContent = (content: unknown) => {
+			const contentJSON = JSON.stringify(content, null, "  ")
 			if (evt.state_key !== undefined) {
 				navigator.clipboard.writeText(`/rawstate ${evt.type} ${quote(evt.state_key)} ${contentJSON}`)
 			} else {
@@ -52,13 +53,37 @@ export const useSecondaryItems = (
 			}
 			closeModal()
 		}
+		const getBaseContent = () => evt.sender === fakeGomuksSender ? {
+			msgtype: "m.text",
+			body: "",
+			format: "org.matrix.custom.html",
+			formatted_body: evt.local_content!.sanitized_html,
+		} : evt.content
+		const copyRawCommand = () => {
+			copyContent(getBaseContent())
+		}
+		const copyRawCommandWithPMP = () => {
+			const senderMember = roomCtx.store.getStateEvent("m.room.member", evt.sender)
+			copyContent({
+				"com.beeper.per_message_profile": {
+					id: evt.sender,
+					displayname: ensureString(senderMember?.content.displayname) || getLocalpart(evt.sender),
+					avatar_url: senderMember === fakeGomuksMember ? "mxc://maunium.net/nDpAldyJKmHQApuIJhVmprFq"
+						: ensureString(senderMember?.content.avatar_url),
+				},
+				...getBaseContent(),
+			})
+		}
 		openModal({
 			dimmed: true,
 			boxed: true,
 			content: <div>
 				<JSONView data={evt}/>
 				<hr/>
-				<button style={{ padding: ".5rem" }} onClick={copyRawCommand}>Copy /raw command</button>
+				<div className="buttons" style={{ display: "flex" }}>
+					<button style={{ padding: ".5rem" }} onClick={copyRawCommand}>Copy /raw command</button>
+					<button style={{ padding: ".5rem" }} onClick={copyRawCommandWithPMP}>(+ profile)</button>
+				</div>
 			</div>,
 		})
 	}
