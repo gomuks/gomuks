@@ -22,6 +22,7 @@ import { matrixToToMatrixURI, parseMatrixURI } from "@/util/validation.ts"
 import { MainScreenContextFields } from "../MainScreenContext.ts"
 import { modals } from "../modal"
 import { RoomContextData } from "../roomview/roomcontext.ts"
+import { jumpToEvent } from "../util/jumpToEvent.tsx"
 
 const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 	join: ({ client, mainScreen, reply }, { room_reference }) => {
@@ -61,6 +62,8 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 				type: "user",
 				userID: room_reference,
 			})
+		} else if (room_reference.startsWith("$") && window.activeRoomContext) {
+			jumpToEvent(window.activeRoomContext, room_reference)
 		} else {
 			reply(escapedHTML`Invalid room reference <code>${room_reference}</code>`)
 		}
