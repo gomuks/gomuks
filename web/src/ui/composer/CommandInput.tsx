@@ -18,6 +18,7 @@ import { RoomStateStore } from "@/api/statestore"
 import {
 	BotArgumentValue,
 	BotParameter,
+	BotParameterSchema,
 	SingleBotArgumentValue,
 	commandArgsToString,
 	unpackExtensibleText,
@@ -89,6 +90,18 @@ function renderArgumentContent(
 	}
 }
 
+function makeDefaultValue(spec: BotParameterSchema): SingleBotArgumentValue {
+	if (spec.schema_type === "primitive" && spec.type === "boolean") {
+		return false
+	} else if (spec.schema_type === "primitive" && spec.type === "integer") {
+		return 0
+	} else if (spec.schema_type === "union") {
+		return makeDefaultValue(spec.variants[0])
+	} else {
+		return ""
+	}
+}
+
 const CommandArgument = ({ index, spec, value, setValue }: CommandArgumentProps) => {
 	const description = unpackExtensibleText(spec.description) || spec.key
 	const contentID = `cmd-arg-${index}`
@@ -110,11 +123,16 @@ const CommandArgument = ({ index, spec, value, setValue }: CommandArgumentProps)
 			newArr[itemIdx] = itemVal
 			setValue(newArr)
 		}
+		const defVal = makeDefaultValue(spec.schema.items)
+
 		content = <div className="variadic-items">
-			{(value as SingleBotArgumentValue[]).map((item, itemIdx) =>
+			{(value as SingleBotArgumentValue[])?.map((item, itemIdx) =>
 				renderArgumentContent(
 					spec, item, valueSetter(itemIdx), description, contentID, false, onKeyDown, itemIdx,
 				))}
+			<button onClick={() => {
+				setValue([...((value ?? []) as SingleBotArgumentValue[]), defVal])
+			}}>+</button>
 		</div>
 	} else {
 		content = renderArgumentContent(spec, value, setValue, description, contentID, false, onKeyDown)
