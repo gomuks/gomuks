@@ -25,29 +25,37 @@ import (
 
 type Cell struct {
 	Char  rune
+	Comb  []rune
 	Style tcell.Style
 }
 
 func NewStyleCell(char rune, style tcell.Style) Cell {
-	return Cell{char, style}
+	return Cell{Char: char, Style: style}
+}
+
+func NewCombCell(char rune, comb []rune, style tcell.Style) Cell {
+	return Cell{Char: char, Comb: comb, Style: style}
 }
 
 func NewColorCell(char rune, color tcell.Color) Cell {
-	return Cell{char, tcell.StyleDefault.Foreground(color)}
+	return Cell{Char: char, Style: tcell.StyleDefault.Foreground(color)}
 }
 
 func NewCell(char rune) Cell {
-	return Cell{char, tcell.StyleDefault}
+	return Cell{Char: char, Style: tcell.StyleDefault}
 }
 
 func (cell Cell) RuneWidth() int {
+	if cell.Char == 0x10EEEE {
+		return 1
+	}
 	return runewidth.RuneWidth(cell.Char)
 }
 
 func (cell Cell) Draw(screen mauview.Screen, x, y int) (chWidth int) {
 	chWidth = cell.RuneWidth()
 	for runeWidthOffset := 0; runeWidthOffset < chWidth; runeWidthOffset++ {
-		screen.SetContent(x+runeWidthOffset, y, cell.Char, nil, cell.Style)
+		screen.SetContent(x+runeWidthOffset, y, cell.Char, cell.Comb, cell.Style)
 	}
 	return
 }
