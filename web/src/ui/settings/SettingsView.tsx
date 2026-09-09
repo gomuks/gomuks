@@ -25,6 +25,7 @@ import ClientContext from "../ClientContext.ts"
 import BackendManager from "./BackendManager.tsx"
 import CustomCSSInput from "./CustomCSSInput.tsx"
 import EncryptionSettings from "./EncryptionSettings.tsx"
+import KeybindingsSettings from "./KeybindingsSettings.tsx"
 import MiscButtons from "./MiscButtons.tsx"
 import RoomSettings from "./RoomSettings.tsx"
 import SettingsDeck from "./SettingsDeck.tsx"
@@ -40,6 +41,7 @@ interface SettingsViewProps {
 enum SettingsTab {
 	RoomSettings,
 	Preferences,
+	Keybindings,
 	CustomCSS,
 	Encryption,
 	MiscButtons,
@@ -55,6 +57,8 @@ function getContent(tab: SettingsTab, setPref: SetPrefFunc, room?: RoomStateStor
 		return <RoomSettings room={room} />
 	case SettingsTab.Preferences:
 		return <SettingsDeck setPref={setPref} room={room} />
+	case SettingsTab.Keybindings:
+		return <KeybindingsSettings />
 	case SettingsTab.CustomCSS:
 		return <CustomCSSInput setPref={setPref} room={room} />
 	case SettingsTab.Encryption:
@@ -116,6 +120,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		<nav className="tabs">
 			{room && makeTabButton(SettingsTab.RoomSettings, "Room settings")}
 			{makeTabButton(SettingsTab.Preferences, "Preferences")}
+			{makeTabButton(SettingsTab.Keybindings, "Keybindings")}
 			{makeTabButton(SettingsTab.CustomCSS, "Custom CSS")}
 			{makeTabButton(SettingsTab.Encryption, "Encryption")}
 			{makeTabButton(SettingsTab.MiscButtons, "Misc buttons")}

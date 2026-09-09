@@ -329,6 +329,55 @@ div.key-restore-modal-wrapper {
 	max-width: min(30rem, 90vw) !important;
 }
 
+div.settings-tab > div.keybindings-settings {
+	display: flex;
+	flex-direction: column;
+	gap: .75rem;
+	max-width: 36rem;
+
+	> p {
+		margin: 0;
+		color: var(--semisecondary-text-color);
+	}
+
+	> .keybind-error {
+		color: var(--error-color);
+	}
+
+	> .keybind-table {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: .25rem .75rem;
+		align-items: center;
+
+		> .name {
+			font-weight: bold;
+		}
+
+		> button {
+			font-family: var(--monospace-font-stack);
+			padding: .25rem .5rem;
+			min-width: 10rem;
+
+			&.recording {
+				background-color: var(--primary-color-dark);
+				color: var(--inverted-text-color);
+			}
+		}
+	}
+
+	> .keybind-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: .5rem;
+		align-items: center;
+
+		> button {
+			padding: .5rem 1rem;
+		}
+	}
+}
+
 div.key-restore-modal {
 	display: flex;
 	flex-direction: column;
