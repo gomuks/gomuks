@@ -269,15 +269,7 @@ Loop:
 			}
 		}
 	}
-	if len(urlPreviews) > 0 {
-		content.BeeperLinkPreviews = urlPreviews
-	} else if urlPreviews != nil {
-		if extra == nil {
-			extra = map[string]any{}
-		}
-		// Hack to force an empty link previews array
-		extra["com.beeper.linkpreviews"] = []any{}
-	}
+	content.BeeperLinkPreviews = urlPreviews
 	if relatesTo != nil {
 		if relatesTo.Type == event.RelReplace {
 			contentCopy := content

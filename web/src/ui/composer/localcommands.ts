@@ -98,15 +98,19 @@ export function interceptCommand(
 	spec: WrappedBotCommand,
 	inputArgs: BotArgMap,
 ): boolean {
+	const reply = (html: string) => {
+		client.handleOutgoingEvent(makeFakeEvent(roomCtx.store.roomID, html), roomCtx.store)
+	}
 	if (spec.source !== fakeGomuksSender) {
+		if (roomCtx.store.preferences.hide_fingerprint) {
+			reply("External bot commands are disabled when the hide fingerprint option is enabled")
+			return true
+		}
 		return false
 	}
 	const handler = commandHandlers[spec.command as CommandName]
 	if (!handler) {
 		return false
-	}
-	const reply = (html: string) => {
-		client.handleOutgoingEvent(makeFakeEvent(roomCtx.store.roomID, html), roomCtx.store)
 	}
 	handler({ client, mainScreen, roomCtx, reply }, inputArgs)
 	return true

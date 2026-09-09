@@ -169,6 +169,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	hide_fingerprint: new Preference<boolean>({
+		displayName: "Hide fingerprint",
+		description: "Avoid sending data that's easily fingerprintable",
+		allowedContexts: anyContext,
+		defaultValue: false,
+	}),
 	map_provider: new Preference<MapProvider>({
 		displayName: "Map provider",
 		description: "The map provider to use for location messages.",

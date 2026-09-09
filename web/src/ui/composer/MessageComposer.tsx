@@ -324,7 +324,7 @@ const MessageComposer = () => {
 			}
 		}
 		let base_content: MessageEventContent | undefined
-		let extra: Record<string, unknown> | undefined
+		const extra: Record<string, unknown> = {}
 		let text = state.text
 		if (state.media) {
 			base_content = state.media
@@ -334,14 +334,12 @@ const MessageComposer = () => {
 				msgtype: "m.location",
 				geo_uri: `geo:${state.location.lat},${state.location.long}`,
 			}
-			extra = {
-				"org.matrix.msc3488.asset": {
-					type: "m.pin",
-				},
-				"org.matrix.msc3488.location": {
-					uri: `geo:${state.location.lat},${state.location.long}`,
-					description: state.text,
-				},
+			extra["org.matrix.msc3488.asset"] = {
+				type: "m.pin",
+			}
+			extra["org.matrix.msc3488.location"] = {
+				uri: `geo:${state.location.lat},${state.location.long}`,
+				description: state.text,
 			}
 		}
 		if (state.command) {
@@ -360,6 +358,12 @@ const MessageComposer = () => {
 				return
 			}
 		}
+		let url_previews: URLPreviewType[] | undefined = state.previews
+		if (room.preferences.hide_fingerprint) {
+			url_previews = undefined
+		} else {
+			extra["app.gomuks"] = "web"
+		}
 		client.sendMessage({
 			room_id: room.roomID,
 			base_content,
@@ -367,7 +371,7 @@ const MessageComposer = () => {
 			text,
 			relates_to,
 			mentions,
-			url_previews: state.previews,
+			url_previews,
 		}).catch(err => window.alert("Failed to send message: " + err))
 	}
 	const onComposerCaretChange = (
