@@ -54,6 +54,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	auto_generate_url_previews: new Preference<boolean>({
+		displayName: "Autogenerate URL previews",
+		description: "Fetch URL previews automatically while composing messages. Requires Send bundled URL previews to be enabled.",
+		allowedContexts: anyContext,
+		defaultValue: false,
+	}),
 	display_read_receipts: new Preference<boolean>({
 		displayName: "Display read receipts",
 		description: "Should read receipts be rendered in the timeline?",
