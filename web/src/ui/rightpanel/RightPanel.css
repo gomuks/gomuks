@@ -187,7 +187,12 @@ div.right-panel-content.user {
 		max-height: 4rem;
 	}
 
-	div.userid, div.extended-profile, div.devices, div.user-moderation, div.mutual-rooms {
+	div.userid,
+	div.extended-profile,
+	div.profile-notes,
+	div.devices,
+	div.user-moderation,
+	div.mutual-rooms {
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: .5rem;
 		margin-bottom: .5rem;
@@ -228,32 +233,33 @@ div.right-panel-content.user {
 		> .user-info-loader {
 			grid-column: span 2;
 		}
+	}
 
-		> div.profile-small-bio {
-			grid-column: span 2;
+	div.profile-small-bio,
+	div.profile-notes {
+		grid-column: span 2;
 
-			border-left: 2px solid var(--blockquote-border-color);
-			padding-left: .5rem;
+		border-left: 2px solid var(--blockquote-border-color);
+		padding-left: .5rem;
 
-			> div.html-body {
-				display: -webkit-box;
-				-webkit-line-clamp: 5;
-				-webkit-box-orient: vertical;
-				max-height: 12rem;
-				overflow: hidden;
+		> div.html-body {
+			display: -webkit-box;
+			-webkit-line-clamp: 5;
+			-webkit-box-orient: vertical;
+			max-height: 12rem;
+			overflow: hidden;
 
-				img.hicli-custom-emoji {
-					height: 1.5rem;
-				}
-
-				img.hicli-inline-img {
-					max-width: 100%;
-				}
+			img.hicli-custom-emoji {
+				height: 1.5rem;
 			}
 
-			> button {
-				width: 100%;
+			img.hicli-inline-img {
+				max-width: 100%;
 			}
+		}
+
+		> button {
+			width: 100%;
 		}
 	}
 
@@ -406,12 +412,14 @@ div.right-panel-content.user {
 	}
 }
 
-div.profile-full-bio-modal-wrapper {
+div.profile-full-bio-modal-wrapper,
+div.profile-notes-modal-wrapper {
 	--modal-max-width: 40rem;
 	width: 100%;
 }
 
-div.profile-full-bio-modal {
+div.profile-full-bio-modal,
+div.profile-notes-modal {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
