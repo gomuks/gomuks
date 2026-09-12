@@ -37,6 +37,11 @@ div.message-composer {
 			padding: 1rem .5rem;
 			border: none;
 			outline: none;
+
+			&:placeholder-shown {
+				white-space: nowrap;
+				overflow-x: hidden;
+			}
 		}
 
 		> button {
