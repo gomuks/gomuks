@@ -151,14 +151,16 @@ div.room-search-wrapper {
 }
 
 div.room-entry {
+	--room-list-entry-height: 3rem;
+
 	width: 100%;
 	display: flex;
 	gap: .25rem;
 	user-select: none;
 	cursor: var(--clickable-cursor);
-	height: 3rem;
+	height: var(--room-list-entry-height);
 	padding: var(--room-list-padding) 0;
-	contain-intrinsic-height: calc(3rem + var(--room-list-padding) * 2);
+	contain-intrinsic-height: calc(var(--room-list-entry-height) + var(--room-list-padding) * 2);
 	content-visibility: auto;
 	contain: strict;
 
@@ -171,8 +173,8 @@ div.room-entry {
 	}
 
 	> div.room-entry-left {
-		height: 3rem;
-		width: 3rem;
+		height: var(--room-list-entry-height);
+		width: var(--room-list-entry-height);
 		margin-left: .25rem;
 
 		> img.room-avatar {

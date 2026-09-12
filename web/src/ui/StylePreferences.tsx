@@ -112,6 +112,21 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 			display: none;
 		}
 	`, [preferences.show_inline_images])
+	useStyle(() => preferences.compact_room_list && css`
+		div.room-entry {
+			--room-list-entry-height: 2rem;
+
+			> div.room-entry-left > img.room-avatar {
+				width: 1.75rem;
+				height: 1.75rem;
+				margin: .125rem;
+			}
+
+			> div.room-entry-right > div.message-preview {
+				display: none;
+			}
+		}
+	`, [preferences.compact_room_list])
 	useAsyncStyle(() => preferences.code_block_theme === "auto" ? `
 		@import url("_gomuks/codeblock/github.css") (prefers-color-scheme: light);
 		@import url("_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);

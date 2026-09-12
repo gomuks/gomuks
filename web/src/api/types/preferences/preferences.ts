@@ -240,6 +240,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	compact_room_list: new Preference<boolean>({
+		displayName: "Compact room list",
+		description: "Use a compact room list that takes less space and doesn't have message previews",
+		allowedContexts: anyGlobalContext,
+		defaultValue: false,
+	}),
 	pin_favorites: new Preference<boolean>({
 		displayName: "Pin favorites to top",
 		description: "Always keep favorited rooms at the top of the room list, ignoring recent activity.",
