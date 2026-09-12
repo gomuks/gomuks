@@ -26,7 +26,7 @@ div.message-composer {
 	> div.input-area {
 		display: flex;
 		align-items: center;
-		margin-right: .25rem;
+		padding: 0 .25rem;
 
 		> textarea {
 			line-height: 1.25;
@@ -34,7 +34,7 @@ div.message-composer {
 			resize: none;
 			font-family: var(--font-stack);
 			height: auto;
-			padding: .5rem;
+			padding: 1rem .5rem;
 			border: none;
 			outline: none;
 		}
@@ -58,7 +58,8 @@ div.message-composer {
 			margin-right: 0;
 
 			> textarea:not(:empty) {
-				padding: .5rem 0;
+				padding-left: 0;
+				padding-right: 0;
 			}
 		}
 	}
