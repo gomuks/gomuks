@@ -342,7 +342,8 @@ export class StateStore {
 		if (hidden) {
 			return null
 		}
-		const preview_event = room?.eventsByRowID.get(meta.preview_event_rowid)
+		const preview_event = room?.preferences.room_list_preview
+			? room?.eventsByRowID.get(meta.preview_event_rowid) : undefined
 		const name = meta.name ?? "Unnamed room"
 		const tags = room?.accountData.get("m.tag")?.tags
 		const favoriteTag = tags?.["m.favourite"]
@@ -725,7 +726,7 @@ export class StateStore {
 			const idx = this.roomList.current.findIndex(entry => entry.room_id === decrypted.room_id)
 			if (idx !== -1) {
 				const updatedEntry = { ...this.roomList.current[idx] }
-				if (decrypted.preview_event_rowid) {
+				if (decrypted.preview_event_rowid && room.preferences.room_list_preview) {
 					updatedEntry.preview_event = room.eventsByRowID.get(decrypted.preview_event_rowid)
 				}
 				if (decrypted.sorting_timestamp) {

@@ -240,6 +240,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	room_list_preview: new Preference<boolean>({
+		displayName: "Previews in room list",
+		description: "Should the room list have previews of message contents?",
+		allowedContexts: anyContext,
+		defaultValue: true,
+	}),
 	compact_room_list: new Preference<boolean>({
 		displayName: "Compact room list",
 		description: "Use a compact room list that takes less space and doesn't have message previews",
