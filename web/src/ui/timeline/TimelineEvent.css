@@ -9,7 +9,7 @@ div.timeline-event {
 		"cmc                          cmc                        cmc      empty"  0
 		"avatar                       gap                        sender   sender" var(--timeline-avatar-size-half)
 		"avatar                       gap                        content  status" var(--timeline-avatar-size-half)
-		"blank                        gap                        content  blank2" auto
+		"blank                        gap                        content  status" auto
 		/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
 	contain: layout;
 	margin-top: var(--timeline-message-gap);

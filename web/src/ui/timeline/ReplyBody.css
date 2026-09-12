@@ -56,7 +56,7 @@ blockquote.reply-body {
 	}
 
 	&.composer {
-		margin: .5rem .5rem 0;
+		margin: .75rem .75rem 0;
 	}
 
 	&:hover, &.composer, &.timeline-thread-msg {
