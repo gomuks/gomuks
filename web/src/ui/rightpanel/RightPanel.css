@@ -333,7 +333,7 @@ div.right-panel-content.user {
 				height: 1.5rem;
 				width: 1.5rem;
 
-				&.trust-blacklisted, &.trust-unverified.has-master-key {
+				&.trust-blacklisted, &.trust-device-key-mismatch, &.trust-unverified.has-master-key {
 					color: var(--error-color);
 				}
 

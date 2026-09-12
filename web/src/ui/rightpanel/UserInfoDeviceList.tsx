@@ -125,7 +125,7 @@ const DeviceList = ({ client, room, userID }: DeviceListProps) => {
 
 function renderDevice(device: ProfileDevice, hasCSKeys: boolean) {
 	let Icon = EncryptedIcon
-	if (device.trust_state === "blacklisted") {
+	if (device.trust_state === "blacklisted" || device.trust_state === "device-key-mismatch") {
 		Icon = EncryptedOffIcon
 	} else if (device.trust_state === "cross-signed-untrusted" || device.trust_state === "unverified") {
 		Icon = EncryptedQuestionIcon
@@ -143,6 +143,8 @@ function trustStateDescription(state: TrustState, hasCSKeys: boolean): string {
 	switch (state) {
 	case "blacklisted":
 		return "Device has been blacklisted manually"
+	case "device-key-mismatch":
+		return "Device has illegally changed its signing key"
 	case "unverified":
 		if (hasCSKeys) {
 			return "Device has not been verified by cross-signing keys"

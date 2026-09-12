@@ -41,7 +41,7 @@ require (
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.30.1-0.20260909174700-4a72c38f181e
+	maunium.net/go/mautrix v0.30.1-0.20260912150738-f37f1cdfc6b3
 	mvdan.cc/xurls/v2 v2.6.0
 )
 

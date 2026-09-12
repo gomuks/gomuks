@@ -294,7 +294,7 @@ export interface JWTLoginRequest {
 
 export type LoginRequest = PasswordLoginRequest | SSOLoginRequest | JWTLoginRequest
 
-export type TrustState = "blacklisted" | "unverified" | "verified"
+export type TrustState = "blacklisted" | "device-key-mismatch" | "unverified" | "verified"
 	| "cross-signed-untrusted" | "cross-signed-tofu" | "cross-signed-verified"
 	| "unknown-device" | "forwarded" | "invalid"
 
