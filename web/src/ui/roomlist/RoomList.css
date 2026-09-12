@@ -210,6 +210,10 @@ div.room-entry {
 		}
 	}
 
+	> div.room-entry-unreads-placeholder {
+		width: .5rem;
+	}
+
 	@container left-panel (max-width: 8rem) {
 		> div.room-entry-right {
 			display: none;

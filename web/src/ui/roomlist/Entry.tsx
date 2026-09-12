@@ -71,7 +71,7 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previ
 			<div className="room-name">{room.name}</div>
 			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
 		</div>
-		<UnreadCount counts={room} />
+		<UnreadCount counts={room} placeholder={<div className="room-entry-unreads-placeholder" />} />
 	</>
 }
 
