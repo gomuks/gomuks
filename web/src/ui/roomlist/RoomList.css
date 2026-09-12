@@ -173,6 +173,7 @@ div.room-entry {
 	> div.room-entry-left {
 		height: 3rem;
 		width: 3rem;
+		margin-left: .25rem;
 
 		> img.room-avatar {
 			margin: .25rem;

@@ -2,12 +2,14 @@ div.timeline-event {
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
-	padding: var(--timeline-vertical-padding) var(--timeline-horizontal-padding);
+	--actual-vertical-padding: var(--timeline-vertical-padding);
+	padding: var(--actual-vertical-padding) var(--timeline-horizontal-padding);
 	display: grid;
 	grid-template:
 		"cmc                          cmc                        cmc      empty"  0
-		"avatar                       gap                        sender   sender" auto
-		"avatar                       gap                        content  status" auto
+		"avatar                       gap                        sender   sender" var(--timeline-avatar-size-half)
+		"avatar                       gap                        content  status" var(--timeline-avatar-size-half)
+		"blank                        gap                        content  blank2" auto
 		/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
 	contain: layout;
 	margin-top: var(--timeline-message-gap);
@@ -68,7 +70,7 @@ div.timeline-event {
 
 		width: var(--timeline-avatar-size);
 		height: var(--timeline-avatar-size);
-		margin-top: 2px;
+		margin-top: var(--timeline-avatar-margin);
 
 		> img.avatar:not(.small) {
 			width: 100%;
@@ -121,6 +123,7 @@ div.timeline-event {
 		overflow: hidden;
 		overflow-wrap: anywhere;
 		contain: content;
+		line-height: 1.375;
 
 		> div.event-edited {
 			font-size: .7rem;
@@ -168,6 +171,8 @@ div.timeline-event {
 	}
 
 	&.same-sender {
+		--actual-vertical-padding: var(--timeline-vertical-padding-same-sender);
+
 		grid-template:
 			"cmc                                cmc     empty"    0
 			"timestamp                          content status" auto
@@ -184,6 +189,8 @@ div.timeline-event {
 	}
 
 	&.small-event {
+		--actual-vertical-padding: var(--timeline-vertical-padding-small-event);
+
 		grid-template:
 			"cmc                                cmc    cmc     empty"    0
 			"timestamp                          avatar content status" auto
@@ -208,6 +215,7 @@ div.timeline-event {
 	}
 
 	&.same-thread {
+		--actual-vertical-padding: var(--timeline-vertical-padding-same-thread);
 		margin-top: var(--timeline-message-gap-same-thread);
 
 		&.same-sender > blockquote.reply-body {

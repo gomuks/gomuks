@@ -91,15 +91,20 @@
 	--room-list-padding: .125rem;
 
 	--timeline-avatar-size: 2.5rem;
+	--timeline-avatar-margin: 2px;
+	--timeline-avatar-size-half: calc(var(--timeline-avatar-size) / 2 + var(--timeline-avatar-margin));
 	--timeline-avatar-gap: .5rem;
 	--timeline-avatar-total-size: calc(var(--timeline-avatar-size) + var(--timeline-avatar-gap));
-	--timeline-message-gap: .5rem;
-	--timeline-message-gap-same-sender: calc(var(--timeline-message-gap) / 2);
+	--timeline-message-gap: .25rem;
+	--timeline-message-gap-same-sender: 0;
 	--timeline-message-gap-small-event: 0;
 	--timeline-message-gap-same-thread: 0;
 	--timeline-sender-name-timestamp-gap: .25rem;
 	--timeline-sender-name-content-gap: 0;
-	--timeline-vertical-padding: 0;
+	--timeline-vertical-padding: .125rem;
+	--timeline-vertical-padding-small-event: 0;
+	--timeline-vertical-padding-same-sender: var(--timeline-vertical-padding);
+	--timeline-vertical-padding-same-thread: var(--timeline-vertical-padding);
 	--timeline-horizontal-padding: 1.5rem;
 	--timeline-status-size: 4rem;
 
