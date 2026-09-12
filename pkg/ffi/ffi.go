@@ -265,7 +265,7 @@ func GomuksHandlePush(handle C.GomuksHandle, data C.GomuksBorrowedBuffer) C.Gomu
 //export GomuksHandlePushAsync
 func GomuksHandlePushAsync(handle C.GomuksHandle, data C.GomuksOwnedBuffer, cb C.ResponseCallback) {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	doAsync(cb, func(buffers [][]byte) C.GomuksResponse {
+	go doAsync(cb, func(buffers [][]byte) C.GomuksResponse {
 		return gmx.handlePush(buffers[0])
 	}, data)
 }
