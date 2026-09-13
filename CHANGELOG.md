@@ -1,3 +1,41 @@
+# v26.09 (unreleased)
+
+### Backend
+* Bumped minimum Go version to 1.26.
+* Added support for handling push notifications from homeserver.
+  * This is meant for clients that use gomuks as an SDK.
+    The web frontend won't use it.
+* Added support for accounts with a broken default SSSS key ID (likely caused
+  by setting up encryption with fluffychat).
+* Added `--update` flag to update the current backend binary and exit.
+* Added preview text to locally calculated content of events and stopped
+  mutating the raw content to remove fallbacks.
+* Added callback-based async methods to the C FFI.
+* Switched macOS CI builds to use goolm.
+* Fixed room sorting timestamp being bumped by all encrypted events instead of
+  only messages.
+
+### Web
+* Added swipe to reply.
+* Added support for jumping to raw event IDs using `/join`.
+* Added button to copy `/raw` command including per-message profile in event
+  source view.
+* Added `/version` command to check the current gomuks version.
+* Added app identifier to outgoing messages.
+* Added compact room list option.
+* Adjusted padding of composer and room list entries.
+* Changed default font to Inter instead of OS defaults.
+* Changed emoji/sticker/gif picker to not take up the entire screen on mobile.
+* Changed message send errors to be rendered more prominently.
+* Re-added support for Tenor in the gif picker.
+* Removed custom top context menu on mobile and changed the standard context
+  menu to open when tapping a message.
+* Disabled the ability to reply to internal command response messages.
+* Fixed message search results not showing date of newest result.
+* Fixed internal command response messages using a federated mxc for the avatar
+  instead of loading it locally.
+* Fixed tall images being stretched in the upload dialog.
+
 # v26.08
 
 ### Backend
