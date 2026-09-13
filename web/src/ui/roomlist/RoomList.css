@@ -175,10 +175,10 @@ div.room-entry {
 	> div.room-entry-left {
 		height: var(--room-list-entry-height);
 		width: var(--room-list-entry-height);
-		margin-left: .25rem;
+		margin: 0 .5rem 0 .75rem;
 
 		> img.room-avatar {
-			margin: .25rem;
+			margin: .25rem 0;
 		}
 	}
 
@@ -188,6 +188,8 @@ div.room-entry {
 		flex-direction: column;
 		overflow: hidden;
 		justify-content: space-around;
+		margin: .25rem 0;
+		line-height: 1.25;
 
 		> div.room-name {
 			font-weight: bold;
