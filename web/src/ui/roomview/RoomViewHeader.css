@@ -14,6 +14,8 @@ div.room-header {
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+		line-height: 1.25;
+		margin-left: .25rem;
 
 		> div.room-name, > div.room-topic {
 			overflow: hidden;
