@@ -77,6 +77,8 @@ main.matrix-login {
 			font-size: 2rem;
 			font-weight: bold;
 			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 			margin-top: .5rem;
 			text-decoration: none;
 

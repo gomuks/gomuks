@@ -43,6 +43,8 @@ div.room-view.preview > div.preview-inner {
 
 		> table > tbody > tr > td:nth-of-type(2) {
 			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 		}
 	}
 

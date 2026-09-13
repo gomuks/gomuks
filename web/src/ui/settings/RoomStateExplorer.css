@@ -111,6 +111,8 @@ div.state-explorer {
 				border-radius: .5rem;
 				outline: none;
 				font-family: var(--monospace-font-stack);
+				font-feature-settings: var(--monospace-font-feature-settings);
+				letter-spacing: var(--monospace-letter-spacing);
 
 				&:focus {
 					border: 1px solid var(--primary-color);

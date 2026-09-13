@@ -71,6 +71,8 @@ div.space-children {
 
 			> span.room-id {
 				font-family: var(--monospace-font-stack);
+				font-feature-settings: var(--monospace-font-feature-settings);
+				letter-spacing: var(--monospace-letter-spacing);
 				opacity: .7;
 				font-size: .75rem;
 			}

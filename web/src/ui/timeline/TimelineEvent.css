@@ -137,6 +137,8 @@ div.timeline-event {
 			color: var(--error-text-color);
 			font-weight: bold;
 			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 		}
 	}
 

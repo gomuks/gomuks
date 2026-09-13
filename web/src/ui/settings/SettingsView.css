@@ -188,6 +188,8 @@ div.settings-tab > div.custom-css-input {
 		border: 1px solid var(--border-color);
 		outline: none;
 		font-family: var(--monospace-font-stack);
+		font-feature-settings: var(--monospace-font-feature-settings);
+		letter-spacing: var(--monospace-letter-spacing);
 	}
 
 	> div.vscode-wrapper {

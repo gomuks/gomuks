@@ -68,6 +68,8 @@ form.create-room-view {
 
 			&#room-create-id {
 				font-family: var(--monospace-font-stack);
+				font-feature-settings: var(--monospace-font-feature-settings);
+				letter-spacing: var(--monospace-letter-spacing);
 			}
 		}
 
@@ -115,6 +117,8 @@ form.create-room-view {
 
 		> input {
 			font-family: var(--monospace-font-stack);
+			font-feature-settings: var(--monospace-font-feature-settings);
+			letter-spacing: var(--monospace-letter-spacing);
 		}
 
 		> input.state-event-type {

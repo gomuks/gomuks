@@ -182,6 +182,8 @@ div.right-panel-content.user {
 	div.userid {
 		text-align: center;
 		font-family: var(--monospace-font-stack);
+		font-feature-settings: var(--monospace-font-feature-settings);
+		letter-spacing: var(--monospace-letter-spacing);
 		overflow: auto;
 		word-break: break-word;
 		max-height: 4rem;
@@ -516,6 +518,8 @@ div.right-panel-content.members {
 			> div.user-id {
 				grid-area: userid;
 				font-family: var(--monospace-font-stack);
+				font-feature-settings: var(--monospace-font-feature-settings);
+				letter-spacing: var(--monospace-letter-spacing);
 				font-size: .75rem;
 				opacity: .7;
 				display: none;

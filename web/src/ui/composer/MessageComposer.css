@@ -33,6 +33,8 @@ div.message-composer {
 			flex: 1;
 			resize: none;
 			font-family: var(--font-stack);
+			font-feature-settings: var(--font-feature-settings);
+			letter-spacing: var(--letter-spacing);
 			height: auto;
 			padding: 1rem .5rem;
 			border: none;
