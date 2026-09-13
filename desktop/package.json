@@ -30,7 +30,7 @@
 		"@electron/fuses": "^1.8.0",
 		"@eslint/js": "^9.11.1",
 		"@types/electron-squirrel-startup": "^1.0.2",
-		"electron": "44.0.0",
+		"electron": "44.3.0",
 		"eslint": "^10.9.1",
 		"eslint-plugin-import-x": "^4.17.1",
 		"eslint-plugin-react-hooks": "^7.0.1",
@@ -40,7 +40,7 @@
 		"vite": "^8.0.5"
 	},
 	"dependencies": {
-		"electron-context-menu": "^4.1.2",
+		"electron-context-menu": "^5.0.0",
 		"electron-dl": "^4.0.0",
 		"electron-squirrel-startup": "^1.0.1",
 		"update-electron-app": "^3.2.0"
