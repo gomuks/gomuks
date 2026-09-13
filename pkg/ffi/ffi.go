@@ -21,6 +21,10 @@ static inline void _gomuks_callProgressCallback(ProgressCallback cb, double prog
 static inline void _gomuks_callStreamCallback(StreamCallback cb, GomuksBorrowedBuffer data) {
 	cb(data);
 }
+
+static inline void _gomuks_callResponseCallback(ResponseCallback cb, GomuksResponse response) {
+	cb(response);
+}
 */
 import "C"
 import (
@@ -84,10 +88,28 @@ func borrowBufferBytes(buf C.GomuksBorrowedBuffer) []byte {
 	return unsafe.Slice((*byte)(buf.base), buf.length)
 }
 
+func doAsync(cb C.ResponseCallback, fn func(buffers [][]byte) C.GomuksResponse, buffers ...C.GomuksOwnedBuffer) {
+	claimed := make([][]byte, len(buffers))
+	for i, buffer := range buffers {
+		claimed[i] = unsafe.Slice((*byte)(buffer.base), buffer.length)
+		defer GomuksFreeBuffer(buffer)
+	}
+	res := fn(claimed)
+	C._gomuks_callResponseCallback(cb, res)
+}
+
 type gomuksHandle struct {
 	*gomuks.Gomuks
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+func getStartedHandle(handle C.GomuksHandle, method string) *gomuksHandle {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	if gmx.Client == nil {
+		panic(fmt.Errorf("%s called before GomuksStart", method))
+	}
+	return gmx
 }
 
 func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Container[T]) {
@@ -207,19 +229,27 @@ func GomuksDestroy(handle C.GomuksHandle) {
 
 //export GomuksSubmitCommand
 func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBorrowedBuffer) C.GomuksResponse {
-	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	if gmx.Client == nil {
-		panic(fmt.Errorf("GomuksSubmitCommand called before GomuksStart"))
-	}
-	var res *jsoncmd.Container[json.RawMessage]
+	gmx := getStartedHandle(handle, "GomuksSubmitCommand")
+	return gmx.gomuksSubmitCommand(jsoncmd.Name(C.GoString(command)), borrowBufferBytes(data))
+}
+
+//export GomuksSubmitCommandAsync
+func GomuksSubmitCommandAsync(handle C.GomuksHandle, command *C.char, data C.GomuksOwnedBuffer, cb C.ResponseCallback) {
+	gmx := getStartedHandle(handle, "GomuksSubmitCommand")
 	cmd := jsoncmd.Name(C.GoString(command))
-	reqData := borrowBufferBytes(data)
+	go doAsync(cb, func(buffers [][]byte) C.GomuksResponse {
+		return gmx.gomuksSubmitCommand(cmd, buffers[0])
+	}, data)
+}
+
+func (gmx *gomuksHandle) gomuksSubmitCommand(cmd jsoncmd.Name, reqData []byte) C.GomuksResponse {
+	var res *jsoncmd.Container[json.RawMessage]
 	switch cmd {
 	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys, jsoncmd.ReqGetURLPreview:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
-			Command: jsoncmd.Name(C.GoString(command)),
+			Command: cmd,
 			Data:    reqData,
 		})
 	}
@@ -229,8 +259,20 @@ func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBo
 //export GomuksHandlePush
 func GomuksHandlePush(handle C.GomuksHandle, data C.GomuksBorrowedBuffer) C.GomuksResponse {
 	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	return gmx.handlePush(borrowBufferBytes(data))
+}
+
+//export GomuksHandlePushAsync
+func GomuksHandlePushAsync(handle C.GomuksHandle, data C.GomuksOwnedBuffer, cb C.ResponseCallback) {
+	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
+	go doAsync(cb, func(buffers [][]byte) C.GomuksResponse {
+		return gmx.handlePush(buffers[0])
+	}, data)
+}
+
+func (gmx *gomuksHandle) handlePush(data []byte) C.GomuksResponse {
 	var parsed gomuks.PushPayload
-	err := json.Unmarshal(borrowBufferBytes(data), &parsed)
+	err := json.Unmarshal(data, &parsed)
 	if err != nil {
 		return containerToResponse(wrapFFIResponse(nil, err))
 	}
@@ -239,12 +281,30 @@ func GomuksHandlePush(handle C.GomuksHandle, data C.GomuksBorrowedBuffer) C.Gomu
 
 //export GomuksUploadMediaBytes
 func GomuksUploadMediaBytes(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, mediaBytes C.GomuksBorrowedBuffer, cb C.ProgressCallback) C.GomuksResponse {
-	return gomuksUploadMediaAny(handle, params, borrowBufferBytes(mediaBytes), cb)
+	gmx := getStartedHandle(handle, "GomuksUploadMediaBytes")
+	return gmx.gomuksUploadMediaAny(borrowBufferBytes(params), borrowBufferBytes(mediaBytes), cb)
 }
 
 //export GomuksUploadMediaPath
 func GomuksUploadMediaPath(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, cb C.ProgressCallback) C.GomuksResponse {
-	return gomuksUploadMediaAny(handle, params, nil, cb)
+	gmx := getStartedHandle(handle, "GomuksUploadMediaPath")
+	return gmx.gomuksUploadMediaAny(borrowBufferBytes(params), nil, cb)
+}
+
+//export GomuksUploadMediaBytesAsync
+func GomuksUploadMediaBytesAsync(handle C.GomuksHandle, params C.GomuksOwnedBuffer, mediaBytes C.GomuksOwnedBuffer, pcb C.ProgressCallback, rcb C.ResponseCallback) {
+	gmx := getStartedHandle(handle, "GomuksUploadMediaBytesAsync")
+	go doAsync(rcb, func(buffers [][]byte) C.GomuksResponse {
+		return gmx.gomuksUploadMediaAny(buffers[0], buffers[1], pcb)
+	}, params, mediaBytes)
+}
+
+//export GomuksUploadMediaPathAsync
+func GomuksUploadMediaPathAsync(handle C.GomuksHandle, params C.GomuksOwnedBuffer, pcb C.ProgressCallback, rcb C.ResponseCallback) {
+	gmx := getStartedHandle(handle, "GomuksUploadMediaPathAsync")
+	go doAsync(rcb, func(buffers [][]byte) C.GomuksResponse {
+		return gmx.gomuksUploadMediaAny(buffers[0], nil, pcb)
+	}, params)
 }
 
 type ffiWriter struct {
@@ -267,11 +327,19 @@ func (w *ffiWriter) Close() error {
 
 //export GomuksDownloadMediaPath
 func GomuksDownloadMediaPath(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, cb C.StreamCallback) C.GomuksResponse {
-	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	if gmx.Client == nil {
-		panic(fmt.Errorf("GomuksDownloadMedia called before GomuksStart"))
-	}
-	reqData := borrowBufferBytes(params)
+	gmx := getStartedHandle(handle, "GomuksDownloadMediaPath")
+	return gmx.downloadMedia(borrowBufferBytes(params), cb)
+}
+
+//export GomuksDownloadMediaPathAsync
+func GomuksDownloadMediaPathAsync(handle C.GomuksHandle, params C.GomuksOwnedBuffer, scb C.StreamCallback, rcb C.ResponseCallback) {
+	gmx := getStartedHandle(handle, "GomuksDownloadMediaPathAsync")
+	go doAsync(rcb, func(buffers [][]byte) C.GomuksResponse {
+		return gmx.downloadMedia(buffers[0], scb)
+	}, params)
+}
+
+func (gmx *gomuksHandle) downloadMedia(reqData []byte, cb C.StreamCallback) C.GomuksResponse {
 	return containerToResponse(wrapFFIResponse(jsoncmd.DownloadMedia.Run(reqData, func(params *jsoncmd.DownloadMediaParams) (*jsoncmd.DownloadMediaResponse, error) {
 		getStreamWriter := func(_ *database.Media) io.Writer {
 			if cb == nil {
@@ -283,12 +351,7 @@ func GomuksDownloadMediaPath(handle C.GomuksHandle, params C.GomuksBorrowedBuffe
 	})))
 }
 
-func gomuksUploadMediaAny(handle C.GomuksHandle, params C.GomuksBorrowedBuffer, direct []byte, cb C.ProgressCallback) C.GomuksResponse {
-	gmx := cgo.Handle(handle).Value().(*gomuksHandle)
-	if gmx.Client == nil {
-		panic(fmt.Errorf("GomuksUploadMedia called before GomuksStart"))
-	}
-	reqData := borrowBufferBytes(params)
+func (gmx *gomuksHandle) gomuksUploadMediaAny(reqData, direct []byte, cb C.ProgressCallback) C.GomuksResponse {
 	return containerToResponse(wrapFFIResponse(jsoncmd.UploadMedia.Run(reqData, func(params *jsoncmd.UploadMediaParams) (*event.MessageEventContent, error) {
 		var reader io.Reader
 		if direct != nil {

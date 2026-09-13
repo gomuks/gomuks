@@ -39,6 +39,7 @@ typedef uintptr_t GomuksHandle;
 typedef void (*EventCallback)(const char *command, int64_t request_id, GomuksOwnedBuffer data);
 typedef void (*ProgressCallback)(double progress);
 typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
+typedef void (*ResponseCallback)(GomuksResponse response);
 
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
@@ -78,6 +79,15 @@ GomuksResponse GomuksUploadMediaBytes(GomuksHandle handle, GomuksBorrowedBuffer 
 // with length 0. The callback is not used for encrypted files nor if the file is already downloaded.
 // The callback is optional, though without it this is equivalent to the download_media command.
 GomuksResponse GomuksDownloadMediaPath(GomuksHandle handle, GomuksBorrowedBuffer params, StreamCallback cb);
+
+// The following functions are async equivalents of the functions above.
+// They run the handler in a goroutine and call the provided callback with the response.
+
+void GomuksSubmitCommandAsync(GomuksHandle handle, char* command, GomuksOwnedBuffer data, ResponseCallback cb);
+void GomuksHandlePushAsync(GomuksHandle handle, GomuksOwnedBuffer payload, ResponseCallback cb);
+void GomuksUploadMediaPathAsync(GomuksHandle handle, GomuksOwnedBuffer params, ProgressCallback pcb, ResponseCallback rcb);
+void GomuksUploadMediaBytesAsync(GomuksHandle handle, GomuksOwnedBuffer params, GomuksOwnedBuffer mediaBytes, ProgressCallback pcb, ResponseCallback rcb);
+void GomuksDownloadMediaPathAsync(GomuksHandle handle, GomuksOwnedBuffer params, StreamCallback scb, ResponseCallback rcb);
 
 // GomuksFreeBuffer frees an owned buffer returned from gomuks.
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
