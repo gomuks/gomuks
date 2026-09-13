@@ -184,25 +184,24 @@ div.room-entry {
 
 	> div.room-entry-right {
 		width: 100%;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
-		justify-content: space-around;
-		margin: .25rem 0;
-		line-height: 1.25;
+		justify-content: center;
+		line-height: 1.125;
 
 		> div.room-name {
 			font-weight: bold;
-			overflow: hidden;
+		}
+
+		> div.room-name, > div.message-preview {
+			overflow-x: clip;
+			overflow-y: visible;
 			white-space: nowrap;
 			text-overflow: ellipsis;
 		}
 
 		> div.message-preview {
-			text-overflow: ellipsis;
-			white-space: nowrap;
-			overflow: hidden;
-
 			> span.sender-name {
 				display: block;
 				max-width: 6rem;
