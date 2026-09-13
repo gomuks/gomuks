@@ -37,18 +37,13 @@ const UnreadCount = ({ counts, space, placeholder, onClick }: UnreadCountProps) 
 	if (!unreadCount && !counts.marked_unread) {
 		return placeholder
 	}
-	const countIsBig = !space
-		&& Boolean(counts.unread_notifications || counts.unread_highlights || counts.marked_unread)
-	let unreadCountDisplay = unreadCount.toString()
-	if (unreadCount > 999 && (countIsBig || space)) {
+	let unreadCountDisplay = unreadCount === 0 ? "" : unreadCount.toString()
+	if (unreadCount > 999 && space) {
 		unreadCountDisplay = "99+"
 	} else if (unreadCount > 9999) {
 		unreadCountDisplay = "999+"
 	}
 	const classNames = ["unread-count"]
-	if (countIsBig) {
-		classNames.push("big")
-	}
 	if (space) {
 		classNames.push("space")
 	}

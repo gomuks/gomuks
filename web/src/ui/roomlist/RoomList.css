@@ -256,9 +256,9 @@ div.room-entry {
 div.room-entry-unreads {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	width: 3rem;
-	margin-right: .25rem;
+	justify-content: right;
+	margin-left: .25rem;
+	margin-right: .5rem;
 
 	&.floating {
 		z-index: 2;
@@ -266,7 +266,9 @@ div.room-entry-unreads {
 		width: 0;
 		margin-left: auto;
 		margin-bottom: auto;
+		margin-right: .25rem;
 		position: relative;
+		justify-content: center;
 
 		> div.unread-count {
 			position: absolute;
@@ -278,7 +280,7 @@ div.room-entry-unreads {
 
 	> div.unread-count {
 		--unread-count-size: 1rem;
-		--unread-count-padding-inline: calc(var(--unread-count-size)/4);
+		--unread-count-padding-inline: calc(var(--unread-count-size)/3);
 		--unread-count-padding-block: calc(var(--unread-count-size)/8);
 
 		display: flex;
@@ -297,12 +299,6 @@ div.room-entry-unreads {
 
 		padding-inline: var(--unread-count-padding-inline);
 		padding-block: var(--unread-count-padding-block);
-
-		&.big {
-			--unread-count-size: 1.5rem;
-			font-size: 1em;
-			font-weight: bold;
-		}
 
 		&.marked-unread {
 			background-color: var(--unread-counter-marked-unread-bg);
