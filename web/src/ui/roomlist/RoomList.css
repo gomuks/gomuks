@@ -191,7 +191,11 @@ div.room-entry {
 		line-height: 1.125;
 
 		> div.room-name {
-			font-weight: bold;
+			font-weight: 500;
+
+			&.has-unreads {
+				font-weight: bold;
+			}
 		}
 
 		> div.room-name, > div.message-preview {
@@ -202,6 +206,7 @@ div.room-entry {
 		}
 
 		> div.message-preview {
+			color: var(--semisecondary-text-color);
 			> span.sender-name {
 				display: block;
 				max-width: 6rem;

@@ -58,6 +58,8 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
 
+	const hasUnreads = Boolean(room.marked_unread
+		|| room.unread_messages || room.unread_notifications || room.unread_highlights)
 	return <>
 		<div className="room-entry-left">
 			<img
@@ -68,7 +70,7 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previ
 			/>
 		</div>
 		<div className="room-entry-right">
-			<div className="room-name">{room.name}</div>
+			<div className={`room-name ${hasUnreads ? "has-unreads" : ""}`}>{room.name}</div>
 			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
 		</div>
 		<UnreadCount counts={room} placeholder={<div className="room-entry-unreads-placeholder" />} />
