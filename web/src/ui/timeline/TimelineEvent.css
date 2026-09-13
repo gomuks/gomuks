@@ -180,7 +180,10 @@ div.timeline-event {
 			"cmc                                cmc     empty"    0
 			"timestamp                          content status" auto
 			/ var(--timeline-avatar-total-size) 1fr     var(--timeline-status-size);
-		margin-top: var(--timeline-message-gap-same-sender);
+
+		&:not(.small-thread-message) {
+			margin-top: var(--timeline-message-gap-same-sender);
+		}
 
 		> div.sender-avatar, > div.event-sender-and-time {
 			display: none;
