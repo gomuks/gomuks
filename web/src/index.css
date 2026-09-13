@@ -104,7 +104,7 @@
 	--timeline-vertical-padding: .125rem;
 	--timeline-vertical-padding-small-event: 0;
 	--timeline-vertical-padding-same-sender: var(--timeline-vertical-padding);
-	--timeline-vertical-padding-same-thread: var(--timeline-vertical-padding);
+	--timeline-vertical-padding-small-thread: 0;
 	--timeline-horizontal-padding: 1.5rem;
 	--timeline-status-size: 4rem;
 

@@ -3,11 +3,12 @@ div.timeline-event {
 	max-width: 100%;
 	box-sizing: border-box;
 	--actual-vertical-padding: var(--timeline-vertical-padding);
+	--sender-space-reservation: var(--timeline-avatar-size-half);
 	padding: var(--actual-vertical-padding) var(--timeline-horizontal-padding);
 	display: grid;
 	grid-template:
 		"cmc                          cmc                        cmc      empty"  0
-		"avatar                       gap                        sender   sender" var(--timeline-avatar-size-half)
+		"avatar                       gap                        sender   sender" var(--sender-space-reservation)
 		"avatar                       gap                        content  status" var(--timeline-avatar-size-half)
 		"blank                        gap                        content  status" auto
 		/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
@@ -214,8 +215,12 @@ div.timeline-event {
 		}
 	}
 
+	&.small-thread-message {
+		--sender-space-reservation: 0;
+		--actual-vertical-padding: var(--timeline-vertical-padding-small-thread);
+	}
+
 	&.same-thread {
-		--actual-vertical-padding: var(--timeline-vertical-padding-same-thread);
 		margin-top: var(--timeline-message-gap-same-thread);
 
 		&.same-sender > blockquote.reply-body {
@@ -231,7 +236,8 @@ div.timeline-event {
 		grid-template:
 			"cmc                          cmc                        cmc      empty"  0
 			"reply                        reply                      reply    empty"  auto
-			"avatar                       gap                        sender   sender" auto
+			"avatar                       gap                        sender   sender" var(--timeline-avatar-size-half)
+			"avatar                       gap                        content  status" var(--timeline-avatar-size-half)
 			"avatar                       gap                        content  status" auto
 			/ var(--timeline-avatar-size) var(--timeline-avatar-gap) 1fr      var(--timeline-status-size);
 	}
