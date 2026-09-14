@@ -237,6 +237,10 @@ div.room-entry {
 			margin-bottom: auto;
 			position: relative;
 
+			> div.room-entry-timestamp {
+				display: none;
+			}
+
 			> div.unread-count {
 				position: absolute;
 				margin-top: 1rem;
@@ -260,8 +264,9 @@ div.room-entry {
 
 div.room-entry-unreads {
 	display: flex;
-	align-items: center;
-	justify-content: right;
+	align-items: end;
+	justify-content: center;
+	flex-direction: column;
 	margin-left: .25rem;
 	margin-right: .5rem;
 
@@ -281,6 +286,18 @@ div.room-entry-unreads {
 			margin-top: .75rem;
 			margin-right: .25rem;
 		}
+	}
+
+	> div.room-entry-timestamp {
+		font-size: .75rem;
+		color: var(--secondary-text-color);
+		height: 1.25rem;
+
+		display: none;
+	}
+
+	> div.unread-count-placeholder {
+		height: 1.25rem;
 	}
 
 	> div.unread-count {

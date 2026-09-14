@@ -112,21 +112,42 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 			display: none;
 		}
 	`, [preferences.show_inline_images])
-	useStyle(() => preferences.compact_room_list && css`
+	useStyle(() => preferences.room_list_style === "compact" ? css`
 		div.room-entry {
 			--room-list-entry-height: 2rem;
 
 			> div.room-entry-left > img.room-avatar {
 				width: 1.75rem;
 				height: 1.75rem;
-				margin: .125rem;
+				margin: .125rem 0;
+			}
+
+			> div.room-entry-left {
+				margin: 0 .25rem 0 .5rem;
 			}
 
 			> div.room-entry-right > div.message-preview {
 				display: none;
 			}
 		}
-	`, [preferences.compact_room_list])
+	` : preferences.room_list_style === "spacious" ? css`
+		div.room-entry {
+			--room-list-entry-height: 3.5rem;
+
+			> div.room-entry-left > img.room-avatar {
+				width: 3rem;
+				height: 3rem;
+			}
+
+			> div.room-entry-right {
+				line-height: 1.25;
+			}
+
+			> div.room-entry-unreads > div.room-entry-timestamp {
+				display: block;
+			}
+		}
+	` : null, [preferences.room_list_style])
 	useAsyncStyle(() => preferences.code_block_theme === "auto" ? `
 		@import url("_gomuks/codeblock/github.css") (prefers-color-scheme: light);
 		@import url("_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);

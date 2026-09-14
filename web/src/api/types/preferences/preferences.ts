@@ -246,11 +246,12 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
-	compact_room_list: new Preference<boolean>({
-		displayName: "Compact room list",
-		description: "Use a compact room list that takes less space and doesn't have message previews",
+	room_list_style: new Preference<string>({
+		displayName: "Room list style",
+		description: "Change how much space room list entries take",
 		allowedContexts: anyGlobalContext,
-		defaultValue: false,
+		allowedValues: ["compact", "default", "spacious"],
+		defaultValue: "default",
 	}),
 	pin_favorites: new Preference<boolean>({
 		displayName: "Pin favorites to top",
