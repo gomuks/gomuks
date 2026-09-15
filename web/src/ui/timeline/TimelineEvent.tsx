@@ -325,6 +325,9 @@ const TimelineEvent = ({
 		renderAvatar = !smallAvatar
 		smallAvatar = false
 	}
+	if (!replyInMessage && !eventTimeOnly) {
+		wrapperClassNames.push("squishable-content")
+	}
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)

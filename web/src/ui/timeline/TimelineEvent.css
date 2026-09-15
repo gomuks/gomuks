@@ -115,8 +115,12 @@ div.timeline-event {
 		align-items: end;
 		font-size: .7rem;
 		color: var(--secondary-text-color);
-		max-height: 1.25rem;
+		max-height: calc(1.25rem + 1px);
 		margin-left: .25rem;
+	}
+
+	&.squishable-content > div.event-content {
+		margin-top: -1px;
 	}
 
 	> div.event-content {
@@ -124,7 +128,6 @@ div.timeline-event {
 		overflow: hidden;
 		overflow-wrap: anywhere;
 		contain: content;
-		line-height: 1.375;
 
 		> div.event-edited {
 			font-size: .7rem;
