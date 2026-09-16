@@ -232,6 +232,7 @@ div.room-entry {
 		font-size: .75rem;
 		color: var(--secondary-text-color);
 		align-self: end;
+		text-align: right;
 		margin-right: .5rem;
 		display: none;
 	}
