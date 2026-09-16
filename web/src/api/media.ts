@@ -75,8 +75,17 @@ function getFallbackCharacter(from: unknown, idx: number): string {
 	if (!from || typeof from !== "string" || from.length <= idx) {
 		return ""
 	}
+	const origIdx = idx
 	// Array.from appears to be the only way to handle Unicode correctly
-	return Array.from(from.slice(0, (idx + 1) * 2))[idx]?.toUpperCase().toWellFormed() ?? ""
+	const chars = Array.from(from.slice(0, (idx + 1) * 2))
+	while (!chars[idx]?.match(/[\p{L}\p{N}]/u)) {
+		idx++
+		if (idx > 3) {
+			idx = origIdx
+			break
+		}
+	}
+	return chars[idx]?.toUpperCase().toWellFormed() ?? ""
 }
 
 const disableThumbnails = localStorage.gomuks_disable_thumbnails === "true"
