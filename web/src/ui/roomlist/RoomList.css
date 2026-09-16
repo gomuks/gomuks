@@ -152,10 +152,13 @@ div.room-search-wrapper {
 
 div.room-entry {
 	--room-list-entry-height: 3rem;
+	--room-avatar-size: 2.5rem;
+	--room-avatar-margin: .5rem;
+	--room-entry-line-height: 1.125;
 
 	width: 100%;
-	display: flex;
-	gap: .25rem;
+	display: grid;
+	column-gap: .25rem;
 	user-select: none;
 	cursor: var(--clickable-cursor);
 	height: var(--room-list-entry-height);
@@ -163,6 +166,11 @@ div.room-entry {
 	contain-intrinsic-height: calc(var(--room-list-entry-height) + var(--room-list-padding) * 2);
 	content-visibility: auto;
 	contain: strict;
+
+	grid-template:
+		"avatar name    timestamp timestamp" 1fr
+		"avatar preview preview   unreads"   1fr
+		/ auto  1fr     auto      auto;
 
 	&:hover, &:focus {
 		background-color: var(--room-list-entry-hover-color);
@@ -172,60 +180,83 @@ div.room-entry {
 		background-color: var(--room-list-entry-selected-color);
 	}
 
-	> div.room-entry-left {
-		height: var(--room-list-entry-height);
-		width: var(--room-list-entry-height);
-		margin: 0 .5rem 0 .75rem;
+	> img.room-avatar {
+		--vertical-margin: calc((var(--room-list-entry-height) - var(--room-avatar-size)) / 2);
+		grid-area: avatar;
+		margin: var(--vertical-margin) var(--room-avatar-margin) var(--vertical-margin) calc(var(--room-avatar-margin) + .25rem);
+		width: var(--room-avatar-size);
+		height: var(--room-avatar-size);
+	}
 
-		> img.room-avatar {
-			margin: .25rem 0;
+	> div.room-name, > div.message-preview {
+		min-width: 0;
+		overflow-x: clip;
+		overflow-y: visible;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		line-height: var(--room-entry-line-height);
+	}
+
+	> div.room-name {
+		grid-area: name;
+		font-weight: 500;
+		align-self: end;
+	}
+
+	> div.message-preview {
+		grid-area: preview;
+		grid-column-end: unreads;
+		margin-right: .5rem;
+		color: var(--semisecondary-text-color);
+		align-self: start;
+
+		> span.sender-name {
+			display: block;
+			max-width: 6rem;
+			overflow: hidden;
+		}
+
+		> span.preview-text {
+			display: block;
 		}
 	}
 
-	> div.room-entry-right {
-		width: 100%;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		line-height: 1.125;
+	> div.room-entry-unreads {
+		grid-area: unreads;
+		grid-row-start: timestamp;
+		align-self: center;
+	}
 
+	> div.room-entry-timestamp {
+		grid-area: timestamp;
+		font-size: .75rem;
+		color: var(--secondary-text-color);
+		align-self: end;
+		margin-right: .5rem;
+		display: none;
+	}
+
+	&.has-unreads {
 		> div.room-name {
-			font-weight: 500;
-
-			&.has-unreads {
-				font-weight: bold;
-			}
-		}
-
-		> div.room-name, > div.message-preview {
-			overflow-x: clip;
-			overflow-y: visible;
-			white-space: nowrap;
-			text-overflow: ellipsis;
+			font-weight: bold;
 		}
 
 		> div.message-preview {
-			color: var(--semisecondary-text-color);
-			> span.sender-name {
-				display: block;
-				max-width: 6rem;
-				overflow: hidden;
-			}
-
-			> span.preview-text {
-				display: block;
-			}
+			grid-column-end: preview;
+			margin-right: 0;
 		}
 	}
 
-	> div.room-entry-unreads-placeholder {
-		width: .5rem;
+	&.no-preview > div.room-name {
+		grid-row-end: preview;
+		align-self: center;
 	}
 
 	@container left-panel (max-width: 8rem) {
-		> div.room-entry-right {
-			display: none;
+		display: flex;
+
+		> div.room-name, > div.message-preview, > div.room-entry-timestamp {
+			display: none !important;
 		}
 
 		/* TODO this has partial duplication with the stuff below */
@@ -233,7 +264,7 @@ div.room-entry {
 			z-index: 2;
 			height: 0;
 			width: 0;
-			margin-left: -.75rem;
+			margin-left: -.25rem;
 			margin-bottom: auto;
 			position: relative;
 

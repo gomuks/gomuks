@@ -18,6 +18,7 @@ import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListEntry, useRoomMember } from "@/api/statestore"
 import type { MemDBEvent, MemberEventContent } from "@/api/types"
 import useContentVisibility from "@/util/contentvisibility.ts"
+import { formatPreviewTime, newSafeDate } from "@/util/datetime.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
@@ -58,22 +59,19 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
 
-	const hasUnreads = Boolean(room.marked_unread
-		|| room.unread_messages || room.unread_notifications || room.unread_highlights)
 	return <>
-		<div className="room-entry-left">
-			<img
-				loading="lazy"
-				className="avatar room-avatar"
-				src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
-				alt=""
-			/>
-		</div>
-		<div className="room-entry-right">
-			<div className={`room-name ${hasUnreads ? "has-unreads" : ""}`}>{room.name}</div>
-			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
-		</div>
-		<UnreadCount counts={room} placeholder={<div className="room-entry-unreads-placeholder" />} />
+		<img
+			loading="lazy"
+			className="avatar room-avatar"
+			src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
+			alt=""
+		/>
+		<div className="room-name">{room.name}</div>
+		{room.preview_event ? <div className="room-entry-timestamp">
+			{formatPreviewTime(newSafeDate(room.preview_event?.timestamp))}
+		</div> : null}
+		{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
+		<UnreadCount counts={room} placeholder />
 	</>
 }
 
@@ -125,6 +123,14 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	}
 	if (room.is_invite) {
 		classNames.push("invite")
+	}
+	if (!room.preview_event) {
+		classNames.push("no-preview")
+	}
+	const hasUnreads = Boolean(room.marked_unread
+		|| room.unread_messages || room.unread_notifications || room.unread_highlights)
+	if (hasUnreads) {
+		classNames.push("has-unreads")
 	}
 	return <div
 		ref={divRef}

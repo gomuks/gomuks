@@ -112,21 +112,45 @@ const StylePreferences = ({ client, activeRoom }: StylePreferencesProps) => {
 			display: none;
 		}
 	`, [preferences.show_inline_images])
-	useStyle(() => preferences.compact_room_list && css`
+	useStyle(() => preferences.room_list_style === "compact" ? css`
 		div.room-entry {
 			--room-list-entry-height: 2rem;
+			--room-avatar-size: 1.75rem;
+			--room-avatar-margin: .25rem;
 
-			> div.room-entry-left > img.room-avatar {
-				width: 1.75rem;
-				height: 1.75rem;
-				margin: .125rem;
-			}
+			grid-template:
+				"avatar name    unreads" 1fr
+				/ auto  1fr     auto;
 
-			> div.room-entry-right > div.message-preview {
+			> div.message-preview {
 				display: none;
 			}
+
+			> div.room-entry-unreads {
+				grid-area: unreads;
+			}
+
+			> div.room-name {
+				align-self: center;
+				grid-row-end: preview;
+			}
 		}
-	`, [preferences.compact_room_list])
+	` : preferences.room_list_style === "spacious" ? css`
+		div.room-entry {
+			--room-list-entry-height: 3.5rem;
+			--room-avatar-size: 3rem;
+			--room-entry-line-height: 1.25;
+
+			> div.room-entry-timestamp {
+				display: block;
+			}
+
+			&:not(.no-preview) > div.room-entry-unreads {
+				grid-row-start: unreads;
+				align-self: start;
+			}
+		}
+	` : null, [preferences.room_list_style])
 	useAsyncStyle(() => preferences.code_block_theme === "auto" ? `
 		@import url("_gomuks/codeblock/github.css") (prefers-color-scheme: light);
 		@import url("_gomuks/codeblock/github-dark.css") (prefers-color-scheme: dark);

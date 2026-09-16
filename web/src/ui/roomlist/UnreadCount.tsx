@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX } from "react"
+import React from "react"
 import { SpaceUnreadCounts } from "@/api/statestore"
 
 interface UnreadCounts extends SpaceUnreadCounts {
@@ -24,18 +24,18 @@ interface UnreadCountProps {
 	counts: UnreadCounts | null
 	space?: true
 	onClick?: (evt: React.MouseEvent<HTMLDivElement>) => void
-	placeholder?: JSX.Element
+	placeholder?: boolean
 }
 
 const UnreadCount = ({ counts, space, placeholder, onClick }: UnreadCountProps) => {
 	if (!counts) {
-		return placeholder
+		return placeholder ? <div className="room-entry-unreads placeholder" /> : null
 	}
 	const unreadCount = space
 		? counts.unread_highlights || counts.unread_notifications || counts.unread_messages
 		: counts.unread_messages || counts.unread_notifications || counts.unread_highlights
 	if (!unreadCount && !counts.marked_unread) {
-		return placeholder
+		return placeholder ? <div className="room-entry-unreads placeholder" /> : null
 	}
 	let unreadCountDisplay = unreadCount === 0 ? "" : unreadCount.toString()
 	if (unreadCount > 999 && space) {

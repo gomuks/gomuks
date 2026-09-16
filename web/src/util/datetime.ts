@@ -27,3 +27,34 @@ export const newSafeDate = (val: number) => {
 	}
 	return date
 }
+
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+const week = 1000 * 60 * 60 * 24 * 7
+
+function isLessThanWeekAgo(time: Date, now: Date) {
+	if (time > now) {
+		return false
+	}
+	const weekAgo = new Date(now.getTime() - week)
+	const isWeekAgo = time.getDate() === weekAgo.getDate() && time.getMonth() === weekAgo.getMonth()
+	return time > weekAgo && !isWeekAgo
+}
+
+export const formatPreviewTime = (time: Date) => {
+	const now = new Date()
+	if (
+		time.getFullYear() === now.getFullYear()
+		&& time.getMonth() === now.getMonth()
+		&& time.getDate() == now.getDate()
+	) {
+		return formatShortTime(time)
+	} else if (isLessThanWeekAgo(time, now)) {
+		return dayNames[time.getDay()]
+	} else if (now.getFullYear() === time.getFullYear()) {
+		return `${monthNames[time.getMonth()]} ${time.getDate().toString().padStart(2, "0")}`
+	} else {
+		return time.getFullYear().toString()
+	}
+}
