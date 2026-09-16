@@ -1,4 +1,4 @@
-# v26.09 (unreleased)
+# v26.09
 
 ### Backend
 * Bumped minimum Go version to 1.26.
@@ -23,7 +23,9 @@
 * Added `/version` command to check the current gomuks version.
 * Added app identifier to outgoing messages.
 * Added compact room list option.
-* Adjusted padding of composer and room list entries.
+* Adjusted padding of composer and room list entries, and fixed alignment of
+  unread counters.
+* Changed room names in room list to be less bold when the room is fully read.
 * Changed default font to Inter instead of OS defaults.
 * Changed emoji/sticker/gif picker to not take up the entire screen on mobile.
 * Changed message send errors to be rendered more prominently.
