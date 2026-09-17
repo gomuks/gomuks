@@ -17,21 +17,30 @@
 package tui
 
 import (
+	"go.mau.fi/gomuks/pkg/rpc/store"
 	"go.mau.fi/gomuks/tui/debug"
 )
 
-type FuzzySearchModal = FuzzyPickerModal
+type SpaceSwitcherModal = FuzzyPickerModal
 
-func NewFuzzySearchModal(mainView *MainView, width int, height int) *FuzzySearchModal {
-	roomList := mainView.matrix.ReversedRoomList.Current()
-	titles := make([]string, len(roomList))
-	for i, room := range roomList {
-		titles[i] = room.Name
+func NewSpaceSwitcherModal(mainView *MainView, width int, height int) *SpaceSwitcherModal {
+	rawSpaces := mainView.matrix.GetSpaceList()
+	spaceList := make([]*store.SpaceEntry, 0, len(rawSpaces)+1)
+	spaceList = append(spaceList, &store.SpaceEntry{
+		RoomID: "",
+		Name:   "All Rooms",
+	})
+	spaceList = append(spaceList, rawSpaces...)
+
+	titles := make([]string, len(spaceList))
+	for i, space := range spaceList {
+		titles[i] = space.Name
 	}
-	return NewFuzzyPickerModal(mainView, "Quick Room Switcher", titles, func(idx int) {
-		if idx >= 0 && idx < len(roomList) {
-			debug.Print("Fuzzy Selected Room:", roomList[idx].Name)
-			mainView.SwitchRoom(roomList[idx].RoomID)
+	return NewFuzzyPickerModal(mainView, "Space Switcher", titles, func(idx int) {
+		if idx >= 0 && idx < len(spaceList) {
+			selectedSpace := spaceList[idx]
+			debug.Print("Space Switcher: Selected", selectedSpace.Name, selectedSpace.RoomID)
+			mainView.SwitchToSpace(selectedSpace.RoomID)
 		}
 	}, width, height)
 }

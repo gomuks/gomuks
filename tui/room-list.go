@@ -35,8 +35,9 @@ type RoomList struct {
 
 	parent *MainView
 
-	rooms    []*store.RoomListEntry
-	selected id.RoomID
+	rooms       []*store.RoomListEntry
+	activeSpace id.RoomID
+	selected    id.RoomID
 
 	scrollOffset int
 	height       int
@@ -84,9 +85,39 @@ func (list *RoomList) SelectedRoom() id.RoomID {
 	return list.selected
 }
 
-func (list *RoomList) Previous() id.RoomID {
+func (list *RoomList) updateRoomsLocked() {
+	allRooms := list.parent.matrix.ReversedRoomList.Current()
+	if list.activeSpace == "" {
+		list.rooms = allRooms
+		return
+	}
+	filtered := make([]*store.RoomListEntry, 0, len(allRooms))
+	for _, room := range allRooms {
+		if list.parent.matrix.IsRoomInSpace(list.activeSpace, room.RoomID) {
+			filtered = append(filtered, room)
+		}
+	}
+	list.rooms = filtered
+}
+
+func (list *RoomList) SetActiveSpace(spaceID id.RoomID) {
+	list.lock.Lock()
+	defer list.lock.Unlock()
+	list.activeSpace = spaceID
+	list.updateRoomsLocked()
+	list.scrollOffset = 0
+}
+
+func (list *RoomList) GetActiveSpace() id.RoomID {
 	list.lock.RLock()
 	defer list.lock.RUnlock()
+	return list.activeSpace
+}
+
+func (list *RoomList) Previous() id.RoomID {
+	list.lock.Lock()
+	defer list.lock.Unlock()
+	list.updateRoomsLocked()
 	idx := list.index(list.selected)
 	if idx > 0 && idx < len(list.rooms) {
 		return list.rooms[idx-1].RoomID
@@ -95,8 +126,9 @@ func (list *RoomList) Previous() id.RoomID {
 }
 
 func (list *RoomList) Next() id.RoomID {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
+	list.lock.Lock()
+	defer list.lock.Unlock()
+	list.updateRoomsLocked()
 	if len(list.rooms) == 0 {
 		return ""
 	}
@@ -111,8 +143,9 @@ func (list *RoomList) Next() id.RoomID {
 }
 
 func (list *RoomList) NextWithActivity() id.RoomID {
-	list.lock.RLock()
-	defer list.lock.RUnlock()
+	list.lock.Lock()
+	defer list.lock.Unlock()
+	list.updateRoomsLocked()
 	for _, room := range list.rooms {
 		if room.UnreadHighlights > 0 || room.UnreadMessages > 0 || room.MarkedUnread {
 			return room.RoomID
@@ -175,7 +208,7 @@ func (list *RoomList) Blur()  {}
 
 func (list *RoomList) Draw(screen mauview.Screen) {
 	list.lock.Lock()
-	list.rooms = list.parent.matrix.ReversedRoomList.Current()
+	list.updateRoomsLocked()
 	list.width, list.height = screen.Size()
 	roomSlice := list.rooms[min(len(list.rooms), list.scrollOffset):min(len(list.rooms), list.scrollOffset+list.height)]
 	list.lock.Unlock()
