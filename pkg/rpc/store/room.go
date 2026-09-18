@@ -505,8 +505,7 @@ func (rs *RoomStore) GetMarkAsReadParams() *jsoncmd.MarkReadParams {
 		return nil
 	}
 	var readEvt *database.Event
-	for i := len(rs.timeline) - 1; i >= 0; i-- {
-		tuple := rs.timeline[i]
+	for _, tuple := range slices.Backward(rs.timeline) {
 		if tuple.Event == rs.lastMarkedRead {
 			break
 		}

@@ -271,12 +271,12 @@ type SearchParams struct {
 	RoomIDs []id.RoomID `json:"room_ids,omitempty"`
 	// Users whose messages to search. If empty, messages from all users will be searched.
 	Senders      []id.UserID        `json:"senders,omitempty"`
-	MinTimestamp jsontime.UnixMilli `json:"min_timestamp,omitempty"`
-	MaxTimestamp jsontime.UnixMilli `json:"max_timestamp,omitempty"`
+	MinTimestamp jsontime.UnixMilli `json:"min_timestamp,omitzero"`
+	MaxTimestamp jsontime.UnixMilli `json:"max_timestamp,omitzero"`
 	// Whether to also search redacted events.
-	IncludeRedacted bool `json:"include_redacted,omitempty"`
+	IncludeRedacted bool `json:"include_redacted,omitzero"`
 	// Whether to sort results by timestamp instead of relevance.
-	SortByTime bool `json:"sort_by_time,omitempty"`
+	SortByTime bool `json:"sort_by_time,omitzero"`
 	// The next batch value from a previous response. All other parameters must remain exactly the same.
 	NextBatch string `json:"next_batch,omitempty"`
 }

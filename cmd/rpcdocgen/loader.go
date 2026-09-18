@@ -107,8 +107,7 @@ func (g *generator) goList(importPath string) (*goListPackage, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		var stderr string
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			stderr = strings.TrimSpace(string(exitErr.Stderr))
 		}
 		if stderr == "" {

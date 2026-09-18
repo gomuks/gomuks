@@ -64,5 +64,5 @@ var DefaultPreferences = Preferences{
 }
 
 func init() {
-	event.TypeMap[AccountDataGomuksPreferences] = reflect.TypeOf(Preferences{})
+	event.TypeMap[AccountDataGomuksPreferences] = reflect.TypeFor[Preferences]()
 }

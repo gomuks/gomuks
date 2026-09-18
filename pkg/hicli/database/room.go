@@ -229,13 +229,13 @@ func (r *Room) EnsureNotNil() {
 		r.CreationContent = &event.CreateEventContent{}
 	}
 	if r.Name == nil {
-		r.Name = ptr.Ptr("")
+		r.Name = new("")
 	}
 	if r.Avatar == nil {
-		r.Avatar = ptr.Ptr(id.ContentURI{})
+		r.Avatar = new(id.ContentURI{})
 	}
 	if r.Topic == nil {
-		r.Topic = ptr.Ptr("")
+		r.Topic = new("")
 	}
 	if r.CanonicalAlias == nil {
 		r.CanonicalAlias = ptr.Ptr(id.RoomAlias(""))

@@ -72,7 +72,7 @@ func (gr *GomuksRPC) Connect(ctx context.Context) error {
 func (gr *GomuksRPC) Disconnect() {
 	connCtx := gr.connCtx.Swap(nil)
 	if connCtx == nil {
-		connCtx = ptr.Ptr(context.Background())
+		connCtx = new(context.Background())
 	}
 	if conn := gr.conn.Swap(nil); conn != nil {
 		err := conn.Close(websocket.StatusNormalClosure, "Client disconnecting")

@@ -92,7 +92,7 @@ type Account struct {
 	Expiry       jsontime.UnixMilli `json:"expiry,omitzero"`
 
 	DisplayName string        `json:"display_name,omitempty"`
-	AvatarURL   id.ContentURI `json:"avatar_url,omitempty"`
+	AvatarURL   id.ContentURI `json:"avatar_url,omitzero"`
 }
 
 func (a *Account) Scan(row dbutil.Scannable) (*Account, error) {

@@ -30,7 +30,7 @@ require (
 	github.com/zyedidia/clipboard v1.0.4
 	go.mau.fi/goheif v0.1.0
 	go.mau.fi/mauview v0.3.0
-	go.mau.fi/util v0.10.1
+	go.mau.fi/util v0.10.2-0.20260918225449-a4c0d5b86aa8
 	go.mau.fi/webp v0.3.0
 	go.mau.fi/zeroconfig v0.2.0
 	golang.org/x/crypto v0.57.0
@@ -41,7 +41,7 @@ require (
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.31.0
+	maunium.net/go/mautrix v0.31.1-0.20260918225630-10905411377f
 	mvdan.cc/xurls/v2 v2.6.0
 )
 

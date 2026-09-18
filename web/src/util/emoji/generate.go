@@ -110,8 +110,8 @@ type OfficialEmoji struct {
 func getOfficialEmojis() []*OfficialEmoji {
 	var currentGroupIndex int
 	return unicodeurls.ReadDataFileList(unicodeurls.EmojiTest, func(line string) (*OfficialEmoji, bool) {
-		if strings.HasPrefix(line, "# group: ") {
-			currentGroupName := strings.TrimSpace(strings.TrimPrefix(line, "# group: "))
+		if after, ok := strings.CutPrefix(line, "# group: "); ok {
+			currentGroupName := strings.TrimSpace(after)
 			currentGroupIndex = slices.Index(categories, currentGroupName)
 			if currentGroupIndex == -1 {
 				panic(fmt.Errorf("unknown group %q", currentGroupName))

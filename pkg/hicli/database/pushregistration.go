@@ -87,5 +87,5 @@ func (pe *PushRegistration) sqlVariables() []any {
 	if pe.Expiration.IsZero() {
 		pe.Expiration = jsontime.U(time.Now().Add(7 * 24 * time.Hour))
 	}
-	return []interface{}{pe.DeviceID, pe.Type, unsafeJSONString(pe.Data), dbutil.JSON{Data: &pe.Encryption}, pe.Expiration}
+	return []any{pe.DeviceID, pe.Type, unsafeJSONString(pe.Data), dbutil.JSON{Data: &pe.Encryption}, pe.Expiration}
 }
