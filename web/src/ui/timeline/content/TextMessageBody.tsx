@@ -65,10 +65,17 @@ const onClickHTML = (evt: React.MouseEvent<HTMLDivElement>) => {
 			src: targetElem.src,
 			alt: targetElem.alt,
 		})
-	} else if (targetElem.closest?.("span.hicli-spoiler")?.classList.toggle("spoiler-revealed")) {
-		// When unspoilering, don't trigger links and other clickables inside the spoiler
-		evt.preventDefault()
+		return
+	}
+	const spoiler = targetElem.closest?.("span.hicli-spoiler")
+	const didRevealSpoiler = spoiler?.classList.toggle("spoiler-revealed")
+	if (spoiler) {
+		// Don't bubble up clicks to other things like the message context menu if there's a spoiler at all
 		evt.stopPropagation()
+	}
+	if (didRevealSpoiler) {
+		// Clicking links and other message content is only prevented when opening the spoiler
+		evt.preventDefault()
 	} else if (isAnchorElement(targetElem) && targetElem.href.startsWith("matrix:")) {
 		onClickMatrixURI(targetElem.href)
 		evt.preventDefault()
