@@ -119,7 +119,9 @@ func (gmx *Gomuks) StartServer() {
 			1,
 		)
 	}
-	gmx.Server = &http.Server{Handler: router}
+	gmx.Server = &http.Server{Handler: router, Protocols: &http.Protocols{}}
+	gmx.Server.Protocols.SetHTTP1(true)
+	gmx.Server.Protocols.SetUnencryptedHTTP2(true)
 	gmx.Log.Info().Str("address", gmx.Config.Web.ListenAddress).Msg("Starting server")
 	ln, err := net.Listen("tcp", gmx.Config.Web.ListenAddress)
 	if err != nil {
