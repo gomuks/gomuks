@@ -38,7 +38,6 @@ import (
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/exzerolog"
 	"go.mau.fi/util/ptr"
-	"golang.org/x/net/http2"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
@@ -220,17 +219,10 @@ func (gmx *Gomuks) initClient() error {
 	if runtime.GOOS == "js" {
 		gmx.Client.Client.UserAgent = ""
 		httpClient.Transport = nil
-	} else {
-		httpClient.Transport.(*http.Transport).ForceAttemptHTTP2 = false
-		if !gmx.Config.Matrix.DisableHTTP2 {
-			//lint:ignore SA1019 TODO switch to new http2 config
-			h2, err := http2.ConfigureTransports(httpClient.Transport.(*http.Transport))
-			if err != nil {
-				gmx.Log.WithLevel(zerolog.FatalLevel).Err(err).Msg("Failed to configure HTTP/2")
-				os.Exit(13)
-			}
-			//lint:ignore SA1019 TODO switch to new http2 config
-			h2.ReadIdleTimeout = 30 * time.Second
+	} else if !gmx.Config.Matrix.DisableHTTP2 {
+		httpClient.Transport.(*http.Transport).ForceAttemptHTTP2 = true
+		httpClient.Transport.(*http.Transport).HTTP2 = &http.HTTP2Config{
+			PingTimeout: 30 * time.Second,
 		}
 	}
 	gmx.Log.Debug().Msg("Client instance created")
