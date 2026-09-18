@@ -657,6 +657,9 @@ func (h *HiClient) generatePreviewText(content *event.MessageEventContent) strin
 	if strings.Contains(content.FormattedBody, "data-mx-spoiler") {
 		text = "<message contains spoilers>"
 	}
+	if content.MsgType.IsText() && text == "" {
+		text = "<empty message>"
+	}
 	if content.MsgType.IsMedia() && (text == "" || content.FileName == "" || content.FileName == content.Body) {
 		switch content.MsgType {
 		case event.MsgImage:
