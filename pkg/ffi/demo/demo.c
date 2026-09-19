@@ -28,7 +28,7 @@ int main(void) {
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
-    GomuksHandle handle = GomuksInit(NULL);
+    GomuksHandle handle = GomuksInit();
     if (handle == 0) {
         fprintf(stderr, "Failed to initialize gomuks.\n");
         return 1;

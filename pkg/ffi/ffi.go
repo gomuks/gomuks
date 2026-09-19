@@ -34,6 +34,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/cgo"
@@ -117,15 +118,17 @@ func sendBufferedEvent[T any](callback C.EventCallback, command *jsoncmd.Contain
 	C._gomuks_callEventCallback(callback, commandNames[command.Command], C.int64_t(command.RequestID), bytesToOwnedBuffer(data))
 }
 
+//export GomuksSetEnv
+func GomuksSetEnv(key *C.char, value *C.char) {
+	os.Setenv(C.GoString(key), C.GoString(value))
+}
+
 //export GomuksInit
-func GomuksInit(root *C.char) C.GomuksHandle {
+func GomuksInit() C.GomuksHandle {
 	gomuks.DisablePush = true
 	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
-	if root != nil {
-		gmx.RootOverride = C.GoString(root)
-	}
 	gmx.InitDirectories()
 	gmx.Config = gomuks.Config{
 		Logging: zeroconfig.Config{
