@@ -46,6 +46,7 @@ import (
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/ptr"
 	"go.mau.fi/zeroconfig"
+	"gopkg.in/yaml.v3"
 	"maunium.net/go/mautrix/crypto"
 	"maunium.net/go/mautrix/event"
 
@@ -124,7 +125,7 @@ func GomuksSetEnv(key *C.char, value *C.char) {
 }
 
 //export GomuksInit
-func GomuksInit() C.GomuksHandle {
+func GomuksInit(config C.GomuksBorrowedBuffer) C.GomuksHandle {
 	gomuks.DisablePush = true
 	hicli.DefaultInitialDeviceDisplayName = "gomuks ffi"
 	gmx := gomuks.NewGomuks()
@@ -146,6 +147,11 @@ func GomuksInit() C.GomuksHandle {
 				},
 			}},
 		},
+	}
+	if configData := borrowBufferBytes(config); len(configData) > 0 {
+		if err := yaml.Unmarshal(configData, &gmx.Config); err != nil {
+			panic(fmt.Errorf("failed to unmarshal config: %w", err))
+		}
 	}
 	gmx.EventBuffer = gomuks.NewEventBuffer(0)
 	gmx.SetupLog()

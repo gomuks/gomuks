@@ -48,7 +48,7 @@ void GomuksSetEnv(char* key, char* value);
 
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
-GomuksHandle GomuksInit(void);
+GomuksHandle GomuksInit(GomuksBorrowedBuffer config);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
