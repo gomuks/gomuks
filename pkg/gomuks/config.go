@@ -45,6 +45,8 @@ type Config struct {
 type MatrixConfig struct {
 	DisableHTTP2 bool            `yaml:"disable_http2"`
 	SetPresence  *event.Presence `yaml:"set_presence"`
+
+	InitialDeviceDisplayName string `yaml:"initial_device_display_name"`
 }
 
 type PushConfig struct {

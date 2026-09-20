@@ -89,7 +89,6 @@ func jsMessageListener(_ js.Value, args []js.Value) any {
 }
 
 func main() {
-	hicli.InitialDeviceDisplayName = "gomuks web"
 	gmx = gomuks.NewGomuks()
 	gmx.Config = gomuks.Config{
 		Logging: zeroconfig.Config{
@@ -97,6 +96,9 @@ func main() {
 				Type: zeroconfig.WriterTypeJS,
 			}},
 			Timestamp: ptr.Ptr(false),
+		},
+		Matrix: gomuks.MatrixConfig{
+			InitialDeviceDisplayName: "gomuks web",
 		},
 	}
 	gmx.GetDBConfig = func() dbutil.PoolConfig {

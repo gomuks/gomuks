@@ -212,6 +212,9 @@ func (gmx *Gomuks) initClient() error {
 		gmx.HandleEvent,
 	)
 	gmx.Client.Client.SyncPresence = ptr.Val(gmx.Config.Matrix.SetPresence)
+	if gmx.Config.Matrix.InitialDeviceDisplayName != "" {
+		gmx.Client.InitialDeviceDisplayName = gmx.Config.Matrix.InitialDeviceDisplayName
+	}
 	gmx.Client.LogoutFunc = gmx.Logout
 	httpClient := gmx.Client.Client.Client
 	if runtime.GOOS == "js" {

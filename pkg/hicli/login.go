@@ -21,7 +21,7 @@ import (
 	"go.mau.fi/gomuks/pkg/hicli/database"
 )
 
-var InitialDeviceDisplayName = "mautrix hiclient"
+var DefaultInitialDeviceDisplayName = "mautrix hiclient"
 
 func (h *HiClient) LoginPassword(ctx context.Context, homeserverURL, username, password string) error {
 	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
@@ -111,7 +111,7 @@ func (h *HiClient) Login(ctx context.Context, req *mautrix.ReqLogin) error {
 	if err != nil {
 		return err
 	}
-	req.InitialDeviceDisplayName = InitialDeviceDisplayName
+	req.InitialDeviceDisplayName = h.InitialDeviceDisplayName
 	req.StoreCredentials = true
 	req.StoreHomeserverURL = true
 	resp, err := h.Client.Login(ctx, req)
@@ -141,7 +141,7 @@ func (h *HiClient) postLogin(ctx context.Context, acc *database.Account) error {
 	}
 	if acc.ClientID != "" {
 		// There's no initial_device_display_name in OAuth, so need to set it manually
-		err = h.Client.SetDeviceInfo(ctx, acc.DeviceID, &mautrix.ReqDeviceInfo{DisplayName: InitialDeviceDisplayName})
+		err = h.Client.SetDeviceInfo(ctx, acc.DeviceID, &mautrix.ReqDeviceInfo{DisplayName: h.InitialDeviceDisplayName})
 		if err != nil {
 			log.Warn().Err(err).Msg("Failed to update device displayname for OAuth login")
 		}

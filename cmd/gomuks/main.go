@@ -55,9 +55,9 @@ type VersionJSONOutput struct {
 func main() {
 	gomuks.PromptInput = readline.Line
 	gomuks.PromptPassword = readline.Password
-	hicli.InitialDeviceDisplayName = "gomuks web"
+	hicli.DefaultInitialDeviceDisplayName = "gomuks web"
 	if *desktopMode {
-		hicli.InitialDeviceDisplayName = "gomuks desktop"
+		hicli.DefaultInitialDeviceDisplayName = "gomuks desktop"
 	}
 	exhttp.AutoAllowCORS = false
 	flag.SetHelpTitles(

@@ -126,7 +126,7 @@ func GomuksSetEnv(key *C.char, value *C.char) {
 //export GomuksInit
 func GomuksInit() C.GomuksHandle {
 	gomuks.DisablePush = true
-	hicli.InitialDeviceDisplayName = "gomuks ffi" // TODO customizable name
+	hicli.DefaultInitialDeviceDisplayName = "gomuks ffi"
 	gmx := gomuks.NewGomuks()
 	gmx.DisableAuth = true
 	gmx.InitDirectories()

@@ -31,7 +31,6 @@ import (
 var writerTypeReadline zeroconfig.WriterType = "hitest_readline"
 
 func main() {
-	hicli.InitialDeviceDisplayName = "mautrix hitest"
 	rl := exerrors.Must(readline.New("> "))
 	defer func() {
 		_ = rl.Close()
@@ -75,6 +74,7 @@ func main() {
 			_, _ = fmt.Fprintf(rl, "Typing list in %s: %+v\n", evt.RoomID, evt.UserIDs)
 		}
 	})
+	cli.InitialDeviceDisplayName = "mautrix hitest"
 	userID, _ := cli.DB.Account.GetFirstUserID(ctx)
 	exerrors.PanicIfNotNil(cli.Load(ctx, userID))
 	exerrors.PanicIfNotNil(cli.Start(ctx))
