@@ -123,7 +123,7 @@ export const ReplyBody = ({
 				threadRoot,
 			})
 		} else if (!jumpToVisibleEvent(event.event_id, evt.currentTarget.closest(".timeline-list"), roomCtx)) {
-			jumpToEvent(roomCtx, event.event_id)
+			jumpToEvent(roomCtx, event.event_id, mainScreen)
 		}
 	}
 	const renderMemberEventDisplayname = getDisplayname(event.sender, renderMemberEvtContent)

@@ -14,16 +14,26 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { EventID } from "@/api/types"
+import type { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
 import { modals } from "../modal"
-import { RoomContextData } from "../roomview/roomcontext.ts"
+import type { RoomContextData } from "../roomview/roomcontext.ts"
 
-export const jumpToEvent = (roomCtx: RoomContextData, evtID: EventID, allowRetry: boolean = true) => {
-	if (jumpToVisibleEvent(evtID, null, roomCtx)) {
+export const jumpToEvent = (
+	roomCtx: RoomContextData,
+	evtID: EventID,
+	mainScreen?: MainScreenContextFields,
+	allowRetry: boolean = true,
+) => {
+	if (roomCtx.isFake && mainScreen) {
+		mainScreen.setActiveRoom(roomCtx.store.roomID, {
+			openEventID: evtID,
+		})
+	} else if (jumpToVisibleEvent(evtID, null, roomCtx)) {
 		console.info("Jumped to event", evtID, "in visible timeline")
 	} else if (roomCtx.store.timeline.length === 0 && allowRetry) {
 		// Hacky sleep to let the timeline load maybe?
 		console.info("Waiting for timeline to load before jumping to event", evtID)
-		setTimeout(() => jumpToEvent(roomCtx, evtID, false), 500)
+		setTimeout(() => jumpToEvent(roomCtx, evtID, mainScreen, false), 500)
 	} else {
 		console.info("Using event context modal to jump to event", evtID)
 		window.openNestableModal(modals.eventContext(roomCtx, evtID))

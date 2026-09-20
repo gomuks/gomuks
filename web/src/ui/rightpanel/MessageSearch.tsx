@@ -17,7 +17,7 @@ import { use, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import { LocalSearchParams, MemDBEvent, RoomID, UserID } from "@/api/types"
 import ClientContext from "../ClientContext.ts"
-import { RoomContext, RoomContextData } from "../roomview/roomcontext.ts"
+import { RoomContext, RoomContextData, createFakeRoomContexts } from "../roomview/roomcontext.ts"
 import TimelineEvent from "../timeline/TimelineEvent.tsx"
 
 const BATCH_SIZE = 50
@@ -94,17 +94,7 @@ const MessageSearch = () => {
 		promise.then(
 			([res, nextBatch]) => {
 				if (!canceled) {
-					for (const evt of res) {
-						if (!roomContexts.current.has(evt.room_id)) {
-							const room = client.store.rooms.get(evt.room_id)
-							if (room) {
-								const ctx = new RoomContextData(room)
-								// TODO make appropriate things read this flag and jump to the real room view
-								ctx.isFake = true
-								roomContexts.current.set(evt.room_id, ctx)
-							}
-						}
-					}
+					createFakeRoomContexts(client, res, roomContexts.current, roomCtx?.store.roomID)
 					if (reset) {
 						setEvents(res)
 					} else {

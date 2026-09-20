@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { RefObject, createContext, createRef, use } from "react"
+import type Client from "@/api/client.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { EventID, MemDBEvent, RoomType } from "@/api/types"
+import { EventID, MemDBEvent, RoomID, RoomType } from "@/api/types"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { makeMentionMarkdown } from "@/util/markdown.ts"
 
@@ -63,6 +64,25 @@ export class RoomContextData {
 		}
 		const targetUserName = evt.currentTarget.innerText
 		this.insertText(makeMentionMarkdown(targetUserName, targetUser))
+	}
+}
+
+export function createFakeRoomContexts(
+	client: Client,
+	evts: MemDBEvent[],
+	contexts: Map<RoomID, RoomContextData>,
+	currentRoomID?: RoomID,
+) {
+	for (const evt of evts) {
+		if (evt.room_id !== currentRoomID && !contexts.has(evt.room_id)) {
+			const room = client.store.rooms.get(evt.room_id)
+			if (room) {
+				const ctx = new RoomContextData(room)
+				// TODO make appropriate things read this flag and jump to the real room view
+				ctx.isFake = true
+				contexts.set(evt.room_id, ctx)
+			}
+		}
 	}
 }
 

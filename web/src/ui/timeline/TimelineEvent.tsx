@@ -151,7 +151,7 @@ const TimelineEvent = ({
 		mouseEvt.stopPropagation()
 	}, [client, evt])
 	const onClickTimestamp = (mouseEvt: React.MouseEvent) => {
-		if (viewType === "pinned" || (viewType === "notifications" && evt.room_id === roomCtx.store.roomID)) {
+		if (viewType === "pinned" || (viewType === "notifications" && !roomCtx.isFake)) {
 			mouseEvt.stopPropagation()
 			jumpToEventInView(roomCtx, evt.event_id, document.querySelector("div.room-view"))
 		} else if (viewType === "notifications") {

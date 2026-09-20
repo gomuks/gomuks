@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { use, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
-import { MemDBEvent, UnreadType } from "@/api/types"
+import { MemDBEvent, RoomID, UnreadType } from "@/api/types"
 import reverseMap from "@/util/reversemap.ts"
 import ClientContext from "../ClientContext.ts"
-import { RoomContext } from "../roomview/roomcontext.ts"
+import { RoomContext, RoomContextData, createFakeRoomContexts } from "../roomview/roomcontext.ts"
 import TimelineEvent from "../timeline/TimelineEvent.tsx"
 
 const BATCH_SIZE = 50
@@ -34,6 +34,7 @@ const Notifications = () => {
 	const [type, setType] = useState(UnreadType.Highlight)
 	const scrollFixRef = useRef<number>(null)
 	const viewRef = useRef<HTMLDivElement>(null)
+	const roomContexts = useRef<Map<RoomID, RoomContextData>>(new Map())
 	useEffect(() => {
 		setLoading(true)
 		let canceled = false
@@ -41,6 +42,7 @@ const Notifications = () => {
 			res => {
 				if (!canceled) {
 					scrollFixRef.current = 0
+					createFakeRoomContexts(client, res, roomContexts.current, roomCtx?.store.roomID)
 					setEvents(res)
 					setHasMore(res.length >= BATCH_SIZE)
 				}
@@ -50,7 +52,7 @@ const Notifications = () => {
 		return () => {
 			canceled = true
 		}
-	}, [client])
+	}, [client, roomCtx?.store.roomID])
 	const loadMoreMessages = (reset?: boolean, overrideRoomScoped?: boolean, overrideType?: UnreadType) => {
 		if (reset) {
 			setEvents([])
@@ -66,6 +68,7 @@ const Notifications = () => {
 		}).then(
 			res => {
 				scrollFixRef.current = reset ? 0 : viewRef.current?.scrollHeight ?? null
+				createFakeRoomContexts(client, res, roomContexts.current, roomCtx?.store.roomID)
 				setEvents(evts => evts.concat(res))
 				setHasMore(res.length >= BATCH_SIZE)
 				setError(null)
@@ -122,8 +125,15 @@ const Notifications = () => {
 					</>
 					: "Load more notifications"}
 			</button> : <button className="load-more" disabled>No more notifications</button>}
-			{reverseMap(events, (evt, i) =>
-				<TimelineEvent key={evt.rowid} evt={evt} prevEvt={events[i+1] ?? null} viewType="notifications" />)}
+			{reverseMap(events, (evt, i) => {
+				const elem = <TimelineEvent
+					key={evt.rowid} evt={evt} prevEvt={events[i+1] ?? null} viewType="notifications"
+				/>
+				if (evt.room_id !== roomCtx?.store.roomID) {
+					return <RoomContext value={roomContexts.current.get(evt.room_id)}>{elem}</RoomContext>
+				}
+				return elem
+			})}
 		</div>
 	</>
 }
