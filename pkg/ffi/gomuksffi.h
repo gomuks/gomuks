@@ -41,13 +41,14 @@ typedef void (*ProgressCallback)(double progress);
 typedef void (*StreamCallback)(GomuksBorrowedBuffer data);
 typedef void (*ResponseCallback)(GomuksResponse response);
 
+// GomuksSetEnv sets the environment variable named by key to value, which will
+// be visible to the gomuks instance (e.g. affecting later calls like GomuksInit).
+// The caller is responsible for memory management of the key and value strings.
+void GomuksSetEnv(char* key, char* value);
+
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
-// If root is non-NULL, it is used as the root directory for all gomuks data
-// (config, cache, data, logs), bypassing environment variable lookups.
-// Pass NULL to use the default directory resolution.
-// The caller is responsible for memory management of the root path string.
-GomuksHandle GomuksInit(char* root);
+GomuksHandle GomuksInit(void);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
