@@ -156,7 +156,8 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		setVotes(votes)
 		return votes
 	}
-	const clickLoadVotes = () => {
+	const clickLoadVotes = (evt: React.MouseEvent<HTMLButtonElement>) => {
+		evt.stopPropagation()
 		setLoading(votesLoadingKey)
 		loadVotesDirect().finally(() => setLoading(null))
 	}
@@ -205,7 +206,8 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		setLoading(answerID)
 		voteDirect(answerID, evt.currentTarget.checked).finally(() => setLoading(null))
 	}
-	const clickClose = async () => {
+	const clickClose = async (evt: React.MouseEvent<HTMLButtonElement>) => {
+		evt.stopPropagation()
 		if (!window.confirm("Really close poll?")) {
 			return
 		}
@@ -247,6 +249,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 					key={answerID}
 					className={`poll-answer ${pollEndTS > 0 || !canVote ? "cant-vote" : "can-vote"}`}
 					title={voters}
+					onClick={e => e.stopPropagation()}
 				>
 					{loading === answerID ?  <MoonLoader className="poll-answer-checkbox" size={16} /> : <input
 						type="checkbox"
