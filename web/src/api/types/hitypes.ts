@@ -221,6 +221,11 @@ export interface ManualPaginationResponse {
 	related_events?: RawDBEvent[]
 }
 
+export interface GetMentionsResponse {
+	events: RawDBEvent[]
+	related_events?: RawDBEvent[]
+}
+
 export interface ResolveAliasResponse {
 	room_id: RoomID
 	servers: string[]

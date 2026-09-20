@@ -65,6 +65,11 @@ type ManualPaginationResponse struct {
 	RelatedEvents []*database.Event `json:"related_events,omitempty"`
 }
 
+type GetMentionsResponse struct {
+	Events        []*database.Event `json:"events"`
+	RelatedEvents []*database.Event `json:"related_events,omitempty"`
+}
+
 type CrossSigningSeeds = struct {
 	MasterKey      jsonbytes.UnpaddedURLBytes `json:"m.cross_signing.master"`
 	SelfSigningKey jsonbytes.UnpaddedURLBytes `json:"m.cross_signing.self_signing"`

@@ -147,7 +147,7 @@ func (gr *GomuksRPC) SearchServer(ctx context.Context, params *jsoncmd.SearchSer
 	return executeRequest(gr, ctx, jsoncmd.SearchServer, params)
 }
 
-func (gr *GomuksRPC) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
+func (gr *GomuksRPC) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) (*jsoncmd.GetMentionsResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMentions, params)
 }
 

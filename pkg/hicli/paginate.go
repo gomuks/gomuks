@@ -359,6 +359,7 @@ func (h *HiClient) collectRelatedEvents(ctx context.Context, events []*database.
 			if err != nil {
 				return nil, fmt.Errorf("failed to get reply-to event: %w", err)
 			} else if dbEvt != nil {
+				h.ReprocessExistingEvent(ctx, dbEvt)
 				relatedEvents = append(relatedEvents, dbEvt)
 				addedEventIDs.Add(dbEvt.ID)
 				addedEventRowIDs.Add(dbEvt.RowID)
@@ -371,6 +372,8 @@ func (h *HiClient) collectRelatedEvents(ctx context.Context, events []*database.
 				targetEvt, err = h.DB.Event.GetByRowID(ctx, *evt.LastEditRowID)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get last edit event: %w", err)
+				} else if targetEvt != nil {
+					h.ReprocessExistingEvent(ctx, targetEvt)
 				}
 			}
 			if targetEvt != nil {
@@ -723,10 +726,20 @@ func (h *HiClient) SearchServer(ctx context.Context, params *jsoncmd.SearchServe
 	return wrappedResp, nil
 }
 
-func (h *HiClient) GetMentions(ctx context.Context, maxTS time.Time, unreadType database.UnreadType, limit int, roomID id.RoomID) ([]*database.Event, error) {
+func (h *HiClient) GetMentions(ctx context.Context, maxTS time.Time, unreadType database.UnreadType, limit int, roomID id.RoomID) (*jsoncmd.GetMentionsResponse, error) {
 	evts, err := h.DB.Event.GetMentions(ctx, maxTS, unreadType, limit, roomID)
+	if err != nil {
+		return nil, err
+	}
 	for _, evt := range evts {
 		h.ReprocessExistingEvent(ctx, evt)
 	}
-	return evts, err
+	relatedEvents, err := h.collectRelatedEvents(ctx, evts)
+	if err != nil {
+		return nil, err
+	}
+	return &jsoncmd.GetMentionsResponse{
+		Events:        evts,
+		RelatedEvents: relatedEvents,
+	}, nil
 }

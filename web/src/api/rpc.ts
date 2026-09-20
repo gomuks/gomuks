@@ -23,6 +23,7 @@ import {
 	EventID,
 	EventRowID,
 	EventType,
+	GetMentionsResponse,
 	GetOwnDevicesResponse,
 	GetProfileResponse,
 	JSONValue,
@@ -351,7 +352,7 @@ export default abstract class RPCClient {
 		type: UnreadType = UnreadType.Highlight,
 		limit: number = 50,
 		room_id: RoomID | undefined = undefined,
-	): Promise<RawDBEvent[]> {
+	): Promise<GetMentionsResponse> {
 		return this.request("get_mentions", { max_timestamp, type, limit, room_id })
 	}
 

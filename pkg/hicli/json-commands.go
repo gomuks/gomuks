@@ -423,8 +423,8 @@ func (h *JSONAPI) SearchServer(ctx context.Context, params *jsoncmd.SearchServer
 	return h.HiClient.SearchServer(mautrix.WithMaxRetries(ctx, 0), params)
 }
 
-func (h *JSONAPI) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) ([]*database.Event, error) {
-	return nonNilArray(h.HiClient.GetMentions(ctx, params.MaxTimestamp.Time, params.Type, params.Limit, params.RoomID))
+func (h *JSONAPI) GetMentions(ctx context.Context, params *jsoncmd.GetMentionsParams) (*jsoncmd.GetMentionsResponse, error) {
+	return h.HiClient.GetMentions(ctx, params.MaxTimestamp.Time, params.Type, params.Limit, params.RoomID)
 }
 
 func (h *JSONAPI) GetRoomSummary(ctx context.Context, params *jsoncmd.GetRoomSummaryParams) (*mautrix.RespRoomSummary, error) {

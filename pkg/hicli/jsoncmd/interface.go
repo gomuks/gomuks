@@ -40,7 +40,7 @@ type GomuksAPI interface {
 	PaginateManual(ctx context.Context, params *PaginateManualParams) (*ManualPaginationResponse, error)
 	SearchLocal(ctx context.Context, params *SearchParams) (*ManualPaginationResponse, error)
 	SearchServer(ctx context.Context, params *SearchServerParams) (*ManualPaginationResponse, error)
-	GetMentions(ctx context.Context, params *GetMentionsParams) ([]*database.Event, error)
+	GetMentions(ctx context.Context, params *GetMentionsParams) (*GetMentionsResponse, error)
 	GetRoomSummary(ctx context.Context, params *GetRoomSummaryParams) (*mautrix.RespRoomSummary, error)
 	GetSpaceHierarchy(ctx context.Context, params *GetHierarchyParams) (*mautrix.RespHierarchy, error)
 	JoinRoom(ctx context.Context, params *JoinRoomParams) (*mautrix.RespJoinRoom, error)

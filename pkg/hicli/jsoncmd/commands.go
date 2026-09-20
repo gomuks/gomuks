@@ -206,7 +206,7 @@ var (
 	// GetMentions returns recent events that mention the current user. This will not call the homeserver.
 	// The result is sorted by timestamp in descending order. Sorting by timestamp means the sender could
 	// have faked it, but there's no other cross-room event ordering in Matrix.
-	GetMentions = &CommandSpec[*GetMentionsParams, []*database.Event]{Name: ReqGetMentions}
+	GetMentions = &CommandSpec[*GetMentionsParams, *GetMentionsResponse]{Name: ReqGetMentions}
 	// GetRelatedEvents returns events related to a given event from the database (e.g. reactions,
 	// edits, replies depending on relation type). This will not call the homeserver.
 	GetRelatedEvents = &CommandSpec[*GetRelatedEventsParams, []*database.Event]{Name: ReqGetRelatedEvents}
