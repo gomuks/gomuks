@@ -193,7 +193,7 @@ func (eq *EventQuery) Search(
 		args = append(args, maxTime.UnixMilli())
 	}
 	if !includeRedacted {
-		wheres = append(wheres, "redacted_by IS NULL")
+		wheres = append(wheres, "redacted_by IS NULL AND unsigned->>'io.element.synapse.soft_failed' IS NULL")
 	}
 	if len(wheres) == 0 {
 		return nil, fmt.Errorf("at least one filter must be provided")
