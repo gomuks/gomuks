@@ -78,7 +78,6 @@ export function createFakeRoomContexts(
 			const room = client.store.rooms.get(evt.room_id)
 			if (room) {
 				const ctx = new RoomContextData(room)
-				// TODO make appropriate things read this flag and jump to the real room view
 				ctx.isFake = true
 				contexts.set(evt.room_id, ctx)
 			}
