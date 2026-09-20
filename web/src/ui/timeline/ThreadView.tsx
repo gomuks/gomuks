@@ -76,6 +76,9 @@ const ThreadView = ({ threadRoot }: ThreadViewProps) => {
 			.then(res => {
 				scrollFixRef.current = viewRef.current?.scrollHeight ?? null
 				setPrevBatch(res.next_batch ?? "")
+				for (const evt of (res.related_events ?? [])) {
+					room.applyEvent(evt)
+				}
 				setTimeline(currentTimeline => [
 					...res.events.reverse().map(evt => room.applyEvent(evt)),
 					...currentTimeline,

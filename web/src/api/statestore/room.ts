@@ -411,7 +411,7 @@ export class RoomStateStore {
 
 	applyPagination(
 		history: RawDBEvent[],
-		related: RawDBEvent[],
+		related: RawDBEvent[] | undefined,
 		allReceipts: Record<EventID, DBReceipt[]>,
 		reset: boolean = false,
 	) {
@@ -421,7 +421,7 @@ export class RoomStateStore {
 			this.applyEvent(evt)
 			return { timeline_rowid: evt.timeline_rowid, event_rowid: evt.rowid }
 		})
-		for (const evt of related) {
+		for (const evt of (related ?? [])) {
 			if (!this.eventsByRowID.has(evt.rowid)) {
 				this.applyEvent(evt)
 			}

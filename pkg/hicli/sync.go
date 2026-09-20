@@ -842,12 +842,27 @@ func (h *HiClient) processEvent(
 	decryptionQueue map[id.SessionID]*database.SessionRequest,
 	checkDB bool,
 ) (*database.Event, error) {
+	latestEdit := evt.Unsigned.Relations.GetLatestEdit()
+	evt.Unsigned.Relations = nil // we don't want to save this to the database
+	processLatestEdit := func(dbEvt *database.Event) error {
+		if latestEdit != nil && (latestEdit.RoomID == "" || latestEdit.RoomID == evt.RoomID) {
+			latestEdit.RoomID = evt.RoomID
+			dbEdit, err := h.processEvent(ctx, latestEdit, llSummary, decryptionQueue, true)
+			if err != nil {
+				return fmt.Errorf("failed to process edit %s of event %s: %w", latestEdit.ID, evt.ID, err)
+			} else if dbEdit != nil {
+				dbEvt.LastEditRef = dbEdit
+				dbEvt.LastEditRowID = &dbEdit.RowID
+			}
+		}
+		return nil
+	}
 	if checkDB {
 		dbEvt, err := h.DB.Event.GetByID(ctx, evt.RoomID, evt.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if event %s exists: %w", evt.ID, err)
 		} else if dbEvt != nil {
-			return dbEvt, nil
+			return dbEvt, processLatestEdit(dbEvt)
 		}
 	}
 	if err := h.fillPrevContent(ctx, evt); err != nil {
@@ -885,6 +900,10 @@ func (h *HiClient) processEvent(
 	_, err := h.DB.Event.Upsert(ctx, dbEvt)
 	if err != nil {
 		return dbEvt, fmt.Errorf("failed to save event %s: %w", evt.ID, err)
+	}
+	err = processLatestEdit(dbEvt)
+	if err != nil {
+		return dbEvt, err
 	}
 	if decryptedMautrixEvt != nil {
 		h.cacheMedia(ctx, decryptedMautrixEvt, dbEvt.RowID)

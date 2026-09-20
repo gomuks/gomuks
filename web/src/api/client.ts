@@ -470,6 +470,9 @@ export default class Client {
 		return new CancellablePromise((resolve, reject) => {
 			promise.then(resp => {
 				const output = []
+				for (const evt of (resp.related_events ?? [])) {
+					this.store.rooms.get(evt.room_id)?.getOrApplyEvent(evt)
+				}
 				for (const evt of resp.events ?? []) {
 					const room = this.store.rooms.get(evt.room_id)
 					if (!room) {

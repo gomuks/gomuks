@@ -54,11 +54,15 @@ type EventContextResponse struct {
 	Before []*database.Event `json:"before"`
 	After  []*database.Event `json:"after"`
 	Event  *database.Event   `json:"event"`
+
+	RelatedEvents []*database.Event `json:"related_events,omitempty"`
 }
 
 type ManualPaginationResponse struct {
 	Events    []*database.Event `json:"events"`
 	NextBatch string            `json:"next_batch,omitempty"`
+
+	RelatedEvents []*database.Event `json:"related_events,omitempty"`
 }
 
 type CrossSigningSeeds = struct {
