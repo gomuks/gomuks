@@ -48,7 +48,10 @@ void GomuksSetEnv(char* key, char* value);
 
 // GomuksInit initializes a new gomuks instance and returns a handle.
 // The handle can't be used before GomuksStart is called nor after GomuksDestroy is called.
-GomuksHandle GomuksInit(void);
+// If deviceDisplayName is non-NULL, it is used as the display name for your device
+// Pass NULL to use the default display name.
+// The caller is responsible for memory management of deviceDisplayName.
+GomuksHandle GomuksInit(char* deviceDisplayName);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
