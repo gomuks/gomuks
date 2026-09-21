@@ -331,8 +331,9 @@ func (rs *RoomStore) applyEvent(evt *database.Event, pending bool) {
 		evt.LastEditRef = rs.eventsByRowID[*evt.LastEditRowID]
 	} else if evt.RelationType == event.RelReplace && evt.RelatesTo != "" {
 		editTarget, ok := rs.eventsByID[evt.RelatesTo]
-		if ok && editTarget.LastEditRowID != nil && *editTarget.LastEditRowID != 0 && *editTarget.LastEditRowID == evt.RowID {
-			editTarget.LastEditRef = editTarget
+		if ok && (evt.Pending || (editTarget.LastEditRowID != nil && *editTarget.LastEditRowID != 0 && *editTarget.LastEditRowID == evt.RowID)) {
+			editTarget.LastEditRef = evt
+			editTarget.RenderMeta = nil
 			rs.EventSubs.Notify(editTarget.ID)
 		}
 	}

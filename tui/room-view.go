@@ -423,37 +423,35 @@ func (view *RoomView) SetCompletions(completions []string) {
 //}
 
 func (view *RoomView) SetEditing(evt *database.Event) {
-	//if evt == nil {
-	//	view.editing = nil
-	//	view.SetInputText(view.editMoveText)
-	//	view.editMoveText = ""
-	//} else {
-	//	if view.editing == nil {
-	//		view.editMoveText = view.GetInputText()
-	//	}
-	//	view.editing = evt
-	//	// replying should never be non-nil when SetEditing, but do this just to be safe
-	//	view.replying = nil
-	//	msgContent := view.editing.Content.AsMessage()
-	//	if len(view.editing.Gomuks.Edits) > 0 {
-	//		// This feels kind of dangerous, but I think it works
-	//		msgContent = view.editing.Gomuks.Edits[len(view.editing.Gomuks.Edits)-1].Content.AsMessage().NewContent
-	//	}
-	//	text := msgContent.Body
-	//	if len(msgContent.FormattedBody) > 0 && (!view.config.Preferences.DisableMarkdown || !view.config.Preferences.DisableHTML) {
-	//		if view.config.Preferences.DisableMarkdown {
-	//			text = msgContent.FormattedBody
-	//		} else {
-	//			text = editHTMLParser.Parse(msgContent.FormattedBody, make(format.Context))
-	//		}
-	//	}
-	//	if msgContent.MsgType == event.MsgEmote {
-	//		text = "/me " + text
-	//	}
-	//	view.input.SetText(text)
-	//}
-	//view.status.SetText(view.GetStatus())
-	//view.input.SetCursorOffset(-1)
+	if evt == nil {
+		view.editing = nil
+		view.SetInputText(view.editMoveText)
+		view.editMoveText = ""
+	} else {
+		if view.editing == nil {
+			view.editMoveText = view.GetInputText()
+		}
+		view.editing = evt
+		view.replying = nil
+		parsedContent := view.editing.GetMautrixContent()
+		msgContent := parsedContent.AsMessage()
+		if msgContent != nil {
+			if msgContent.NewContent != nil {
+				msgContent = msgContent.NewContent
+			}
+			text := msgContent.Body
+			localContent := view.editing.GetLocalContent()
+			if localContent != nil && localContent.EditSource != "" {
+				text = localContent.EditSource
+			}
+			if msgContent.MsgType == event.MsgEmote {
+				text = "/me " + text
+			}
+			view.input.SetText(text)
+		}
+	}
+	view.status.SetText(view.GetStatus())
+	view.input.SetCursorOffset(-1)
 }
 
 type findFilter func(evt *database.Event) bool
@@ -462,35 +460,44 @@ func (view *RoomView) filterOwnOnly(evt *database.Event) bool {
 	return evt.Sender == view.parent.matrix.UserID && evt.GetType() == event.EventMessage
 }
 
-//func (view *RoomView) filterMediaOnly(evt *database.Event) bool {
-//	msgtype := event.MessageType(gjson.GetBytes(evt.GetContent(), "msgtype").Str)
-//	switch msgtype {
-//	case event.MsgFile, event.MsgImage, event.MsgAudio, event.MsgVideo:
-//		return true
-//	default:
-//		return false
-//	}
-//}
+func (view *RoomView) filterMediaOnly(evt *database.Event) bool {
+	uiMsg, ok := evt.RenderMeta.(*messages.UIMessage)
+	if !ok || uiMsg == nil {
+		return false
+	}
+	switch uiMsg.MsgType {
+	case event.MsgFile, event.MsgImage, event.MsgAudio, event.MsgVideo:
+		return true
+	default:
+		return false
+	}
+}
 
 func (view *RoomView) findMessage(current *database.Event, forward bool, allow findFilter) *messages.UIMessage {
-	//currentFound := current == nil
-	//msgs := view.MessageView().messages
-	//for i := 0; i < len(msgs); i++ {
-	//	index := i
-	//	if !forward {
-	//		index = len(msgs) - i - 1
-	//	}
-	//	evt := msgs[index]
-	//	if evt.EventID == "" || string(evt.EventID) == evt.TxnID || evt.IsService {
-	//		continue
-	//	} else if currentFound {
-	//		if allow == nil || allow(evt.Event) {
-	//			return evt
-	//		}
-	//	} else if evt.EventID == current.ID {
-	//		currentFound = true
-	//	}
-	//}
+	timelinePtr := view.Room.TimelineCache.Current()
+	if timelinePtr == nil {
+		return nil
+	}
+	timeline := *timelinePtr
+	currentFound := current == nil
+	for i := 0; i < len(timeline); i++ {
+		index := i
+		if !forward {
+			index = len(timeline) - i - 1
+		}
+		evt := timeline[index]
+		if currentFound {
+			uiMsg, ok := evt.RenderMeta.(*messages.UIMessage)
+			if !ok || uiMsg == nil || uiMsg.IsService {
+				continue
+			}
+			if allow == nil || allow(evt) {
+				return uiMsg
+			}
+		} else if current != nil && evt.RowID == current.RowID {
+			currentFound = true
+		}
+	}
 	return nil
 }
 
@@ -499,7 +506,9 @@ func (view *RoomView) EditNext() {
 		return
 	}
 	foundMsg := view.findMessage(view.editing, true, view.filterOwnOnly)
-	view.SetEditing(foundMsg.GetEvent())
+	if foundMsg != nil {
+		view.SetEditing(foundMsg.Event)
+	}
 }
 
 func (view *RoomView) EditPrevious() {
@@ -508,37 +517,55 @@ func (view *RoomView) EditPrevious() {
 	}
 	foundMsg := view.findMessage(view.editing, false, view.filterOwnOnly)
 	if foundMsg != nil {
-		view.SetEditing(foundMsg.GetEvent())
+		view.SetEditing(foundMsg.Event)
 	}
 }
 
 func (view *RoomView) SelectNext() {
-	//msgView := view.MessageView()
-	//if msgView.selected == 0 {
-	//	return
-	//}
-	//var filter findFilter
-	//if view.selectReason == SelectDownload || view.selectReason == SelectOpen {
-	//	filter = view.filterMediaOnly
-	//}
-	//foundMsg := view.findMessage(msgView.selected.GetEvent(), true, filter)
-	//if foundMsg != nil {
-	//	msgView.SetSelected(foundMsg)
-	//	// TODO scroll selected message into view
-	//}
+	msgView := view.MessageView()
+	selectedUI := msgView.GetSelected()
+	if selectedUI == nil {
+		return
+	}
+	var filter findFilter
+	switch view.selectReason {
+	case SelectDownload, SelectOpen:
+		filter = view.filterMediaOnly
+	case SelectEdit:
+		filter = view.filterOwnOnly
+	}
+	foundMsg := view.findMessage(selectedUI.Event, true, filter)
+	if foundMsg != nil {
+		msgView.SetSelected(foundMsg)
+		msgView.ScrollIntoView(foundMsg)
+		view.parent.parent.Render()
+	}
 }
 
 func (view *RoomView) SelectPrevious() {
-	//msgView := view.MessageView()
-	//var filter findFilter
-	//if view.selectReason == SelectDownload || view.selectReason == SelectOpen {
-	//	filter = view.filterMediaOnly
-	//}
-	//foundMsg := view.findMessage(msgView.selected.GetEvent(), false, filter)
-	//if foundMsg != nil {
-	//	msgView.SetSelected(foundMsg)
-	//	// TODO scroll selected message into view
-	//}
+	msgView := view.MessageView()
+	selectedUI := msgView.GetSelected()
+	var filter findFilter
+	switch view.selectReason {
+	case SelectDownload, SelectOpen:
+		filter = view.filterMediaOnly
+	case SelectEdit:
+		filter = view.filterOwnOnly
+	}
+	var currentEvt *database.Event
+	if selectedUI != nil {
+		currentEvt = selectedUI.Event
+	}
+	foundMsg := view.findMessage(currentEvt, false, filter)
+	if foundMsg != nil {
+		msgView.SetSelected(foundMsg)
+		msgView.ScrollIntoView(foundMsg)
+		view.parent.parent.Render()
+	} else {
+		if !view.Room.Paginating.Load() {
+			go view.parent.LoadHistory(view.Room.ID)
+		}
+	}
 }
 
 type completion struct {
@@ -765,7 +792,10 @@ func (view *RoomView) SendReaction(eventID id.EventID, reaction string) {
 func (view *RoomView) SendMessage(msgtype event.MessageType, text string) {
 	defer debug.Recover()
 	var relatesTo *event.RelatesTo
-	if view.replying != nil {
+	if view.editing != nil {
+		relatesTo = (&event.RelatesTo{}).SetReplace(view.editing.ID)
+		view.editing = nil
+	} else if view.replying != nil {
 		relatesTo = (&event.RelatesTo{}).SetReplyTo(view.replying.ID)
 		view.replying = nil
 	}

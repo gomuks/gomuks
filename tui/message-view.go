@@ -57,6 +57,43 @@ type MessageView struct {
 	selected     database.EventRowID
 }
 
+func (view *MessageView) ScrollIntoView(message *messages.UIMessage) {
+	if message == nil {
+		return
+	}
+	view.lock.RLock()
+	defer view.lock.RUnlock()
+	msgStart, msgEnd := -1, -1
+	for i, msg := range view.msgBuffer {
+		if msg != nil && msg.RowID == message.RowID {
+			if msgStart == -1 {
+				msgStart = i
+			}
+			msgEnd = i + 1
+		} else if msgStart != -1 {
+			break
+		}
+	}
+	if msgStart == -1 {
+		return
+	}
+	totalHeight := view.TotalHeight()
+	height := view.Height()
+	if height <= 0 || totalHeight <= 0 {
+		return
+	}
+	scrollOffset := view.GetScrollOffset()
+	visibleStart := totalHeight - scrollOffset - height
+	visibleEnd := totalHeight - scrollOffset
+	if msgStart < visibleStart {
+		newOffset := totalHeight - height - msgStart
+		view.ScrollOffset.Store(int32(max(0, newOffset)))
+	} else if msgEnd > visibleEnd {
+		newOffset := totalHeight - msgEnd
+		view.ScrollOffset.Store(int32(max(0, newOffset)))
+	}
+}
+
 func NewMessageView(parent *RoomView) *MessageView {
 	mv := &MessageView{
 		parent: parent,
