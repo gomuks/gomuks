@@ -336,6 +336,12 @@ func (rs *RoomStore) applyEvent(evt *database.Event, pending bool) {
 			editTarget.RenderMeta = nil
 			rs.EventSubs.Notify(editTarget.ID)
 		}
+	} else if evt.RelationType == event.RelAnnotation && evt.RelatesTo != "" {
+		target, ok := rs.eventsByID[evt.RelatesTo]
+		if ok {
+			target.RenderMeta = nil
+			rs.EventSubs.Notify(target.ID)
+		}
 	}
 	rs.eventsByRowID[evt.RowID] = evt
 	rs.eventsByID[evt.ID] = evt

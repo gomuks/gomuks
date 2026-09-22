@@ -773,6 +773,13 @@ func (view *RoomView) SendReaction(eventID id.EventID, reaction string) {
 	defer debug.Recover()
 	reaction = variationselector.Add(strings.TrimSpace(reaction))
 	debug.Print("Reacting to", eventID, "in", view.Room.ID, "with", reaction)
+	targetEvt := view.Room.GetEventByID(eventID)
+	if targetEvt != nil {
+		if targetEvt.Reactions == nil {
+			targetEvt.Reactions = make(map[string]int)
+		}
+		targetEvt.Reactions[reaction]++
+	}
 	contentJSON, _ := json.Marshal(&event.ReactionEventContent{RelatesTo: event.RelatesTo{
 		Type:    event.RelAnnotation,
 		EventID: eventID,
