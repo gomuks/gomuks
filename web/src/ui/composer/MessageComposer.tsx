@@ -20,11 +20,12 @@ import React, {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useReducer,
 	useRef,
 	useState,
 } from "react"
-import { useRoomEvent, useRoomState } from "@/api/statestore"
+import { usePreferences, useRoomEvent, useRoomState } from "@/api/statestore"
 import {
 	BotArgumentValue,
 	EventID,
@@ -91,8 +92,7 @@ export interface ComposerState {
 	location: ComposerLocationValue | null
 	command: CommandState | null
 	previews: URLPreviewType[]
-	loadingPreviews: string[]
-	possiblePreviews: string[]
+	previewAttempts: { url: string, loading: boolean }[]
 	replyTo: EventID | null
 	mentionRoom: boolean
 	silentReply: boolean
@@ -109,8 +109,7 @@ const emptyComposer: ComposerState = {
 	location: null,
 	command: null,
 	previews: [],
-	loadingPreviews: [],
-	possiblePreviews: [],
+	previewAttempts: [],
 	replyTo: null,
 	mentionRoom: true,
 	silentReply: false,
@@ -141,7 +140,7 @@ const draftStore = {
 		}
 		try {
 			const parsed = JSON.parse(data)
-			parsed.loadingPreviews = []
+			parsed.previewAttempts = parsed.previewAttempts?.filter((p: { loading: boolean }) => !p.loading) ?? []
 			return parsed
 		} catch {
 			return null
@@ -161,10 +160,12 @@ const MessageComposer = () => {
 	const roomMeta = useEventAsState(room.meta)
 	const isEncrypted = !!roomMeta.encryption_event
 	const client = use(ClientContext)!
+	usePreferences(client.store, room)
 	const mainScreen = use(MainScreenContext)!
 	const openModal = use(ModalContext)
 	const [autocomplete, setAutocomplete] = useState<AutocompleteQuery | null>(null)
 	const [state, setState] = useReducer(composerReducer, uninitedComposer)
+	const loadingPreviews = state.previewAttempts.filter(p => p.loading).map(p => p.url)
 	const [editing, rawSetEditing] = useState<MemDBEvent | null>(null)
 	const [loadingMedia, setLoadingMedia] = useState<number | null>(null)
 	const [ignorePermissions, setIgnorePermissions] = useState(false)
@@ -253,6 +254,7 @@ const MessageComposer = () => {
 			explicitReplyInThread,
 			startNewThread: false,
 			command: null, // TODO allow editing command invocations?
+			previewAttempts: [],
 			previews:
 				evt.content["m.url_previews"] ??
 				evt.content["com.beeper.linkpreviews"] ??
@@ -263,7 +265,7 @@ const MessageComposer = () => {
 	const canSend = Boolean(state.text || state.media || state.location)
 	const onClickSend = (evt: React.FormEvent) => {
 		evt.preventDefault()
-		if (!canSend || loadingMedia !== null || state.loadingPreviews.length) {
+		if (!canSend || loadingMedia !== null || loadingPreviews.length) {
 			return
 		}
 		doSendMessage(state)
@@ -697,28 +699,24 @@ const MessageComposer = () => {
 		}
 		evt.preventDefault()
 	}
-	const resolvePreview = useCallback((url: string) => {
-		setState(s => ({ loadingPreviews: [...s.loadingPreviews, url]}))
-		fetch(`_gomuks/url_preview?encrypt=${isEncrypted}&url=${encodeURIComponent(url)}`, {
-			method: "GET",
-		})
-			.then(async res => {
-				const json = await res.json()
-				if (!res.ok) {
-					throw new Error(json.error)
-				} else {
-					setState(s => ({
-						previews: [...s.previews, json],
-						loadingPreviews: s.loadingPreviews.filter(u => u !== url),
-					}))
-				}
-			})
-			.catch(err => {
-				console.error("Error fetching preview for URL", url, err)
-				setState(s => ({
-					loadingPreviews: s.loadingPreviews.filter(u => u !== url),
-				}))
-			})
+	const resolvePreview = useCallback(async (url: string) => {
+		const request = { url, loading: true } // Object identity distinguishes requests for the same URL.
+		setState(s => ({ previewAttempts: [...s.previewAttempts.filter(p => p.url !== url), request]}))
+		let preview: URLPreviewType | undefined
+		try {
+			const res = await fetch(`_gomuks/url_preview?encrypt=${isEncrypted}&url=${encodeURIComponent(url)}`)
+			const json = await res.json()
+			if (!res.ok) {
+				throw new Error(json.error)
+			}
+			preview = json
+		} catch (err) {
+			console.error("Error fetching preview for URL", url, err)
+		}
+		setState(s => s.previewAttempts.includes(request) ? {
+			previews: preview ? [...s.previews, preview] : s.previews,
+			previewAttempts: s.previewAttempts.map(p => p === request ? { ...p, loading: false } : p),
+		} : {})
 	}, [isEncrypted])
 	// To ensure the cursor jumps to the end, do this in an effect rather than as the initial value of useState
 	// To try to avoid the input bar flashing, use useLayoutEffect instead of useEffect
@@ -776,24 +774,33 @@ const MessageComposer = () => {
 			draftStore.set(room.roomID, state, roomCtx.threadRoot)
 		}
 	}, [roomCtx, room, state, editing])
-	useEffect(() => {
-		if (state.uninited) {
-			return
-		}
-		if (!room.preferences.send_bundled_url_previews) {
-			setState({ previews: [], loadingPreviews: [], possiblePreviews: []})
-			return
-		}
-		const urls = state.text.matchAll(/\bhttps?:\/\/[^\s/_*]+(?:\/\S*)?\b/gi)
+	const possiblePreviews = useMemo(() => room.preferences.send_bundled_url_previews && !state.uninited
+		? [...new Set(state.text.matchAll(/\bhttps?:\/\/[^\s/_*]+(?:\/\S*)?\b/gi)
 			.map(m => m[0])
-			.filter(u => !u.startsWith("https://matrix.to"))
-			.toArray()
-		setState(s => ({
-			previews: s.previews.filter(p => urls.includes(p.matched_url)),
-			loadingPreviews: s.loadingPreviews.filter(u => urls.includes(u)),
-			possiblePreviews: urls,
-		}))
-	}, [room.preferences, state.uninited, state.text])
+			.filter(u => !u.startsWith("https://matrix.to")))]
+		: [], [room.preferences.send_bundled_url_previews, state.uninited, state.text])
+	useEffect(() => {
+		const previews = state.previews.filter(p => possiblePreviews.includes(p.matched_url))
+		const previewAttempts = state.previewAttempts.filter(p => possiblePreviews.includes(p.url))
+		if (previews.length !== state.previews.length || previewAttempts.length !== state.previewAttempts.length) {
+			setState({ previews, previewAttempts })
+		}
+		if (!room.preferences.auto_generate_url_previews || !possiblePreviews.length) {
+			return
+		}
+		const timeout = setTimeout(() => {
+			for (const url of possiblePreviews) {
+				// Failed or dismissed previews stay manual until the URL is removed from the draft.
+				if (!previewAttempts.some(p => p.url === url) && !previews.some(p => p.matched_url === url)) {
+					resolvePreview(url)
+				}
+			}
+		}, 500)
+		return () => clearTimeout(timeout)
+	}, [
+		room.preferences.auto_generate_url_previews, possiblePreviews,
+		state.previews, state.previewAttempts, resolvePreview,
+	])
 	const clearMedia = useCallback(() => setState({ media: null, location: null }), [])
 	const onChangeLocation = useCallback((location: ComposerLocationValue) => setState({ location }), [])
 	const closeReply = useCallback((evt: React.MouseEvent) => {
@@ -973,8 +980,8 @@ const MessageComposer = () => {
 			>Click to show composer anyway</a>
 		</div>
 	}
-	const possiblePreviewsNotLoadingOrPreviewed = state.possiblePreviews.filter(
-		url => !state.loadingPreviews.includes(url) && !state.previews.some(p => p.matched_url === url))
+	const possiblePreviewsNotLoadingOrPreviewed = possiblePreviews.filter(
+		url => !loadingPreviews.includes(url) && !state.previews.some(p => p.matched_url === url))
 	return <>
 		{Autocompleter && autocomplete ? <div className="autocompletions-wrapper">
 			<ErrorBoundary thing="autocompleter" wrapperClassName="autocompletions">
@@ -1036,16 +1043,19 @@ const MessageComposer = () => {
 				/>
 				Mention @room
 			</label>}
-			{state.previews.length || state.loadingPreviews.length || possiblePreviewsNotLoadingOrPreviewed
+			{state.previews.length || loadingPreviews.length || possiblePreviewsNotLoadingOrPreviewed.length
 				? <div className="url-previews">
 					{state.previews.map((preview, i) => <URLPreview
 						key={i}
 						url={preview.matched_url}
 						preview={preview}
-						clearPreview={() => setState(s => ({ previews: s.previews.filter((_, j) => j !== i) }))}
+						clearPreview={() => setState(s => ({
+							previews: s.previews.filter((_, j) => j !== i),
+							previewAttempts: [...s.previewAttempts, { url: preview.matched_url, loading: false }],
+						}))}
 					/>)}
-					{state.loadingPreviews.map((previewURL, i) =>
-						<URLPreview	key={i} url={previewURL} preview="loading"/>)}
+					{loadingPreviews.map((url, i) =>
+						<URLPreview key={i} url={url} preview="loading"/>)}
 					{possiblePreviewsNotLoadingOrPreviewed.map((url, i) =>
 						<URLPreview
 							key={i}
@@ -1073,7 +1083,7 @@ const MessageComposer = () => {
 				{inlineButtons && makeAttachmentButtons()}
 				{showSendButton && <button
 					onClick={onClickSend}
-					disabled={!canSend || loadingMedia !== null || !!state.loadingPreviews.length}
+					disabled={!canSend || loadingMedia !== null || !!loadingPreviews.length}
 					title="Send message"
 				><SendIcon/></button>}
 				<input
