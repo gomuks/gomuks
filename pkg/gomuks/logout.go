@@ -36,7 +36,7 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 	} else {
 		_, err = gmx.Client.Client.Logout(ctx)
 	}
-	if err != nil && !errors.Is(err, mautrix.MUnknownToken) {
+	if err != nil && !errors.Is(err, mautrix.MUnknownToken) && !errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		log.Warn().Err(err).Msg("Failed to log out")
 		return err
 	}
