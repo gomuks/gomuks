@@ -18,6 +18,7 @@ package gomuks
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -36,7 +37,12 @@ type PushPayload struct {
 	RoomID  id.RoomID  `json:"room_id"`
 }
 
-func (gmx *Gomuks) ReceivePushNotification(ctx context.Context, payload PushPayload) (*database.Event, error) {
+type HandlePushResponse struct {
+	Event *database.Event `json:"event"`
+	Room  *database.Room  `json:"room"`
+}
+
+func (gmx *Gomuks) ReceivePushNotification(ctx context.Context, payload PushPayload) (*HandlePushResponse, error) {
 	if err := gmx.initClientForNotifications(ctx); err != nil {
 		return nil, err
 	}
@@ -54,12 +60,23 @@ func (gmx *Gomuks) ReceivePushNotification(ctx context.Context, payload PushPayl
 	return nil, nil
 }
 
-func (gmx *Gomuks) handlePushForEvent(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*database.Event, error) {
+func (gmx *Gomuks) handlePushForEvent(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*HandlePushResponse, error) {
 	evt, err := gmx.Client.GetEvent(ctx, roomID, eventID)
 	if evt != nil && strings.Contains(evt.DecryptionError, crypto.ErrNoSessionFound.Error()) {
-		return gmx.handlePushForEventWithSync(ctx, roomID, eventID)
+		evt, err = gmx.handlePushForEventWithSync(ctx, roomID, eventID)
 	}
-	return evt, err
+	if err != nil {
+		return nil, err
+	}
+	room, err := gmx.Client.DB.Room.Get(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get room info: %w", err)
+	}
+	// TODO fetch from server if room wasn't found?
+	return &HandlePushResponse{
+		Event: evt,
+		Room:  room,
+	}, nil
 }
 
 func (gmx *Gomuks) handlePushForEventWithSync(ctx context.Context, roomID id.RoomID, eventID id.EventID) (*database.Event, error) {
