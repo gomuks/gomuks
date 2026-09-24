@@ -68,8 +68,9 @@ const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
 	const isLoadingOnlyCover = !loaded && !contentWarning && renderMediaElem
 
 	const containerSize = imageWidth === 320 ? undefined : { width: imageWidth, height: imageWidth / 4 * 3 }
-	const [mediaContent, containerClass, containerStyle] =
-		useMediaContent(content, event.type, containerSize, onLoad, autoplayGifs)
+	const [mediaContent, containerClass, containerStyle] = useMediaContent(
+		content, event.type, containerSize, onLoad, autoplayGifs, { event, room, senderMemberEvent: sender },
+	)
 
 	let placeholderElem: JSX.Element | null = null
 	if (renderPlaceholderElem) {

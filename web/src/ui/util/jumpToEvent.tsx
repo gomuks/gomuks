@@ -30,6 +30,7 @@ export const jumpToEvent = (
 		})
 	} else if (jumpToVisibleEvent(evtID, null, roomCtx)) {
 		console.info("Jumped to event", evtID, "in visible timeline")
+		roomCtx.scrolledToBottom = false
 	} else if (roomCtx.store.timeline.length === 0 && allowRetry) {
 		// Hacky sleep to let the timeline load maybe?
 		console.info("Waiting for timeline to load before jumping to event", evtID)
