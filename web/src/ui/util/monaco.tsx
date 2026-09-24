@@ -13,16 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import "monaco-editor/esm/vs/basic-languages/css/css.contribution.js"
-import "monaco-editor/esm/vs/editor/edcore.main.js"
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js"
-import CSSWorker from "monaco-editor/esm/vs/language/css/css.worker.js?worker"
-import "monaco-editor/esm/vs/language/css/monaco.contribution.js"
+import * as monaco from "monaco-editor/editor"
+import EditorWorker from "monaco-editor/editor/editor.worker?worker"
+import "monaco-editor/features/register.all"
+import CSSWorker from "monaco-editor/language/css/css.worker?worker"
+import "monaco-editor/languages/definitions/css/register"
+import "monaco-editor/languages/features/css/register"
 import { RefObject, memo, useLayoutEffect, useRef } from "react"
 
 window.MonacoEnvironment = {
-	getWorker: function() {
-		return new CSSWorker()
+	getWorker: function(_workerID, label) {
+		return label === "css" ? new CSSWorker() : new EditorWorker()
 	},
 }
 

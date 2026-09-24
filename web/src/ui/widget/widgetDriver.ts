@@ -202,7 +202,7 @@ class GomuksWidgetDriver extends WidgetDriver {
 		if (!stateEvts) {
 			return []
 		}
-		let stateRowIDs: EventRowID[] = []
+		let stateRowIDs: EventRowID[]
 		if (stateKey !== undefined) {
 			const stateEvtID = stateEvts.get(stateKey)
 			if (!stateEvtID) {

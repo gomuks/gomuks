@@ -200,7 +200,7 @@ const PreferenceRow = ({
 		{makeContentCell(PreferenceContext.Device, globalLocal, inherit = globalServer ?? inherit)}
 		{!hideRoom ? <>
 			{makeContentCell(PreferenceContext.RoomAccount, roomServer, inherit = globalLocal ?? inherit)}
-			{makeContentCell(PreferenceContext.RoomDevice, roomLocal, inherit = roomServer ?? inherit)}
+			{makeContentCell(PreferenceContext.RoomDevice, roomLocal, roomServer ?? inherit)}
 		</> : <>
 			<div className="empty-cell" />
 			<div className="empty-cell" />
