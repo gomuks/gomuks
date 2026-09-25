@@ -516,10 +516,6 @@ func (h *HiClient) PaginateServer(ctx context.Context, roomID id.RoomID, limit i
 		if err != nil {
 			return fmt.Errorf("failed to fill reaction counts: %w", err)
 		}
-		err = h.DB.Event.FillLastEditRowIDs(ctx, roomID, events)
-		if err != nil {
-			return fmt.Errorf("failed to fill last edit row IDs: %w", err)
-		}
 		err = h.DB.Room.SetPrevBatch(ctx, room.ID, resp.End)
 		if err != nil {
 			return fmt.Errorf("failed to set prev_batch: %w", err)

@@ -109,7 +109,12 @@ const (
 		ORDER BY main.event_id, edit.timestamp
 	`
 	setLastEditRowIDQuery = `
-		UPDATE event SET last_edit_rowid = $3 WHERE room_id = $1 AND event_id = $2
+		UPDATE event
+		SET last_edit_rowid = $7
+		WHERE rowid = $1 AND room_id = $2 AND event_id = $3 AND type = $4 AND sender = $5
+		  AND (relation_type IS NULL OR relation_type NOT IN ('m.replace', 'm.annotation'))
+		  AND $6 > COALESCE((SELECT prev_edit.timestamp FROM event prev_edit WHERE prev_edit.rowid = event.last_edit_rowid), 0)
+		  AND last_edit_rowid <> $7
 	`
 	updateReactionCountsQuery = `UPDATE event SET reactions = $3 WHERE room_id = $1 AND event_id = $2`
 )
@@ -322,39 +327,11 @@ func (eq *EventQuery) FillReactionCounts(ctx context.Context, roomID id.RoomID, 
 	return nil
 }
 
-func (eq *EventQuery) FillLastEditRowIDs(ctx context.Context, roomID id.RoomID, events []*Event) error {
-	eventIDs := make([]id.EventID, len(events))
-	eventMap := make(map[id.EventID]*Event)
-	for i, evt := range events {
-		if evt.LastEditRowID == nil {
-			eventIDs[i] = evt.ID
-			eventMap[evt.ID] = evt
-		}
-	}
-	return eq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
-		result, err := eq.GetEditRowIDs(ctx, roomID, eventIDs...)
-		if err != nil {
-			return err
-		}
-		for evtID, res := range result {
-			lastEditRowID := res[len(res)-1]
-			eventMap[evtID].LastEditRowID = &lastEditRowID
-			delete(eventMap, evtID)
-			err = eq.Exec(ctx, setLastEditRowIDQuery, roomID, evtID, lastEditRowID)
-			if err != nil {
-				return err
-			}
-		}
-		var zero EventRowID
-		for evtID, evt := range eventMap {
-			evt.LastEditRowID = &zero
-			err = eq.Exec(ctx, setLastEditRowIDQuery, roomID, evtID, zero)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+func (eq *EventQuery) UpdateLastEdit(ctx context.Context, target, edit *Event) error {
+	return eq.Exec(
+		ctx, setLastEditRowIDQuery,
+		target.RowID, edit.RoomID, edit.RelatesTo, edit.Type, edit.Sender, edit.Timestamp, edit.RowID,
+	)
 }
 
 var reactionKeyPath = exgjson.Path("m.relates_to", "key")

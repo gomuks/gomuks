@@ -853,6 +853,10 @@ func (h *HiClient) processEvent(
 			} else if dbEdit != nil {
 				dbEvt.LastEditRef = dbEdit
 				dbEvt.LastEditRowID = &dbEdit.RowID
+				err = h.DB.Event.UpdateLastEdit(ctx, dbEvt, dbEdit)
+				if err != nil {
+					return fmt.Errorf("failed to update last edit for event %s: %w", dbEvt.ID, err)
+				}
 			}
 		}
 		return nil
