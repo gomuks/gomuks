@@ -31,7 +31,7 @@ const (
 	checkTimelineContainsQuery = `
 		SELECT EXISTS(SELECT 1 FROM timeline WHERE room_id = $1 AND event_rowid = $2)
 	`
-	findMinRowIDQuery = `SELECT MIN(rowid) FROM timeline`
+	findMinRowIDQuery = `SELECT COALESCE(MIN(rowid), 0) FROM timeline`
 	getTimelineQuery  = `
 		SELECT event.rowid, timeline.rowid,
 		       event.room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
