@@ -586,6 +586,10 @@ func (h *HiClient) GetEventContext(ctx context.Context, roomID id.RoomID, eventI
 	if err != nil {
 		return nil, err
 	}
+	err = h.DB.Event.FillReactionCounts(ctx, roomID, allEvents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fill reaction counts: %w", err)
+	}
 	if len(decryptionQueue) > 0 {
 		h.WakeupRequestQueue()
 	}
