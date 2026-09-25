@@ -88,12 +88,15 @@ const (
 	updateEventDecryptedQuery        = `UPDATE event SET decrypted = $2, decrypted_type = $3, decryption_error = NULL, unread_type = $4, local_content = $5 WHERE rowid = $1`
 	updateEventLocalContentQuery     = `UPDATE event SET local_content = $2 WHERE rowid = $1`
 	updateEventEncryptedContentQuery = `UPDATE event SET content = $2, megolm_session_id = $3 WHERE rowid = $1`
-	getEventReactionsQuery           = getEventBaseQuery + `
+	getEventReactionsQuery           = `
+		SELECT relates_to, content->>'$."m.relates_to".key' AS reaction, COUNT(*)
+		FROM event INDEXED BY event_relates_to_idx
 		WHERE room_id = ?
 		  AND type = 'm.reaction'
 		  AND relation_type = 'm.annotation'
 		  AND redacted_by IS NULL
 		  AND relates_to IN (%s)
+		GROUP BY 1, 2
 	`
 	setLastEditRowIDQuery = `
 		UPDATE event
@@ -304,12 +307,12 @@ func (eq *EventQuery) FillReactionCounts(ctx context.Context, roomID id.RoomID, 
 	if len(eventIDs) == 0 {
 		return nil
 	}
-	result, err := eq.GetReactions(ctx, roomID, eventIDs...)
+	result, err := eq.getReactionCounts(ctx, roomID, eventIDs...)
 	if err != nil {
 		return err
 	}
-	for evtID, res := range result {
-		eventMap[evtID].Reactions = res.Counts
+	for evtID, counts := range result {
+		eventMap[evtID].Reactions = counts
 	}
 	return nil
 }
@@ -320,8 +323,6 @@ func (eq *EventQuery) UpdateLastEdit(ctx context.Context, target, edit *Event) e
 		target.RowID, edit.RoomID, edit.RelatesTo, edit.Type, edit.Sender, edit.Timestamp, edit.RowID,
 	)
 }
-
-var reactionKeyPath = exgjson.Path("m.relates_to", "key")
 
 type GetReactionsResult struct {
 	Events []*Event
@@ -339,30 +340,35 @@ func buildMultiEventGetFunction[T any](preParams []any, eventIDs []T, query stri
 	return fmt.Sprintf(query, placeholders), params
 }
 
-func (eq *EventQuery) GetReactions(ctx context.Context, roomID id.RoomID, eventIDs ...id.EventID) (map[id.EventID]*GetReactionsResult, error) {
-	result := make(map[id.EventID]*GetReactionsResult, len(eventIDs))
+type reactionRowTuple struct {
+	relatesTo id.EventID
+	key       string
+	count     int
+}
+
+var scanReactionRowTuple = dbutil.ConvertRowFn[reactionRowTuple](func(row dbutil.Scannable) (reactionRowTuple, error) {
+	var t reactionRowTuple
+	err := row.Scan(&t.relatesTo, &t.key, &t.count)
+	return t, err
+})
+
+func (eq *EventQuery) getReactionCounts(ctx context.Context, roomID id.RoomID, eventIDs ...id.EventID) (map[id.EventID]map[string]int, error) {
+	result := make(map[id.EventID]map[string]int, len(eventIDs))
 	for _, evtID := range eventIDs {
-		result[evtID] = &GetReactionsResult{Counts: make(map[string]int)}
+		result[evtID] = make(map[string]int)
 	}
 	return result, eq.GetDB().DoTxn(ctx, nil, func(ctx context.Context) error {
 		query, params := buildMultiEventGetFunction([]any{roomID}, eventIDs, getEventReactionsQuery)
-		events, err := eq.QueryMany(ctx, query, params...)
+		err := scanReactionRowTuple.NewRowIter(eq.GetDB().Query(ctx, query, params...)).Iter(func(tuple reactionRowTuple) (bool, error) {
+			result[tuple.relatesTo][tuple.key] = tuple.count
+			return true, nil
+		})
 		if err != nil {
 			return err
-		} else if len(events) == 0 {
-			return nil
 		}
-		for _, evt := range events {
-			dest := result[evt.RelatesTo]
-			dest.Events = append(dest.Events, evt)
-			keyRes := gjson.GetBytes(evt.Content, reactionKeyPath)
-			if keyRes.Type == gjson.String {
-				dest.Counts[keyRes.Str]++
-			}
-		}
-		for evtID, res := range result {
-			if len(res.Counts) > 0 {
-				err = eq.Exec(ctx, updateReactionCountsQuery, roomID, evtID, dbutil.JSON{Data: &res.Counts})
+		for evtID, counts := range result {
+			if len(counts) > 0 {
+				err = eq.Exec(ctx, updateReactionCountsQuery, roomID, evtID, dbutil.JSON{Data: &counts})
 				if err != nil {
 					return err
 				}
