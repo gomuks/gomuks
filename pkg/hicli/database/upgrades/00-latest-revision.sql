@@ -212,7 +212,6 @@ CREATE TRIGGER event_insert_fill_reactions
 		AND NEW.relation_type = 'm.annotation'
 		AND NEW.redacted_by IS NULL
 		AND typeof(NEW.content ->> '$."m.relates_to".key') = 'text'
-		AND NEW.content ->> '$."m.relates_to".key' NOT LIKE '%"%'
 BEGIN
 	UPDATE event
 	SET reactions=json_set(
@@ -235,7 +234,6 @@ CREATE TRIGGER event_redact_fill_reactions
 		AND NEW.redacted_by IS NOT NULL
 		AND OLD.redacted_by IS NULL
 		AND typeof(NEW.content ->> '$."m.relates_to".key') = 'text'
-		AND NEW.content ->> '$."m.relates_to".key' NOT LIKE '%"%'
 BEGIN
 	UPDATE event
 	SET reactions=json_set(
