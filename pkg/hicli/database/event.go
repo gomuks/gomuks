@@ -95,19 +95,6 @@ const (
 		  AND redacted_by IS NULL
 		  AND relates_to IN (%s)
 	`
-	getEventEditRowIDsQuery = `
-		SELECT main.event_id, edit.rowid
-		FROM event main
-		JOIN event edit INDEXED BY event_relates_to_idx ON
-			edit.room_id = main.room_id
-			AND edit.relates_to = main.event_id
-			AND edit.relation_type = 'm.replace'
-			AND edit.type = main.type
-			AND edit.sender = main.sender
-			AND edit.redacted_by IS NULL
-		WHERE main.room_id = ? AND main.event_id IN (%s)
-		ORDER BY main.event_id, edit.timestamp
-	`
 	setLastEditRowIDQuery = `
 		UPDATE event
 		SET last_edit_rowid = $7
@@ -350,24 +337,6 @@ func buildMultiEventGetFunction[T any](preParams []any, eventIDs []T, query stri
 	placeholders := strings.Repeat("?,", len(eventIDs))
 	placeholders = placeholders[:len(placeholders)-1]
 	return fmt.Sprintf(query, placeholders), params
-}
-
-type editRowIDTuple struct {
-	eventID   id.EventID
-	editRowID EventRowID
-}
-
-func (eq *EventQuery) GetEditRowIDs(ctx context.Context, roomID id.RoomID, eventIDs ...id.EventID) (map[id.EventID][]EventRowID, error) {
-	query, params := buildMultiEventGetFunction([]any{roomID}, eventIDs, getEventEditRowIDsQuery)
-	rows, err := eq.GetDB().Query(ctx, query, params...)
-	output := make(map[id.EventID][]EventRowID)
-	return output, dbutil.NewRowIterWithError(rows, func(row dbutil.Scannable) (tuple editRowIDTuple, err error) {
-		err = row.Scan(&tuple.eventID, &tuple.editRowID)
-		return
-	}, err).Iter(func(tuple editRowIDTuple) (bool, error) {
-		output[tuple.eventID] = append(output[tuple.eventID], tuple.editRowID)
-		return true, nil
-	})
 }
 
 func (eq *EventQuery) GetReactions(ctx context.Context, roomID id.RoomID, eventIDs ...id.EventID) (map[id.EventID]*GetReactionsResult, error) {
