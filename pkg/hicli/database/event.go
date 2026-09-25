@@ -306,10 +306,8 @@ func (eq *EventQuery) FillReactionCounts(ctx context.Context, roomID id.RoomID, 
 	eventIDs := make([]id.EventID, 0, len(events))
 	eventMap := make(map[id.EventID]*Event)
 	for _, evt := range events {
-		if evt.Reactions == nil {
-			eventIDs = append(eventIDs, evt.ID)
-			eventMap[evt.ID] = evt
-		}
+		eventIDs = append(eventIDs, evt.ID)
+		eventMap[evt.ID] = evt
 	}
 	if len(eventIDs) == 0 {
 		return nil
