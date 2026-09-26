@@ -182,6 +182,11 @@ func ParseStateEvent(room *store.RoomStore, evt *database.Event) *UIMessage {
 
 func ParseMessage(matrix *client.GomuksClient, prefs *config.UserPreferences, room *store.RoomStore, evt *database.Event) *UIMessage {
 	content := evt.GetMautrixContent().AsMessage()
+	if evt.LastEditRef != nil {
+		if editContent := evt.LastEditRef.GetMautrixContent().AsMessage(); editContent != nil && editContent.NewContent != nil {
+			content = editContent.NewContent
+		}
+	}
 	switch content.MsgType {
 	case event.MsgText, event.MsgNotice, event.MsgEmote:
 		var htmlEntity html.Entity
