@@ -1,4 +1,4 @@
--- v0 -> v27 (compatible with v10+): Latest revision
+-- v0 -> v29 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -120,6 +120,7 @@ CREATE TABLE event (
 	send_error        TEXT,
 
 	reactions         TEXT,
+	own_reactions     TEXT,
 	last_edit_rowid   INTEGER,
 	unread_type       INTEGER NOT NULL DEFAULT 0,
 	sticky_duration   INTEGER,
@@ -212,6 +213,7 @@ CREATE TRIGGER event_insert_fill_reactions
 		AND NEW.relation_type = 'm.annotation'
 		AND NEW.redacted_by IS NULL
 		AND typeof(NEW.content ->> '$."m.relates_to".key') = 'text'
+		AND NEW.event_id NOT LIKE '~%'
 BEGIN
 	UPDATE event
 	SET reactions=json_set(
@@ -224,6 +226,47 @@ BEGIN
 	WHERE event_id = NEW.relates_to
 	  AND room_id = NEW.room_id
 	  AND reactions IS NOT NULL;
+
+	UPDATE event
+	SET own_reactions=json_insert(
+		COALESCE(own_reactions, '{}'),
+		'$.' || json_quote(NEW.content ->> '$."m.relates_to".key') || '[#]',
+		NEW.event_id)
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
+	  AND NEW.sender IN (SELECT user_id FROM account);
+END;
+
+CREATE TRIGGER event_send_complete_fill_reactions
+	AFTER UPDATE
+	ON event
+	WHEN NEW.type = 'm.reaction'
+		AND NEW.relation_type = 'm.annotation'
+		AND OLD.event_id LIKE '~%'
+		AND NEW.event_id LIKE '$%'
+		AND typeof(NEW.content ->> '$."m.relates_to".key') = 'text'
+BEGIN
+	UPDATE event
+	SET reactions=json_set(
+		reactions,
+		'$.' || json_quote(NEW.content ->> '$."m.relates_to".key'),
+		coalesce(
+			reactions ->> ('$.' || json_quote(NEW.content ->> '$."m.relates_to".key')),
+			0
+		) + 1)
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
+	  AND reactions IS NOT NULL;
+
+	UPDATE event
+	SET own_reactions=json_insert(
+		COALESCE(own_reactions, '{}'),
+		'$.' || json_quote(NEW.content ->> '$."m.relates_to".key') || '[#]',
+		NEW.event_id)
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
+	  AND NEW.redacted_by IS NULL
+	  AND NEW.sender IN (SELECT user_id FROM account);
 END;
 
 CREATE TRIGGER event_redact_fill_reactions
@@ -246,6 +289,20 @@ BEGIN
 	WHERE event_id = NEW.relates_to
 	  AND room_id = NEW.room_id
 	  AND reactions IS NOT NULL;
+
+	UPDATE event
+	SET own_reactions = json_set(
+		own_reactions,
+		'$.' || json_quote(NEW.content ->> '$."m.relates_to".key'),
+		(
+			SELECT json_group_array(value)
+			FROM json_each(own_reactions, '$.' || json_quote(NEW.content ->> '$."m.relates_to".key'))
+			WHERE value <> NEW.event_id
+		))
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id
+	  AND NEW.sender IN (SELECT user_id FROM account)
+	  AND own_reactions IS NOT NULL;
 END;
 
 CREATE VIRTUAL TABLE event_search USING fts5 (

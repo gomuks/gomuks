@@ -648,6 +648,10 @@ func (h *HiClient) PaginateManual(
 	if err != nil {
 		return nil, err
 	}
+	err = h.DB.Event.FillReactionCounts(ctx, roomID, wrappedResp.Events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fill reaction counts: %w", err)
+	}
 	return &wrappedResp, nil
 }
 
