@@ -475,6 +475,10 @@ export interface RespRoomJoin {
 	room_id: RoomID
 }
 
+export interface RespSendEvent {
+	event_id: EventID
+}
+
 export interface RespOpenIDToken {
 	access_token: string
 	expires_in: number

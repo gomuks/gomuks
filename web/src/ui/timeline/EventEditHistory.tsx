@@ -43,6 +43,7 @@ const EventEditHistory = ({ evt, roomCtx }: EventEditHistoryProps) => {
 					local_content: evt.orig_local_content ?? evt.local_content,
 					last_edit: undefined,
 					reactions: undefined,
+					own_reactions: undefined,
 					orig_content: undefined,
 					orig_local_content: undefined,
 				}, ...edits.map(editEvt => ({
@@ -51,6 +52,7 @@ const EventEditHistory = ({ evt, roomCtx }: EventEditHistoryProps) => {
 					orig_content: editEvt.content,
 					relation_type: undefined,
 					reactions: undefined,
+					own_reactions: undefined,
 				}))])
 			},
 			err => {

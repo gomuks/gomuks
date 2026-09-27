@@ -171,6 +171,7 @@ export class RoomStateStore {
 	readonly typingSub = new Subscribable()
 	readonly stateSubs = new MultiSubscribable()
 	readonly eventSubs = new MultiSubscribable()
+	readonly eventRowIDSubs = new MultiSubscribable<EventRowID>()
 	readonly receiptsByEventID: Map<EventID, MemReceipt[]> = new Map()
 	readonly receiptsByUserID: Map<UserID, MemReceipt> = new Map()
 	readonly receiptSubs = new MultiSubscribable()
@@ -500,6 +501,7 @@ export class RoomStateStore {
 		this.eventsByRowID.set(evt.rowid, evt)
 		this.eventsByID.set(evt.event_id, evt)
 		this.eventSubs.notify(evt.event_id)
+		this.eventRowIDSubs.notify(evt.rowid)
 		if (isInThread(evt, this.#threadListenerRoot)) {
 			this.#threadListener?.(undefined, evt)
 		}

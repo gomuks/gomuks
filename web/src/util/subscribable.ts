@@ -43,11 +43,11 @@ export class NoDataSubscribable extends Subscribable {
 	getData = () => this.data
 }
 
-export class MultiSubscribable {
-	readonly subscribers: Map<string, Set<Subscriber>> = new Map()
-	readonly subscribeFuncs: Map<string, SubscribeFunc> = new Map()
+export class MultiSubscribable<T = string> {
+	readonly subscribers: Map<T, Set<Subscriber>> = new Map()
+	readonly subscribeFuncs: Map<T, SubscribeFunc> = new Map()
 
-	getSubscriber(key: string): SubscribeFunc {
+	getSubscriber(key: T): SubscribeFunc {
 		let subscribe = this.subscribeFuncs.get(key)
 		if (!subscribe) {
 			const subs = new Set<Subscriber>()
@@ -67,7 +67,7 @@ export class MultiSubscribable {
 		return subscribe
 	}
 
-	notify(key: string) {
+	notify(key: T) {
 		const subs = this.subscribers.get(key)
 		if (!subs) {
 			return

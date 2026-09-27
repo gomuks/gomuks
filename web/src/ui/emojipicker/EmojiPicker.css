@@ -204,8 +204,12 @@ div.emoji-picker, div.sticker-picker {
 		content-visibility: auto;
 
 		&.selected {
-			border: 1px solid var(--emoji-selected-border-color);
-			opacity: .8;
+			border: 1px solid var(--own-reaction-border-color);
+			background-color: var(--own-reaction-background-color);
+
+			&:hover {
+				background-color: var(--own-reaction-hover-color);
+			}
 		}
 	}
 

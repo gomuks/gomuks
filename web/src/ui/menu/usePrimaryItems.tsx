@@ -82,16 +82,26 @@ export const usePrimaryItems = (
 			left: style.left,
 			right: style.right,
 		} : getModalStyleFromButton(mevt.currentTarget, emojiPickerHeight)
+		const selected = Object.entries(evt.own_reactions ?? {})
+			.filter(([, value]) => value.length > 0)
+			.map(([key]) => key)
 		openModal({
 			content: <EmojiPicker
 				style={emojiPickerStyle}
 				onSelect={emoji => {
-					client.sendEvent(evt.room_id, "m.reaction", emojiToReactionContent(emoji, evt.event_id))
-						.catch(err => window.alert(`Failed to send reaction: ${err}`))
+					const ownReactionID = evt.own_reactions?.[emoji.u]?.[0]
+					if (ownReactionID) {
+						client.rpc.redactEvent(evt.room_id,  ownReactionID, "")
+							.catch(err => window.alert(`Failed to remove reaction: ${err}`))
+					} else {
+						client.sendEvent(evt.room_id, "m.reaction", emojiToReactionContent(emoji, evt.event_id))
+							.catch(err => window.alert(`Failed to send reaction: ${err}`))
+					}
 				}}
 				room={roomCtx.store}
 				closeOnSelect={true}
 				allowFreeform={true}
+				selected={selected}
 			/>,
 			onClose: () => setForceOpen?.(false),
 		})

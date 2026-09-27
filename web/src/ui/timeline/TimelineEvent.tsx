@@ -13,14 +13,9 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import React, { JSX, use, useCallback, useRef, useState } from "react"
-import { getAvatarThumbnailURL, getMediaURL, getUserColorIndex } from "@/api/media.ts"
-import {
-	RoomStateStore,
-	applyPerMessageSender,
-	maybeRedactMemberEvent,
-	useRoomMember,
-} from "@/api/statestore"
+import React, { JSX, use, useRef, useState } from "react"
+import { getAvatarThumbnailURL, getUserColorIndex } from "@/api/media.ts"
+import { RoomStateStore, applyPerMessageSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
 import { MemDBEvent, URLPreview as URLPreviewType, UnreadType } from "@/api/types"
 import { formatDate, formatFullTime, formatShortTime, newSafeDate } from "@/util/datetime.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
@@ -34,6 +29,7 @@ import { useRoomContext } from "../roomview/roomcontext.ts"
 import URLPreview from "../urlpreview/URLPreview.tsx"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
 import { useHorizontalSwipe } from "../util/swipe.ts"
+import EventReactions from "./EventReactions.tsx"
 import ReadReceipts from "./ReadReceipts.tsx"
 import { ReplyBody, ReplyIDBody } from "./ReplyBody.tsx"
 import { ContentErrorBoundary, HiddenEvent, getBodyType, getPerMessageProfile, isSmallEvent } from "./content"
@@ -52,27 +48,6 @@ export interface TimelineEventProps {
 	smallReplies?: boolean
 	smallThreads?: boolean
 	viewType: TimelineEventViewType
-}
-
-interface EventReactionsProps {
-	reactions: Record<string, number>
-	onRereact: (mouseEvt: React.MouseEvent) => void
-}
-
-const EventReactions = ({ reactions, onRereact }: EventReactionsProps) => {
-	const reactionEntries = Object.entries(reactions).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
-	if (reactionEntries.length === 0) {
-		return null
-	}
-	return <div className="event-reactions">
-		{reactionEntries.map(([reaction, count]) =>
-			<div key={reaction} className="reaction" title={reaction} onClick={onRereact}>
-				{reaction.startsWith("mxc://")
-					? <img className="reaction-emoji" src={getMediaURL(reaction)} alt=""/>
-					: <span className="reaction-emoji">{reaction}</span>}
-				<span className="reaction-count">{count}</span>
-			</div>)}
-	</div>
 }
 
 const EventSendStatus = ({ evt }: { evt: MemDBEvent }) => {
@@ -137,19 +112,6 @@ const TimelineEvent = ({
 			/>,
 		})
 	}
-	const onRereact = useCallback((mouseEvt: React.MouseEvent) => {
-		client.sendEvent(evt.room_id, "m.reaction", {
-			"m.relates_to": {
-				rel_type: "m.annotation",
-				event_id: evt.event_id,
-				key: mouseEvt.currentTarget.getAttribute("title"),
-			},
-		}).catch(err => {
-			console.error("Failed to send reaction", err)
-			window.alert(`Failed to send reaction: ${err}`)
-		})
-		mouseEvt.stopPropagation()
-	}, [client, evt])
 	const onClickTimestamp = (mouseEvt: React.MouseEvent) => {
 		if (viewType === "pinned" || (viewType === "notifications" && !roomCtx.isFake)) {
 			mouseEvt.stopPropagation()
@@ -333,6 +295,12 @@ const TimelineEvent = ({
 	const shortTime = formatShortTime(eventTS)
 	const renderMemberEventDisplayname = getDisplayname(evt.sender, renderMemberEvtContent)
 	const mainMemberEventDisplayname = getDisplayname(evt.sender, memberEvtContent)
+	const reactions = evt.reactions ? <EventReactions
+		room={roomCtx.store}
+		eventID={evt.event_id}
+		reactions={evt.reactions}
+		ownReactions={evt.own_reactions}
+	/> : null
 	const mainEvent = <div
 		data-event-id={evt.event_id}
 		className={wrapperClassNames.join(" ")}
@@ -394,7 +362,7 @@ const TimelineEvent = ({
 			isThread={true}
 			threadRoot={threadRoot}
 			timelineThreadMsg={true}
-			reactions={evt.reactions ? <EventReactions reactions={evt.reactions} onRereact={onRereact} /> : null}
+			reactions={reactions}
 		/> : <div className="event-content">
 			{replyInMessage}
 			<ContentErrorBoundary>
@@ -411,7 +379,7 @@ const TimelineEvent = ({
 			>
 				(edited at {formatShortTime(editEventTS)})
 			</div> : null}
-			{evt.reactions ? <EventReactions reactions={evt.reactions} onRereact={onRereact} /> : null}
+			{reactions}
 		</div>}
 		{!evt.event_id.startsWith("~")
 			&& roomCtx.store.preferences.display_read_receipts

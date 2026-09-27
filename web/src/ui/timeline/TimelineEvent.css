@@ -309,10 +309,22 @@ div.event-reactions {
 		max-width: 20rem;
 
 		user-select: none;
-		cursor: var(--clickable-cursor);
 
-		&:hover {
+		&:not(.disabled) {
+			cursor: var(--clickable-cursor);
+		}
+
+		&:hover:not(.disabled) {
 			background-color: var(--light-hover-color);
+		}
+
+		&.own-reaction {
+			background-color: var(--own-reaction-background-color);
+			border-color: var(--own-reaction-border-color);
+
+			&:hover:not(.disabled) {
+				background-color: var(--own-reaction-hover-color);
+			}
 		}
 
 		> img.reaction-emoji {

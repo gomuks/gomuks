@@ -37,6 +37,9 @@
 	--highlight-pill-text-color: #fff;
 	--button-hover-color: rgba(0, 0, 0, .2);
 	--light-hover-color: rgba(0, 0, 0, .1);
+	--own-reaction-background-color: rgba(0, 200, 83, .05);
+	--own-reaction-hover-color: rgba(0, 200, 83, .3);
+	--own-reaction-border-color: var(--primary-color);
 
 	--composer-background-color: #f0f0f0;
 
@@ -147,6 +150,8 @@
 		--url-preview-background-color: #222;
 		--button-hover-color: rgba(255, 255, 255, .2);
 		--light-hover-color: rgba(255, 255, 255, .1);
+		--own-reaction-background-color: rgba(0, 200, 83, .2);
+		--own-reaction-hover-color: rgba(0, 200, 83, .5);
 
 		--composer-background-color: #0a0a0a;
 

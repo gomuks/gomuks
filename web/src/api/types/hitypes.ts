@@ -135,6 +135,7 @@ export interface BaseDBEvent {
 	send_error?: string
 
 	reactions?: Record<string, number>
+	own_reactions?: Record<string, EventID[]>
 	last_edit_rowid?: EventRowID
 	unread_type: UnreadType
 
