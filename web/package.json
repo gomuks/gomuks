@@ -23,7 +23,7 @@
 		"katex": "^0.18.1",
 		"leaflet": "^1.9.4",
 		"matrix-widget-api": "^1.13.1",
-		"monaco-editor": "^0.56.0",
+		"monaco-editor": "^0.57.0",
 		"react": "^19.0.0",
 		"react-blurhash": "^0.3.0",
 		"react-dom": "^19.0.0",
