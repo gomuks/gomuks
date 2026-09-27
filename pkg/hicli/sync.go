@@ -992,7 +992,7 @@ func (h *HiClient) processStateAndTimeline(
 	}
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
 	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(sticky.Events)+len(timeline.Events))
-	addedEvents := make(map[database.EventRowID]struct{})
+	addedEvents := make(map[database.EventRowID]int)
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
 	var newUnreadCounts database.UnreadCounts
@@ -1007,9 +1007,12 @@ func (h *HiClient) processStateAndTimeline(
 		} else if dbEvt == nil {
 			return nil, nil
 		}
-		_, alreadyAdded := addedEvents[dbEvt.RowID]
-		if !alreadyAdded {
-			addedEvents[dbEvt.RowID] = struct{}{}
+		existingIdx, alreadyAdded := addedEvents[dbEvt.RowID]
+		if alreadyAdded {
+			// TODO update newNotifications as well?
+			allNewEvents[existingIdx] = dbEvt
+		} else {
+			addedEvents[dbEvt.RowID] = len(allNewEvents)
 			allNewEvents = append(allNewEvents, dbEvt)
 		}
 		return dbEvt, nil
@@ -1085,8 +1088,8 @@ func (h *HiClient) processStateAndTimeline(
 			}
 			processImportantEvent(ctx, evt, room, updatedRoom, dbEvt.RowID, sdc)
 		}
+		addedEvents[dbEvt.RowID] = len(allNewEvents)
 		allNewEvents = append(allNewEvents, dbEvt)
-		addedEvents[dbEvt.RowID] = struct{}{}
 		if evt.Type == event.EventRedaction && evt.Redacts != "" {
 			err = processRedaction(evt)
 			if err != nil {
