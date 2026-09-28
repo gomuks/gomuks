@@ -73,4 +73,5 @@ type GomuksAPI interface {
 	GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error)
 	GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error)
 	CalculateRoomID(ctx context.Context, params *CalculateRoomIDParams) (id.RoomID, error)
+	GetLiveKitCredentials(ctx context.Context, params *GetLiveKitCredentialsParams) (*LiveKitCredentials, error)
 }

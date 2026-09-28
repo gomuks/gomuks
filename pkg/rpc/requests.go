@@ -282,3 +282,7 @@ func (gr *GomuksRPC) CalculateRoomID(ctx context.Context, params *jsoncmd.Calcul
 func (gr *GomuksRPC) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {
 	return executeRequestNoResponse(gr, ctx, jsoncmd.RerequestSession, params)
 }
+
+func (gr *GomuksRPC) GetLiveKitCredentials(ctx context.Context, params *jsoncmd.GetLiveKitCredentialsParams) (*jsoncmd.LiveKitCredentials, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetLiveKitCredentials, params)
+}

@@ -7,11 +7,14 @@
 package hicli
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -185,6 +188,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.CalculateRoomID.RunCtx(ctx, req.Data, h.API.CalculateRoomID)
 	case jsoncmd.ReqRerequestSession:
 		return jsoncmd.RerequestSession.RunCtx(ctx, req.Data, h.API.RerequestSession)
+	case jsoncmd.ReqGetLiveKitCredentials:
+		return jsoncmd.GetLiveKitCredentials.RunCtx(ctx, req.Data, h.API.GetLiveKitCredentials)
 	default:
 		return nil, fmt.Errorf("unknown command %q", req.Command)
 	}
@@ -544,6 +549,56 @@ func (h *JSONAPI) ResolveAlias(ctx context.Context, params *jsoncmd.ResolveAlias
 
 func (h *JSONAPI) RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error) {
 	return h.Client.RequestOpenIDToken(ctx)
+}
+
+func (h *JSONAPI) GetLiveKitCredentials(ctx context.Context, params *jsoncmd.GetLiveKitCredentialsParams) (*jsoncmd.LiveKitCredentials, error) {
+	openIDToken, err := h.Client.RequestOpenIDToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OpenID token: %w", err)
+	}
+	sfuURL := strings.TrimRight(params.SFUURL, "/") + "/sfu/get"
+	reqBody, err := json.Marshal(map[string]any{
+		"room":      params.RoomID,
+		"device_id": params.DeviceID,
+		"openid_token": map[string]any{
+			"access_token":       openIDToken.AccessToken,
+			"token_type":         openIDToken.TokenType,
+			"matrix_server_name": openIDToken.MatrixServerName,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, sfuURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("SFU request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("SFU credential exchange failed (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var rawCreds struct {
+		URL   string `json:"url"`
+		Token string `json:"token"`
+		JWT   string `json:"jwt"`
+	}
+	if err = json.Unmarshal(body, &rawCreds); err != nil {
+		return nil, fmt.Errorf("failed to parse SFU response: %w", err)
+	}
+	if rawCreds.Token == "" {
+		rawCreds.Token = rawCreds.JWT
+	}
+	if rawCreds.URL == "" || rawCreds.Token == "" {
+		return nil, errors.New("SFU response missing url or token")
+	}
+	creds := &jsoncmd.LiveKitCredentials{URL: rawCreds.URL, Token: rawCreds.Token}
+	return creds, nil
 }
 
 func (h *JSONAPI) Logout(ctx context.Context) error {

@@ -87,6 +87,11 @@ type LoginFlowsResponse struct {
 	OAuth *oauth.ServerMetadata `json:"oauth,omitempty"`
 }
 
+type LiveKitCredentials struct {
+	URL   string `json:"url"`
+	Token string `json:"token"`
+}
+
 type DownloadMediaResponse struct {
 	*database.Media
 	Path          string `json:"path"`
