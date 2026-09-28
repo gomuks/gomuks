@@ -103,7 +103,7 @@ const (
 		  AND relation_type = 'm.annotation'
 		  AND redacted_by IS NULL
 		  AND relates_to IN (%s)
-		  AND event_id NOT LIKE '~%'
+		  AND event_id NOT LIKE '~%%'
 		GROUP BY 1, 2
 	`
 	setLastEditRowIDQuery = `
