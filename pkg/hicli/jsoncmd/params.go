@@ -206,6 +206,20 @@ type ResolveAliasParams struct {
 	Alias id.RoomAlias `json:"alias"`
 }
 
+type GetLocalAliasesParams struct {
+	RoomID id.RoomID `json:"room_id"`
+}
+
+type CreateAliasParams struct {
+	RoomID      id.RoomID    `json:"room_id"`
+	Alias       id.RoomAlias `json:"alias"`
+	DeleteFirst bool         `json:"delete_first,omitzero"`
+}
+
+type DeleteAliasParams struct {
+	Alias id.RoomAlias `json:"alias"`
+}
+
 type LoginParams struct {
 	HomeserverURL string `json:"homeserver_url"`
 	Username      string `json:"username"`

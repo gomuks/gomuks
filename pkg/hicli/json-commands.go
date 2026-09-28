@@ -135,6 +135,12 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.SendToDevice.RunCtx(ctx, req.Data, h.API.SendToDevice)
 	case jsoncmd.ReqResolveAlias:
 		return jsoncmd.ResolveAlias.RunCtx(ctx, req.Data, h.API.ResolveAlias)
+	case jsoncmd.ReqGetLocalAliases:
+		return jsoncmd.GetLocalAliases.RunCtx(ctx, req.Data, h.API.GetLocalAliases)
+	case jsoncmd.ReqCreateAlias:
+		return jsoncmd.CreateAlias.RunCtx(ctx, req.Data, h.API.CreateAlias)
+	case jsoncmd.ReqDeleteAlias:
+		return jsoncmd.DeleteAlias.RunCtx(ctx, req.Data, h.API.DeleteAlias)
 	case jsoncmd.ReqRequestOpenIDToken:
 		return jsoncmd.RequestOpenIDToken.RunCtx(ctx, req.Data, h.API.RequestOpenIDToken)
 	case jsoncmd.ReqLogout:
@@ -540,6 +546,26 @@ func (h *JSONAPI) SendToDevice(ctx context.Context, params *jsoncmd.SendToDevice
 
 func (h *JSONAPI) ResolveAlias(ctx context.Context, params *jsoncmd.ResolveAliasParams) (*mautrix.RespAliasResolve, error) {
 	return h.Client.ResolveAlias(mautrix.WithMaxRetries(ctx, 0), params.Alias)
+}
+
+func (h *JSONAPI) GetLocalAliases(ctx context.Context, params *jsoncmd.GetLocalAliasesParams) (*mautrix.RespAliasList, error) {
+	return h.Client.GetAliases(mautrix.WithMaxRetries(ctx, 0), params.RoomID)
+}
+
+func (h *JSONAPI) CreateAlias(ctx context.Context, params *jsoncmd.CreateAliasParams) error {
+	if params.DeleteFirst {
+		_, err := h.Client.DeleteAlias(ctx, params.Alias)
+		if err != nil && !errors.Is(err, mautrix.MNotFound) {
+			return err
+		}
+	}
+	_, err := h.Client.CreateAlias(ctx, params.Alias, params.RoomID)
+	return err
+}
+
+func (h *JSONAPI) DeleteAlias(ctx context.Context, params *jsoncmd.DeleteAliasParams) error {
+	_, err := h.Client.DeleteAlias(ctx, params.Alias)
+	return err
 }
 
 func (h *JSONAPI) RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error) {

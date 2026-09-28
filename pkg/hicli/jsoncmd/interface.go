@@ -52,6 +52,9 @@ type GomuksAPI interface {
 	EnsureGroupSessionShared(ctx context.Context, params *EnsureGroupSessionSharedParams) error
 	SendToDevice(ctx context.Context, params *SendToDeviceParams) (*mautrix.RespSendToDevice, error)
 	ResolveAlias(ctx context.Context, params *ResolveAliasParams) (*mautrix.RespAliasResolve, error)
+	GetLocalAliases(ctx context.Context, params *GetLocalAliasesParams) (*mautrix.RespAliasList, error)
+	CreateAlias(ctx context.Context, params *CreateAliasParams) error
+	DeleteAlias(ctx context.Context, params *DeleteAliasParams) error
 	RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error)
 	Logout(ctx context.Context) error
 	Login(ctx context.Context, params *LoginParams) error

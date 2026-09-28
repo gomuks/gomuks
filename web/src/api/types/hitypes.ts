@@ -232,6 +232,10 @@ export interface ResolveAliasResponse {
 	servers: string[]
 }
 
+export interface GetLocalAliasesResponse {
+	aliases: RoomAlias[]
+}
+
 export interface LoginFlowsResponse {
 	flows?: {
 		type: string

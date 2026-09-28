@@ -82,6 +82,9 @@ const (
 	ReqEnsureGroupSessionShared Name = "ensure_group_session_shared"
 	ReqSendToDevice             Name = "send_to_device"
 	ReqResolveAlias             Name = "resolve_alias"
+	ReqGetLocalAliases          Name = "get_local_aliases"
+	ReqCreateAlias              Name = "create_alias"
+	ReqDeleteAlias              Name = "delete_alias"
 	ReqRequestOpenIDToken       Name = "request_openid_token"
 	ReqLogout                   Name = "logout"
 	ReqLogin                    Name = "login"
@@ -252,6 +255,12 @@ var (
 	SendToDevice = &CommandSpec[*SendToDeviceParams, *mautrix.RespSendToDevice]{Name: ReqSendToDevice}
 	// ResolveAlias resolves a room alias to the ID and list of participating servers.
 	ResolveAlias = &CommandSpec[*ResolveAliasParams, *mautrix.RespAliasResolve]{Name: ReqResolveAlias}
+	// GetLocalAliases gets all local aliases for a specific room.
+	GetLocalAliases = &CommandSpec[*GetLocalAliasesParams, *mautrix.RespAliasList]{Name: ReqGetLocalAliases}
+	// CreateAlias adds a new alias for a room, optionally removing it first if it already exists.
+	CreateAlias = &CommandSpecWithoutResponse[*CreateAliasParams]{Name: ReqCreateAlias}
+	// DeleteAlias removes an alias from a room.
+	DeleteAlias = &CommandSpecWithoutResponse[*DeleteAliasParams]{Name: ReqDeleteAlias}
 	// RequestOpenIDToken returns an OpenID token from the homeserver. OpenID tokens are used to
 	// authenticate with various external services. Widgets also need this method.
 	//

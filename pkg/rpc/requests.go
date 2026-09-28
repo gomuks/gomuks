@@ -195,6 +195,18 @@ func (gr *GomuksRPC) ResolveAlias(ctx context.Context, params *jsoncmd.ResolveAl
 	return executeRequest(gr, ctx, jsoncmd.ResolveAlias, params)
 }
 
+func (gr *GomuksRPC) GetLocalAliases(ctx context.Context, params *jsoncmd.GetLocalAliasesParams) (*mautrix.RespAliasList, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetLocalAliases, params)
+}
+
+func (gr *GomuksRPC) CreateAlias(ctx context.Context, params *jsoncmd.CreateAliasParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.CreateAlias, params)
+}
+
+func (gr *GomuksRPC) DeleteAlias(ctx context.Context, params *jsoncmd.DeleteAliasParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.DeleteAlias, params)
+}
+
 func (gr *GomuksRPC) RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error) {
 	return executeRequest(gr, ctx, jsoncmd.RequestOpenIDToken, nil)
 }
