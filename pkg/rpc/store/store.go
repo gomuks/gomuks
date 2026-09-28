@@ -9,6 +9,7 @@ package store
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,14 @@ type GomuksStore struct {
 	accountData      map[event.Type]*database.AccountData
 	AccountDataSubs  MultiNotifier[event.Type]
 	PreferenceCache  EventDispatcher[*Preferences]
+	spaceEdges       map[id.RoomID][]*database.SpaceEdge
+	SpaceList        EventDispatcher[[]*SpaceEntry]
+}
+
+// SpaceEntry is a space shown in the space switcher.
+type SpaceEntry struct {
+	RoomID id.RoomID
+	Name   string
 }
 
 func NewStore() *GomuksStore {
@@ -53,6 +62,7 @@ func NewStore() *GomuksStore {
 		rooms:        make(map[id.RoomID]*RoomStore),
 		invitedRooms: make(map[id.RoomID]*InvitedRoom),
 		accountData:  make(map[event.Type]*database.AccountData),
+		spaceEdges:   make(map[id.RoomID][]*database.SpaceEdge),
 	}
 	return gs
 }
@@ -121,6 +131,7 @@ func (gs *GomuksStore) ApplySync(sync *jsoncmd.SyncComplete) {
 	defer gs.lock.Unlock()
 	resyncRoomList := len(gs.roomList) == 0
 	changedRoomListEntries := make(map[id.RoomID]*RoomListEntry)
+	spacesChanged := false
 	for evtType, ad := range sync.AccountData {
 		evtType.Class = event.AccountDataEventType
 		if evtType == AccountDataGomuksPreferences {
@@ -156,7 +167,29 @@ func (gs *GomuksStore) ApplySync(sync *jsoncmd.SyncComplete) {
 	}
 	for _, roomID := range sync.LeftRooms {
 		delete(gs.rooms, roomID)
+		delete(gs.spaceEdges, roomID)
+		for parentSpaceID, edges := range gs.spaceEdges {
+			filtered := slices.DeleteFunc(edges, func(edge *database.SpaceEdge) bool {
+				return edge.ChildID == roomID
+			})
+			if len(filtered) == 0 {
+				delete(gs.spaceEdges, parentSpaceID)
+			} else {
+				gs.spaceEdges[parentSpaceID] = filtered
+			}
+		}
 		changedRoomListEntries[roomID] = nil
+	}
+
+	if len(sync.SpaceEdges) > 0 {
+		for spaceID, edges := range sync.SpaceEdges {
+			if len(edges) == 0 {
+				delete(gs.spaceEdges, spaceID)
+			} else {
+				gs.spaceEdges[spaceID] = edges
+			}
+		}
+		spacesChanged = true
 	}
 	var updatedRoomList []*RoomListEntry
 	if resyncRoomList {
@@ -204,6 +237,63 @@ func (gs *GomuksStore) ApplySync(sync *jsoncmd.SyncComplete) {
 		slices.Reverse(reversed)
 		gs.ReversedRoomList.Emit(reversed)
 	}
+	// A room becoming (or ceasing to be) a space changes the switcher contents
+	// even when no m.space.child edges moved.
+	if spacesChanged || updatedRoomList != nil {
+		gs.SpaceList.Emit(gs.buildSpaceList())
+	}
+}
+
+// buildSpaceList returns the joined spaces, sorted by name. Callers must hold
+// at least a read lock.
+func (gs *GomuksStore) buildSpaceList() []*SpaceEntry {
+	spaces := make([]*SpaceEntry, 0, len(gs.spaceEdges))
+	for _, roomStore := range gs.rooms {
+		meta := roomStore.Meta.Current()
+		if meta.GetType() != event.RoomTypeSpace {
+			continue
+		}
+		name := ptr.Val(meta.Name)
+		if name == "" {
+			name = string(meta.ID)
+		}
+		spaces = append(spaces, &SpaceEntry{
+			RoomID: meta.ID,
+			Name:   name,
+		})
+	}
+	slices.SortFunc(spaces, func(a, b *SpaceEntry) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return spaces
+}
+
+// GetSpaceList returns the joined spaces, sorted by name.
+func (gs *GomuksStore) GetSpaceList() []*SpaceEntry {
+	gs.lock.RLock()
+	defer gs.lock.RUnlock()
+	return gs.buildSpaceList()
+}
+
+// IsRoomInSpace reports whether the given room is a direct child of the space.
+func (gs *GomuksStore) IsRoomInSpace(spaceID, roomID id.RoomID) bool {
+	gs.lock.RLock()
+	defer gs.lock.RUnlock()
+	return slices.ContainsFunc(gs.spaceEdges[spaceID], func(edge *database.SpaceEdge) bool {
+		return edge.ChildID == roomID
+	})
+}
+
+// GetRoomsInSpace returns the room IDs that are direct children of the space.
+func (gs *GomuksStore) GetRoomsInSpace(spaceID id.RoomID) []id.RoomID {
+	gs.lock.RLock()
+	defer gs.lock.RUnlock()
+	edges := gs.spaceEdges[spaceID]
+	rooms := make([]id.RoomID, 0, len(edges))
+	for _, edge := range edges {
+		rooms = append(rooms, edge.ChildID)
+	}
+	return rooms
 }
 
 func (gs *GomuksStore) GetRoom(roomID id.RoomID) *RoomStore {
@@ -224,7 +314,9 @@ func (gs *GomuksStore) Clear() {
 	clear(gs.rooms)
 	clear(gs.invitedRooms)
 	clear(gs.accountData)
+	clear(gs.spaceEdges)
 	gs.PreferenceCache.Emit(nil)
 	gs.roomList = nil
 	gs.ReversedRoomList.Emit([]*RoomListEntry{})
+	gs.SpaceList.Emit([]*SpaceEntry{})
 }
