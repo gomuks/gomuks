@@ -113,12 +113,12 @@ export function shareEvent(roomCtx: RoomContextData, evt: MemDBEvent): NonNestab
 	}
 }
 
-export function createRoom(): NonNestableModalState {
+export function createRoom(oldRoom?: RoomStateStore): NonNestableModalState {
 	return {
 		dimmed: true,
 		boxed: true,
 		boxClass: "create-room-view-modal",
-		content: <CreateRoomView />,
+		content: <CreateRoomView oldRoom={oldRoom} />,
 	}
 }
 

@@ -75,6 +75,9 @@ const commandHandlers: { [K in CommandName]?: CommandCallback } = {
 	devtools: ({ roomCtx }) => {
 		window.openModal(modals.roomStateExplorer(roomCtx.store))
 	},
+	upgraderoom: ({ roomCtx }) => {
+		window.openModal(modals.createRoom(roomCtx.store))
+	},
 }
 
 type BotArgMap = Record<string, BotArgumentValue>

@@ -26,6 +26,7 @@ export type CommandName =
 	| "alias del"
 	| "converttodm"
 	| "converttoroom"
+	| "upgraderoom"
 	| "powerlevel"
 	| "poll"
 

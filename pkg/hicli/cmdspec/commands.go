@@ -40,6 +40,7 @@ const (
 	ConvertToRoom  = "converttoroom"
 	PowerLevel     = "powerlevel"
 	Poll           = "poll"
+	UpgradeRoom    = "upgraderoom"
 )
 
 var CommandDefinitions = []*cmdschema.EventContent{{
@@ -248,6 +249,9 @@ var CommandDefinitions = []*cmdschema.EventContent{{
 }, {
 	Command:     ConvertToRoom,
 	Description: event.MakeExtensibleText("Remove marking the current room as a DM"),
+}, {
+	Command:     UpgradeRoom,
+	Description: event.MakeExtensibleText("Open a room creation dialog to upgrade the current room"),
 }, {
 	Command:     PowerLevel,
 	Description: event.MakeExtensibleText("Change a power level in the current room"),
