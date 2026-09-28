@@ -48,6 +48,8 @@ export const useSecondaryItems = (
 			const contentJSON = JSON.stringify(content, null, "  ")
 			if (evt.state_key !== undefined) {
 				navigator.clipboard.writeText(`/rawstate ${evt.type} ${quote(evt.state_key)} ${contentJSON}`)
+			} else if (!evt.encrypted && roomCtx.store.meta.current.encryption_event) {
+				navigator.clipboard.writeText(`/unencryptedraw ${evt.type} ${contentJSON}`)
 			} else {
 				navigator.clipboard.writeText(`/raw ${evt.type} ${contentJSON}`)
 			}
