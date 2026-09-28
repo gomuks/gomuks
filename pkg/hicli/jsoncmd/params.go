@@ -433,6 +433,12 @@ type RerequestSessionParams struct {
 	Sender    id.UserID    `json:"sender"`
 }
 
+type GetLiveKitCredentialsParams struct {
+	SFUURL   string    `json:"sfu_url"`
+	RoomID   id.RoomID `json:"room_id"`
+	DeviceID string    `json:"device_id"`
+}
+
 type OAuthSimpleDeviceCodeParams struct {
 	HomeserverURL string    `json:"homeserver_url"`
 	UserIDHint    id.UserID `json:"user_id_hint,omitempty"`

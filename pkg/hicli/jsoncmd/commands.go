@@ -107,6 +107,7 @@ const (
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
+	ReqGetLiveKitCredentials    Name = "get_livekit_credentials"
 
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
@@ -328,6 +329,9 @@ var (
 	CalculateRoomID = &CommandSpec[*CalculateRoomIDParams, id.RoomID]{Name: ReqCalculateRoomID}
 	// RerequestSession re-requests a given Megolm session from the key backup and from other devices.
 	RerequestSession = &CommandSpecWithoutResponse[*RerequestSessionParams]{Name: ReqRerequestSession}
+	// GetLiveKitCredentials exchanges a Matrix OpenID token for LiveKit SFU credentials.
+	// This is proxied through the backend to avoid CORS issues when calling the SFU directly from the browser.
+	GetLiveKitCredentials = &CommandSpec[*GetLiveKitCredentialsParams, *LiveKitCredentials]{Name: ReqGetLiveKitCredentials}
 )
 
 // FFI-specific command specs
@@ -447,6 +451,7 @@ var AllNames = []Name{
 	ReqGetMediaConfig,
 	ReqCalculateRoomID,
 	ReqRerequestSession,
+	ReqGetLiveKitCredentials,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
 	ReqDownloadMedia,
