@@ -61,11 +61,11 @@ func (gc *GomuksClient) handleEvent(ctx context.Context, rawEvt any) {
 		gc.InitComplete.Set()
 	case *jsoncmd.SyncComplete:
 		gc.GomuksStore.ApplySync(evt)
-		for _, room := range evt.Rooms {
+		for roomID, room := range evt.Rooms {
 			if len(room.Notifications) == 0 {
 				continue
 			}
-			roomStore := gc.GomuksStore.GetRoom(room.Meta.ID)
+			roomStore := gc.GomuksStore.GetRoom(roomID)
 			for _, notif := range room.Notifications {
 				notif.Room = roomStore.Meta.Current()
 				notif.Event = roomStore.GetEventByRowID(notif.RowID)

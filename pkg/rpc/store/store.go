@@ -58,6 +58,9 @@ func NewStore() *GomuksStore {
 }
 
 func roomListEntryChanged(entry *jsoncmd.SyncRoom, oldMeta *database.Room) bool {
+	if entry.Meta == nil {
+		return false
+	}
 	return entry.Meta.SortingTimestamp != oldMeta.SortingTimestamp ||
 		entry.Meta.UnreadCounts != oldMeta.UnreadCounts ||
 		entry.Meta.MarkedUnread != oldMeta.MarkedUnread ||
@@ -139,8 +142,13 @@ func (gs *GomuksStore) ApplySync(sync *jsoncmd.SyncComplete) {
 		}
 	}
 	for roomID, data := range sync.Rooms {
-		data.Meta.EnsureNotNil()
 		roomStore, existingRoom := gs.rooms[roomID]
+		if data.Meta != nil {
+			data.Meta.EnsureNotNil()
+		} else if !existingRoom {
+			// no Meta, no existingRoom, there is nothing to do, skipping.
+			continue
+		}
 		if !existingRoom {
 			roomStore = NewRoomStore(gs, data.Meta)
 			gs.rooms[roomID] = roomStore
