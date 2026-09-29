@@ -220,10 +220,16 @@ func (gmx *Gomuks) initClient() error {
 	if runtime.GOOS == "js" {
 		gmx.Client.Client.UserAgent = ""
 		httpClient.Transport = nil
-	} else if !gmx.Config.Matrix.DisableHTTP2 {
-		httpClient.Transport.(*http.Transport).ForceAttemptHTTP2 = true
-		httpClient.Transport.(*http.Transport).HTTP2 = &http.HTTP2Config{
-			PingTimeout: 30 * time.Second,
+	} else {
+		transport := httpClient.Transport.(*http.Transport)
+		if !gmx.Config.Matrix.DisableHTTP2 {
+			transport.ForceAttemptHTTP2 = true
+			transport.HTTP2 = &http.HTTP2Config{PingTimeout: 15 * time.Second}
+		}
+		gmx.Client.RequestTimeout = gmx.Config.Matrix.RequestTimeout
+		if gmx.Config.Matrix.InitSyncTimeout > 0 {
+			transport.ResponseHeaderTimeout = gmx.Config.Matrix.InitSyncTimeout
+			httpClient.Timeout = gmx.Config.Matrix.InitSyncTimeout
 		}
 	}
 	gmx.Log.Debug().Msg("Client instance created")

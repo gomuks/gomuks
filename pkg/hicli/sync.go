@@ -192,10 +192,13 @@ func (h *HiClient) postProcessSyncResponse(ctx context.Context, resp *mautrix.Re
 	}
 	if !h.firstSyncReceived {
 		h.firstSyncReceived = true
-		if tp, ok := h.Client.Client.Transport.(*http.Transport); ok {
-			tp.ResponseHeaderTimeout = 60 * time.Second
+		if h.RequestTimeout < 1*time.Minute {
+			h.RequestTimeout = 1 * time.Minute
 		}
-		h.Client.Client.Timeout = 180 * time.Second
+		if tp, ok := h.Client.Client.Transport.(*http.Transport); ok {
+			tp.ResponseHeaderTimeout = h.RequestTimeout
+		}
+		h.Client.Client.Timeout = 3 * h.RequestTimeout
 	}
 	if since == "" || h.sendInitSyncToClients {
 		h.sendInitSyncToClients = false

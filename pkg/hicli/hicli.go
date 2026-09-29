@@ -60,6 +60,8 @@ type HiClient struct {
 	syncErrors int
 	lastSync   time.Time
 
+	RequestTimeout time.Duration
+
 	ToDeviceInSync atomic.Bool
 
 	EventHandler func(evt any)

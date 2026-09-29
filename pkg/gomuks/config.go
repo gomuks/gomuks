@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/rs/zerolog"
@@ -45,6 +46,9 @@ type Config struct {
 type MatrixConfig struct {
 	DisableHTTP2 bool            `yaml:"disable_http2"`
 	SetPresence  *event.Presence `yaml:"set_presence"`
+
+	InitSyncTimeout time.Duration `yaml:"init_sync_timeout"`
+	RequestTimeout  time.Duration `yaml:"request_timeout"`
 
 	InitialDeviceDisplayName string `yaml:"initial_device_display_name"`
 }
@@ -88,8 +92,10 @@ func makeDefaultConfig() Config {
 			ListenAddress: "localhost:29325",
 		},
 		Matrix: MatrixConfig{
-			DisableHTTP2: false,
-			SetPresence:  ptr.Ptr(event.PresenceOffline),
+			DisableHTTP2:    false,
+			SetPresence:     ptr.Ptr(event.PresenceOffline),
+			InitSyncTimeout: 5 * time.Minute,
+			RequestTimeout:  1 * time.Minute,
 		},
 		Media: MediaConfig{
 			ThumbnailSize: 120,
