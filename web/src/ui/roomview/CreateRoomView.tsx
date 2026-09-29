@@ -286,7 +286,14 @@ const CreateRoomView = ({ oldRoom }: { oldRoom?: RoomStateStore }) => {
 		if (!isRoomV12 || !roomCreateTS) {
 			return
 		}
-		const creationJSON = JSON.parse(creationContent)
+		//eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let creationJSON: any
+		try {
+			creationJSON = JSON.parse(creationContent)
+		} catch (err) {
+			console.error("Failed to parse creation content:", err)
+			return
+		}
 		creationJSON.room_version = roomVersion
 		const timeout = setTimeout(() => {
 			client.rpc.calculateRoomID(roomCreateTS, creationJSON).then(
