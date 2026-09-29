@@ -84,10 +84,33 @@ const CreateRoomView = ({ oldRoom }: { oldRoom?: RoomStateStore }) => {
 		setTopic(oldRoom.meta.current.topic ?? "")
 		setIsDirect(!!oldRoom.meta.current.dm_user_id)
 		setIsEncrypted(!!oldRoom.meta.current.encryption_event)
+		const joinRules = oldRoom.getStateEvent("m.room.join_rules", "")?.content
+		const initialState = []
 		if (oldRoom.meta.current.dm_user_id) {
 			setPreset("trusted_private_chat")
-		} else if (oldRoom.getStateEvent("m.room.join_rules", "")?.content?.join_rule === "public") {
+			setInvite([oldRoom.meta.current.dm_user_id])
+		} else if (joinRules?.join_rule === "public") {
 			setPreset("public_chat")
+		} else if (
+			(joinRules?.join_rule === "restricted" || joinRules?.join_rule === "knock_restricted")
+			&& Array.isArray(joinRules.allow)
+		) {
+			setPreset("private_chat")
+			const newAllow = [...joinRules.allow]
+			if (!newAllow.some(allow => allow.type === "fi.mau.spam_checker")) {
+				newAllow.push({
+					type: "m.room_membership",
+					room_id: oldRoom.roomID,
+				})
+			}
+			initialState.push({
+				type: "m.room.join_rules",
+				stateKey: "",
+				content: JSON.stringify({
+					join_rule: joinRules.join_rule,
+					allow: newAllow,
+				}),
+			})
 		} else {
 			setPreset("private_chat")
 		}
@@ -104,14 +127,15 @@ const CreateRoomView = ({ oldRoom }: { oldRoom?: RoomStateStore }) => {
 		}
 		setPowerLevelContentOverride(JSON.stringify(plContent, null, 4))
 		if (oldRoom.meta.current.explicit_avatar && oldRoom.meta.current.avatar) {
-			setInitialState(is => [...is, {
+			initialState.push({
 				type: "m.room.avatar",
 				stateKey: "",
 				content: JSON.stringify({
 					url: oldRoom.meta.current.avatar,
 				}),
-			}])
+			})
 		}
+		setInitialState(initialState)
 	}, [oldRoom, client])
 
 	const updatePreset = (newPreset: RoomPreset) => {
