@@ -136,10 +136,12 @@ func (rs *RoomStore) notifyTimelineWatchers() {
 func (rs *RoomStore) ApplySync(sync *jsoncmd.SyncRoom) {
 	rs.lock.Lock()
 	defer rs.lock.Unlock()
-	if !rs.Meta.Current().VisibleMetaIsEqual(sync.Meta) {
-		rs.Meta.Emit(sync.Meta)
-	} else {
-		rs.Meta.SetCurrent(sync.Meta)
+	if sync.Meta != nil {
+		if !rs.Meta.Current().VisibleMetaIsEqual(sync.Meta) {
+			rs.Meta.Emit(sync.Meta)
+		} else {
+			rs.Meta.SetCurrent(sync.Meta)
+		}
 	}
 	for _, evt := range sync.Events {
 		rs.applyEvent(evt, false)
