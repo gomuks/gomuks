@@ -360,6 +360,9 @@ const MessageComposer = () => {
 			mentions.room = false
 			text = ""
 			if (interceptCommand(client, mainScreen, roomCtx, state.command.spec, state.command.inputArgs)) {
+				if (!editing) {
+					draftStore.clear(room.roomID, roomCtx.threadRoot)
+				}
 				return
 			}
 		}
