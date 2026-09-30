@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import type { ComposerState } from "@/ui/composer/MessageComposer.tsx"
 import type {
 	ContentURI,
 	CreateEventContent,
@@ -108,6 +109,8 @@ export interface LocalContent {
 	was_plaintext?: boolean
 	big_emoji?: boolean
 	has_math?: boolean
+
+	gomuks_web_composer_state?: ComposerState
 }
 
 export interface BaseDBEvent {

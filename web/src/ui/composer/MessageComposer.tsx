@@ -44,7 +44,7 @@ import { isFakeCommand } from "@/api/types/fakecommands.ts"
 import { PartialEmoji, emojiToMarkdown } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { escapeMarkdown } from "@/util/markdown.ts"
+import { escapeHTML, escapeMarkdown } from "@/util/markdown.ts"
 import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { getRelatesTo, getServerName, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -215,6 +215,11 @@ const MessageComposer = () => {
 			rawSetEditing(null)
 			setState(draftStore.get(room.roomID, roomCtx.threadRoot) ?? emptyComposer)
 			return
+		} else if (failed && evt.local_content?.gomuks_web_composer_state) {
+			setState(evt.local_content.gomuks_web_composer_state)
+			rawSetEditing(evt.relates_to ? room.eventsByID.get(evt.relates_to) ?? null : null)
+			textInput.current?.focus()
+			return
 		}
 		const evtContent = evt.content as MessageEventContent
 		const mediaMsgTypes = ["m.sticker", "m.image", "m.audio", "m.video", "m.file"]
@@ -372,7 +377,28 @@ const MessageComposer = () => {
 			relates_to,
 			mentions,
 			url_previews,
-		}).catch(err => window.alert("Failed to send message: " + err))
+		}).catch(err => {
+			const ts = Date.now()
+			client.handleOutgoingEvent({
+				rowid: -ts,
+				timeline_rowid: 0,
+				room_id: roomCtx.store.roomID,
+				event_id: `~gomuks-internal-fe-${ts}`,
+				sender: client.userID,
+				type: "m.room.message",
+				timestamp: ts,
+				content: { msgtype: "m.text" },
+				unsigned: {},
+				relates_to: editing ? editing.event_id : undefined,
+				send_error: `${err}`,
+				transaction_id: "meow",
+				local_content: {
+					sanitized_html: escapeHTML(state.text),
+					gomuks_web_composer_state: state,
+				},
+				unread_type: 0,
+			}, roomCtx.store)
+		})
 	}
 	const onComposerCaretChange = (
 		evt: CaretEvent<HTMLTextAreaElement>, newText?: string, newCommand?: CommandState | null,
