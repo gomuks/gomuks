@@ -17,6 +17,7 @@ import (
 
 	"github.com/tidwall/gjson"
 	"go.mau.fi/util/dbutil"
+	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/exgjson"
 	"go.mau.fi/util/jsontime"
 	"go.mau.fi/util/random"
@@ -754,8 +755,12 @@ func MakeFakeEvent(roomID id.RoomID, html string) *Event {
 		Sender:        cmdspec.FakeGomuksSender,
 		Type:          event.EventMessage.Type,
 		Timestamp:     jsontime.UnixMilliNow(),
-		Content:       json.RawMessage(`{"msgtype":"m.text"}`),
-		Unsigned:      json.RawMessage("{}"),
+		Content: exerrors.Must(json.Marshal(&event.MessageEventContent{
+			MsgType:       event.MsgText,
+			Format:        event.FormatHTML,
+			FormattedBody: html,
+		})),
+		Unsigned: json.RawMessage("{}"),
 		LocalContent: &LocalContent{
 			SanitizedHTML: html,
 		},
