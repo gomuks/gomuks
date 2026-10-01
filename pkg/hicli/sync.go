@@ -788,7 +788,7 @@ func (h *HiClient) calculateLocalContent(ctx context.Context, dbEvt *database.Ev
 	return dbEvt.LocalContent, nil
 }
 
-const CurrentHTMLSanitizerVersion = 16
+const CurrentHTMLSanitizerVersion = 17
 
 func (h *HiClient) ReprocessExistingEvent(ctx context.Context, evt *database.Event) {
 	evtType := evt.GetType()

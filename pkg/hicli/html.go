@@ -33,7 +33,7 @@ func tagIsAllowed(tag atom.Atom) bool {
 		atom.A, atom.Ul, atom.Ol, atom.Sup, atom.Sub, atom.Li, atom.B, atom.I, atom.U, atom.Strong,
 		atom.Em, atom.S, atom.Code, atom.Hr, atom.Br, atom.Div, atom.Table, atom.Thead, atom.Tbody,
 		atom.Tr, atom.Th, atom.Td, atom.Caption, atom.Pre, atom.Span, atom.Font, atom.Img,
-		atom.Details, atom.Summary, atom.Input:
+		atom.Small, atom.Details, atom.Summary, atom.Input:
 		return true
 	default:
 		return false
