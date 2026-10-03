@@ -172,8 +172,10 @@ export default class Client {
 						evtData.name,
 						{ type: evtData.mime_type },
 					) : null
-					window.mainScreenContext.setPendingShare({ file, text: evtData.text }, evtData.room_id)
 					console.info("Received share from Android:", file?.name, file?.type, evtData.room_id, evtData.text)
+					window.mainScreenContextWaiter.then(() => {
+						window.mainScreenContext.setPendingShare({ file, text: evtData.text }, evtData.room_id)
+					})
 				} catch (err) {
 					console.error("Failed to process shared file:", err)
 				}

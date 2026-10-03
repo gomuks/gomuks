@@ -36,6 +36,7 @@ import { useResizeHandle } from "./util/useResizeHandle.tsx"
 import "./MainScreen.css"
 
 class ContextFields implements MainScreenContextFields {
+	public isReal = true
 	public keybindings: Keybindings
 	private rightPanelStack: RightPanelProps[] = []
 
@@ -384,6 +385,7 @@ const MainScreen = () => {
 	), [client])
 	useEffect(() => {
 		window.mainScreenContext = context
+		window.mainScreenContextResolve()
 		const listener = (evt: Pick<PopStateEvent, "state" | "hasUAVisualTransition">) => {
 			skipNextTransitionRef.current = evt.hasUAVisualTransition
 			const roomID = evt.state?.room_id ?? null

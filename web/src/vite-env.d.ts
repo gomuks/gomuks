@@ -13,6 +13,8 @@ declare global {
 		client: Client
 		activeRoomContext?: RoomContextData
 		mainScreenContext: MainScreenContextFields
+		mainScreenContextResolve: () => void
+		mainScreenContextWaiter: Promise<void>
 		openLightbox: (params: { src: string, alt: string }) => void
 		gcSettings: GCSettings
 		hackyOpenEventContextMenu?: string
