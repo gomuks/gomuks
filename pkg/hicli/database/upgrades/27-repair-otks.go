@@ -10,6 +10,8 @@ package upgrades
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"go.mau.fi/util/dbutil"
 )
@@ -22,6 +24,9 @@ var upgradeV27 = dbutil.WrapUpgrade(-1, 27, 10, "Mark OTKs as needing repair", d
 	var shared bool
 	err = db.QueryRow(ctx, "SELECT shared FROM crypto_account LIMIT 1").Scan(&shared)
 	if err != nil || !shared {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
 		return err
 	}
 	var accountExists bool
