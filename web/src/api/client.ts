@@ -211,7 +211,7 @@ export default class Client {
 	}
 
 	registerWebPush = (refresh = false) => {
-		if (!this.store.localPreferenceCache.web_push) {
+		if (!this.store.preferences.web_push) {
 			navigator.serviceWorker.getRegistration("pushmuks").then(reg => {
 				if (reg?.active?.scriptURL.endsWith("/pushmuks-sw.js")) {
 					console.debug("Unregistering push service worker")

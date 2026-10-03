@@ -81,6 +81,9 @@ const metaTagsTemplate = `
 	<meta name="gomuks-frontend-etag" content="%s">
 	<meta name="gomuks-version-description" content="%s">
 	<meta name="gomuks-vapid-key" content="%s">
+	<script>
+		window.gomuksDefaultConfig = %s
+	</script>
 `
 
 func (gmx *Gomuks) StartServer() {
@@ -116,9 +119,11 @@ func (gmx *Gomuks) StartServer() {
 				html.EscapeString(gmx.frontendETag),
 				html.EscapeString(version.Gomuks.VersionDescription),
 				gmx.Config.Push.VAPIDPublicKey,
+				exerrors.Must(json.Marshal(gmx.Config.Web.DefaultPreferences)),
 			)),
 			1,
 		)
+		gmx.indexETag = fmt.Sprintf(`"%x"`, sha256.Sum256(gmx.indexWithMeta))
 	}
 	gmx.Server = &http.Server{Handler: router, Protocols: &http.Protocols{}}
 	gmx.Server.Protocols.SetHTTP1(true)
@@ -158,22 +163,27 @@ func (gmx *Gomuks) StartServer() {
 
 func (gmx *Gomuks) FrontendCacheMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if gmx.frontendETag != "" && r.Header.Get("If-None-Match") == gmx.frontendETag {
+		if r.URL.Path != "/" && gmx.frontendETag != "" && r.Header.Get("If-None-Match") == gmx.frontendETag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		} else if r.URL.Path == "/" && gmx.indexETag != "" && r.Header.Get("If-None-Match") == gmx.indexETag {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/assets/") {
 			w.Header().Set("Cache-Control", "max-age=604800, immutable")
 		}
-		if gmx.frontendETag != "" {
-			w.Header().Set("ETag", gmx.frontendETag)
-		}
 		if r.URL.Path == "/" {
 			w.Header().Set("Content-Type", "text/html")
 			w.Header().Set("Content-Length", strconv.Itoa(len(gmx.indexWithMeta)))
+			if gmx.indexETag != "" {
+				w.Header().Set("ETag", gmx.indexETag)
+			}
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(gmx.indexWithMeta)
 			return
+		} else if gmx.frontendETag != "" {
+			w.Header().Set("ETag", gmx.frontendETag)
 		}
 		next.ServeHTTP(w, r)
 	})

@@ -60,6 +60,7 @@ type Gomuks struct {
 
 	FrontendFS    embed.FS
 	indexWithMeta []byte
+	indexETag     string
 	frontendETag  string
 
 	Config      Config

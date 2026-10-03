@@ -18,7 +18,7 @@ import { ScaleLoader } from "react-spinners"
 import Client from "./api/client.ts"
 import RPCClient from "./api/rpc.ts"
 import SSEClient from "./api/sseclient.ts"
-import { getLocalStoragePreferences } from "./api/types/preferences"
+import { getLocalStoragePreferences, preferences } from "./api/types/preferences"
 import WasmClient from "./api/wasmclient.ts"
 import WSClient from "./api/wsclient.ts"
 import ClientContext from "./ui/ClientContext.ts"
@@ -32,7 +32,7 @@ function makeRPCClient(): RPCClient {
 		return new WasmClient()
 	}
 	const prefs = getLocalStoragePreferences("global_prefs", () => {})
-	if (prefs.server_sent_events) {
+	if (prefs.server_sent_events || preferences.server_sent_events.defaultValue) {
 		return new SSEClient()
 	}
 	return new WSClient("_gomuks/websocket", prefs.low_bandwidth ?? false)

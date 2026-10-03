@@ -26,5 +26,6 @@ declare global {
 		gomuksDesktop?: DesktopAPI
 		gomuksWebWasm?: boolean
 		vapidPublicKey?: string
+		gomuksDefaultConfig?: Record<string, unknown>
 	}
 }

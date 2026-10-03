@@ -369,3 +369,15 @@ export type Preferences = {
 export function isValidPreferenceKey(key: unknown): key is keyof Preferences {
 	return typeof key === "string" && existingPreferenceKeys.has(key)
 }
+
+for (const [key, value] of Object.entries(window.gomuksDefaultConfig ?? {})) {
+	if (!isValidPreferenceKey(key)) {
+		console.warn("Ignoring unknown default config key", key)
+	} else if (typeof value !== typeof preferences[key].defaultValue) {
+		console.warn("Ignoring default config key with wrong type", key, value)
+	} else {
+		console.info("Applying default config override", key, preferences[key].defaultValue, "->", value)
+		// @ts-expect-error evil mutation of readonly property >:3
+		preferences[key].defaultValue = value
+	}
+}

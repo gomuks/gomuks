@@ -75,6 +75,8 @@ type WebConfig struct {
 	OriginPatterns  []string `yaml:"origin_patterns"`
 	InsecureCookies bool     `yaml:"insecure_cookies"`
 
+	DefaultPreferences map[string]any `yaml:"default_preferences,omitempty"`
+
 	DisableAuthBecauseIWantMyAccountToBeHacked bool `yaml:"disable_auth_because_i_want_my_account_to_be_hacked,omitempty"`
 }
 

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 export enum PreferenceContext {
-	Config = "config",
 	Account = "account",
 	Device = "device",
 	RoomAccount = "room_account",
@@ -23,8 +22,6 @@ export enum PreferenceContext {
 
 export function preferenceContextToInt(context: PreferenceContext): number {
 	switch (context) {
-	case PreferenceContext.Config:
-		return 0
 	case PreferenceContext.Account:
 		return 1
 	case PreferenceContext.Device:
@@ -41,13 +38,11 @@ export const anyContext = [
 	PreferenceContext.RoomAccount,
 	PreferenceContext.Device,
 	PreferenceContext.Account,
-	PreferenceContext.Config,
 ] as const
 
 export const anyGlobalContext = [
 	PreferenceContext.Device,
 	PreferenceContext.Account,
-	PreferenceContext.Config,
 ] as const
 
 export const deviceSpecific = [
@@ -57,7 +52,6 @@ export const deviceSpecific = [
 
 export const globalDeviceSpecific = [
 	PreferenceContext.Device,
-	PreferenceContext.Config,
 ] as const
 
 export const roomSpecific = [

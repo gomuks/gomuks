@@ -482,7 +482,7 @@ export class StateStore {
 				window.Notification?.permission === "granted"
 				&& !focused.current
 				&& data.notifications
-				&& !this.localPreferenceCache.web_push
+				&& !this.preferences.web_push
 			) {
 				for (const notification of data.notifications) {
 					this.showNotification(room, notification.event_rowid, notification.sound)
