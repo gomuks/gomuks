@@ -263,8 +263,9 @@ func (h *HiClient) IsLoggedIn() bool {
 	return h.Account != nil
 }
 
-func (h *HiClient) IsLoggedInAndVerified() bool {
-	return h.IsLoggedIn() && h.VerificationState.IsVerified
+func (h *HiClient) ShouldSendInitPayload() bool {
+	acc := h.Account
+	return acc != nil && acc.NextBatch != "" && h.VerificationState.IsVerified
 }
 
 func (h *HiClient) Load(ctx context.Context, userID id.UserID) error {

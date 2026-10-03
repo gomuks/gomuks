@@ -294,7 +294,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if gmx.Client.IsLoggedInAndVerified() {
+		if gmx.Client.ShouldSendInitPayload() {
 			go gmx.sendInitialData(ctx, fp, conn, lastServerTS)
 		}
 	}

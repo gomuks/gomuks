@@ -104,7 +104,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		if gmx.Client.IsLoggedInAndVerified() {
+		if gmx.Client.ShouldSendInitPayload() {
 			var roomCount int
 			for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
 				roomCount += len(payload.Rooms)
