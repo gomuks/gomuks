@@ -55,6 +55,14 @@ type MessageView struct {
 	prevTimeline *[]*database.Event
 	prevWidth    int
 	selected     database.EventRowID
+
+	invalidated  atomic.Bool
+}
+
+// InvalidateTimeline forces the next update() call to recalculate message layout heights without resetting prevTimeline.
+// Thread-safe, wait-free atomic store; does not require or block on view.lock.
+func (view *MessageView) InvalidateTimeline() {
+	view.invalidated.Store(true)
 }
 
 func NewMessageView(parent *RoomView) *MessageView {
@@ -70,6 +78,8 @@ func NewMessageView(parent *RoomView) *MessageView {
 }
 
 func (view *MessageView) SetSelected(message *messages.UIMessage) {
+	view.lock.Lock()
+	defer view.lock.Unlock()
 	if message == nil || (view.selected == message.RowID || message.IsService) {
 		view.selected = 0
 	} else {
@@ -297,12 +307,16 @@ func (view *MessageView) CapturePlaintext(height int) string {
 	return buf.String()
 }
 
+// Draw renders the message timeline to the screen.
+// Phase 1: Calls view.update(width) before acquiring view.lock, preventing recursive mutex deadlocks.
+// Phase 2: Acquires view.lock.RLock() to safely iterate view.msgBuffer.
 func (view *MessageView) Draw(screen mauview.Screen) {
-	view.lock.Lock()
-	defer view.lock.Unlock()
 	width, height := screen.Size()
 	view.height.Store(uint32(height))
 	view.update(width)
+
+	view.lock.RLock()
+	defer view.lock.RUnlock()
 	scrollOffset := view.GetScrollOffset()
 
 	if len(view.msgBuffer) == 0 {
@@ -343,11 +357,13 @@ func (view *MessageView) Draw(screen mauview.Screen) {
 		}
 	}
 
+	isFirst := true
 	for line := viewStart; line < height && indexOffset+line < len(view.msgBuffer); {
 		index := indexOffset + line
 
 		msg := view.msgBuffer[index]
-		if line == viewStart {
+		if isFirst {
+			isFirst = false
 			for i := index - 1; i >= 0 && view.msgBuffer[i] == msg; i-- {
 				line--
 			}
@@ -356,29 +372,37 @@ func (view *MessageView) Draw(screen mauview.Screen) {
 		if len(msg.FormatTime()) > 0 && !view.config.Preferences.HideTimestamp {
 			widget.WriteLineSimpleColor(screen, msg.FormatTime(), 0, line, msg.TimestampColor())
 		}
-		// TODO hiding senders might not be that nice after all, maybe an option? (disabled for now)
-		//if !bareMode && (prevMsg == nil || meta.Sender() != prevMsg.Sender()) {
 		widget.WriteLineColor(
 			screen, mauview.AlignRight, msg.GetSenderName(),
 			usernameX, line, view.SenderWidth,
 			msg.SenderColor())
-		//}
 		if msg.LastEditRef != nil {
-			// TODO add better indicator for edits
 			screen.SetCell(usernameX+view.SenderWidth, line, tcell.StyleDefault.Foreground(tcell.ColorDarkRed), '*')
 		}
 
 		msg.IsSelected = view.selected != 0 && msg.RowID == view.selected
 		msg.Draw(mauview.NewProxyScreen(screen, messageX, line, width-messageX, msg.Height()))
-		line += msg.Height()
+
+		nextIndex := index + 1
+		for nextIndex < len(view.msgBuffer) && view.msgBuffer[nextIndex] == msg {
+			nextIndex++
+		}
+		line = nextIndex - indexOffset
 	}
 }
 
+// update recalculates message buffer layout.
+// Thread-safe: fully protected under view.lock.Lock(). Callers must NOT hold view.lock when calling.
 func (view *MessageView) update(width int) {
+	view.lock.Lock()
+	defer view.lock.Unlock()
+
 	timelinePtr := view.parent.Room.TimelineCache.Current()
-	if timelinePtr == nil || timelinePtr == view.prevTimeline && width == view.prevWidth {
+	invalidated := view.invalidated.Load()
+	if timelinePtr == nil || (!invalidated && timelinePtr == view.prevTimeline && width == view.prevWidth) {
 		return
 	}
+	view.invalidated.Store(false)
 	timeline := *timelinePtr
 	var prevTimeline []*database.Event
 	if view.prevTimeline != nil {
@@ -391,20 +415,23 @@ func (view *MessageView) update(width int) {
 		lastRowIDInPrevTimeline = prevTimeline[len(prevTimeline)-1].RowID
 	}
 	increaseScrollOffset := false
+
+	// Preserve outer screen width; compute inner column width separately to preserve frame caching.
+	contentWidth := width
 	bare := view.config.Preferences.BareMessageView
 	if !bare {
-		width -= view.SenderWidth + SenderMessageGap
+		contentWidth -= view.SenderWidth + SenderMessageGap
 		if !view.config.Preferences.HideTimestamp {
-			width -= view.TimestampWidth + TimestampSenderGap
+			contentWidth -= view.TimestampWidth + TimestampSenderGap
 		}
 	}
 	scrollOffset := view.GetScrollOffset()
 	newScrollOffset := scrollOffset
 	appendBuffer := func(msg *messages.UIMessage) {
-		if width < 5 {
+		if contentWidth < 5 {
 			return
 		}
-		msg.CalculateBuffer(view.config.Preferences, width)
+		msg.CalculateBuffer(view.config.Preferences, contentWidth)
 		height := msg.Height()
 		for i := 0; i < height; i++ {
 			newBuffer = append(newBuffer, msg)
@@ -448,4 +475,5 @@ func (view *MessageView) update(width int) {
 	view.msgBuffer = newBuffer
 	view.totalHeight.Store(uint32(len(newBuffer)))
 	view.prevTimeline = timelinePtr
+	view.prevWidth = width
 }
