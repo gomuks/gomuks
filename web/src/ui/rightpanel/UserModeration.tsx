@@ -37,7 +37,7 @@ interface UserModerationProps {
 	member: MemDBEvent | null;
 }
 
-const powerSlider = !!localStorage.gomuks_power_slider
+const powerSlider = localStorage.gomuks_power_slider === "true"
 
 const UserModeration = ({ userID, client, member, room }: UserModerationProps) => {
 	const openModal = use(ModalContext)
