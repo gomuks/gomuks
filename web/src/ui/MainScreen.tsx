@@ -23,7 +23,7 @@ import { useEventAsState } from "@/util/eventdispatcher.ts"
 import { hackyIsSafari } from "@/util/ismobile.ts"
 import { ensureString, ensureStringArray, parseMatrixURI } from "@/util/validation.ts"
 import ClientContext from "./ClientContext.ts"
-import MainScreenContext, { MainScreenContextFields, SetActiveRoomExtra } from "./MainScreenContext.ts"
+import MainScreenContext, { MainScreenContextFields, PendingShare, SetActiveRoomExtra } from "./MainScreenContext.ts"
 import StylePreferences from "./StylePreferences.tsx"
 import Keybindings from "./keybindings.ts"
 import { ModalContext, ModalWrapper, NestableModalContext } from "./modal"
@@ -43,7 +43,7 @@ class ContextFields implements MainScreenContextFields {
 		private directSetRightPanel: (props: RightPanelProps | null) => void,
 		private directSetActiveRoom: (room: RoomStateStore | RoomPreviewProps | null) => void,
 		private directSetSpace: (space: RoomListFilter | null) => void,
-		private pendingShareRef: RefObject<File | null>,
+		private pendingShareRef: RefObject<PendingShare | null>,
 		private markPendingShareChanged: () => void,
 		private client: Client,
 	) {
@@ -90,17 +90,22 @@ class ContextFields implements MainScreenContextFields {
 		}
 	}
 
-	setPendingShare = (share: File | null) => {
+	setPendingShare = (share: PendingShare | null, room_id?: RoomID | null) => {
 		if (share !== null) {
-			this.setActiveRoom(null)
+			if (!room_id) {
+				this.setActiveRoom(null)
+			}
 			window.closeModal()
 			window.closeNestableModal()
 		}
 		this.pendingShareRef.current = share
+		if (room_id) {
+			this.setActiveRoom(room_id)
+		}
 		this.markPendingShareChanged()
 	}
 
-	get pendingShare(): File | null {
+	get pendingShare(): PendingShare | null {
 		return this.pendingShareRef.current
 	}
 
@@ -370,7 +375,7 @@ const MainScreen = () => {
 	const [space, directSetSpace] = useState<RoomListFilter | null>(null)
 	const skipNextTransitionRef = useRef(false)
 	const [rightPanel, directSetRightPanel] = useState<RightPanelProps | null>(null)
-	const pendingShareRef = useRef<File | null>(null)
+	const pendingShareRef = useRef<PendingShare | null>(null)
 	const [, markPendingShareChanged] = useReducer(incrementReducer, 0)
 	const client = use(ClientContext)!
 	const syncStatus = useEventAsState(client.syncStatus)
@@ -502,7 +507,7 @@ const MainScreen = () => {
 		{context.pendingShare ? <div className="choose-share-target">
 			Select room to share:
 			<br/>
-			<code>{context.pendingShare.name}</code>
+			<code>{context.pendingShare.file?.name ?? "Text message"}</code>
 		</div> : null}
 	</main>
 	return <MainScreenContext value={context}>

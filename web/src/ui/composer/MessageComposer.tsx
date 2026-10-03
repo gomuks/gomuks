@@ -768,7 +768,13 @@ const MessageComposer = () => {
 	useEffect(() => {
 		if (mainScreen.pendingShare) {
 			console.info("Processing pending share")
-			openModal(modals.mediaUpload(mainScreen.pendingShare, doUploadFile, isEncrypted))
+			if (mainScreen.pendingShare.text) {
+				const text = mainScreen.pendingShare.text
+				setState(s => ({ ...s, text }))
+			}
+			if (mainScreen.pendingShare.file) {
+				openModal(modals.mediaUpload(mainScreen.pendingShare.file, doUploadFile, isEncrypted))
+			}
 			mainScreen.setPendingShare(null)
 		}
 	}, [mainScreen, roomCtx, doUploadFile, isEncrypted, openModal])

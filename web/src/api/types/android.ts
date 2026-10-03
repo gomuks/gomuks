@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { RoomID } from "@/api/types/mxtypes.ts"
 
 export interface AndroidRegisterPushEvent {
 	type: "register_push"
@@ -27,12 +28,23 @@ export interface AndroidAuthEvent {
 	authorization: `Bearer ${string}`
 }
 
-export interface AndroidShareEvent {
-	type: "share"
+interface ShareEventWithFile {
 	payload: string
 	name: string
 	size: number
 	mime_type: string
 }
+
+interface ShareEventWithText {
+	text: string
+}
+
+interface ShareEventBase {
+	type: "share"
+	room_id: RoomID | null
+	text?: string
+}
+
+export type AndroidShareEvent = ShareEventBase & (ShareEventWithFile | ShareEventWithText)
 
 export type GomuksAndroidMessageToWeb = AndroidRegisterPushEvent | AndroidAuthEvent | AndroidShareEvent

@@ -167,12 +167,13 @@ export default class Client {
 				return
 			case "share":
 				try {
-					window.mainScreenContext.setPendingShare(new File(
+					const file = "payload" in evtData ? new File(
 						[Uint8Array.fromBase64(evtData.payload)],
 						evtData.name,
 						{ type: evtData.mime_type },
-					))
-					console.info("Received share from Android:", evtData.name, evtData.mime_type)
+					) : null
+					window.mainScreenContext.setPendingShare({ file, text: evtData.text }, evtData.room_id)
+					console.info("Received share from Android:", file?.name, file?.type, evtData.room_id, evtData.text)
 				} catch (err) {
 					console.error("Failed to process shared file:", err)
 				}

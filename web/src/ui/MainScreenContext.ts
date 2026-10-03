@@ -26,6 +26,11 @@ export interface SetActiveRoomExtra {
 	openEventID?: string | null,
 }
 
+export interface PendingShare {
+	file: File | null
+	text?: string
+}
+
 export interface MainScreenContextFields {
 	setActiveRoom: (roomID: RoomID | null, extra?: SetActiveRoomExtra) => void
 	setSpace: (space: RoomListFilter | null, pushState?: boolean) => void
@@ -37,8 +42,8 @@ export interface MainScreenContextFields {
 	clickRightPanelOpener: (evt: React.MouseEvent) => void
 	get currentRightPanel(): RightPanelProps | null
 
-	setPendingShare: (file: File | null) => void
-	pendingShare: File | null
+	setPendingShare: (file: PendingShare | null, room_id?: RoomID | null) => void
+	pendingShare: PendingShare | null
 }
 
 const stubContext = {
