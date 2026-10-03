@@ -15,7 +15,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import type { MouseEvent } from "react"
 import { CancellablePromise } from "@/util/promise.ts"
+import { getDisplayname } from "@/util/validation.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
+import { getAvatarThumbnailURL, getRoomAvatarURL } from "./media.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
 import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
@@ -549,6 +551,34 @@ export default class Client {
 		const dbEvent = await this.rpc.sendMessage(params)
 		if (dbEvent) {
 			this.handleOutgoingEvent(dbEvent, room)
+		}
+		if (window.gomuksAndroid) {
+			const dmUserID = room.meta.current.dm_user_id
+			const dmUserProfile = dmUserID
+				? room.getStateEvent("m.room.member", dmUserID)
+				: undefined
+			const onlyRealURL = (url?: string) => url?.startsWith("_gomuks/media") ? url : undefined
+			let roomName = room.meta.current.name || "Unnamed room"
+			if (roomName.length > 50) {
+				roomName = roomName.slice(0, 50) + "…"
+			}
+			window.dispatchEvent(new CustomEvent("GomuksWebMessageToAndroid", {
+				detail: {
+					event: "message_sent",
+					room: {
+						id: room.roomID,
+						name: roomName,
+						avatar: onlyRealURL(getRoomAvatarURL(room.meta.current, undefined, true)),
+					},
+					dm_user: dmUserID ? {
+						id: dmUserID,
+						name: getDisplayname(dmUserID, dmUserProfile?.content),
+						avatar: onlyRealURL(getAvatarThumbnailURL(dmUserID, dmUserProfile?.content)),
+					} : undefined,
+					image_auth: this.store.imageAuthToken,
+				},
+			}))
+			console.log("Notified Android about message send")
 		}
 	}
 
