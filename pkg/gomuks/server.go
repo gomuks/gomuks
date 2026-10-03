@@ -121,7 +121,9 @@ func (gmx *Gomuks) StartServer() {
 	}
 	gmx.Server = &http.Server{Handler: router, Protocols: &http.Protocols{}}
 	gmx.Server.Protocols.SetHTTP1(true)
-	gmx.Server.Protocols.SetUnencryptedHTTP2(true)
+	enableTLS := gmx.Config.Web.TLSCertFile != "" && gmx.Config.Web.TLSKeyFile != ""
+	gmx.Server.Protocols.SetUnencryptedHTTP2(!enableTLS)
+	gmx.Server.Protocols.SetHTTP2(enableTLS)
 	gmx.Log.Info().Str("address", gmx.Config.Web.ListenAddress).Msg("Starting server")
 	ln, err := net.Listen("tcp", gmx.Config.Web.ListenAddress)
 	if err != nil {
@@ -129,12 +131,16 @@ func (gmx *Gomuks) StartServer() {
 	}
 	gmx.Server.Addr = ln.Addr().String()
 	go func() {
-		err = gmx.Server.Serve(ln)
+		if enableTLS {
+			err = gmx.Server.ServeTLS(ln, gmx.Config.Web.TLSCertFile, gmx.Config.Web.TLSKeyFile)
+		} else {
+			err = gmx.Server.Serve(ln)
+		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
-	gmx.Log.Info().Str("address", gmx.Server.Addr).Msg("Server started")
+	gmx.Log.Info().Str("address", gmx.Server.Addr).Bool("tls", enableTLS).Msg("Server started")
 	if gmx.DesktopKey != "" {
 		out := exerrors.Must(json.Marshal(map[string]any{"started": true, "address": gmx.Server.Addr}))
 		fmt.Printf("%s\n", out)

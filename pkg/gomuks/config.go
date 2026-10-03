@@ -65,6 +65,8 @@ type MediaConfig struct {
 
 type WebConfig struct {
 	ListenAddress   string   `yaml:"listen_address"`
+	TLSCertFile     string   `yaml:"tls_cert_file"`
+	TLSKeyFile      string   `yaml:"tls_key_file"`
 	Username        string   `yaml:"username"`
 	PasswordHash    string   `yaml:"password_hash"`
 	TokenKey        string   `yaml:"token_key"`
