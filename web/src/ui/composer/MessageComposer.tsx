@@ -777,7 +777,7 @@ const MessageComposer = () => {
 			}
 			mainScreen.setPendingShare(null)
 		}
-	}, [mainScreen, roomCtx, doUploadFile, isEncrypted, openModal])
+	}, [mainScreen, mainScreen.pendingShare, doUploadFile, isEncrypted, openModal])
 	useLayoutEffect(() => {
 		if (!textInput.current) {
 			return
