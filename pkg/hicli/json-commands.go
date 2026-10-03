@@ -185,6 +185,10 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetTurnServers.RunCtx(ctx, req.Data, h.API.GetTurnServers)
 	case jsoncmd.ReqGetRTCTransports:
 		return jsoncmd.GetRTCTransports.RunCtx(ctx, req.Data, h.API.GetRTCTransports)
+	case jsoncmd.ReqRTCLivekitGetToken:
+		return jsoncmd.RTCLivekitGetToken.RunCtx(ctx, req.Data, h.API.RTCLivekitGetToken)
+	case jsoncmd.ReqRTCLivekitDelegateDelayedLeave:
+		return jsoncmd.RTCLivekitDelegateDelayedLeave.RunCtx(ctx, req.Data, h.API.RTCLivekitDelegateDelayedLeave)
 	case jsoncmd.ReqGetMediaConfig:
 		return jsoncmd.GetMediaConfig.RunCtx(ctx, req.Data, h.API.GetMediaConfig)
 	case jsoncmd.ReqCalculateRoomID:
@@ -767,6 +771,14 @@ func (h *JSONAPI) GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, 
 
 func (h *JSONAPI) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error) {
 	return h.Client.RTCTransports(ctx)
+}
+
+func (h *JSONAPI) RTCLivekitGetToken(ctx context.Context, req *mautrix.ReqRTCLivekitGetToken) (*mautrix.RespRTCLivekitGetToken, error) {
+	return h.Client.RTCLivekitGetToken(ctx, req)
+}
+
+func (h *JSONAPI) RTCLivekitDelegateDelayedLeave(ctx context.Context, req *mautrix.ReqRTCLivekitDelegateDelayedLeave) (*mautrix.RespRTCLivekitDelegateDelayedLeave, error) {
+	return h.Client.RTCLivekitDelegateDelayedLeave(ctx, req)
 }
 
 func (h *JSONAPI) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {

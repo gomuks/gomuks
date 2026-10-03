@@ -283,6 +283,14 @@ func (gr *GomuksRPC) GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTran
 	return executeRequest(gr, ctx, jsoncmd.GetRTCTransports, nil)
 }
 
+func (gr *GomuksRPC) RTCLivekitGetToken(ctx context.Context, req *mautrix.ReqRTCLivekitGetToken) (*mautrix.RespRTCLivekitGetToken, error) {
+	return executeRequest(gr, ctx, jsoncmd.RTCLivekitGetToken, req)
+}
+
+func (gr *GomuksRPC) RTCLivekitDelegateDelayedLeave(ctx context.Context, req *mautrix.ReqRTCLivekitDelegateDelayedLeave) (*mautrix.RespRTCLivekitDelegateDelayedLeave, error) {
+	return executeRequest(gr, ctx, jsoncmd.RTCLivekitDelegateDelayedLeave, req)
+}
+
 func (gr *GomuksRPC) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error) {
 	return executeRequest(gr, ctx, jsoncmd.GetMediaConfig, nil)
 }

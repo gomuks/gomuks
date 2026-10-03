@@ -111,6 +111,9 @@ const (
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
 
+	ReqRTCLivekitGetToken             Name = "rtc_livekit_get_token"
+	ReqRTCLivekitDelegateDelayedLeave Name = "rtc_livekit_delegate_delayed_leave"
+
 	ReqGetAccountInfo Name = "get_account_info"
 	ReqUploadMedia    Name = "upload_media"
 	ReqDownloadMedia  Name = "download_media"
@@ -328,7 +331,9 @@ var (
 	// GetTurnServers returns TURN server credentials from the homeserver.
 	GetTurnServers = &CommandSpecWithoutRequest[*mautrix.RespTurnServer]{Name: ReqGetTurnServers}
 	// GetRTCTransports returns MatrixRTC transports from the homeserver.
-	GetRTCTransports = &CommandSpecWithoutRequest[*mautrix.RespRTCTransports]{Name: ReqGetRTCTransports}
+	GetRTCTransports               = &CommandSpecWithoutRequest[*mautrix.RespRTCTransports]{Name: ReqGetRTCTransports}
+	RTCLivekitGetToken             = &CommandSpec[*mautrix.ReqRTCLivekitGetToken, *mautrix.RespRTCLivekitGetToken]{Name: ReqRTCLivekitGetToken}
+	RTCLivekitDelegateDelayedLeave = &CommandSpec[*mautrix.ReqRTCLivekitDelegateDelayedLeave, *mautrix.RespRTCLivekitDelegateDelayedLeave]{Name: ReqRTCLivekitDelegateDelayedLeave}
 	// GetMediaConfig returns the homeserver's media repository configuration (e.g. upload size limit)
 	GetMediaConfig = &CommandSpecWithoutRequest[*mautrix.RespMediaConfig]{Name: ReqGetMediaConfig}
 	// CalculateRoomID calculates a room ID locally from a timestamp and creation content. This is

@@ -13,6 +13,12 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import type {
+	IRtcLivekitDelegateDelayedLeaveFromWidgetRequestData,
+	IRtcLivekitDelegateDelayedLeaveFromWidgetResponseData,
+	IRtcLivekitGetTokenFromWidgetRequestData,
+	IRtcLivekitGetTokenFromWidgetResponseData,
+} from "matrix-widget-api"
 import { CachedEventDispatcher, EventDispatcher } from "../util/eventdispatcher.ts"
 import { CancellablePromise } from "../util/promise.ts"
 import {
@@ -523,6 +529,18 @@ export default abstract class RPCClient {
 
 	getRTCTransports(): Promise<RespRTCTransports> {
 		return this.request("get_rtc_transports", {})
+	}
+
+	rtcLivekitGetToken(
+		req: IRtcLivekitGetTokenFromWidgetRequestData,
+	): Promise<IRtcLivekitGetTokenFromWidgetResponseData> {
+		return this.request("rtc_livekit_get_token", req)
+	}
+
+	rtcLivekitDelegateDelayedLeave(
+		req: IRtcLivekitDelegateDelayedLeaveFromWidgetRequestData,
+	): Promise<IRtcLivekitDelegateDelayedLeaveFromWidgetResponseData> {
+		return this.request("rtc_livekit_delegate_delayed_leave", req)
 	}
 
 	getMediaConfig(): Promise<RespMediaConfig> {

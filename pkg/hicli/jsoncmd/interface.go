@@ -74,6 +74,8 @@ type GomuksAPI interface {
 	ListenToDevice(ctx context.Context, listen bool) (bool, error)
 	GetTurnServers(ctx context.Context) (*mautrix.RespTurnServer, error)
 	GetRTCTransports(ctx context.Context) (*mautrix.RespRTCTransports, error)
+	RTCLivekitGetToken(ctx context.Context, req *mautrix.ReqRTCLivekitGetToken) (*mautrix.RespRTCLivekitGetToken, error)
+	RTCLivekitDelegateDelayedLeave(ctx context.Context, req *mautrix.ReqRTCLivekitDelegateDelayedLeave) (*mautrix.RespRTCLivekitDelegateDelayedLeave, error)
 	GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error)
 	CalculateRoomID(ctx context.Context, params *CalculateRoomIDParams) (id.RoomID, error)
 }

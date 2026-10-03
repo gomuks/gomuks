@@ -19,6 +19,10 @@ import {
 	IOpenIDUpdate,
 	IRoomAccountData,
 	IRoomEvent,
+	IRtcLivekitDelegateDelayedLeaveFromWidgetRequestData,
+	IRtcLivekitDelegateDelayedLeaveFromWidgetResponseData,
+	IRtcLivekitGetTokenFromWidgetRequestData,
+	IRtcLivekitGetTokenFromWidgetResponseData,
 	IRtcTransportsResult,
 	ISendDelayedEventDetails,
 	ISendEventDetails,
@@ -310,6 +314,18 @@ class GomuksWidgetDriver extends WidgetDriver {
 
 	async getRtcTransports(): Promise<IRtcTransportsResult> {
 		return await this.client.rpc.getRTCTransports()
+	}
+
+	async getRtcLivekitToken(
+		data: IRtcLivekitGetTokenFromWidgetRequestData,
+	): Promise<IRtcLivekitGetTokenFromWidgetResponseData> {
+		return await this.client.rpc.rtcLivekitGetToken(data)
+	}
+
+	async delegateRtcLivekitDelayedLeave(
+		data: IRtcLivekitDelegateDelayedLeaveFromWidgetRequestData,
+	): Promise<IRtcLivekitDelegateDelayedLeaveFromWidgetResponseData> {
+		return await this.client.rpc.rtcLivekitDelegateDelayedLeave(data)
 	}
 
 	// TODO: searchUserDirectory, readEventRelations
