@@ -31,6 +31,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -125,17 +126,25 @@ func (gmx *Gomuks) StartServer() {
 	gmx.Server.Protocols.SetUnencryptedHTTP2(!enableTLS)
 	gmx.Server.Protocols.SetHTTP2(enableTLS)
 	gmx.Log.Info().Str("address", gmx.Config.Web.ListenAddress).Msg("Starting server")
-	ln, err := net.Listen("tcp", gmx.Config.Web.ListenAddress)
-	if err != nil {
-		panic(err)
+	var ln net.Listener
+	if strings.HasPrefix(gmx.Config.Web.ListenAddress, "unix:") {
+		socketPath := strings.TrimPrefix(gmx.Config.Web.ListenAddress, "unix:")
+		if err := os.Remove(socketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			gmx.Log.Err(err).Str("socket_path", socketPath).Msg("Failed to remove existing socket file")
+		}
+		ln = exerrors.Must(net.Listen("unix", socketPath))
+	} else {
+		ln = exerrors.Must(net.Listen("tcp", gmx.Config.Web.ListenAddress))
 	}
 	gmx.Server.Addr = ln.Addr().String()
 	go func() {
+		var err error
 		if enableTLS {
 			err = gmx.Server.ServeTLS(ln, gmx.Config.Web.TLSCertFile, gmx.Config.Web.TLSKeyFile)
 		} else {
 			err = gmx.Server.Serve(ln)
 		}
+		_ = ln.Close()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
