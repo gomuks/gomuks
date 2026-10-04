@@ -34,10 +34,14 @@ const (
 		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1
 	`
 	getGlobalAccountDataUpdatedAfterQuery = `
-		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1 AND mod_timestamp > $2
+		SELECT user_id, '', type, content
+		FROM account_data INDEXED BY account_data_mod_timestamp_idx
+		WHERE user_id = $1 AND mod_timestamp > $2
 	`
 	getRoomAccountDataUpdatedAfterQuery = `
-		SELECT user_id, room_id, type, content FROM room_account_data WHERE user_id = $1 AND mod_timestamp > $2
+		SELECT user_id, room_id, type, content
+		FROM room_account_data INDEXED BY room_account_data_mod_timestamp_idx
+		WHERE user_id = $1 AND mod_timestamp > $2
 	`
 	getOneGlobalAccountDataQuery = `
 		SELECT user_id, '', type, content FROM account_data WHERE user_id = $1 AND type = $2

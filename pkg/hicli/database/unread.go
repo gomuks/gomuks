@@ -23,14 +23,21 @@ const (
 		FROM timeline
 		JOIN event ON event.rowid = timeline.event_rowid
 		WHERE timeline.room_id = $1 AND timeline.rowid > (
-			SELECT MAX(rowid)
-			FROM timeline
-			WHERE room_id = $1 AND event_rowid IN (
-				SELECT event.rowid
-				FROM receipt
-				JOIN event ON receipt.event_id=event.event_id
-				WHERE receipt.room_id = $1 AND receipt.user_id = $2
-			)
+			SELECT MAX(t.rowid)
+			FROM receipt r
+			JOIN event e ON e.event_id = r.event_id
+			JOIN timeline t ON t.event_rowid = e.rowid
+			WHERE r.room_id = $1
+				AND r.user_id = $2
+				AND t.room_id = $1
+-- 			SELECT MAX(rowid)
+-- 			FROM timeline
+-- 			WHERE room_id = $1 AND event_rowid IN (
+-- 				SELECT event.rowid
+-- 				FROM receipt
+-- 				JOIN event ON receipt.event_id=event.event_id
+-- 				WHERE receipt.room_id = $1 AND receipt.user_id = $2
+-- 			)
 		) AND unread_type > 0 AND redacted_by IS NULL
 	`
 )
