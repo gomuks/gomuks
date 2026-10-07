@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -76,7 +77,22 @@ type UIMessage struct {
 	ReplyTo            *UIMessage
 	IsReplyBubble      bool
 	Renderer           MessageRenderer
-	bufferedWidth      int
+	bufferedWidth      int32
+}
+
+// InvalidateBuffer marks the cached render buffer as invalid so CalculateBuffer will recompute.
+func (msg *UIMessage) InvalidateBuffer() {
+	if msg != nil {
+		atomic.StoreInt32(&msg.bufferedWidth, 0)
+	}
+}
+
+// BufferedWidth returns the currently cached buffer width atomically.
+func (msg *UIMessage) BufferedWidth() int {
+	if msg == nil {
+		return 0
+	}
+	return int(atomic.LoadInt32(&msg.bufferedWidth))
 }
 
 func (msg *UIMessage) GetEvent() *database.Event {
@@ -289,10 +305,25 @@ func (msg *UIMessage) Draw(screen mauview.Screen) {
 }
 
 func (msg *UIMessage) Clone() *UIMessage {
-	clone := *msg
-	clone.ReplyTo = nil
-	clone.Renderer = clone.Renderer.Clone()
-	return &clone
+	clone := &UIMessage{
+		Event:              msg.Event,
+		Room:               msg.Room,
+		MsgType:            msg.MsgType,
+		OverrideSenderName: msg.OverrideSenderName,
+		DefaultSenderColor: msg.DefaultSenderColor,
+		IsService:          msg.IsService,
+		IsSelected:         msg.IsSelected,
+		ReplyTo:            nil,
+		IsReplyBubble:      msg.IsReplyBubble,
+		bufferedWidth:      atomic.LoadInt32(&msg.bufferedWidth),
+	}
+	if msg.Renderer != nil {
+		clone.Renderer = msg.Renderer.Clone()
+		if fileMsg, ok := clone.Renderer.(*FileMessage); ok {
+			fileMsg.SetUIMessage(clone)
+		}
+	}
+	return clone
 }
 
 func (msg *UIMessage) calculateReplyBuffer(preferences config.UserPreferences, width int) {
@@ -304,12 +335,12 @@ func (msg *UIMessage) calculateReplyBuffer(preferences config.UserPreferences, w
 
 func (msg *UIMessage) CalculateBuffer(preferences config.UserPreferences, width int) {
 	// TODO check preferences (at least disable images and bare message view)
-	if msg.bufferedWidth == width {
+	if int(atomic.LoadInt32(&msg.bufferedWidth)) == width {
 		return
 	}
 	msg.Renderer.CalculateBuffer(preferences, width, msg)
 	msg.calculateReplyBuffer(preferences, width)
-	msg.bufferedWidth = width
+	atomic.StoreInt32(&msg.bufferedWidth, int32(width))
 }
 
 func (msg *UIMessage) DrawReply(screen mauview.Screen) mauview.Screen {

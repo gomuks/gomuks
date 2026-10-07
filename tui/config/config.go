@@ -52,6 +52,10 @@ type UserPreferences struct {
 	DisableShowURLs      bool `yaml:"disable_show_urls"`
 
 	InlineURLMode string `yaml:"inline_url_mode"`
+
+	ImagePreviewProtocol  string `yaml:"image_preview_protocol"`
+	ImagePreviewMaxWidth  int    `yaml:"image_preview_max_width"`
+	ImagePreviewMaxHeight int    `yaml:"image_preview_max_height"`
 }
 
 var InlineURLsProbablySupported bool
@@ -107,7 +111,7 @@ type Config struct {
 
 	Dir string `yaml:"-"`
 
-	Preferences UserPreferences   `yaml:"-"`
+	Preferences UserPreferences   `yaml:"preferences,omitempty"`
 	Keybindings ParsedKeybindings `yaml:"-"`
 
 	nosave bool
@@ -147,6 +151,12 @@ func NewConfig() *Config {
 		Backspace1RemovesWord: true,
 		AlwaysClearScreen:     true,
 
+		Preferences: UserPreferences{
+			ImagePreviewProtocol:  "auto",
+			ImagePreviewMaxWidth:  66,
+			ImagePreviewMaxHeight: 16,
+		},
+
 		LogConfig: zeroconfig.Config{
 			Writers: []zeroconfig.WriterConfig{{
 				Type:   zeroconfig.WriterTypeFile,
@@ -167,12 +177,135 @@ func (config *Config) LoadAll() {
 	config.LoadKeybindings()
 }
 
+func (config *Config) initPreferencesDefaults() {
+	if config.Preferences.ImagePreviewProtocol == "" {
+		config.Preferences.ImagePreviewProtocol = "auto"
+	}
+	if config.Preferences.ImagePreviewMaxWidth <= 0 {
+		config.Preferences.ImagePreviewMaxWidth = 66
+	}
+	if config.Preferences.ImagePreviewMaxHeight <= 0 {
+		config.Preferences.ImagePreviewMaxHeight = 16
+	}
+}
+
+func (config *Config) loadPreferences() {
+	path := filepath.Join(config.Dir, "terminal.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		config.initPreferencesDefaults()
+		return
+	}
+
+	var raw struct {
+		Preferences struct {
+			ImagePreview struct {
+				Protocol  string `yaml:"protocol"`
+				MaxWidth  int    `yaml:"max_width"`
+				MaxHeight int    `yaml:"max_height"`
+			} `yaml:"image_preview"`
+		} `yaml:"preferences"`
+		ImagePreview struct {
+			Protocol  string `yaml:"protocol"`
+			MaxWidth  int    `yaml:"max_width"`
+			MaxHeight int    `yaml:"max_height"`
+		} `yaml:"image_preview"`
+		ImagePreviewProtocol  string `yaml:"image_preview_protocol"`
+		ImagePreviewMaxWidth  int    `yaml:"image_preview_max_width"`
+		ImagePreviewMaxHeight int    `yaml:"image_preview_max_height"`
+
+		HideUserList         *bool  `yaml:"hide_user_list"`
+		HideRoomList         *bool  `yaml:"hide_room_list"`
+		HideTimestamp        *bool  `yaml:"hide_timestamp"`
+		BareMessageView      *bool  `yaml:"bare_message_view"`
+		DisableImages        *bool  `yaml:"disable_images"`
+		DisableTypingNotifs  *bool  `yaml:"disable_typing_notifs"`
+		DisableEmojis        *bool  `yaml:"disable_emojis"`
+		DisableMarkdown      *bool  `yaml:"disable_markdown"`
+		DisableHTML          *bool  `yaml:"disable_html"`
+		DisableDownloads     *bool  `yaml:"disable_downloads"`
+		DisableNotifications *bool  `yaml:"disable_notifications"`
+		DisableShowURLs      *bool  `yaml:"disable_show_urls"`
+		InlineURLMode        string `yaml:"inline_url_mode"`
+	}
+
+	if err := yaml.Unmarshal(data, &raw); err == nil {
+		if raw.ImagePreviewProtocol != "" {
+			config.Preferences.ImagePreviewProtocol = raw.ImagePreviewProtocol
+		} else if raw.ImagePreview.Protocol != "" {
+			config.Preferences.ImagePreviewProtocol = raw.ImagePreview.Protocol
+		} else if raw.Preferences.ImagePreview.Protocol != "" {
+			config.Preferences.ImagePreviewProtocol = raw.Preferences.ImagePreview.Protocol
+		}
+
+		if raw.ImagePreviewMaxWidth > 0 {
+			config.Preferences.ImagePreviewMaxWidth = raw.ImagePreviewMaxWidth
+		} else if raw.ImagePreview.MaxWidth > 0 {
+			config.Preferences.ImagePreviewMaxWidth = raw.ImagePreview.MaxWidth
+		} else if raw.Preferences.ImagePreview.MaxWidth > 0 {
+			config.Preferences.ImagePreviewMaxWidth = raw.Preferences.ImagePreview.MaxWidth
+		}
+
+		if raw.ImagePreviewMaxHeight > 0 {
+			config.Preferences.ImagePreviewMaxHeight = raw.ImagePreviewMaxHeight
+		} else if raw.ImagePreview.MaxHeight > 0 {
+			config.Preferences.ImagePreviewMaxHeight = raw.ImagePreview.MaxHeight
+		} else if raw.Preferences.ImagePreview.MaxHeight > 0 {
+			config.Preferences.ImagePreviewMaxHeight = raw.Preferences.ImagePreview.MaxHeight
+		}
+
+		if raw.HideUserList != nil {
+			config.Preferences.HideUserList = *raw.HideUserList
+		}
+		if raw.HideRoomList != nil {
+			config.Preferences.HideRoomList = *raw.HideRoomList
+		}
+		if raw.HideTimestamp != nil {
+			config.Preferences.HideTimestamp = *raw.HideTimestamp
+		}
+		if raw.BareMessageView != nil {
+			config.Preferences.BareMessageView = *raw.BareMessageView
+		}
+		if raw.DisableImages != nil {
+			config.Preferences.DisableImages = *raw.DisableImages
+		}
+		if raw.DisableTypingNotifs != nil {
+			config.Preferences.DisableTypingNotifs = *raw.DisableTypingNotifs
+		}
+		if raw.DisableEmojis != nil {
+			config.Preferences.DisableEmojis = *raw.DisableEmojis
+		}
+		if raw.DisableMarkdown != nil {
+			config.Preferences.DisableMarkdown = *raw.DisableMarkdown
+		}
+		if raw.DisableHTML != nil {
+			config.Preferences.DisableHTML = *raw.DisableHTML
+		}
+		if raw.DisableDownloads != nil {
+			config.Preferences.DisableDownloads = *raw.DisableDownloads
+		}
+		if raw.DisableNotifications != nil {
+			config.Preferences.DisableNotifications = *raw.DisableNotifications
+		}
+		if raw.DisableShowURLs != nil {
+			config.Preferences.DisableShowURLs = *raw.DisableShowURLs
+		}
+		if raw.InlineURLMode != "" {
+			config.Preferences.InlineURLMode = raw.InlineURLMode
+		}
+	}
+
+	config.initPreferencesDefaults()
+}
+
 // Load loads the config from config.yaml in the directory given to the config struct.
 func (config *Config) Load() {
+	config.initPreferencesDefaults()
 	err := config.load("config", config.Dir, "terminal.yaml", config)
 	if err != nil {
 		panic(fmt.Errorf("failed to load config.yaml: %w", err))
 	}
+	config.loadPreferences()
 }
 
 func (config *Config) SaveAll() {
@@ -192,7 +325,8 @@ func parseKeybindings(input map[string]string) (output map[Keybind]string) {
 	for shortcut, action := range input {
 		mod, key, ch, err := cbind.Decode(shortcut)
 		if err != nil {
-			panic(fmt.Errorf("failed to parse keybinding %s -> %s: %w", shortcut, action, err))
+			debug.Printf("Skipping invalid keybinding %s -> %s: %v", shortcut, action, err)
+			continue
 		}
 		// TODO find out if other keys are parsed incorrectly like this
 		if key == tcell.KeyEscape {
