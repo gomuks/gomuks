@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { useReducer } from "react"
+import { ClipboardEvent, useReducer } from "react"
 import "./JSONView.css"
 
 interface JSONViewProps {
@@ -120,8 +120,60 @@ function JSONValueWithKey({ data, objectKey, trailingComma, noCollapse }: JSONVi
 	</>
 }
 
+function copyJSON(evt: ClipboardEvent<HTMLPreElement>) {
+	const selection = window.getSelection()
+	if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+		return
+	}
+	const root = evt.currentTarget
+	const ranges = []
+	for (let i = 0; i < selection.rangeCount; i++) {
+		const range = selection.getRangeAt(i)
+		if (!root.contains(range.commonAncestorContainer)) {
+			return
+		}
+		ranges.push(range)
+	}
+	const text = ranges.map(range => {
+		let result = ""
+		let separator = ""
+		function visit(node: Node, depth: number) {
+			if (node instanceof Text) {
+				if (!range.intersectsNode(node)) {
+					return
+				}
+				const start = node === range.startContainer ? range.startOffset : 0
+				const end = node === range.endContainer ? range.endOffset : node.length
+				const selectedText = node.data.slice(start, end)
+				if (selectedText) {
+					result += (result ? separator : "") + selectedText
+					separator = ""
+				}
+				return
+			}
+			if (!(node instanceof HTMLElement) || node.classList.contains("button")) {
+				return
+			}
+			const isList = node.matches("ul, ol")
+			if (node.matches("li")) {
+				separator = "\n" + "    ".repeat(depth)
+			}
+			for (const child of node.childNodes) {
+				visit(child, depth + (isList ? 1 : 0))
+			}
+			if (isList) {
+				separator = "\n" + "    ".repeat(depth)
+			}
+		}
+		visit(root, 0)
+		return result
+	}).join("\n")
+	evt.clipboardData.setData("text/plain", text)
+	evt.preventDefault()
+}
+
 export default function JSONView({ data }: JSONViewProps) {
-	return <pre className="json-view chroma">
+	return <pre className="json-view chroma" onCopy={copyJSON}>
 		<JSONValueWithKey data={data} noCollapse={true} />
 	</pre>
 }
