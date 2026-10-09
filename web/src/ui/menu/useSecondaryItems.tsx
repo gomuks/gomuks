@@ -76,6 +76,10 @@ export const useSecondaryItems = (
 				...getBaseContent(),
 			})
 		}
+		const copySource = () => {
+			navigator.clipboard.writeText(JSON.stringify(evt, null, "    "))
+			closeModal()
+		}
 		openModal({
 			dimmed: true,
 			boxed: true,
@@ -85,6 +89,7 @@ export const useSecondaryItems = (
 				<div className="buttons" style={{ display: "flex" }}>
 					<button style={{ padding: ".5rem" }} onClick={copyRawCommand}>Copy /raw command</button>
 					<button style={{ padding: ".5rem" }} onClick={copyRawCommandWithPMP}>(+ profile)</button>
+					<button style={{ padding: ".5rem" }} onClick={copySource}>Copy entire event</button>
 				</div>
 			</div>,
 		})
