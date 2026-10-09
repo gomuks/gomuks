@@ -1,4 +1,4 @@
--- v0 -> v30 (compatible with v10+): Latest revision
+-- v0 -> v31 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -169,19 +169,19 @@ CREATE TRIGGER event_update_last_edit_when_redacted
 		AND NEW.state_key IS NULL
 BEGIN
 	UPDATE event
-	SET last_edit_rowid = COALESCE(
-		(SELECT rowid
-		 FROM event edit
-		 WHERE edit.room_id = event.room_id
-		   AND edit.relates_to = event.event_id
-		   AND edit.relation_type = 'm.replace'
-		   AND edit.type = event.type
-		   AND edit.sender = event.sender
-		   AND edit.redacted_by IS NULL
-		   AND edit.state_key IS NULL
-		 ORDER BY edit.timestamp DESC
-		 LIMIT 1),
-		0)
+	SET last_edit_rowid = (
+		SELECT rowid
+		FROM event edit
+		WHERE edit.room_id = event.room_id
+		  AND edit.relates_to = event.event_id
+		  AND edit.relation_type = 'm.replace'
+		  AND edit.type = event.type
+		  AND edit.sender = event.sender
+		  AND edit.redacted_by IS NULL
+		  AND edit.state_key IS NULL
+		ORDER BY edit.timestamp DESC
+		LIMIT 1
+	)
 	WHERE event_id = NEW.relates_to
 	  AND room_id = NEW.room_id
 	  AND last_edit_rowid = NEW.rowid

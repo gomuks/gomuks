@@ -50,8 +50,8 @@ func (h *HiClient) getInitialSyncRoom(ctx context.Context, room *database.Room) 
 					*previewMember.StateKey: previewMember.RowID,
 				}
 			}
-			if previewEvent.LastEditRowID != nil {
-				lastEdit, err := h.DB.Event.GetByRowID(ctx, *previewEvent.LastEditRowID)
+			if previewEvent.LastEditRowID != 0 {
+				lastEdit, err := h.DB.Event.GetByRowID(ctx, previewEvent.LastEditRowID)
 				if err != nil {
 					zerolog.Ctx(ctx).Err(err).Stringer("room_id", room.ID).Msg("Failed to get last edit for preview event")
 				} else if lastEdit != nil {

@@ -419,7 +419,6 @@ func (h *HiClient) send(
 		DecryptionError: "",
 		SendError:       "not sent",
 		Reactions:       map[string]int{},
-		LastEditRowID:   ptr.Ptr(database.EventRowID(0)),
 	}
 	var overrideTimestamp bool
 	if ts > 0 {

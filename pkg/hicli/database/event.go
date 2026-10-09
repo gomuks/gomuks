@@ -112,8 +112,10 @@ const (
 		SET last_edit_rowid = $7
 		WHERE rowid = $1 AND room_id = $2 AND event_id = $3 AND type = $4 AND sender = $5
 		  AND (relation_type IS NULL OR relation_type NOT IN ('m.replace', 'm.annotation'))
-		  AND $6 > COALESCE((SELECT prev_edit.timestamp FROM event prev_edit WHERE prev_edit.rowid = event.last_edit_rowid), 0)
-		  AND last_edit_rowid <> $7
+		  AND (last_edit_rowid IS NULL OR (
+		    $6 > COALESCE((SELECT prev_edit.timestamp FROM event prev_edit WHERE prev_edit.rowid = event.last_edit_rowid), 0)
+		    AND last_edit_rowid <> $7
+		  ))
 	`
 	updateReactionCountsQuery = `UPDATE event SET reactions = $3, own_reactions = $4 WHERE room_id = $1 AND event_id = $2`
 )
@@ -482,7 +484,7 @@ type Event struct {
 
 	Reactions     map[string]int          `json:"reactions,omitempty"`
 	OwnReactions  map[string][]id.EventID `json:"own_reactions,omitempty"`
-	LastEditRowID *EventRowID             `json:"last_edit_rowid,omitempty"`
+	LastEditRowID EventRowID              `json:"last_edit_rowid,omitempty"`
 	UnreadType    UnreadType              `json:"unread_type,omitempty"`
 
 	StickyDuration jsontime.Milliseconds `json:"sticky_duration_ms,omitzero"`
@@ -605,7 +607,7 @@ func (e *Event) GetMautrixContent() *event.Content {
 func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	var timestamp int64
 	var transactionID, redactedBy, relatesTo, relationType, megolmSessionID, decryptionError, sendError, decryptedType sql.NullString
-	var stickyDuration sql.NullInt64
+	var stickyDuration, lastEditRowID sql.NullInt64
 	err := row.Scan(
 		&e.RowID,
 		&e.TimelineRowID,
@@ -629,7 +631,7 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 		&sendError,
 		dbutil.JSON{Data: &e.Reactions},
 		dbutil.JSON{Data: &e.OwnReactions},
-		&e.LastEditRowID,
+		&lastEditRowID,
 		&e.UnreadType,
 		&stickyDuration,
 	)
@@ -646,6 +648,7 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	e.DecryptionError = decryptionError.String
 	e.SendError = sendError.String
 	e.StickyDuration = jsontime.MS(time.Duration(stickyDuration.Int64) * time.Millisecond)
+	e.LastEditRowID = EventRowID(lastEditRowID.Int64)
 	return e, nil
 }
 
@@ -720,7 +723,7 @@ func (e *Event) sqlVariables() []any {
 		dbutil.StrPtr(e.SendError),
 		dbutil.JSON{Data: reactions},
 		dbutil.JSON{Data: ownReactions},
-		e.LastEditRowID,
+		dbutil.NumPtr(e.LastEditRowID),
 		e.UnreadType,
 		dbutil.NumPtr(e.StickyDuration.Milliseconds()),
 	}

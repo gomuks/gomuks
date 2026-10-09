@@ -329,11 +329,11 @@ func (rs *RoomStore) applyEvent(evt *database.Event, pending bool) {
 		evt.TimelineRowID = UnsentTimelineRowIDBase + database.TimelineRowID(evt.Timestamp.UnixMilli())
 		evt.Pending = true
 	}
-	if evt.LastEditRowID != nil && *evt.LastEditRowID != 0 {
-		evt.LastEditRef = rs.eventsByRowID[*evt.LastEditRowID]
+	if evt.LastEditRowID != 0 {
+		evt.LastEditRef = rs.eventsByRowID[evt.LastEditRowID]
 	} else if evt.RelationType == event.RelReplace && evt.RelatesTo != "" {
 		editTarget, ok := rs.eventsByID[evt.RelatesTo]
-		if ok && editTarget.LastEditRowID != nil && *editTarget.LastEditRowID != 0 && *editTarget.LastEditRowID == evt.RowID {
+		if ok && editTarget.LastEditRowID != 0 && editTarget.LastEditRowID == evt.RowID {
 			editTarget.LastEditRef = evt
 			rs.EventSubs.Notify(editTarget.ID)
 		}

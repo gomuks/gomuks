@@ -365,11 +365,11 @@ func (h *HiClient) collectRelatedEvents(ctx context.Context, events []*database.
 				addedEventRowIDs.Add(dbEvt.RowID)
 			}
 		}
-		if evt.LastEditRowID != nil && !addedEventRowIDs.Has(*evt.LastEditRowID) {
+		if evt.LastEditRowID != 0 && !addedEventRowIDs.Has(evt.LastEditRowID) {
 			targetEvt := evt.LastEditRef
 			if targetEvt == nil {
 				var err error
-				targetEvt, err = h.DB.Event.GetByRowID(ctx, *evt.LastEditRowID)
+				targetEvt, err = h.DB.Event.GetByRowID(ctx, evt.LastEditRowID)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get last edit event: %w", err)
 				} else if targetEvt != nil {

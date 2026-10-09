@@ -855,7 +855,7 @@ func (h *HiClient) processEvent(
 				return fmt.Errorf("failed to process edit %s of event %s: %w", latestEdit.ID, evt.ID, err)
 			} else if dbEdit != nil {
 				dbEvt.LastEditRef = dbEdit
-				dbEvt.LastEditRowID = &dbEdit.RowID
+				dbEvt.LastEditRowID = dbEdit.RowID
 				err = h.DB.Event.UpdateLastEdit(ctx, dbEvt, dbEdit)
 				if err != nil {
 					return fmt.Errorf("failed to update last edit for event %s: %w", dbEvt.ID, err)
