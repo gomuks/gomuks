@@ -81,7 +81,7 @@ const metaTagsTemplate = `
 	<meta name="gomuks-frontend-etag" content="%s">
 	<meta name="gomuks-version-description" content="%s">
 	<meta name="gomuks-vapid-key" content="%s">
-	<script>
+	<script type="text/javascript">
 		window.gomuksDefaultConfig = %s
 	</script>
 `
