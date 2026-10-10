@@ -344,6 +344,26 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 	return nil
 }
 
+// receiptThreadID returns the thread a read receipt for the given event belongs to: the thread it's in,
+// or the one of the event it relates to (e.g. an edit or a reaction), or the main timeline.
+func (h *HiClient) receiptThreadID(ctx context.Context, roomID id.RoomID, evt *event.Event) (event.ThreadID, error) {
+	if evt.StateKey != nil {
+		return event.ReadReceiptThreadMain, nil
+	}
+	relatesTo, relType := database.GetRelatesToFromBytes(evt.Content.VeryRaw)
+	if relType == event.RelThread {
+		return event.ThreadID(relatesTo), nil
+	} else if relatesTo != "" {
+		target, err := h.DB.Event.GetByID(ctx, roomID, relatesTo)
+		if err != nil {
+			return "", fmt.Errorf("failed to get relation target of own event: %w", err)
+		} else if target != nil && target.RelationType == event.RelThread {
+			return event.ThreadID(target.RelatesTo), nil
+		}
+	}
+	return event.ReadReceiptThreadMain, nil
+}
+
 func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*database.Receipt, []id.EventID) {
 	receiptList := make([]*database.Receipt, 0)
 	var newOwnReceipts []id.EventID
@@ -1180,10 +1200,15 @@ func (h *HiClient) processStateAndTimeline(
 				// It'll be updated with new unreads (if any) at the end.
 				updatedRoom.UnreadCounts = database.UnreadCounts{}
 				if !isRead {
+					threadID, err := h.receiptThreadID(ctx, room.ID, evt)
+					if err != nil {
+						return err
+					}
 					receipts = append(receipts, &database.Receipt{
 						RoomID:      room.ID,
 						UserID:      h.Account.UserID,
 						ReceiptType: event.ReceiptTypeRead,
+						ThreadID:    threadID,
 						EventID:     evt.ID,
 						Timestamp:   jsontime.UM(time.UnixMilli(evt.Timestamp)),
 					})
