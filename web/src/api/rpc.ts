@@ -76,6 +76,7 @@ import {
 	RoomID,
 	RoomStateGUID,
 	RoomSummary,
+	SanitizedBio,
 	ServerSearchParams,
 	TimelineRowID,
 	URLPreview,
@@ -305,6 +306,14 @@ export default abstract class RPCClient {
 
 	getOwnDevices(): Promise<GetOwnDevicesResponse> {
 		return this.request("get_own_devices", {})
+	}
+
+	getProfileAnnotation(user_id: UserID): Promise<{ note?: SanitizedBio }> {
+		return this.request("get_profile_annotation", { user_id })
+	}
+
+	setProfileAnnotation(user_id: UserID, note?: string | undefined): Promise<{ note?: SanitizedBio }> {
+		return this.request("set_profile_annotation", { user_id, note })
 	}
 
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
