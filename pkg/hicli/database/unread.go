@@ -15,29 +15,32 @@ import (
 const (
 	// TODO find out if this needs to be wrapped in another query that limits the number of events it evaluates
 	//      (or maybe the timeline store just shouldn't be allowed to grow that big?)
+	// An event is read up to the latest receipt in its thread (the main timeline for events outside threads)
+	// or in no thread. A thread without such a receipt is unread, unless the room has no receipt at all.
 	calculateUnreadsQuery = `
-		SELECT
-			COALESCE(SUM(CASE WHEN unread_type & 0100 THEN 1 ELSE 0 END), 0) AS highlights,
-			COALESCE(SUM(CASE WHEN unread_type & 0010 THEN 1 ELSE 0 END), 0) AS notifications,
-			COALESCE(SUM(CASE WHEN unread_type & 0001 THEN 1 ELSE 0 END), 0) AS messages
-		FROM timeline
-		JOIN event ON event.rowid = timeline.event_rowid
-		WHERE timeline.room_id = $1 AND timeline.rowid > (
-			SELECT MAX(t.rowid)
+		WITH read_up_to AS (
+			SELECT r.thread_id, MAX(t.rowid) AS rowid
 			FROM receipt r
 			JOIN event e ON e.event_id = r.event_id
 			JOIN timeline t ON t.event_rowid = e.rowid
 			WHERE r.room_id = $1
 				AND r.user_id = $2
 				AND t.room_id = $1
--- 			SELECT MAX(rowid)
--- 			FROM timeline
--- 			WHERE room_id = $1 AND event_rowid IN (
--- 				SELECT event.rowid
--- 				FROM receipt
--- 				JOIN event ON receipt.event_id=event.event_id
--- 				WHERE receipt.room_id = $1 AND receipt.user_id = $2
--- 			)
+			GROUP BY r.thread_id
+		)
+		SELECT
+			COALESCE(SUM(CASE WHEN unread_type & 0100 THEN 1 ELSE 0 END), 0) AS highlights,
+			COALESCE(SUM(CASE WHEN unread_type & 0010 THEN 1 ELSE 0 END), 0) AS notifications,
+			COALESCE(SUM(CASE WHEN unread_type & 0001 THEN 1 ELSE 0 END), 0) AS messages
+		FROM timeline
+		JOIN event ON event.rowid = timeline.event_rowid
+		WHERE timeline.room_id = $1 AND timeline.rowid > COALESCE(
+			(
+				SELECT MAX(rowid)
+				FROM read_up_to
+				WHERE thread_id IN ('', CASE WHEN event.relation_type = 'm.thread' THEN event.relates_to ELSE 'main' END)
+			),
+			(SELECT 0 FROM read_up_to LIMIT 1)
 		) AND unread_type > 0 AND redacted_by IS NULL
 	`
 )
