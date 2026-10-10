@@ -111,6 +111,7 @@ type MarkReadParams struct {
 	RoomID      id.RoomID         `json:"room_id"`
 	EventID     id.EventID        `json:"event_id"`
 	ReceiptType event.ReceiptType `json:"receipt_type"`
+	ThreadID    string            `json:"thread_id,omitempty"`
 }
 
 type SetTypingParams struct {

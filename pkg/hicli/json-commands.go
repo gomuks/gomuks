@@ -282,7 +282,7 @@ func (h *JSONAPI) SetAccountData(ctx context.Context, params *jsoncmd.SetAccount
 }
 
 func (h *JSONAPI) MarkRead(ctx context.Context, params *jsoncmd.MarkReadParams) error {
-	return h.HiClient.MarkRead(ctx, params.RoomID, params.EventID, params.ReceiptType)
+	return h.HiClient.MarkRead(ctx, params.RoomID, params.EventID, params.ReceiptType, params.ThreadID)
 }
 
 func (h *JSONAPI) SetTyping(ctx context.Context, params *jsoncmd.SetTypingParams) error {

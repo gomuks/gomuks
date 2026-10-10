@@ -301,12 +301,17 @@ Loop:
 	return h.send(ctx, roomID, evtType, &event.Content{Parsed: content, Raw: extra}, origText, unencrypted, false, ts)
 }
 
-func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.EventID, receiptType event.ReceiptType) error {
+func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.EventID, receiptType event.ReceiptType, threadID string) error {
 	room, err := h.DB.Room.Get(ctx, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to get room metadata: %w", err)
 	} else if room == nil {
 		return fmt.Errorf("unknown room")
+	}
+	if threadID != "" {
+		return h.Client.SendReceipt(ctx, roomID, eventID, receiptType, map[string]string{
+			"thread_id": threadID,
+		})
 	}
 	content := &mautrix.ReqSetReadMarkers{
 		FullyRead: eventID,
