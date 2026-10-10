@@ -344,6 +344,16 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 	return nil
 }
 
+// eventThreadID returns the thread an event is in, or the main timeline.
+func eventThreadID(evt *event.Event) event.ThreadID {
+	if evt.StateKey == nil {
+		if relatesTo, relType := database.GetRelatesToFromBytes(evt.Content.VeryRaw); relType == event.RelThread {
+			return event.ThreadID(relatesTo)
+		}
+	}
+	return event.ReadReceiptThreadMain
+}
+
 // receiptThreadID returns the thread a read receipt for the given event belongs to: the thread it's in,
 // or the one of the event it relates to (e.g. an edit or a reaction), or the main timeline.
 func (h *HiClient) receiptThreadID(ctx context.Context, roomID id.RoomID, evt *event.Event) (event.ThreadID, error) {
@@ -364,22 +374,23 @@ func (h *HiClient) receiptThreadID(ctx context.Context, roomID id.RoomID, evt *e
 	return event.ReadReceiptThreadMain, nil
 }
 
-func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*database.Receipt, []id.EventID) {
+func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*database.Receipt, []*database.Receipt) {
 	receiptList := make([]*database.Receipt, 0)
-	var newOwnReceipts []id.EventID
+	var newOwnReceipts []*database.Receipt
 	for eventID, receipts := range *content {
 		for receiptType, users := range receipts {
 			for userID, receiptInfo := range users {
-				if userID == h.Account.UserID {
-					newOwnReceipts = append(newOwnReceipts, eventID)
-				}
-				receiptList = append(receiptList, &database.Receipt{
+				receipt := &database.Receipt{
 					UserID:      userID,
 					ReceiptType: receiptType,
 					ThreadID:    receiptInfo.ThreadID,
 					EventID:     eventID,
 					Timestamp:   jsontime.UM(receiptInfo.Timestamp),
-				})
+				}
+				if userID == h.Account.UserID {
+					newOwnReceipts = append(newOwnReceipts, receipt)
+				}
+				receiptList = append(receiptList, receipt)
 			}
 		}
 	}
@@ -449,7 +460,7 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		}
 	}
 	var receiptsList []*database.Receipt
-	var newOwnReceipts []id.EventID
+	var newOwnReceipts []*database.Receipt
 	for _, evt := range room.Ephemeral.Events {
 		evt.Type.Class = event.EphemeralEventType
 		err = evt.Content.ParseRaw(evt.Type)
@@ -983,7 +994,7 @@ func (h *HiClient) processStateAndTimeline(
 	timeline *mautrix.SyncTimeline,
 	summary *mautrix.LazyLoadSummary,
 	receipts []*database.Receipt,
-	newOwnReceipts []id.EventID,
+	newOwnReceipts []*database.Receipt,
 	accountData map[event.Type]*database.AccountData,
 	isNewRoom bool,
 ) error {
@@ -1174,13 +1185,19 @@ func (h *HiClient) processStateAndTimeline(
 	if len(timeline.Events) > 0 {
 		timelineIDs := make([]database.EventRowID, len(timeline.Events))
 		encounteredReceiptUsers := make(map[id.UserID]struct{})
-		readUpToIndex := -1
+		// Threads read up to the current event by own receipts and events, "" for all of them.
+		readThreads := make(map[event.ThreadID]struct{})
+		isUnread := make([]bool, len(timeline.Events))
 		for i := len(timeline.Events) - 1; i >= 0; i-- {
 			evt := timeline.Events[i]
 			for _, receipt := range receiptMap[evt.ID] {
 				encounteredReceiptUsers[receipt.UserID] = struct{}{}
 			}
-			isRead := slices.Contains(newOwnReceipts, evt.ID)
+			for _, receipt := range newOwnReceipts {
+				if receipt.EventID == evt.ID {
+					readThreads[receipt.ThreadID] = struct{}{}
+				}
+			}
 			isOwnEvent := evt.Sender == h.Account.UserID
 			_, alreadyEncountered := encounteredReceiptUsers[evt.Sender]
 			if !isOwnEvent && !alreadyEncountered {
@@ -1195,27 +1212,28 @@ func (h *HiClient) processStateAndTimeline(
 				receipts = append(receipts, injectedReceipt)
 				receiptMap[evt.ID] = append(receiptMap[evt.ID], injectedReceipt)
 			}
-			if readUpToIndex == -1 && (isRead || isOwnEvent) {
-				readUpToIndex = i
-				// Reset unread counts if we see our own read receipt in the timeline.
-				// It'll be updated with new unreads (if any) at the end.
-				updatedRoom.UnreadCounts = database.UnreadCounts{}
-				if !isRead {
-					threadID, err := h.receiptThreadID(ctx, room.ID, evt)
-					if err != nil {
-						return err
-					}
-					receipts = append(receipts, &database.Receipt{
+			_, allRead := readThreads[""]
+			if isOwnEvent {
+				threadID, err := h.receiptThreadID(ctx, room.ID, evt)
+				if err != nil {
+					return err
+				}
+				if _, threadRead := readThreads[threadID]; !threadRead && !allRead {
+					readThreads[threadID] = struct{}{}
+					ownReceipt := &database.Receipt{
 						RoomID:      room.ID,
 						UserID:      h.Account.UserID,
 						ReceiptType: event.ReceiptTypeRead,
 						ThreadID:    threadID,
 						EventID:     evt.ID,
 						Timestamp:   jsontime.UM(time.UnixMilli(evt.Timestamp)),
-					})
-					newOwnReceipts = append(newOwnReceipts, evt.ID)
+					}
+					receipts = append(receipts, ownReceipt)
+					newOwnReceipts = append(newOwnReceipts, ownReceipt)
 				}
 			}
+			_, threadRead := readThreads[eventThreadID(evt)]
+			isUnread[i] = !allRead && !threadRead
 		}
 		for i, evt := range timeline.Events {
 			if evt.StateKey != nil {
@@ -1223,7 +1241,7 @@ func (h *HiClient) processStateAndTimeline(
 			} else {
 				evt.Type.Class = event.MessageEventType
 			}
-			timelineIDs[i], err = processNewEvent(evt, true, i > readUpToIndex)
+			timelineIDs[i], err = processNewEvent(evt, true, isUnread[i])
 			if err != nil {
 				return err
 			}
@@ -1295,10 +1313,13 @@ func (h *HiClient) processStateAndTimeline(
 			return fmt.Errorf("failed to save receipts: %w", err)
 		}
 	}
-	if !room.UnreadCounts.IsZero() && ((len(newOwnReceipts) > 0 && newUnreadCounts.IsZero()) || unreadMessagesWereMaybeRedacted) {
-		updatedRoom.UnreadCounts, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
-		if err != nil {
-			return fmt.Errorf("failed to recalculate unread counts: %w", err)
+	if len(newOwnReceipts) > 0 || unreadMessagesWereMaybeRedacted {
+		// A receipt only marks its own thread read, so the rest of the room has to be counted again.
+		if !room.UnreadCounts.IsZero() || !newUnreadCounts.IsZero() {
+			updatedRoom.UnreadCounts, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
+			if err != nil {
+				return fmt.Errorf("failed to recalculate unread counts: %w", err)
+			}
 		}
 	} else {
 		updatedRoom.UnreadCounts.Add(newUnreadCounts)
