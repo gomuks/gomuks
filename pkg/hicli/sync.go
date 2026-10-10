@@ -1005,6 +1005,7 @@ func (h *HiClient) processStateAndTimeline(
 		SortingTimestamp: room.SortingTimestamp,
 		NameQuality:      room.NameQuality,
 		UnreadCounts:     room.UnreadCounts,
+		ThreadUnreads:    maps.Clone(room.ThreadUnreads),
 	}
 	heroesChanged := false
 	if summary.Heroes == nil && summary.JoinedMemberCount == nil && summary.InvitedMemberCount == nil {
@@ -1036,6 +1037,7 @@ func (h *HiClient) processStateAndTimeline(
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
 	var newUnreadCounts database.UnreadCounts
+	newThreadUnreads := make(map[event.ThreadID]database.UnreadCounts)
 	addOldEvent := func(rowID database.EventRowID, evtID id.EventID) (dbEvt *database.Event, err error) {
 		if rowID != 0 {
 			dbEvt, err = h.DB.Event.GetByRowID(ctx, rowID)
@@ -1098,6 +1100,13 @@ func (h *HiClient) processStateAndTimeline(
 				})
 			}
 			newUnreadCounts.AddOne(dbEvt.UnreadType)
+			threadID := event.ReadReceiptThreadMain
+			if dbEvt.RelationType == event.RelThread {
+				threadID = event.ThreadID(dbEvt.RelatesTo)
+			}
+			threadUnreads := newThreadUnreads[threadID]
+			threadUnreads.AddOne(dbEvt.UnreadType)
+			newThreadUnreads[threadID] = threadUnreads
 		}
 		if isTimeline {
 			if dbEvt.CanUseForPreview() {
@@ -1316,13 +1325,21 @@ func (h *HiClient) processStateAndTimeline(
 	if len(newOwnReceipts) > 0 || unreadMessagesWereMaybeRedacted {
 		// A receipt only marks its own thread read, so the rest of the room has to be counted again.
 		if !room.UnreadCounts.IsZero() || !newUnreadCounts.IsZero() {
-			updatedRoom.UnreadCounts, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
+			updatedRoom.UnreadCounts, updatedRoom.ThreadUnreads, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
 			if err != nil {
 				return fmt.Errorf("failed to recalculate unread counts: %w", err)
 			}
 		}
 	} else {
 		updatedRoom.UnreadCounts.Add(newUnreadCounts)
+		for threadID, uc := range newThreadUnreads {
+			if updatedRoom.ThreadUnreads == nil {
+				updatedRoom.ThreadUnreads = make(map[event.ThreadID]database.UnreadCounts)
+			}
+			threadUnreads := updatedRoom.ThreadUnreads[threadID]
+			threadUnreads.Add(uc)
+			updatedRoom.ThreadUnreads[threadID] = threadUnreads
+		}
 	}
 	dismissNotifications := room.UnreadNotifications > 0 && updatedRoom.UnreadNotifications == 0 && len(newNotifications) == 0
 	if timeline.PrevBatch != "" && (room.PrevBatch == "" || timeline.Limited) {
