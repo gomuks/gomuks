@@ -353,9 +353,6 @@ func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*databa
 				if userID == h.Account.UserID {
 					newOwnReceipts = append(newOwnReceipts, eventID)
 				}
-				if receiptInfo.ThreadID == event.ReadReceiptThreadMain {
-					receiptInfo.ThreadID = ""
-				}
 				receiptList = append(receiptList, &database.Receipt{
 					UserID:      userID,
 					ReceiptType: receiptType,
