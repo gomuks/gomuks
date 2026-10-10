@@ -81,6 +81,7 @@ export interface SyncRoom {
 	notifications?: SyncNotification[] | null
 	account_data?: Record<EventType, DBRoomAccountData> | null
 	receipts?: Record<EventID, DBReceipt[]> | null
+	own_receipts?: DBReceipt[] | null
 	sticky?: EventRowID[] | null
 }
 

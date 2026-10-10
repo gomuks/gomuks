@@ -1295,8 +1295,12 @@ func (h *HiClient) processStateAndTimeline(
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
 	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 || len(newStickyRows) > 0) {
+		var ownReceipts []*database.Receipt
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
+			if receipt.UserID == h.Account.UserID {
+				ownReceipts = append(ownReceipts, receipt)
+			}
 		}
 		roomID := room.ID
 		if !syncRoomChanged {
@@ -1310,6 +1314,7 @@ func (h *HiClient) processStateAndTimeline(
 			Reset:       timeline.Limited,
 			Events:      allNewEvents,
 			Receipts:    receiptMap,
+			OwnReceipts: ownReceipts,
 			Sticky:      newStickyRows,
 
 			Notifications:        newNotifications,
