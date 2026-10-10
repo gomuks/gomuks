@@ -32,6 +32,16 @@ func (h *HiClient) getInitialSyncRoom(ctx context.Context, room *database.Room) 
 			syncRoom.AccountData[event.Type{Type: data.Type, Class: event.AccountDataEventType}] = data
 		}
 	}
+	syncRoom.OwnReceipts, err = h.DB.Receipt.GetAllForUser(ctx, room.ID, h.Account.UserID)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Stringer("room_id", room.ID).Msg("Failed to get own receipts")
+		if ctx.Err() != nil {
+			return nil
+		}
+	}
+	for _, receipt := range syncRoom.OwnReceipts {
+		receipt.RoomID = ""
+	}
 	if room.PreviewEventRowID != 0 {
 		previewEvent, err := h.DB.Event.GetByRowID(ctx, room.PreviewEventRowID)
 		if err != nil {
