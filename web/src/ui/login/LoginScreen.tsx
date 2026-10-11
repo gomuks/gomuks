@@ -137,6 +137,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 			reject(new Error("Login cancelled"))
 		}
 		const pollFunc = () => client.rpc.oauthPollDeviceCode(homeserverURL, code, clientID).then(() => {
+			delete localStorage.pendingDeviceCodeLogin
 			console.log("OAuth device code login successful")
 			if (!cancelled) {
 				resolve()
