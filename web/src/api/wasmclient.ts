@@ -21,9 +21,15 @@ interface WasmConnectionCommand extends BaseRPCCommand<ConnectionEvent> {
 	command: "wasm-connection"
 }
 
+interface WasmReloadCommand extends BaseRPCCommand<null> {
+	command: "reload"
+}
+
 interface RawJSONCommand extends BaseRPCCommand<string> {
 	command: RPCCommand["command"]
 }
+
+type WasmCommand = WasmConnectionCommand | WasmReloadCommand
 
 export default class WasmClient extends RPCClient {
 	public readonly rpcMediaUpload = true
@@ -61,14 +67,14 @@ export default class WasmClient extends RPCClient {
 		})
 	}
 
-	#onMessage = (evt: MessageEvent<RawJSONCommand | WasmConnectionCommand>) => {
-		let realEvtData: RPCCommand | WasmConnectionCommand
+	#onMessage = (evt: MessageEvent<RawJSONCommand | WasmCommand>) => {
+		let realEvtData: RPCCommand | WasmCommand
 		if (typeof evt.data.data === "string") {
 			realEvtData = {
 				...evt.data,
 				data: JSON.parse(evt.data.data),
 			}
-		} else if (evt.data.command === "wasm-connection") {
+		} else if (evt.data.command === "wasm-connection" || evt.data.command === "reload") {
 			realEvtData = evt.data
 		} else {
 			console.error("Unexpected message data:", evt.data)
@@ -77,6 +83,8 @@ export default class WasmClient extends RPCClient {
 		// console.debug("[RPC] Go -> JS", realEvtData)
 		if (realEvtData.command === "wasm-connection") {
 			this.connect.emit(realEvtData.data)
+		} else if (realEvtData.command === "reload") {
+			window.location.reload()
 		} else {
 			this.onCommand(realEvtData)
 		}

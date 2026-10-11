@@ -109,6 +109,10 @@ func main() {
 			MaxIdleConns: 1,
 		}
 	}
+	gmx.LogoutCallback = func() error {
+		js.Global().Get("sqlite3").Get("meow").Call("clearAndReload")
+		return nil
+	}
 
 	gmx.EventBuffer = gomuks.NewEventBuffer(0)
 	gmx.EventBuffer.Subscribe(0, nil, func(evt *gomuks.BufferedEvent) {

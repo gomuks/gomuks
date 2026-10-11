@@ -67,7 +67,8 @@ type Gomuks struct {
 	DisableAuth bool
 	DesktopKey  string
 
-	GetDBConfig func() dbutil.PoolConfig
+	GetDBConfig    func() dbutil.PoolConfig
+	LogoutCallback func() error
 
 	initLock             sync.Mutex
 	notificationSyncLock sync.Mutex

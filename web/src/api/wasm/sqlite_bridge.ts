@@ -16,6 +16,7 @@ interface Meowlite extends Sqlite3Static {
 		}
 		last_insert_rowid: (connPtr: Database | WasmPointer) => number | string
 		read_int64_column: (rowPtr: WasmPointer, columnIndex: number) => number | string
+		clearAndReload: () => Promise<void>
 	}
 }
 
@@ -58,6 +59,11 @@ async function init() {
 		},
 		read_int64_column(rowPtr, columnIndex) {
 			return safeFormatBigint(sqlite3.capi.sqlite3_column_int64(rowPtr, columnIndex))
+		},
+		async clearAndReload() {
+			await sqlite3.PoolUtil?.wipeFiles()
+			await sqlite3.PoolUtil?.removeVfs()
+			postMessage({ command: "reload" })
 		},
 	}
 
