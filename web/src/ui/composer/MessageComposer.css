@@ -71,10 +71,41 @@ div.message-composer {
 		}
 	}
 
-	> div.composer-media, > div.composer-location {
+	> div.composer-media-upload, > div.composer-location {
 		display: flex;
 		padding: .75rem .75rem 0;
 		justify-content: space-between;
+
+		> button {
+			height: 2.5rem;
+			width: 2.5rem;
+			padding: .5rem;
+		}
+	}
+
+	> div.composer-media {
+		display: flex;
+		padding: .75rem .75rem 0;
+		gap: .25rem;
+		overflow-x: auto;
+
+		> div.composer-media-item {
+			position: relative;
+			flex-shrink: 0;
+
+			> button {
+				height: 2.5rem;
+				width: 2.5rem;
+				padding: .5rem;
+				position: absolute;
+				top: .25rem;
+				right: .25rem;
+			}
+		}
+
+		> div.x-separator {
+			flex: 1;
+		}
 
 		> button {
 			height: 2.5rem;

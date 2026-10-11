@@ -22,7 +22,7 @@ import StopIcon from "@/icons/stop.svg?react"
 import "./VoiceRecorder.css"
 
 interface VoiceRecorderProps {
-	onFinish: (file: File, isVoice?: true) => void
+	onFinish: (file: File) => void
 }
 
 function chooseMime() {
@@ -93,8 +93,7 @@ const VoiceRecorder = ({ onFinish }: VoiceRecorderProps) => {
 		if (!recorder.current) {
 			return
 		}
-		const file = new File(blobs.current, "Voice message.ogg", { type: recorder.current.mimeType })
-		onFinish(file, true)
+		onFinish(new File(blobs.current, "Voice message.ogg", { type: recorder.current.mimeType }))
 	}
 	const finishRecord = () => recorder.current?.stop()
 	const cancelRecord = () => {

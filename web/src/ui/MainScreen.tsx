@@ -509,7 +509,7 @@ const MainScreen = () => {
 		{context.pendingShare ? <div className="choose-share-target">
 			Select room to share:
 			<br/>
-			<code>{context.pendingShare.file?.name ?? "Text message"}</code>
+			<code>{context.pendingShare.files?.[0]?.name ?? "Text message"}</code>
 		</div> : null}
 	</main>
 	return <MainScreenContext value={context}>

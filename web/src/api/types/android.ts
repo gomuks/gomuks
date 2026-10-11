@@ -43,6 +43,7 @@ interface ShareEventBase {
 	type: "share"
 	room_id: RoomID | null
 	text?: string
+	files?: ShareEventWithFile[]
 }
 
 export type AndroidShareEvent = ShareEventBase & (ShareEventWithFile | ShareEventWithText)

@@ -19,21 +19,19 @@ import { RoomStateStore, usePreference } from "@/api/statestore"
 import type { MediaMessageEventContent } from "@/api/types"
 import { LeafletPicker } from "../maps/async.tsx"
 import { useMediaContent } from "../timeline/content/useMediaContent.tsx"
+import type { ComposerState } from "./MessageComposer.tsx"
 import CloseIcon from "@/icons/close.svg?react"
 import "./MessageComposer.css"
 
 export interface ComposerMediaProps {
-	content: MediaMessageEventContent
-	clearMedia: false | (() => void)
+	items: MediaMessageEventContent[]
+	setState?: (updater: (current: ComposerState) => Partial<ComposerState>) => void
 }
 
-export const ComposerMedia = ({ content, clearMedia }: ComposerMediaProps) => {
+export const ComposerMedia = ({ items, setState }: ComposerMediaProps) => {
 	const defaultMaxWidth = 360
 	const paddingAndButtonWidth = 16 + 40
 	const [maxWidth, setMaxWidth] = useState(defaultMaxWidth)
-	const [mediaContent, containerClass, containerStyle] = useMediaContent(
-		content, "m.room.message", { height: 120, width: maxWidth },
-	)
 	const containerRef: RefCallback<HTMLDivElement> = elem => {
 		setMaxWidth(Math.min(
 			(elem?.getBoundingClientRect().width ?? defaultMaxWidth) - paddingAndButtonWidth,
@@ -41,10 +39,45 @@ export const ComposerMedia = ({ content, clearMedia }: ComposerMediaProps) => {
 		))
 	}
 	return <div className="composer-media" ref={containerRef}>
+		{items.map(c => <ComposerMediaItem
+			key={c.file?.url ?? c.url}
+			content={c}
+			setState={setState}
+			maxWidth={maxWidth}
+			hasMultiple={items.length > 1}
+		/>)}
+		{setState && <>
+			<div className="x-separator" />
+			<button
+				onClick={() => setState(() => ({ media: null }))}
+				title={items.length === 1 ? "Remove media" : "Remove all media items"}
+			><CloseIcon/></button>
+		</>}
+	</div>
+}
+
+interface ComposerMediaItemProps {
+	content: MediaMessageEventContent
+	setState?: (updater: (current: ComposerState) => Partial<ComposerState>) => void
+	maxWidth: number
+	hasMultiple: boolean
+}
+
+const ComposerMediaItem = ({ content, setState, maxWidth, hasMultiple }: ComposerMediaItemProps) => {
+	const [mediaContent, containerClass, containerStyle] = useMediaContent(
+		content, "m.room.message", { height: 120, width: maxWidth },
+	)
+	const removeMedia = () => {
+		setState!(state => ({ media: state.media?.filter(c => c !== content) }))
+	}
+	return <div className="composer-media-item">
 		<div className={`media-container ${containerClass}`} style={containerStyle}>
 			{mediaContent}
 		</div>
-		{clearMedia && <button onClick={clearMedia}><CloseIcon/></button>}
+		{setState && hasMultiple && <button
+			onClick={removeMedia}
+			title="Remove this media item"
+		><CloseIcon/></button>}
 	</div>
 }
 

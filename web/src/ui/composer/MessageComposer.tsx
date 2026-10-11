@@ -61,6 +61,7 @@ import ErrorBoundary from "../util/ErrorBoundary.tsx"
 import type { AutocompleteQuery } from "./Autocompleter.tsx"
 import CommandInput from "./CommandInput.tsx"
 import { ComposerLocation, ComposerLocationValue, ComposerMedia } from "./ComposerMedia.tsx"
+import { UploadFileFunc } from "./MediaUploadDialog.tsx"
 import {
 	canAutocompleteCommand,
 	charToAutocompleteType,
@@ -87,7 +88,7 @@ export interface CommandState {
 
 export interface ComposerState {
 	text: string
-	media: MediaMessageEventContent | null
+	media: MediaMessageEventContent[] | null
 	location: ComposerLocationValue | null
 	command: CommandState | null
 	previews: URLPreviewType[]
@@ -142,6 +143,9 @@ const draftStore = {
 		try {
 			const parsed = JSON.parse(data)
 			parsed.loadingPreviews = []
+			if (parsed.media && !Array.isArray(parsed.media)) {
+				parsed.media = [parsed.media]
+			}
 			return parsed
 		} catch {
 			return null
@@ -248,8 +252,12 @@ const MessageComposer = () => {
 		const textIsEditable = (evt.content.filename && evt.content.filename !== evt.content.body)
 			|| evt.type === "m.sticker"
 			|| !isMedia
+		let media = isMedia ? [evtContent as MediaMessageEventContent] : null
+		if (evtContent.msgtype === "dm.filament.gallery" || evtContent.msgtype === "m.gallery") {
+			media = evtContent.items ?? evtContent.itemtypes ?? null
+		}
 		setState({
-			media: isMedia ? evtContent as MediaMessageEventContent : null,
+			media,
 			text: textIsEditable
 				? (evt.local_content?.edit_source ?? evtContent.body ?? "")
 				: "",
@@ -332,7 +340,15 @@ const MessageComposer = () => {
 		const extra: Record<string, unknown> = {}
 		let text = state.text
 		if (state.media) {
-			base_content = state.media
+			base_content = state.media.length === 1 ? state.media[0] : {
+				msgtype: "dm.filament.gallery",
+				body: "",
+				items: state.media,
+				itemtypes: state.media.map(mediaItem => ({
+					...mediaItem,
+					itemtype: mediaItem.msgtype,
+				})),
+			}
 		} else if (state.location) {
 			base_content = {
 				body: "Location",
@@ -604,7 +620,8 @@ const MessageComposer = () => {
 		}
 		onComposerCaretChange(evt, newState.text, newState.command)
 	}
-	const doUploadFile = useCallback((
+	const doUploadFile = (
+		remainingFiles: File[] | null,
 		file: Blob,
 		filename: string,
 		encodingOpts?: MediaEncodingOptions,
@@ -613,7 +630,7 @@ const MessageComposer = () => {
 		if (client.rpc.rpcMediaUpload) {
 			setLoadingMedia(0)
 			client.rpc.uploadMedia(file, filename, encryptUpload).then(
-				media => setState({ media, location: null }),
+				media => setState(oldState => ({ media: ([...(oldState.media ?? []), media]), location: null })),
 				err => window.alert(`Failed to upload file: ${err.message}`),
 			).finally(() => setLoadingMedia(null))
 			return
@@ -642,15 +659,15 @@ const MessageComposer = () => {
 			}
 		})
 		xhr.addEventListener("load", () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let media: any = null
+			let media: MediaMessageEventContent | null | { error: string } = null
 			try {
 				media = JSON.parse(xhr.responseText.slice(xhr.responseText.indexOf("{")))
 			} catch {}
-			if (xhr.status >= 200 && xhr.status < 300 && !media?.error) {
-				setState({ media, location: null })
+			if (xhr.status >= 200 && xhr.status < 300 && media && !("error" in media)) {
+				setState(oldState => ({ media: [...(oldState.media || []), media], location: null }))
+				openFileUploadModal(remainingFiles)
 			} else {
-				window.alert(`Failed to upload file: ${media?.error || xhr.statusText}`)
+				window.alert(`Failed to upload file: ${media && "error" in media ? media.error : xhr.statusText}`)
 			}
 		})
 		xhr.addEventListener("error", () => {
@@ -669,17 +686,20 @@ const MessageComposer = () => {
 		xhr.open("POST", `_gomuks/upload?${params.toString()}`)
 		xhr.setRequestHeader("Content-Type", file.type)
 		xhr.send(file)
-	}, [client.rpc, isEncrypted])
-	const openFileUploadModal = (file: File | null | undefined, isVoice?: true) => {
-		if (!file) {
+	}
+	const openFileUploadModal = (files: File[] | FileList | null | undefined, isVoice?: true) => {
+		if (!files || files.length === 0) {
 			return
 		}
+		const file = files[0]
+		const remainingFiles = files.length > 1 ? Array.from(files).slice(1) : null
+		const wrappedUploadFile: UploadFileFunc = (...args) => doUploadFile(remainingFiles, ...args)
 		if (room.preferences.upload_dialog || (state.text.startsWith("/") && !isFakeCommand(state.text))) {
-			openModal(modals.mediaUpload(file, doUploadFile, isEncrypted, isVoice))
+			openModal(modals.mediaUpload(file, wrappedUploadFile, isEncrypted, isVoice))
 		} else {
 			window.closeModal()
 			const encTo = isVoice && file.type !== "audio/ogg; codecs=opus" ? "audio/ogg; codecs=opus" : undefined
-			doUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
+			wrappedUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
 		}
 	}
 	const findCommandForPaste = (text: string): CommandState | undefined => {
@@ -699,11 +719,10 @@ const MessageComposer = () => {
 		return matches[0]
 	}
 	const onPaste = (evt: React.ClipboardEvent<HTMLTextAreaElement>) => {
-		const file = evt.clipboardData?.files?.[0]
 		const text = evt.clipboardData.getData("text/plain")
 		const input = evt.currentTarget
-		if (file) {
-			openFileUploadModal(file)
+		if (evt.clipboardData.files?.length > 0) {
+			openFileUploadModal(evt.clipboardData.files)
 		} else if (
 			input.selectionStart !== input.selectionEnd
 			&& (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("matrix:"))
@@ -772,12 +791,16 @@ const MessageComposer = () => {
 				const text = mainScreen.pendingShare.text
 				setState(s => ({ ...s, text }))
 			}
-			if (mainScreen.pendingShare.file) {
-				openModal(modals.mediaUpload(mainScreen.pendingShare.file, doUploadFile, isEncrypted))
+			if (mainScreen.pendingShare.files?.length) {
+				const firstFile = mainScreen.pendingShare.files[0]
+				const remainingFiles = mainScreen.pendingShare.files.slice(1)
+				const wrappedUploadFile: UploadFileFunc = (...args) => doUploadFile(remainingFiles, ...args)
+				openModal(modals.mediaUpload(firstFile, wrappedUploadFile, isEncrypted))
 			}
 			mainScreen.setPendingShare(null)
 		}
-	}, [mainScreen, mainScreen.pendingShare, doUploadFile, isEncrypted, openModal])
+		//eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [mainScreen.pendingShare])
 	useLayoutEffect(() => {
 		if (!textInput.current) {
 			return
@@ -844,22 +867,19 @@ const MessageComposer = () => {
 	let stickerDisabledTitle: string | undefined
 	let locationDisabledTitle: string | undefined
 	if (state.media) {
-		mediaDisabledTitle = "You can only attach one file at a time"
+		stickerDisabledTitle = "You can only attach one sticker at a time"
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	} else if (state.location) {
 		mediaDisabledTitle = "You can't attach a file to a message with a location"
+		stickerDisabledTitle = mediaDisabledTitle
 		locationDisabledTitle = "You can only attach one location at a time"
 	} else if (loadingMedia !== null) {
 		mediaDisabledTitle = "Uploading file..."
+		stickerDisabledTitle = mediaDisabledTitle
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	}
-	if (state.media?.msgtype !== "m.sticker") {
-		stickerDisabledTitle = mediaDisabledTitle
-		if (!stickerDisabledTitle && editing) {
-			stickerDisabledTitle = "You can't edit a message into a sticker"
-		}
-	} else if (state.text && !editing) {
-		stickerDisabledTitle = "You can't attach a sticker to a message with text"
+	if (editing && state.media?.[0]?.msgtype !== "m.sticker") {
+		stickerDisabledTitle = "You can't edit a message into a sticker"
 	}
 	const getEmojiPickerStyle = () => ({
 		bottom: (composerRef.current?.clientHeight ?? 32) + 4 + 24,
@@ -894,7 +914,9 @@ const MessageComposer = () => {
 				content: <GIFPicker
 					style={getEmojiPickerStyle()}
 					room={roomCtx.store}
-					onSelect={media => setState({ media })}
+					onSelect={gifMedia => setState(oldState => ({
+						media: [...(oldState.media ?? []), gifMedia],
+					}))}
 				/>,
 				onClose: () => !isMobileDevice && textInput.current?.focus(),
 			})
@@ -904,13 +926,13 @@ const MessageComposer = () => {
 				content: <StickerPicker
 					style={getEmojiPickerStyle()}
 					room={roomCtx.store}
-					onSelect={media => doSendMessage({ ...state, media, text: "" })}
+					onSelect={media => doSendMessage({ ...state, media: [media], text: "" })}
 				/>,
 				onClose: () => !isMobileDevice && textInput.current?.focus(),
 			})
 		}
 		const openVoiceRecorder = () => {
-			openModal(modals.voiceRecorder(openFileUploadModal, textInput))
+			openModal(modals.voiceRecorder(file => openFileUploadModal([file], true), textInput))
 		}
 		const openLocationPicker = () => {
 			setState({ location: { lat: 0, long: 0, prec: 1 }, media: null })
@@ -963,7 +985,7 @@ const MessageComposer = () => {
 	const collapseButtons = (composerRef.current ? composerRef.current.clientWidth : window.innerWidth - 16) < 600
 	const inlineButtons = state.text === "" || !collapseButtons
 	const showSendButton = canSend || !collapseButtons
-	const disableClearMedia = editing && state.media?.msgtype === "m.sticker"
+	const disableClearMedia = editing && state.media?.[0]?.msgtype === "m.sticker"
 	if (tombstoneEvent !== null && !ignorePermissions) {
 		const content = tombstoneEvent.content
 		const hasReplacement = content.replacement_room?.startsWith("!")
@@ -1051,14 +1073,17 @@ const MessageComposer = () => {
 				isThread={false}
 				onClose={stopEditing}
 			/>}
-			{loadingMedia !== null && <div className="composer-media">
+			{state.media && <ComposerMedia
+				items={state.media}
+				setState={!disableClearMedia ? setState : undefined}
+			/>}
+			{loadingMedia !== null && <div className="composer-media-upload">
 				<label>
 					<div>Uploading media...</div>
 					<progress max={2} value={loadingMedia === 0 ? undefined : loadingMedia} />
 				</label>
 				{<button onClick={cancelMediaUpload.current}><CloseIcon/></button>}
 			</div>}
-			{state.media && <ComposerMedia content={state.media} clearMedia={!disableClearMedia && clearMedia}/>}
 			{state.location && <ComposerLocation
 				room={room} client={client}
 				location={state.location} onChange={onChangeLocation} clearLocation={clearMedia}
@@ -1113,9 +1138,10 @@ const MessageComposer = () => {
 				><SendIcon/></button>}
 				<input
 					ref={fileInput}
-					onChange={evt => openFileUploadModal(evt.target.files?.[0])}
+					onChange={evt => openFileUploadModal(evt.target.files)}
 					type="file"
 					value=""
+					multiple
 				/>
 			</div>
 		</div>

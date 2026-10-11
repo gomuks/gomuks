@@ -27,7 +27,7 @@ export interface SetActiveRoomExtra {
 }
 
 export interface PendingShare {
-	file: File | null
+	files?: File[]
 	text?: string
 }
 

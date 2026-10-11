@@ -74,7 +74,7 @@ export function mediaUpload(
 }
 
 export function voiceRecorder(
-	openFileUploadModal: (file: File, isVoice?: true) => void,
+	openFileUploadModal: (file: File) => void,
 	textInput?: RefObject<HTMLTextAreaElement | null>,
 ): NonNestableModalState {
 	return {
