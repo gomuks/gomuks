@@ -37,16 +37,23 @@ const loaderSize = (style: CSSProperties): number | undefined => {
 
 const switchToTrue = () => true
 
-const MediaMessageBody = ({ event, room, sender }: EventContentProps) => {
-	const content = event.content as MediaMessageEventContent
+interface MediaMessageBodyProps extends EventContentProps {
+	content?: MediaMessageEventContent
+}
+
+const MediaMessageBody = ({ event, content, room, sender }: MediaMessageBodyProps) => {
+	if (!content) {
+		content = event.content as MediaMessageEventContent
+	}
 	let caption = null
 	if (content.body && content.filename && content.body !== content.filename) {
 		caption = <TextMessageBody event={event} room={room} sender={sender} />
 	}
 
 	const client = use(ClientContext)!
-	const supportsLoadingPlaceholder = event.type === "m.sticker" || content.msgtype === "m.image"
-	const supportsClickToShow = supportsLoadingPlaceholder || content.msgtype === "m.video"
+	const msgtype = content.msgtype ?? content.itemtype
+	const supportsLoadingPlaceholder = event.type === "m.sticker" || msgtype === "m.image"
+	const supportsClickToShow = supportsLoadingPlaceholder || msgtype === "m.video"
 	const showPreviewsByDefault = usePreference(client.store, room, "show_media_previews")
 	const autoplayGifs = usePreference(client.store, room, "autoplay_gifs")
 	const imageWidth = usePreference(client.store, room, "max_image_width")

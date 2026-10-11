@@ -40,6 +40,12 @@ div.room-avatar-body {
 	gap: .25rem;
 }
 
+div.gallery-items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .25rem;
+}
+
 div.message-text {
 	&.plaintext-body {
 		white-space: pre-wrap;

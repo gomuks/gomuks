@@ -28,11 +28,12 @@ export const useMediaContent = (
 	onLoad?: () => void,
 	autoplayGifs?: boolean,
 ): [JSX.Element | null, string, CSSProperties] => {
+	const msgtype = content.msgtype ?? content.itemtype
 	const mediaURL = content.file?.url ? getEncryptedMediaURL(content.file.url) : getMediaURL(content.url)
 	const thumbnailURL = content.info?.thumbnail_file?.url
 		? getEncryptedMediaURL(content.info.thumbnail_file.url) : getMediaURL(content.info?.thumbnail_url)
 	const [errored, setErrored] = useState(false)
-	if (content.msgtype === "m.image" || content.msgtype === "m.sticker" || evtType === "m.sticker") {
+	if (msgtype === "m.image" || msgtype === "m.sticker" || evtType === "m.sticker") {
 		const style = calculateMediaSize(content.info?.w, content.info?.h, containerSize)
 		return [<img
 			onLoad={onLoad}
@@ -48,7 +49,7 @@ export const useMediaContent = (
 			onClick={use(LightboxContext)}
 			className={errored ? "errored" : undefined}
 		/>, "image-container", style.container]
-	} else if (content.msgtype === "m.video") {
+	} else if (msgtype === "m.video") {
 		const style = calculateMediaSize(content.info?.w, content.info?.h, containerSize ?? defaultVideoContainerSize)
 		const controls = !content.info?.["fi.mau.hide_controls"]
 		const loop = !!content.info?.["fi.mau.loop"]
@@ -76,9 +77,9 @@ export const useMediaContent = (
 		>
 			<source src={mediaURL} type={ensureString(content.info?.mimetype)}/>
 		</video>, "video-container", style.container]
-	} else if (content.msgtype === "m.audio") {
+	} else if (msgtype === "m.audio") {
 		return [<audio controls src={mediaURL} preload="none"/>, "audio-container", {}]
-	} else if (content.msgtype === "m.file") {
+	} else if (msgtype === "m.file") {
 		return [<a
 			href={mediaURL}
 			target="_blank"

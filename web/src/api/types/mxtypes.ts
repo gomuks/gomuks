@@ -309,12 +309,21 @@ export interface TextMessageEventContent extends BaseMessageEventContent {
 	msgtype: "m.text" | "m.notice" | "m.emote"
 }
 
+type MediaMessageType = "m.sticker" | "m.image" | "m.file" | "m.audio" | "m.video"
+
 export interface MediaMessageEventContent extends BaseMessageEventContent {
-	msgtype: "m.sticker" | "m.image" | "m.file" | "m.audio" | "m.video"
+	msgtype: MediaMessageType
+	itemtype?: MediaMessageType
 	filename?: string
 	url?: ContentURI
 	file?: EncryptedFile
 	info?: MediaInfo
+}
+
+export interface GalleryMessageEventContent extends BaseMessageEventContent {
+	msgtype: "m.gallery" | "dm.filament.gallery"
+	itemtypes?: MediaMessageEventContent[]
+	items?: MediaMessageEventContent[]
 }
 
 export interface ReactionEventContent {
@@ -370,7 +379,8 @@ export interface LocationMessageEventContent extends BaseMessageEventContent {
 	}
 }
 
-export type MessageEventContent = TextMessageEventContent | MediaMessageEventContent | LocationMessageEventContent
+export type MessageEventContent =
+	TextMessageEventContent | MediaMessageEventContent | LocationMessageEventContent | GalleryMessageEventContent
 
 export interface LegacyMSC1767Text {
 	"org.matrix.msc1767.text"?: string

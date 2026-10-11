@@ -604,7 +604,13 @@ func (h *HiClient) cacheMedia(ctx context.Context, evt *event.Event, rowID datab
 			h.addMediaCache(ctx, rowID, content.Info.ThumbnailURL, nil, content.Info.ThumbnailInfo, "")
 		}
 
-		for _, image := range content.BeeperGalleryImages {
+		for _, image := range content.GalleryItems {
+			h.cacheMedia(ctx, &event.Event{
+				Type:    event.EventMessage,
+				Content: event.Content{Parsed: image},
+			}, rowID)
+		}
+		for _, image := range content.UnstableGalleryItems {
 			h.cacheMedia(ctx, &event.Event{
 				Type:    event.EventMessage,
 				Content: event.Content{Parsed: image},
@@ -660,7 +666,7 @@ func (h *HiClient) generatePreviewText(content *event.MessageEventContent) strin
 	if content.MsgType.IsText() && text == "" {
 		text = "<empty message>"
 	}
-	if content.MsgType.IsMedia() && (text == "" || content.FileName == "" || content.FileName == content.Body) {
+	if text == "" || content.FileName == "" || content.FileName == content.Body {
 		switch content.MsgType {
 		case event.MsgImage:
 			text = "Sent an image"
@@ -677,6 +683,8 @@ func (h *HiClient) generatePreviewText(content *event.MessageEventContent) strin
 			if content.GetFileName() != "" && len(content.GetFileName()) < 100 {
 				text += ": " + content.GetFileName()
 			}
+		case event.MsgUnstableGallery:
+			text = "Sent a gallery"
 		}
 	}
 	return text

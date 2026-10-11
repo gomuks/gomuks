@@ -2,6 +2,7 @@ import React from "react"
 import { BeeperPerMessageProfile, MemDBEvent, MessageEventContent } from "@/api/types"
 import ACLBody from "./ACLBody.tsx"
 import EncryptedBody from "./EncryptedBody.tsx"
+import GalleryMessageBody from "./GalleryMessageBody.tsx"
 import HiddenEvent from "./HiddenEvent.tsx"
 import LocationMessageBody from "./LocationMessageBody.tsx"
 import MediaMessageBody from "./MediaMessageBody.tsx"
@@ -22,6 +23,7 @@ import "./index.css"
 export { default as ACLBody } from "./ACLBody.tsx"
 export { default as ContentErrorBoundary } from "./ContentErrorBoundary.tsx"
 export { default as EncryptedBody } from "./EncryptedBody.tsx"
+export { default as GalleryMessageBody } from "./GalleryMessageBody.tsx"
 export { default as HiddenEvent } from "./HiddenEvent.tsx"
 export { default as MediaMessageBody } from "./MediaMessageBody.tsx"
 export { default as LocationMessageBody } from "./LocationMessageBody.tsx"
@@ -93,6 +95,14 @@ export function getBodyType(
 					return TextMessageBody
 				}
 				return MediaMessageBody
+			case "m.gallery":
+			case "dm.filament.gallery":
+				if (forReply) {
+					return TextMessageBody
+				} else if (!Array.isArray(evt.content.items ?? evt.content.itemtypes)) {
+					return UnknownMessageBody
+				}
+				return GalleryMessageBody
 			case "m.location":
 				if (forReply) {
 					return TextMessageBody
