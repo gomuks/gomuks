@@ -868,6 +868,7 @@ const MessageComposer = () => {
 	let stickerDisabledTitle: string | undefined
 	let locationDisabledTitle: string | undefined
 	if (state.media) {
+		mediaDisabledTitle = "You can only attach one file at a time"
 		stickerDisabledTitle = "You can only attach one sticker at a time"
 		locationDisabledTitle = "You can't attach a location to a message with a file"
 	} else if (state.location) {
@@ -1142,7 +1143,6 @@ const MessageComposer = () => {
 					onChange={evt => openFileUploadModal(evt.target.files)}
 					type="file"
 					value=""
-					multiple
 				/>
 			</div>
 		</div>

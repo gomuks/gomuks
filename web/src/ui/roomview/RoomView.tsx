@@ -95,7 +95,7 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 			evt.preventDefault()
 			evt.stopPropagation()
 			setDraggingOver(false)
-			roomContextData.openFileUploadModal(items)
+			roomContextData.openFileUploadModal([items[0]])
 		}
 	}
 	const onDragEnter = (evt: React.DragEvent) => {
