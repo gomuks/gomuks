@@ -41,3 +41,4 @@ room:
     'PageUp': scroll_up
     'PageDown': scroll_down
     'Enter': send
+    'Ctrl+r': reply
