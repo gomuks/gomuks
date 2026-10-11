@@ -100,7 +100,7 @@ func (s *Stmt) bindNonPointerValue(_ context.Context, index int, val any) error 
 		funcName = "sqlite3_bind_int64"
 		var numberVal js.Value
 		if typedVal > maxSafeJSInt || typedVal < minSafeJSInt {
-			numberVal = bigInt.New(strconv.FormatInt(typedVal, 10))
+			numberVal = bigInt.Invoke(strconv.FormatInt(typedVal, 10))
 		} else {
 			numberVal = js.ValueOf(typedVal)
 		}
@@ -109,7 +109,7 @@ func (s *Stmt) bindNonPointerValue(_ context.Context, index int, val any) error 
 		funcName = "sqlite3_bind_int64"
 		var numberVal js.Value
 		if typedVal > maxSafeJSInt {
-			numberVal = bigInt.New(strconv.FormatUint(typedVal, 10))
+			numberVal = bigInt.Invoke(strconv.FormatUint(typedVal, 10))
 		} else {
 			numberVal = js.ValueOf(typedVal)
 		}
