@@ -18,13 +18,25 @@ import LockIcon from "../../../icons/lock.svg?react"
 import LockClockIcon from "../../../icons/lock.svg?react"
 
 const unknownSessionErrorPrefix = "failed to decrypt megolm event: no session with given ID found"
+const duplicateMessageIndexPrefix = "duplicate megolm message index"
 
 const EncryptedBody = ({ event }: EventContentProps) => {
 	const decryptionError = event.last_edit?.decryption_error ?? event.decryption_error
-	if (decryptionError && !decryptionError.startsWith(unknownSessionErrorPrefix)) {
+	if (!decryptionError) {
+		return <div className="decryption-pending-body">
+			<LockClockIcon/> Message decryption hasn't been attempted yet
+		</div>
+	} else if (decryptionError.startsWith(unknownSessionErrorPrefix)) {
+		return <div className="decryption-pending-body"><LockClockIcon/> Waiting for message</div>
+	} else if (decryptionError.startsWith(duplicateMessageIndexPrefix)) {
+		const idx = decryptionError.slice(duplicateMessageIndexPrefix.length).trim()
+		return <div className="decryption-error-body">
+			<LockIcon/> Failed to decrypt: Duplicate message index {idx}.
+			This is likely a disk rollback or other bug on the sender's client.
+		</div>
+	} else {
 		return <div className="decryption-error-body"><LockIcon/> Failed to decrypt: {decryptionError}</div>
 	}
-	return <div className="decryption-pending-body"><LockClockIcon/> Waiting for message</div>
 }
 
 export default EncryptedBody
