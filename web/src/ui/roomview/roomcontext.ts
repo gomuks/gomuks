@@ -34,6 +34,7 @@ export class RoomContextData {
 	public scrolledToBottom = true
 	public isFake = false
 	public setForceViewType: (viewType: RoomType | null) => void = noop("setForceViewType")
+	public openFileUploadModal: (files: File[] | FileList) => void = noop("openFileUploadModal")
 
 	constructor(
 		public readonly store: RoomStateStore,

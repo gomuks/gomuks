@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, Suspense, lazy, useEffect, useState } from "react"
+import React, { JSX, Suspense, lazy, useEffect, useState } from "react"
 import { GridLoader } from "react-spinners"
 import { RoomStateStore, usePreference } from "@/api/statestore"
 import { RoomType } from "@/api/types"
@@ -27,6 +27,7 @@ import ElementCall from "../widget/ElementCall.tsx"
 import RoomViewHeader from "./RoomViewHeader.tsx"
 import SpaceView from "./SpaceView.tsx"
 import { RoomContext, RoomContextData } from "./roomcontext.ts"
+import UploadIcon from "@/icons/upload.svg?react"
 import "./RoomView.css"
 
 interface RoomViewProps {
@@ -60,6 +61,7 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 	const [forceViewType, setForceViewType] = useState<RoomType | null>(null)
 	const settingsViewType = usePreference(null, room, "room_view_type")
 	const [roomContextData] = useState(() => new RoomContextData(room, setForceViewType))
+	const [draggingOver, setDraggingOver] = useState(false)
 	useEffect(() => {
 		if (room.hackyPendingJumpToEventID) {
 			jumpToEvent(roomContextData, room.hackyPendingJumpToEventID)
@@ -79,19 +81,42 @@ const RoomView = ({ room, rightPanelResizeHandle, rightPanel }: RoomViewProps) =
 		roomContextData.scrollToBottom()
 	}, [roomContextData, hasRightPanel])
 	const viewType = forceViewType ?? settingsViewType ?? room.meta.current.creation_content?.type
-	const view = getViewForRoomType(viewType) ?? <>
+	const typedView = getViewForRoomType(viewType)
+	const view = typedView ?? <>
 		<TimelineView/>
 		<MessageComposer/>
 		<TypingNotifications/>
 	</>
+	const onDrop = (evt: React.DragEvent) => {
+		const items = Array.from(evt.dataTransfer?.items ?? [])
+			.map(item => item.kind === "file" ? item.getAsFile() : null)
+			.filter(item => item !== null)
+		if (items.length) {
+			evt.preventDefault()
+			evt.stopPropagation()
+			setDraggingOver(false)
+			roomContextData.openFileUploadModal(items)
+		}
+	}
+	const onDragEnter = (evt: React.DragEvent) => {
+		if (!typedView && evt.dataTransfer?.types.includes("Files")) {
+			setDraggingOver(true)
+		}
+	}
 	return <RoomContext value={roomContextData}>
-		<div className="room-view">
+		<div className="room-view" onDragEnter={onDragEnter}>
 			<ErrorBoundary thing="room header" wrapperClassName="room-header-error">
 				<RoomViewHeader room={room}/>
 			</ErrorBoundary>
 			<ErrorBoundary thing="room timeline" wrapperClassName="room-timeline-error">
 				{view}
 			</ErrorBoundary>
+			{draggingOver ? <div
+				className="file-drop-overlay"
+				onDrop={onDrop}
+				onDragOver={evt => evt.preventDefault()}
+				onDragLeave={() => setDraggingOver(false)}
+			><UploadIcon /></div> : null}
 		</div>
 		{rightPanelResizeHandle}
 		{hasRightPanel ? <RightPanel {...rightPanel}/> : null}

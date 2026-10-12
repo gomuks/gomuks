@@ -35,4 +35,21 @@ div.room-view {
 			grid-area: header;
 		}
 	}
+
+	> div.file-drop-overlay {
+		position: absolute;
+		background: var(--file-drop-background-color);
+		z-index: 10;
+		inset: 0;
+
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		> svg {
+			width: 8rem;
+			height: 8rem;
+			pointer-events: none;
+		}
+	}
 }

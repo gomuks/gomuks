@@ -63,6 +63,7 @@
 	--modal-box-shadow-color: rgba(0, 0, 0, 0.1);
 	--popout-widget-box-shadow-color: rgba(0, 0, 0, 0.5);
 	--popout-header-size: 2rem;
+	--file-drop-background-color: rgba(255, 255, 255, .85);
 
 	--emoji-selected-border-color: #cec;
 	--image-pack-editor-selected-color: #cec;
@@ -170,6 +171,7 @@
 
 		--modal-box-shadow-color: rgba(255, 255, 255, 0.04);
 		--popout-widget-box-shadow-color: rgba(255, 255, 255, 0.2);
+		--file-drop-background-color: rgba(0, 0, 0, .85);
 
 		--emoji-selected-border-color: #131;
 		--image-pack-editor-selected-color: #131;

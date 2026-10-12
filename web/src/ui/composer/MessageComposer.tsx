@@ -702,6 +702,7 @@ const MessageComposer = () => {
 			wrappedUploadFile(file, file.name, { voice_message: isVoice, encode_to: encTo })
 		}
 	}
+	roomCtx.openFileUploadModal = openFileUploadModal
 	const findCommandForPaste = (text: string): CommandState | undefined => {
 		let matches: CommandState[] = []
 		let longestMatch = 0
