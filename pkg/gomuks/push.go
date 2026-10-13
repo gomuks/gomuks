@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -289,9 +290,11 @@ func (gmx *Gomuks) SendFCMPush(ctx context.Context, token string, payload []byte
 			Msg("Non-200 status while sending push request")
 		shouldDelete = resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone
 	} else {
-		zerolog.Ctx(ctx).Trace().
+		pushID, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
+		zerolog.Ctx(ctx).Debug().
 			Int("status", resp.StatusCode).
 			Str("push_token", token).
+			Bytes("push_id", pushID).
 			Msg("Sent push request")
 	}
 	if resp != nil {
