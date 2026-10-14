@@ -110,6 +110,8 @@ const (
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
+	ReqGetProfileAnnotation     Name = "get_profile_annotation"
+	ReqSetProfileAnnotation     Name = "set_profile_annotation"
 
 	ReqRTCLivekitGetToken             Name = "rtc_livekit_get_token"
 	ReqRTCLivekitDelegateDelayedLeave Name = "rtc_livekit_delegate_delayed_leave"
@@ -178,6 +180,10 @@ var (
 	GetProfile = &CommandSpec[*GetProfileParams, *GetProfileResponse]{Name: ReqGetProfile}
 	// SetProfileField sets a field in the current user's Matrix profile.
 	SetProfileField = &CommandSpecWithoutResponse[*SetProfileFieldParams]{Name: ReqSetProfileField}
+	// GetProfileAnnotation returns a user's profile annotations.
+	GetProfileAnnotation = &CommandSpec[*GetProfileAnnotationParams, *GetProfileAnnotationResponse]{Name: ReqGetProfileAnnotation}
+	// SetProfileAnnotation sets a user's profile annotations.
+	SetProfileAnnotation = &CommandSpec[*SetProfileAnnotationParams, *SetProfileAnnotationResponse]{Name: ReqSetProfileAnnotation}
 	// GetMutualRooms returns the list of rooms shared between the current user and another user
 	// from the homeserver.
 	GetMutualRooms = &CommandSpec[*GetMutualRoomsParams, *mautrix.RespMutualRooms]{Name: ReqGetMutualRooms}
