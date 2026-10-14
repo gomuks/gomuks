@@ -16,6 +16,7 @@
 import React from "react"
 import { RoomStateStore, StateStore } from "@/api/statestore"
 import { MainScreenContextFields } from "@/ui/MainScreenContext.ts"
+import { KEYBINDINGS_CHANGED_EVENT, buildEffectiveKeymap, loadKeybindOverrides } from "./keyconfig.ts"
 
 export function keyToString(evt: React.KeyboardEvent | KeyboardEvent) {
 	let key = evt.key
@@ -38,53 +39,67 @@ type KeyMap = Record<string, (evt: KeyboardEvent) => void>
 
 export default class Keybindings {
 	public activeRoom: RoomStateStore | null = null
-	constructor(private store: StateStore, private context: MainScreenContextFields) {}
+	private keyDownMap: KeyMap = {}
+	private keyUpMap: KeyMap = {}
 
-	private keyDownMap: KeyMap = {
-		"Escape": () => {
-			if (this.context.currentRightPanel) {
-				this.context.closeRightPanel()
-			} else {
-				this.context.clearActiveRoom()
-			}
-		},
-		"Ctrl+k": () => document.getElementById("room-search")?.focus(),
-		"Alt+ArrowUp": () => {
-			if (!this.activeRoom) {
-				return
-			}
-			const activeRoomID = this.activeRoom.roomID
-			const filteredRoomList = this.store.getFilteredRoomList()
-			const selectedIdx = filteredRoomList.findLastIndex(room => room.room_id === activeRoomID)
-			if (selectedIdx < filteredRoomList.length - 1) {
-				this.context.setActiveRoom(filteredRoomList[selectedIdx + 1].room_id)
-			} else {
-				this.context.setActiveRoom(null)
-			}
-		},
-		"Alt+ArrowDown": () => {
-			const filteredRoomList = this.store.getFilteredRoomList()
-			const selectedIdx = this.activeRoom
-				? filteredRoomList.findLastIndex(room => room.room_id === this.activeRoom?.roomID)
-				: -1
-			if (selectedIdx === -1) {
-				this.context.setActiveRoom(filteredRoomList[filteredRoomList.length - 1].room_id)
-			} else if (selectedIdx > 0) {
-				this.context.setActiveRoom(filteredRoomList[selectedIdx - 1].room_id)
-			}
-		},
-		"Ctrl+f": () => this.context.setRightPanel({ type: "search" }),
+	constructor(private store: StateStore, private context: MainScreenContextFields) {
+		this.buildKeymaps()
 	}
 
-	private keyUpMap: KeyMap = {
+	private buildKeymaps(): void {
+		const overrides = loadKeybindOverrides()
+		const effective = buildEffectiveKeymap(overrides)
+
+		this.keyDownMap = {
+			[effective.close_panel]: () => {
+				if (this.context.currentRightPanel) {
+					this.context.closeRightPanel()
+				} else {
+					this.context.clearActiveRoom()
+				}
+			},
+			[effective.focus_room_search]: () => document.getElementById("room-search")?.focus(),
+			[effective.next_room]: () => {
+				if (!this.activeRoom) {
+					return
+				}
+				const activeRoomID = this.activeRoom.roomID
+				const filteredRoomList = this.store.getFilteredRoomList()
+				const selectedIdx = filteredRoomList.findLastIndex(room => room.room_id === activeRoomID)
+				if (selectedIdx < filteredRoomList.length - 1) {
+					this.context.setActiveRoom(filteredRoomList[selectedIdx + 1].room_id)
+				} else {
+					this.context.setActiveRoom(null)
+				}
+			},
+			[effective.prev_room]: () => {
+				const filteredRoomList = this.store.getFilteredRoomList()
+				const selectedIdx = this.activeRoom
+					? filteredRoomList.findLastIndex(room => room.room_id === this.activeRoom?.roomID)
+					: -1
+				if (selectedIdx === -1) {
+					this.context.setActiveRoom(filteredRoomList[filteredRoomList.length - 1].room_id)
+				} else if (selectedIdx > 0) {
+					this.context.setActiveRoom(filteredRoomList[selectedIdx - 1].room_id)
+				}
+			},
+			[effective.open_search]: () => this.context.setRightPanel({ type: "search" }),
+		}
+	}
+
+	/** Reload keybindings from localStorage (call after user changes config) */
+	public reload = (): void => {
+		this.buildKeymaps()
 	}
 
 	listen(): () => void {
 		document.body.addEventListener("keydown", this.onKeyDown)
 		document.body.addEventListener("keyup", this.onKeyUp)
+		window.addEventListener(KEYBINDINGS_CHANGED_EVENT, this.reload)
 		return () => {
 			document.body.removeEventListener("keydown", this.onKeyDown)
 			document.body.removeEventListener("keyup", this.onKeyUp)
+			window.removeEventListener(KEYBINDINGS_CHANGED_EVENT, this.reload)
 		}
 	}
 
