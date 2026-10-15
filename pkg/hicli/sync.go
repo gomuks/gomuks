@@ -367,16 +367,17 @@ func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*databa
 }
 
 func (h *HiClient) processSyncInvitedRoom(ctx context.Context, roomID id.RoomID, room *mautrix.SyncInvitedRoom) error {
+	state := room.BestState()
 	ir := &database.InvitedRoom{
 		ID:          roomID,
 		CreatedAt:   jsontime.UnixMilliNow(),
-		InviteState: room.State.Events,
+		InviteState: state,
 	}
 	if len(ir.InviteState) == 0 {
 		zerolog.Ctx(ctx).Warn().Stringer("room_id", roomID).Msg("Got invited room with no state, ignoring")
 		return nil
 	}
-	for _, evt := range room.State.Events {
+	for _, evt := range state {
 		if evt.Type == event.StateMember && evt.GetStateKey() == h.Account.UserID.String() && evt.Timestamp != 0 {
 			ir.CreatedAt = jsontime.UM(time.UnixMilli(evt.Timestamp))
 			break
