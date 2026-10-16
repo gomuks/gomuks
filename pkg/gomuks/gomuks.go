@@ -226,7 +226,7 @@ func (gmx *Gomuks) initClient() error {
 		transport := httpClient.Transport.(*http.Transport)
 		if !gmx.Config.Matrix.DisableHTTP2 {
 			transport.ForceAttemptHTTP2 = true
-			transport.HTTP2 = &http.HTTP2Config{PingTimeout: 15 * time.Second}
+			transport.HTTP2 = &http.HTTP2Config{SendPingTimeout: 15 * time.Second}
 		} else {
 			transport.ForceAttemptHTTP2 = false
 			transport.HTTP2 = nil
