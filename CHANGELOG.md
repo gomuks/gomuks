@@ -1,3 +1,70 @@
+# v26.10
+
+### Backend
+* Added fallback text if the preview message has no text itself.
+* Added h2c support for HTTP server.
+* Added option to listen with TLS.
+* Added option to change initial device displayname via the config file.
+* Added support for storing edits received from server-side aggregations.
+* Added support for displaying reactions with quotes in the text.
+* Added aggregation of own reaction event IDs.
+* Added room alias management RPC methods.
+* Added config options to change HTTP request timeouts.
+* Added `is_dm` flag to pushes.
+* Added `formatted_body` for fake events (like command responses) so frontends
+  that don't use the sanitized HTML can still render them.
+* Added RPC methods for calling MatrixRTC livekit token endpoints.
+* Added support for sending thread read receipts via RPC API.
+* Added support for logging out in the Wasm build.
+* Changed response type of `get_mentions` to support returning related events.
+* Changed HTML sanitizer to allow `<small>` tag.
+* Optimized filling reaction count and latest edit aggregations.
+* Improved various database indexes to be more efficient.
+* Fixed reaction counts not being recalculated when paginating history.
+* Fixed timeline reset failing when logged into an account that's only joined
+  to 1 room.
+* Fixed syncs not returning latest aggregation data when the original event and
+  aggregated events like edits and reactions were a part of the same sync.
+
+### Web
+* Added spacious room list style option, in addition to the existing compact
+  and standard styles.
+* Added support for removing own reactions by clicking on them.
+* Added `/upgraderoom` command, which pre-fills the room creation dialog.
+* Added locally failed sends (ones that didn't even reach the backend) to the
+  timeline to allow retrying them.
+* Added support for sharing plain text on Android.
+* Added support for sharing to a specific room on Android.
+* Added reporting sent messages to Android wrapper for updating native
+  conversation shortcuts.
+* Added option to override default preferences from backend config.
+* Added support for rendering galleries.
+  * Sending is also supported, but mostly disabled, as allowing sending such
+    backwards-incompatible events would be irresponsible.
+* Added support for dropping files in the chat view to upload them.
+* Improved picking the letter for fallback avatars.
+* Fixed pending device code login state not being cleared on successful login.
+* Fixed composer draft not being cleared when jumping to another room with
+  `/join`.
+* Fixed context menu opening on mobile when unspoilering text or clicking polls.
+* Fixed profiles not showing up in notifications panel.
+* Fixed copy /raw button for unencrypted events in encrypted rooms.
+* Fixed shares from Android being dropped if the main screen wasn't loaded.
+* Fixed extra whitespace when copying text from the event source view.
+
+### C FFI
+* Removed root parameter from `GomuksInit`.
+* Added `GomuksSetEnv` function for setting environment variables like `GOMUKS_ROOT`.
+* Added config parameter to `GomuksInit`.
+* Changed `GomuksHandlePush` to return room data in addition to the event.
+
+### Go RPC client
+* Fixed handling syncs without room metadata
+  (thanks to [@bleader] in [#763]).
+
+[@bleader]: https://github.com/bleader
+[#763]: https://github.com/gomuks/gomuks/pull/763
+
 # v26.09
 
 ### Backend
