@@ -57,6 +57,9 @@ type SyncRoom struct {
 	Events []*database.Event `json:"events,omitempty"`
 	// New read receipts. The frontend should only keep the latest receipt per user.
 	Receipts map[id.EventID][]*database.Receipt `json:"receipts,omitempty"`
+	// The user's own receipts, which aren't included in `receipts`: all of them in the initial sync,
+	// new ones afterwards. Later receipts replace earlier ones with the same type and thread ID.
+	OwnReceipts []*database.Receipt `json:"own_receipts,omitempty"`
 	// New MSC4354 sticky events that aren't included in timeline.
 	Sticky []database.EventRowID `json:"sticky,omitempty"`
 

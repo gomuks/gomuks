@@ -344,22 +344,53 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 	return nil
 }
 
-func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*database.Receipt, []id.EventID) {
+// eventThreadID returns the thread an event is in, or the main timeline.
+func eventThreadID(evt *event.Event) event.ThreadID {
+	if evt.StateKey == nil {
+		if relatesTo, relType := database.GetRelatesToFromBytes(evt.Content.VeryRaw); relType == event.RelThread {
+			return event.ThreadID(relatesTo)
+		}
+	}
+	return event.ReadReceiptThreadMain
+}
+
+// receiptThreadID returns the thread a read receipt for the given event belongs to: the thread it's in,
+// or the one of the event it relates to (e.g. an edit or a reaction), or the main timeline.
+func (h *HiClient) receiptThreadID(ctx context.Context, roomID id.RoomID, evt *event.Event) (event.ThreadID, error) {
+	if evt.StateKey != nil {
+		return event.ReadReceiptThreadMain, nil
+	}
+	relatesTo, relType := database.GetRelatesToFromBytes(evt.Content.VeryRaw)
+	if relType == event.RelThread {
+		return event.ThreadID(relatesTo), nil
+	} else if relatesTo != "" {
+		target, err := h.DB.Event.GetByID(ctx, roomID, relatesTo)
+		if err != nil {
+			return "", fmt.Errorf("failed to get relation target of own event: %w", err)
+		} else if target != nil && target.RelationType == event.RelThread {
+			return event.ThreadID(target.RelatesTo), nil
+		}
+	}
+	return event.ReadReceiptThreadMain, nil
+}
+
+func (h *HiClient) receiptsToList(content *event.ReceiptEventContent) ([]*database.Receipt, []*database.Receipt) {
 	receiptList := make([]*database.Receipt, 0)
-	var newOwnReceipts []id.EventID
+	var newOwnReceipts []*database.Receipt
 	for eventID, receipts := range *content {
 		for receiptType, users := range receipts {
 			for userID, receiptInfo := range users {
-				if userID == h.Account.UserID {
-					newOwnReceipts = append(newOwnReceipts, eventID)
-				}
-				receiptList = append(receiptList, &database.Receipt{
+				receipt := &database.Receipt{
 					UserID:      userID,
 					ReceiptType: receiptType,
 					ThreadID:    receiptInfo.ThreadID,
 					EventID:     eventID,
 					Timestamp:   jsontime.UM(receiptInfo.Timestamp),
-				})
+				}
+				if userID == h.Account.UserID {
+					newOwnReceipts = append(newOwnReceipts, receipt)
+				}
+				receiptList = append(receiptList, receipt)
 			}
 		}
 	}
@@ -429,7 +460,7 @@ func (h *HiClient) processSyncJoinedRoom(ctx context.Context, roomID id.RoomID, 
 		}
 	}
 	var receiptsList []*database.Receipt
-	var newOwnReceipts []id.EventID
+	var newOwnReceipts []*database.Receipt
 	for _, evt := range room.Ephemeral.Events {
 		evt.Type.Class = event.EphemeralEventType
 		err = evt.Content.ParseRaw(evt.Type)
@@ -963,7 +994,7 @@ func (h *HiClient) processStateAndTimeline(
 	timeline *mautrix.SyncTimeline,
 	summary *mautrix.LazyLoadSummary,
 	receipts []*database.Receipt,
-	newOwnReceipts []id.EventID,
+	newOwnReceipts []*database.Receipt,
 	accountData map[event.Type]*database.AccountData,
 	isNewRoom bool,
 ) error {
@@ -974,6 +1005,7 @@ func (h *HiClient) processStateAndTimeline(
 		SortingTimestamp: room.SortingTimestamp,
 		NameQuality:      room.NameQuality,
 		UnreadCounts:     room.UnreadCounts,
+		ThreadUnreads:    maps.Clone(room.ThreadUnreads),
 	}
 	heroesChanged := false
 	if summary.Heroes == nil && summary.JoinedMemberCount == nil && summary.InvitedMemberCount == nil {
@@ -1005,6 +1037,7 @@ func (h *HiClient) processStateAndTimeline(
 	newNotifications := make([]jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
 	var newUnreadCounts database.UnreadCounts
+	newThreadUnreads := make(map[event.ThreadID]database.UnreadCounts)
 	addOldEvent := func(rowID database.EventRowID, evtID id.EventID) (dbEvt *database.Event, err error) {
 		if rowID != 0 {
 			dbEvt, err = h.DB.Event.GetByRowID(ctx, rowID)
@@ -1067,6 +1100,13 @@ func (h *HiClient) processStateAndTimeline(
 				})
 			}
 			newUnreadCounts.AddOne(dbEvt.UnreadType)
+			threadID := event.ReadReceiptThreadMain
+			if dbEvt.RelationType == event.RelThread {
+				threadID = event.ThreadID(dbEvt.RelatesTo)
+			}
+			threadUnreads := newThreadUnreads[threadID]
+			threadUnreads.AddOne(dbEvt.UnreadType)
+			newThreadUnreads[threadID] = threadUnreads
 		}
 		if isTimeline {
 			if dbEvt.CanUseForPreview() {
@@ -1154,13 +1194,19 @@ func (h *HiClient) processStateAndTimeline(
 	if len(timeline.Events) > 0 {
 		timelineIDs := make([]database.EventRowID, len(timeline.Events))
 		encounteredReceiptUsers := make(map[id.UserID]struct{})
-		readUpToIndex := -1
+		// Threads read up to the current event by own receipts and events, "" for all of them.
+		readThreads := make(map[event.ThreadID]struct{})
+		isUnread := make([]bool, len(timeline.Events))
 		for i := len(timeline.Events) - 1; i >= 0; i-- {
 			evt := timeline.Events[i]
 			for _, receipt := range receiptMap[evt.ID] {
 				encounteredReceiptUsers[receipt.UserID] = struct{}{}
 			}
-			isRead := slices.Contains(newOwnReceipts, evt.ID)
+			for _, receipt := range newOwnReceipts {
+				if receipt.EventID == evt.ID {
+					readThreads[receipt.ThreadID] = struct{}{}
+				}
+			}
 			isOwnEvent := evt.Sender == h.Account.UserID
 			_, alreadyEncountered := encounteredReceiptUsers[evt.Sender]
 			if !isOwnEvent && !alreadyEncountered {
@@ -1175,22 +1221,28 @@ func (h *HiClient) processStateAndTimeline(
 				receipts = append(receipts, injectedReceipt)
 				receiptMap[evt.ID] = append(receiptMap[evt.ID], injectedReceipt)
 			}
-			if readUpToIndex == -1 && (isRead || isOwnEvent) {
-				readUpToIndex = i
-				// Reset unread counts if we see our own read receipt in the timeline.
-				// It'll be updated with new unreads (if any) at the end.
-				updatedRoom.UnreadCounts = database.UnreadCounts{}
-				if !isRead {
-					receipts = append(receipts, &database.Receipt{
+			_, allRead := readThreads[""]
+			if isOwnEvent {
+				threadID, err := h.receiptThreadID(ctx, room.ID, evt)
+				if err != nil {
+					return err
+				}
+				if _, threadRead := readThreads[threadID]; !threadRead && !allRead {
+					readThreads[threadID] = struct{}{}
+					ownReceipt := &database.Receipt{
 						RoomID:      room.ID,
 						UserID:      h.Account.UserID,
 						ReceiptType: event.ReceiptTypeRead,
+						ThreadID:    threadID,
 						EventID:     evt.ID,
 						Timestamp:   jsontime.UM(time.UnixMilli(evt.Timestamp)),
-					})
-					newOwnReceipts = append(newOwnReceipts, evt.ID)
+					}
+					receipts = append(receipts, ownReceipt)
+					newOwnReceipts = append(newOwnReceipts, ownReceipt)
 				}
 			}
+			_, threadRead := readThreads[eventThreadID(evt)]
+			isUnread[i] = !allRead && !threadRead
 		}
 		for i, evt := range timeline.Events {
 			if evt.StateKey != nil {
@@ -1198,7 +1250,7 @@ func (h *HiClient) processStateAndTimeline(
 			} else {
 				evt.Type.Class = event.MessageEventType
 			}
-			timelineIDs[i], err = processNewEvent(evt, true, i > readUpToIndex)
+			timelineIDs[i], err = processNewEvent(evt, true, isUnread[i])
 			if err != nil {
 				return err
 			}
@@ -1270,13 +1322,24 @@ func (h *HiClient) processStateAndTimeline(
 			return fmt.Errorf("failed to save receipts: %w", err)
 		}
 	}
-	if !room.UnreadCounts.IsZero() && ((len(newOwnReceipts) > 0 && newUnreadCounts.IsZero()) || unreadMessagesWereMaybeRedacted) {
-		updatedRoom.UnreadCounts, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
-		if err != nil {
-			return fmt.Errorf("failed to recalculate unread counts: %w", err)
+	if len(newOwnReceipts) > 0 || unreadMessagesWereMaybeRedacted {
+		// A receipt only marks its own thread read, so the rest of the room has to be counted again.
+		if !room.UnreadCounts.IsZero() || !newUnreadCounts.IsZero() {
+			updatedRoom.UnreadCounts, updatedRoom.ThreadUnreads, err = h.DB.Room.CalculateUnreads(ctx, room.ID, h.Account.UserID)
+			if err != nil {
+				return fmt.Errorf("failed to recalculate unread counts: %w", err)
+			}
 		}
 	} else {
 		updatedRoom.UnreadCounts.Add(newUnreadCounts)
+		for threadID, uc := range newThreadUnreads {
+			if updatedRoom.ThreadUnreads == nil {
+				updatedRoom.ThreadUnreads = make(map[event.ThreadID]database.UnreadCounts)
+			}
+			threadUnreads := updatedRoom.ThreadUnreads[threadID]
+			threadUnreads.Add(uc)
+			updatedRoom.ThreadUnreads[threadID] = threadUnreads
+		}
 	}
 	dismissNotifications := room.UnreadNotifications > 0 && updatedRoom.UnreadNotifications == 0 && len(newNotifications) == 0
 	if timeline.PrevBatch != "" && (room.PrevBatch == "" || timeline.Limited) {
@@ -1295,8 +1358,12 @@ func (h *HiClient) processStateAndTimeline(
 	}
 	// TODO why is *old* unread count sometimes zero when processing the read receipt that is making it zero?
 	if syncCtx != nil && (roomChanged || len(accountData) > 0 || len(newOwnReceipts) > 0 || len(receipts) > 0 || len(timelineRowTuples) > 0 || len(allNewEvents) > 0 || len(newStickyRows) > 0) {
+		var ownReceipts []*database.Receipt
 		for _, receipt := range receipts {
 			receipt.RoomID = ""
+			if receipt.UserID == h.Account.UserID {
+				ownReceipts = append(ownReceipts, receipt)
+			}
 		}
 		roomID := room.ID
 		if !syncRoomChanged {
@@ -1310,6 +1377,7 @@ func (h *HiClient) processStateAndTimeline(
 			Reset:       timeline.Limited,
 			Events:      allNewEvents,
 			Receipts:    receiptMap,
+			OwnReceipts: ownReceipts,
 			Sticky:      newStickyRows,
 
 			Notifications:        newNotifications,
