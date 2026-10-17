@@ -15,9 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use } from "react"
 import { getBridgeIconURL, getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
-import { RoomStateStore } from "@/api/statestore"
+import { RoomStateStore, usePreference } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
+import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { LightboxContext, NestableModalContext, modals } from "../modal"
 import BackIcon from "@/icons/back.svg?react"
@@ -37,9 +38,11 @@ interface RoomViewHeaderProps {
 
 const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 	const roomMeta = useEventAsState(room.meta)
+	const client = use(ClientContext)!
 	const mainScreen = use(MainScreenContext)
 	const openNestableModal = use(NestableModalContext)
-	const bridgeIconURL = getBridgeIconURL(roomMeta.bridge_info)
+	const showBridgeIcon = usePreference(client.store, null, "show_bridge_icons")
+	const bridgeIconURL = showBridgeIcon ? getBridgeIconURL(roomMeta.bridge_info) : undefined
 	const openSettings = () => {
 		openNestableModal(modals.settings(room))
 	}

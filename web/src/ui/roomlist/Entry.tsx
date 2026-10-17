@@ -31,6 +31,7 @@ export interface RoomListEntryProps {
 	isActive: boolean
 	hidden: boolean
 	hideAvatar?: boolean
+	showBridgeIcon?: boolean
 }
 
 function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): [string, JSX.Element | null] {
@@ -56,9 +57,14 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 	return ["", null]
 }
 
-function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
+function renderEntry(
+	room: RoomListEntry,
+	hideAvatar: boolean | undefined,
+	showBridgeIcon: boolean | undefined,
+	previewSender?: MemDBEvent | null
+) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
-	const bridgeIconURL = hideAvatar ? undefined : getBridgeIconURL(room.bridge_info)
+	const bridgeIconURL = !hideAvatar && showBridgeIcon ? getBridgeIconURL(room.bridge_info) : undefined
 
 	return <>
 	<div className="room-avatar-wrapper">
@@ -85,7 +91,7 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previ
 	</>
 }
 
-const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
+const Entry = ({ room, isActive, hidden, hideAvatar, showBridgeIcon }: RoomListEntryProps) => {
 	const [isVisible, divRef] = useContentVisibility<HTMLDivElement>()
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
@@ -149,7 +155,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
 	>
-		{isVisible ? renderEntry(room, hideAvatar, previewSender) : null}
+		{isVisible ? renderEntry(room, hideAvatar, showBridgeIcon, previewSender) : null}
 	</div>
 }
 
