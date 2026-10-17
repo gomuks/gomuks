@@ -13,6 +13,7 @@ SET bridge_info = (
 	WHERE cs.room_id = room.room_id
 		AND cs.event_type IN ('m.bridge', 'uk.half-shot.bridge')
 		AND e.content -> '$.protocol' IS NOT NULL
+	ORDER BY e.timestamp DESC, e.rowid DESC
 	LIMIT 1
 )
 WHERE EXISTS (

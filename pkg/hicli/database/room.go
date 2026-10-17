@@ -193,6 +193,7 @@ type BridgeInfoSection struct {
 type BridgeInfo struct {
 	Protocol BridgeInfoSection  `json:"protocol"`
 	Network  *BridgeInfoSection `json:"network,omitempty"`
+	SourceEventTS int64 `json:"-"`
 }
 
 func (bi *BridgeInfo) Equals(other *BridgeInfo) bool {

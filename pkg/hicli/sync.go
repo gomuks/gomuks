@@ -1561,7 +1561,19 @@ func processImportantEvent(
 			zerolog.Ctx(ctx).Warn().Err(err).
 				Stringer("event_id", evt.ID).
 				Msg("Failed to parse bridge info state event, skipping")
-		} else if bridgeInfo.Protocol.ID != "" || bridgeInfo.Protocol.AvatarURL != "" {
+		return
+		}
+		if bridgeInfo.Protocol.ID == "" && bridgeInfo.Protocol.AvatarURL == "" {
+			return
+		}
+		currentTS := int64(0)
+		if updatedRoom.BridgeInfo != nil {
+			currentTS = updatedRoom.BridgeInfo.SourceEventTS
+		} else if existingRoomData.BridgeInfo != nil {
+			currentTS = existingRoomData.BridgeInfo.SourceEventTS
+		}
+		if evt.Timestamp >= currentTS {
+			bridgeInfo.SourceEventTS = evt.Timestamp
 			updatedRoom.BridgeInfo = &bridgeInfo
 			roomDataChanged = true
 		}
