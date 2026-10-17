@@ -61,13 +61,13 @@ function renderEntry(
 	room: RoomListEntry,
 	hideAvatar: boolean | undefined,
 	showBridgeIcon: boolean | undefined,
-	previewSender?: MemDBEvent | null
+	previewSender?: MemDBEvent | null,
 ) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
 	const bridgeIconURL = !hideAvatar && showBridgeIcon ? getBridgeIconURL(room.bridge_info) : undefined
 
 	return <>
-	<div className="room-avatar-wrapper">
+		<div className="room-avatar-wrapper">
 			<img
 				loading="lazy"
 				className="avatar room-avatar"

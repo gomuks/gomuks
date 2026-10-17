@@ -1561,7 +1561,7 @@ func processImportantEvent(
 			zerolog.Ctx(ctx).Warn().Err(err).
 				Stringer("event_id", evt.ID).
 				Msg("Failed to parse bridge info state event, skipping")
-		return
+			return
 		}
 		if bridgeInfo.Protocol.ID == "" && bridgeInfo.Protocol.AvatarURL == "" {
 			return
