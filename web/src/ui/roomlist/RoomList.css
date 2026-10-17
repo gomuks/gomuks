@@ -180,12 +180,31 @@ div.room-entry {
 		background-color: var(--room-list-entry-selected-color);
 	}
 
-	> img.room-avatar {
+	> div.room-avatar-wrapper {
 		--vertical-margin: calc((var(--room-list-entry-height) - var(--room-avatar-size)) / 2);
 		grid-area: avatar;
 		margin: var(--vertical-margin) var(--room-avatar-margin) var(--vertical-margin) calc(var(--room-avatar-margin) + .25rem);
 		width: var(--room-avatar-size);
 		height: var(--room-avatar-size);
+		position: relative;
+
+		> img.room-avatar {
+			width: 100%;
+			height: 100%;
+		}
+
+		> img.bridge-icon {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			width: calc(var(--room-avatar-size) * 0.4);
+			height: calc(var(--room-avatar-size) * 0.4);
+			border-radius: 50%;
+			object-fit: cover;
+			pointer-events: none;
+			background-color: var(--room-list-background-overlay);
+			box-shadow: 0 0 0 2px var(--room-list-background-overlay);
+		}
 	}
 
 	> div.room-name, > div.message-preview {
