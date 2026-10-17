@@ -8,6 +8,7 @@ package hicli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -44,6 +45,11 @@ type syncContext struct {
 	changedSpaces []id.RoomID
 	changedDMs    map[id.RoomID]id.UserID
 }
+
+const (
+	stateBridgeInfoType         = "m.bridge"
+	stateHalfShotBridgeInfoType = "uk.half-shot.bridge"
+)
 
 func (sc *syncContext) getChangedDM(roomID id.RoomID) (id.UserID, bool) {
 	if sc == nil || sc.changedDMs == nil {
@@ -624,6 +630,16 @@ func (h *HiClient) cacheMedia(ctx context.Context, evt *event.Event, rowID datab
 				h.addMediaCache(ctx, rowID, preview.ImageEncryption.URL, preview.ImageEncryption, info, "")
 			} else if preview.ImageURL != "" {
 				h.addMediaCache(ctx, rowID, preview.ImageURL, nil, info, "")
+			}
+		}
+	}
+
+	if evt.Type.Type == stateBridgeInfoType || evt.Type.Type == stateHalfShotBridgeInfoType {
+		var bridgeInfo database.BridgeInfo
+		if err := json.Unmarshal(evt.Content.VeryRaw, &bridgeInfo); err == nil {
+			h.addMediaCache(ctx, rowID, bridgeInfo.Protocol.AvatarURL, nil, nil, "")
+			if bridgeInfo.Network != nil {
+				h.addMediaCache(ctx, rowID, bridgeInfo.Network.AvatarURL, nil, nil, "")
 			}
 		}
 	}
@@ -1537,6 +1553,18 @@ func processImportantEvent(
 	sdc *spaceDataCollector,
 ) (roomDataChanged bool) {
 	if evt.StateKey == nil {
+		return
+	}
+	if evt.Type.Type == stateBridgeInfoType || evt.Type.Type == stateHalfShotBridgeInfoType {
+		var bridgeInfo database.BridgeInfo
+		if err := json.Unmarshal(evt.Content.VeryRaw, &bridgeInfo); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).
+				Stringer("event_id", evt.ID).
+				Msg("Failed to parse bridge info state event, skipping")
+		} else if bridgeInfo.Protocol.ID != "" || bridgeInfo.Protocol.AvatarURL != "" {
+			updatedRoom.BridgeInfo = &bridgeInfo
+			roomDataChanged = true
+		}
 		return
 	}
 	switch evt.Type {

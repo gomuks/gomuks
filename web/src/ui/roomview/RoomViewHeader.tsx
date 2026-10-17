@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use } from "react"
-import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
+import { getBridgeIconURL, getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -39,6 +39,7 @@ const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 	const roomMeta = useEventAsState(room.meta)
 	const mainScreen = use(MainScreenContext)
 	const openNestableModal = use(NestableModalContext)
+	const bridgeIconURL = getBridgeIconURL(roomMeta.bridge_info)
 	const openSettings = () => {
 		openNestableModal(modals.settings(room))
 	}
@@ -95,14 +96,23 @@ const RoomViewHeader = ({ room }: RoomViewHeaderProps) => {
 	}
 	return <div className="room-header">
 		<button className="back" onClick={mainScreen.clearActiveRoom}><BackIcon/></button>
-		<img
-			className="avatar"
-			loading="lazy"
-			src={getRoomAvatarThumbnailURL(roomMeta)}
-			data-full-src={getRoomAvatarURL(roomMeta)}
-			onClick={use(LightboxContext)}
-			alt=""
-		/>
+		<div className="room-avatar-wrapper">
+			<img
+				className="avatar"
+				loading="lazy"
+				src={getRoomAvatarThumbnailURL(roomMeta)}
+				data-full-src={getRoomAvatarURL(roomMeta)}
+				onClick={use(LightboxContext)}
+				alt=""
+			/>
+			{bridgeIconURL && <img
+				className="bridge-icon"
+				loading="lazy"
+				src={bridgeIconURL}
+				title={roomMeta.bridge_info?.network?.displayname || roomMeta.bridge_info?.protocol?.displayname}
+				alt=""
+			/>}
+		</div>
 		<div className="room-name-and-topic">
 			<div className="room-name">
 				{roomMeta.name ?? roomMeta.room_id}

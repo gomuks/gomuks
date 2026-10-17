@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
-import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
+import { getBridgeIconURL, getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListEntry, useRoomMember } from "@/api/statestore"
 import type { MemDBEvent, MemberEventContent } from "@/api/types"
 import useContentVisibility from "@/util/contentvisibility.ts"
@@ -58,14 +58,24 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 
 function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
+	const bridgeIconURL = hideAvatar ? undefined : getBridgeIconURL(room.bridge_info)
 
 	return <>
-		<img
-			loading="lazy"
-			className="avatar room-avatar"
-			src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
-			alt=""
-		/>
+	<div className="room-avatar-wrapper">
+			<img
+				loading="lazy"
+				className="avatar room-avatar"
+				src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
+				alt=""
+			/>
+			{bridgeIconURL && <img
+				loading="lazy"
+				className="bridge-icon"
+				src={bridgeIconURL}
+				title={room.bridge_info?.network?.displayname || room.bridge_info?.protocol?.displayname}
+				alt=""
+			/>}
+		</div>
 		<div className="room-name">{room.name}</div>
 		{room.preview_event ? <div className="room-entry-timestamp">
 			{formatPreviewTime(newSafeDate(room.preview_event?.timestamp))}

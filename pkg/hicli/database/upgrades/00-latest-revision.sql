@@ -1,4 +1,4 @@
--- v0 -> v31 (compatible with v10+): Latest revision
+-- v0 -> v32 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -42,6 +42,8 @@ CREATE TABLE room (
 	marked_unread        INTEGER NOT NULL DEFAULT false,
 
 	prev_batch           TEXT,
+
+	bridge_info          TEXT,
 
 	CONSTRAINT room_preview_event_fkey FOREIGN KEY (preview_event_rowid) REFERENCES event (rowid) ON DELETE SET NULL
 ) STRICT;
