@@ -19,6 +19,7 @@
 package gomuks
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -47,6 +48,8 @@ type PushNewMessage struct {
 	IsDM       bool             `json:"is_dm,omitzero"`
 	Sender     NotificationUser `json:"sender"`
 	Self       NotificationUser `json:"self"`
+
+	PerMessageProfile NotificationUser `json:"per_message_profile,omitzero"`
 
 	Text    string `json:"text"`
 	Image   string `json:"image,omitempty"`
@@ -95,6 +98,7 @@ func downloadURLPathToMXC(url string) (mxc id.ContentURI) {
 func (gmx *Gomuks) toDesktopNotification(ctx context.Context, pnm PushNewMessage) PushNewMessage {
 	pnm.RoomAvatar = gmx.getFilePath(ctx, pnm.RoomAvatar)
 	pnm.Sender.Avatar = gmx.getFilePath(ctx, pnm.Sender.Avatar)
+	pnm.PerMessageProfile.Avatar = gmx.getFilePath(ctx, pnm.PerMessageProfile.Avatar)
 	pnm.Self.Avatar = gmx.getFilePath(ctx, pnm.Self.Avatar)
 	pnm.Image = gmx.getFilePath(ctx, pnm.Image)
 	return pnm
@@ -106,6 +110,7 @@ func (pnm *PushNewMessage) toFFINotification() *PushNewMessage {
 	}
 	pnm.RoomAvatar = downloadURLPathToMXC(pnm.RoomAvatar).String()
 	pnm.Sender.Avatar = downloadURLPathToMXC(pnm.Sender.Avatar).String()
+	pnm.PerMessageProfile.Avatar = downloadURLPathToMXC(pnm.PerMessageProfile.Avatar).String()
 	pnm.Self.Avatar = downloadURLPathToMXC(pnm.Self.Avatar).String()
 	pnm.Image = downloadURLPathToMXC(pnm.Image).String()
 	return pnm
@@ -115,6 +120,10 @@ type NotificationUser struct {
 	ID     id.UserID `json:"id"`
 	Name   string    `json:"name"`
 	Avatar string    `json:"avatar,omitempty"`
+}
+
+func (nu NotificationUser) IsZero() bool {
+	return nu.ID == "" && nu.Name == "" && nu.Avatar == ""
 }
 
 func getAvatarLinkForNotification(name, ident string, uri id.ContentURIString) string {
@@ -200,6 +209,16 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif *jso
 			}
 		}
 	}
+	senderUser := gmx.getNotificationUser(ctx, notif.Room.ID, notif.Event.Sender)
+	var pmp NotificationUser
+	if content.BeeperPerMessageProfile != nil {
+		name := cmp.Or(content.BeeperPerMessageProfile.Displayname, senderUser.Name)
+		pmp = NotificationUser{
+			ID:     id.UserID(content.BeeperPerMessageProfile.ID),
+			Name:   name,
+			Avatar: getAvatarLinkForNotification(name, content.BeeperPerMessageProfile.ID, ptr.Val(content.BeeperPerMessageProfile.AvatarURL)),
+		}
+	}
 	return &PushNewMessage{
 		Timestamp:  notif.Event.Timestamp,
 		EventID:    notif.Event.ID,
@@ -209,8 +228,10 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif *jso
 		RoomName:   roomName,
 		RoomAvatar: roomAvatar,
 		IsDM:       isDM,
-		Sender:     gmx.getNotificationUser(ctx, notif.Room.ID, notif.Event.Sender),
+		Sender:     senderUser,
 		Self:       gmx.getNotificationUser(ctx, notif.Room.ID, gmx.Client.Account.UserID),
+
+		PerMessageProfile: pmp,
 
 		Text:    notif.Event.LocalContent.PreviewText,
 		Image:   image,
