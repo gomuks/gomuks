@@ -237,8 +237,10 @@ interface PushNewMessage {
 	room_id: string
 	room_name: string
 	room_avatar?: string
+	is_dm?: true
 	sender: NotificationUser
 	self: NotificationUser
+	per_message_profile?: NotificationUser
 
 	text: string
 	image?: string

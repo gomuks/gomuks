@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build !js
-
 package gomuks
 
 import (
+	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -48,6 +49,8 @@ type PushNewMessage struct {
 	Sender     NotificationUser `json:"sender"`
 	Self       NotificationUser `json:"self"`
 
+	PerMessageProfile NotificationUser `json:"per_message_profile,omitzero"`
+
 	Text    string `json:"text"`
 	Image   string `json:"image,omitempty"`
 	Mention bool   `json:"mention,omitzero"`
@@ -56,22 +59,11 @@ type PushNewMessage struct {
 }
 
 func (gmx *Gomuks) getFilePath(ctx context.Context, url string) string {
-	unprefixed, ok := strings.CutPrefix(url, "_gomuks/media/")
-	if !ok {
+	mxc := downloadURLPathToMXC(url)
+	if !mxc.IsValid() {
 		return ""
 	}
-	queryIdx := strings.IndexByte(unprefixed, '?')
-	if queryIdx == -1 {
-		return ""
-	}
-	parts := strings.Split(unprefixed[:queryIdx], "/")
-	if len(parts) != 2 {
-		return ""
-	}
-	media, err := gmx.Client.DB.Media.Get(ctx, id.ContentURI{
-		Homeserver: parts[0],
-		FileID:     parts[1],
-	})
+	media, err := gmx.Client.DB.Media.Get(ctx, mxc)
 	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Str("url", url).Msg("Failed to get media for desktop notification")
 	} else if media != nil {
@@ -84,11 +76,43 @@ func (gmx *Gomuks) getFilePath(ctx context.Context, url string) string {
 	return ""
 }
 
+func downloadURLPathToMXC(url string) (mxc id.ContentURI) {
+	unprefixed, ok := strings.CutPrefix(url, "_gomuks/media/")
+	if !ok {
+		return
+	}
+	queryIdx := strings.IndexByte(unprefixed, '?')
+	if queryIdx == -1 {
+		return
+	}
+	parts := strings.Split(unprefixed[:queryIdx], "/")
+	if len(parts) != 2 {
+		return
+	}
+	return id.ContentURI{
+		Homeserver: parts[0],
+		FileID:     parts[1],
+	}
+}
+
 func (gmx *Gomuks) toDesktopNotification(ctx context.Context, pnm PushNewMessage) PushNewMessage {
 	pnm.RoomAvatar = gmx.getFilePath(ctx, pnm.RoomAvatar)
 	pnm.Sender.Avatar = gmx.getFilePath(ctx, pnm.Sender.Avatar)
+	pnm.PerMessageProfile.Avatar = gmx.getFilePath(ctx, pnm.PerMessageProfile.Avatar)
 	pnm.Self.Avatar = gmx.getFilePath(ctx, pnm.Self.Avatar)
 	pnm.Image = gmx.getFilePath(ctx, pnm.Image)
+	return pnm
+}
+
+func (pnm *PushNewMessage) toFFINotification() *PushNewMessage {
+	if pnm == nil {
+		return nil
+	}
+	pnm.RoomAvatar = downloadURLPathToMXC(pnm.RoomAvatar).String()
+	pnm.Sender.Avatar = downloadURLPathToMXC(pnm.Sender.Avatar).String()
+	pnm.PerMessageProfile.Avatar = downloadURLPathToMXC(pnm.PerMessageProfile.Avatar).String()
+	pnm.Self.Avatar = downloadURLPathToMXC(pnm.Self.Avatar).String()
+	pnm.Image = downloadURLPathToMXC(pnm.Image).String()
 	return pnm
 }
 
@@ -98,7 +122,14 @@ type NotificationUser struct {
 	Avatar string    `json:"avatar,omitempty"`
 }
 
+func (nu NotificationUser) IsZero() bool {
+	return nu.ID == "" && nu.Name == "" && nu.Avatar == ""
+}
+
 func getAvatarLinkForNotification(name, ident string, uri id.ContentURIString) string {
+	if len(uri) > 255 {
+		return ""
+	}
 	parsed := uri.ParseOrIgnore()
 	if !parsed.IsValid() {
 		return ""
@@ -135,7 +166,7 @@ func (gmx *Gomuks) getNotificationUser(ctx context.Context, roomID id.RoomID, us
 	return
 }
 
-func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif jsoncmd.SyncNotification) *PushNewMessage {
+func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif *jsoncmd.SyncNotification) *PushNewMessage {
 	evtType := notif.Event.GetType()
 	rawContent := notif.Event.Content
 	if notif.Event.Decrypted != nil {
@@ -181,6 +212,24 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 			}
 		}
 	}
+	senderUser := gmx.getNotificationUser(ctx, notif.Room.ID, notif.Event.Sender)
+	var pmp NotificationUser
+	if content.BeeperPerMessageProfile != nil {
+		name := cmp.Or(content.BeeperPerMessageProfile.Displayname, senderUser.Name)
+		ident := cmp.Or(content.BeeperPerMessageProfile.ID, notif.Event.Sender.String())
+		pmp = NotificationUser{
+			ID:     id.UserID(ident),
+			Name:   name,
+			Avatar: getAvatarLinkForNotification(name, ident, ptr.Val(content.BeeperPerMessageProfile.AvatarURL)),
+		}
+		if len(pmp.ID) > 255 {
+			idHash := sha256.Sum256([]byte(pmp.ID))
+			pmp.ID = id.UserID(hex.EncodeToString(idHash[:]))
+		}
+		if len(pmp.Name) > 50 {
+			pmp.Name = pmp.Name[:50] + "…"
+		}
+	}
 	return &PushNewMessage{
 		Timestamp:  notif.Event.Timestamp,
 		EventID:    notif.Event.ID,
@@ -190,8 +239,10 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif json
 		RoomName:   roomName,
 		RoomAvatar: roomAvatar,
 		IsDM:       isDM,
-		Sender:     gmx.getNotificationUser(ctx, notif.Room.ID, notif.Event.Sender),
+		Sender:     senderUser,
 		Self:       gmx.getNotificationUser(ctx, notif.Room.ID, gmx.Client.Account.UserID),
+
+		PerMessageProfile: pmp,
 
 		Text:    notif.Event.LocalContent.PreviewText,
 		Image:   image,

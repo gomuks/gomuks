@@ -604,6 +604,27 @@ func (e *Event) GetMautrixContent() *event.Content {
 	return e.parsedContent
 }
 
+type SyncNotification struct {
+	RowID     EventRowID `json:"event_rowid"`
+	Sound     bool       `json:"sound"`
+	Highlight bool       `json:"highlight"`
+	Event     *Event     `json:"-"`
+	Room      *Room      `json:"-"`
+}
+
+func (e *Event) ToSyncNotification(room *Room) *SyncNotification {
+	if e == nil {
+		return nil
+	}
+	return &SyncNotification{
+		RowID:     e.RowID,
+		Sound:     e.UnreadType.Is(UnreadTypeSound),
+		Highlight: e.UnreadType.Is(UnreadTypeHighlight),
+		Event:     e,
+		Room:      room,
+	}
+}
+
 func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	var timestamp int64
 	var transactionID, redactedBy, relatesTo, relationType, megolmSessionID, decryptionError, sendError, decryptedType sql.NullString

@@ -60,17 +60,11 @@ type SyncRoom struct {
 	// New MSC4354 sticky events that aren't included in timeline.
 	Sticky []database.EventRowID `json:"sticky,omitempty"`
 
-	DismissNotifications bool               `json:"dismiss_notifications,omitempty"`
-	Notifications        []SyncNotification `json:"notifications,omitempty"`
+	DismissNotifications bool                `json:"dismiss_notifications,omitempty"`
+	Notifications        []*SyncNotification `json:"notifications,omitempty"`
 }
 
-type SyncNotification struct {
-	RowID     database.EventRowID `json:"event_rowid"`
-	Sound     bool                `json:"sound"`
-	Highlight bool                `json:"highlight"`
-	Event     *database.Event     `json:"-"`
-	Room      *database.Room      `json:"-"`
-}
+type SyncNotification = database.SyncNotification
 
 type SyncToDevice struct {
 	Sender    id.UserID       `json:"sender"`
@@ -112,7 +106,7 @@ type SyncComplete struct {
 	ToDevice []*SyncToDevice `json:"to_device,omitempty"`
 }
 
-func (c *SyncComplete) Notifications(yield func(SyncNotification) bool) {
+func (c *SyncComplete) Notifications(yield func(*SyncNotification) bool) {
 	for _, room := range c.Rooms {
 		for _, notif := range room.Notifications {
 			if !yield(notif) {
