@@ -21,6 +21,8 @@ package gomuks
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -127,6 +129,9 @@ func (nu NotificationUser) IsZero() bool {
 }
 
 func getAvatarLinkForNotification(name, ident string, uri id.ContentURIString) string {
+	if len(uri) > 255 {
+		return ""
+	}
 	parsed := uri.ParseOrIgnore()
 	if !parsed.IsValid() {
 		return ""
@@ -213,10 +218,18 @@ func (gmx *Gomuks) formatPushNotificationMessage(ctx context.Context, notif *jso
 	var pmp NotificationUser
 	if content.BeeperPerMessageProfile != nil {
 		name := cmp.Or(content.BeeperPerMessageProfile.Displayname, senderUser.Name)
+		ident := cmp.Or(content.BeeperPerMessageProfile.ID, notif.Event.Sender.String())
 		pmp = NotificationUser{
-			ID:     id.UserID(content.BeeperPerMessageProfile.ID),
+			ID:     id.UserID(ident),
 			Name:   name,
-			Avatar: getAvatarLinkForNotification(name, content.BeeperPerMessageProfile.ID, ptr.Val(content.BeeperPerMessageProfile.AvatarURL)),
+			Avatar: getAvatarLinkForNotification(name, ident, ptr.Val(content.BeeperPerMessageProfile.AvatarURL)),
+		}
+		if len(pmp.ID) > 255 {
+			idHash := sha256.Sum256([]byte(pmp.ID))
+			pmp.ID = id.UserID(hex.EncodeToString(idHash[:]))
+		}
+		if len(pmp.Name) > 50 {
+			pmp.Name = pmp.Name[:50] + "…"
 		}
 	}
 	return &PushNewMessage{
