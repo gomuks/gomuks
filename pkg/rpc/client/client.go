@@ -72,7 +72,7 @@ func (gc *GomuksClient) handleEvent(ctx context.Context, rawEvt any) {
 				if notif.Event == nil {
 					continue
 				}
-				gc.SendNotification(roomStore, notif)
+				gc.SendNotification(roomStore, *notif)
 			}
 		}
 	case *jsoncmd.EventsDecrypted:

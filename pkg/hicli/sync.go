@@ -1002,7 +1002,7 @@ func (h *HiClient) processStateAndTimeline(
 	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
 	allNewEvents := make([]*database.Event, 0, len(state.Events)+len(sticky.Events)+len(timeline.Events))
 	addedEvents := make(map[database.EventRowID]int)
-	newNotifications := make([]jsoncmd.SyncNotification, 0)
+	newNotifications := make([]*jsoncmd.SyncNotification, 0)
 	var recalculatePreviewEvent, unreadMessagesWereMaybeRedacted bool
 	var newUnreadCounts database.UnreadCounts
 	addOldEvent := func(rowID database.EventRowID, evtID id.EventID) (dbEvt *database.Event, err error) {
@@ -1058,13 +1058,7 @@ func (h *HiClient) processStateAndTimeline(
 		}
 		if isUnread {
 			if dbEvt.UnreadType.Is(database.UnreadTypeNotify) && h.firstSyncReceived {
-				newNotifications = append(newNotifications, jsoncmd.SyncNotification{
-					RowID:     dbEvt.RowID,
-					Sound:     dbEvt.UnreadType.Is(database.UnreadTypeSound),
-					Highlight: dbEvt.UnreadType.Is(database.UnreadTypeHighlight),
-					Event:     dbEvt,
-					Room:      room,
-				})
+				newNotifications = append(newNotifications, dbEvt.ToSyncNotification(room))
 			}
 			newUnreadCounts.AddOne(dbEvt.UnreadType)
 		}

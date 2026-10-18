@@ -38,8 +38,9 @@ type PushPayload struct {
 }
 
 type HandlePushResponse struct {
-	Event *database.Event `json:"event"`
-	Room  *database.Room  `json:"room"`
+	Notification *PushNewMessage `json:"notification"`
+	Event        *database.Event `json:"event"`
+	Room         *database.Room  `json:"room"`
 }
 
 func (gmx *Gomuks) ReceivePushNotification(ctx context.Context, payload PushPayload) (*HandlePushResponse, error) {
@@ -72,10 +73,15 @@ func (gmx *Gomuks) handlePushForEvent(ctx context.Context, roomID id.RoomID, eve
 	if err != nil {
 		return nil, fmt.Errorf("failed to get room info: %w", err)
 	}
+	var notification *PushNewMessage
+	if evt != nil && evt.UnreadType.Is(database.UnreadTypeNotify) {
+		notification = gmx.formatPushNotificationMessage(ctx, evt.ToSyncNotification(room)).toFFINotification()
+	}
 	// TODO fetch from server if room wasn't found?
 	return &HandlePushResponse{
-		Event: evt,
-		Room:  room,
+		Notification: notification,
+		Event:        evt,
+		Room:         room,
 	}, nil
 }
 
