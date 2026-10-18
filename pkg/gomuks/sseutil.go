@@ -62,6 +62,7 @@ func newSSEWriter(w http.ResponseWriter, r *http.Request) *sseWriter {
 	}
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Incremental", "?1")
 	var c compressor
 	var err error
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "zstd") {
