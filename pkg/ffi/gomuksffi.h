@@ -52,10 +52,14 @@ GomuksHandle GomuksInit(GomuksBorrowedBuffer config);
 // GomuksStart starts the gomuks instance and Matrix sync loop.
 // If the return value is non-zero, the call failed and the handle isn't ready for use.
 // The callback will be called to provide the initial room list as well as any new events.
-// This must be called before SubmitCommand or the media upload/download methods.
+// This must be called before SubmitCommand, PauseSync, ResumeSync or the media upload/download methods.
 int GomuksStart(GomuksHandle handle, EventCallback callback);
 // GomuksDestroy stops the given gomuks instance and removes references to it.
 void GomuksDestroy(GomuksHandle handle);
+// GomuksPauseSync stops the Matrix sync loop without shutting down the instance.
+void GomuksPauseSync(GomuksHandle handle);
+// GomuksResumeSync restarts the sync loop after GomuksPauseSync.
+void GomuksResumeSync(GomuksHandle handle);
 
 // GomuksSubmitCommand sends a command to gomuks and returns the response.
 // The caller is responsible for memory management of the command string.
