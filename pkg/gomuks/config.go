@@ -181,6 +181,13 @@ func (gmx *Gomuks) LoadConfig() error {
 	if gmx.Config.Push.FCMGateway == "" {
 		gmx.Config.Push.FCMGateway = "push.gomuks.app"
 		changed = true
+	} else if strings.HasPrefix(gmx.Config.Push.FCMGateway, "https://") {
+		gmx.Config.Push.FCMGateway = strings.TrimPrefix(gmx.Config.Push.FCMGateway, "https://")
+		changed = true
+	}
+	if gmx.Config.Push.FCMGatewayWhitelist == nil {
+		gmx.Config.Push.FCMGatewayWhitelist = []string{"push.gomuks.app"}
+		changed = true
 	}
 	if gmx.Config.Push.VAPIDPrivateKey == "" {
 		gmx.Config.Push.VAPIDPrivateKey, gmx.Config.Push.VAPIDPublicKey = exerrors.Must2(webpush.GenerateVAPIDKeys())
