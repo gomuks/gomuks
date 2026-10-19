@@ -260,6 +260,8 @@ func (rs *RoomStore) ApplyDecrypted(resp *jsoncmd.EventsDecrypted) {
 }
 
 func (rs *RoomStore) ApplyState(evt *database.Event) {
+	rs.lock.Lock()
+	defer rs.lock.Unlock()
 	evtType := event.Type{Type: evt.Type, Class: event.StateEventType}
 	rs.applyEvent(evt, false)
 	stateMap, ok := rs.state[evtType]
@@ -292,6 +294,8 @@ func (rs *RoomStore) invalidateStateCaches(evtType event.Type, stateKeys ...stri
 }
 
 func (rs *RoomStore) ApplyFullState(events []*database.Event, omitMembers bool) {
+	rs.lock.Lock()
+	defer rs.lock.Unlock()
 	newStateMap := make(map[event.Type]map[string]database.EventRowID)
 	for _, evt := range events {
 		rs.applyEvent(evt, false)
