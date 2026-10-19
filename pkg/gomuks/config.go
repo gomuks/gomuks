@@ -54,9 +54,10 @@ type MatrixConfig struct {
 }
 
 type PushConfig struct {
-	FCMGateway      string `yaml:"fcm_gateway"`
-	VAPIDPrivateKey string `yaml:"vapid_private_key"`
-	VAPIDPublicKey  string `yaml:"vapid_public_key"`
+	FCMGateway          string   `yaml:"fcm_gateway"`
+	FCMGatewayWhitelist []string `yaml:"fcm_gateway_whitelist"`
+	VAPIDPrivateKey     string   `yaml:"vapid_private_key"`
+	VAPIDPublicKey      string   `yaml:"vapid_public_key"`
 }
 
 type MediaConfig struct {
@@ -178,7 +179,7 @@ func (gmx *Gomuks) LoadConfig() error {
 		changed = true
 	}
 	if gmx.Config.Push.FCMGateway == "" {
-		gmx.Config.Push.FCMGateway = "https://push.gomuks.app"
+		gmx.Config.Push.FCMGateway = "push.gomuks.app"
 		changed = true
 	}
 	if gmx.Config.Push.VAPIDPrivateKey == "" {
