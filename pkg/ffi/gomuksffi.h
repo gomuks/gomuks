@@ -92,6 +92,10 @@ void GomuksDownloadMediaPathAsync(GomuksHandle handle, GomuksOwnedBuffer params,
 
 // GomuksFreeBuffer frees an owned buffer returned from gomuks.
 void GomuksFreeBuffer(GomuksOwnedBuffer buf);
+// GomuksAllocBuffer allocates an owned buffer of the given length using the same allocator as GomuksFreeBuffer.
+// It's meant for filling and passing to the async functions above, which take ownership of the buffer and free it,
+// as other allocators (like CoTaskMemAlloc on Windows) can't safely be freed by gomuks.
+GomuksOwnedBuffer GomuksAllocBuffer(size_t length);
 
 #ifdef __cplusplus
 }

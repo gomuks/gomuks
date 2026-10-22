@@ -473,6 +473,14 @@ func GomuksFreeBuffer(buf C.GomuksOwnedBuffer) {
 	C.free(unsafe.Pointer(buf.base))
 }
 
+//export GomuksAllocBuffer
+func GomuksAllocBuffer(length C.size_t) C.GomuksOwnedBuffer {
+	return C.GomuksOwnedBuffer{
+		base:   (*C.uint8_t)(C.malloc(length)),
+		length: length,
+	}
+}
+
 func main() {
 	// Required for some reason, not actually used
 }
