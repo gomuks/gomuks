@@ -236,6 +236,16 @@ func GomuksDestroy(handle C.GomuksHandle) {
 	log.Info().Msg("Shutdown complete")
 }
 
+//export GomuksPauseSync
+func GomuksPauseSync(handle C.GomuksHandle) {
+	getStartedHandle(handle, "GomuksPauseSync").Client.PauseSync()
+}
+
+//export GomuksResumeSync
+func GomuksResumeSync(handle C.GomuksHandle) {
+	getStartedHandle(handle, "GomuksResumeSync").Client.ResumeSync()
+}
+
 //export GomuksSubmitCommand
 func GomuksSubmitCommand(handle C.GomuksHandle, command *C.char, data C.GomuksBorrowedBuffer) C.GomuksResponse {
 	gmx := getStartedHandle(handle, "GomuksSubmitCommand")

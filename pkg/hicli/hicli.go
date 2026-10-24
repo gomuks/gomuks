@@ -75,6 +75,8 @@ type HiClient struct {
 	syncLock              sync.Mutex
 	stopping              bool
 	stopSync              atomic.Pointer[context.CancelFunc]
+	syncPauseLock         sync.Mutex
+	syncPaused            bool
 	encryptLock           sync.Mutex
 	loginLock             sync.Mutex
 	loadLock              sync.Mutex
@@ -455,7 +457,14 @@ func (h *HiClient) Sync() {
 		Logger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	h.syncPauseLock.Lock()
+	if h.syncPaused {
+		h.syncPauseLock.Unlock()
+		log.Debug().Msg("Not starting sync as it is paused")
+		return
+	}
 	h.stopSync.Store(&cancel)
+	h.syncPauseLock.Unlock()
 	go h.RunRequestQueue(h.Log.WithContext(ctx))
 	go h.LoadPushRules(h.Log.WithContext(ctx))
 	ctx = log.WithContext(ctx)
@@ -475,6 +484,27 @@ func (h *HiClient) Sync() {
 	} else {
 		h.SyncStatus.Store(syncWaiting)
 		log.Info().Msg("Syncing stopped")
+	}
+}
+
+func (h *HiClient) PauseSync() {
+	h.syncPauseLock.Lock()
+	h.syncPaused = true
+	fn := h.stopSync.Swap(nil)
+	h.syncPauseLock.Unlock()
+	h.Client.StopSync()
+	if fn != nil {
+		(*fn)()
+	}
+}
+
+func (h *HiClient) ResumeSync() {
+	h.syncPauseLock.Lock()
+	wasPaused := h.syncPaused
+	h.syncPaused = false
+	h.syncPauseLock.Unlock()
+	if wasPaused && h.IsLoggedIn() && h.VerificationState.IsVerified {
+		go h.Sync()
 	}
 }
 
