@@ -23,6 +23,7 @@ import { playSound } from "@/util/sound.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
 import { getDisplayname } from "@/util/validation.ts"
 import {
+	BridgeInfo,
 	ContentURI,
 	DBRoom,
 	EventRowID,
@@ -60,6 +61,7 @@ export interface RoomListEntry {
 	name: string
 	search_name: string
 	avatar?: ContentURI
+	bridge_info?: BridgeInfo
 	unread_messages: number
 	unread_notifications: number
 	unread_highlights: number
@@ -311,6 +313,8 @@ export class StateStore {
 		if (!entry.meta) {
 			return (!!entry.account_data && "m.tag" in entry.account_data)
 		}
+		const newBridgeIcon = entry.meta.bridge_info?.protocol?.avatar_url
+		const oldBridgeIcon = oldEntry.meta.current.bridge_info?.protocol?.avatar_url
 		return entry.meta.sorting_timestamp !== oldEntry.meta.current.sorting_timestamp ||
 			entry.meta.unread_messages !== oldEntry.meta.current.unread_messages ||
 			entry.meta.unread_notifications !== oldEntry.meta.current.unread_notifications ||
@@ -319,6 +323,7 @@ export class StateStore {
 			entry.meta.preview_event_rowid !== oldEntry.meta.current.preview_event_rowid ||
 			entry.meta.name !== oldEntry.meta.current.name ||
 			entry.meta.avatar !== oldEntry.meta.current.avatar ||
+			newBridgeIcon !== oldBridgeIcon ||
 			entry.meta.dm_user_id !== oldEntry.meta.current.dm_user_id ||
 			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta!.preview_event_rowid) !== -1 ||
 			(!!entry.account_data && "m.tag" in entry.account_data)
@@ -356,6 +361,7 @@ export class StateStore {
 			name,
 			search_name: toSearchableString(name),
 			avatar: meta.avatar,
+			bridge_info: meta.bridge_info,
 			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : meta.unread_messages,
 			unread_notifications: meta.unread_notifications,
 			unread_highlights: meta.unread_highlights,
