@@ -460,20 +460,24 @@ type OAuthRegisterClientParams struct {
 
 type OAuthGetAuthorizationURLParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.GetAuthorizationURLParams
 }
 
 type OAuthGenerateDeviceCodeParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.GenerateDeviceCodeParams
 }
 
 type OAuthExchangeTokenParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.ExchangeTokenParams
 }
 
 type OAuthPollDeviceCodeParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.PollDeviceCodeParams
 }

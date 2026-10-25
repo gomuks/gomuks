@@ -674,13 +674,13 @@ func (h *JSONAPI) GetCapabilities(ctx context.Context) (*mautrix.RespCapabilitie
 }
 
 func (h *JSONAPI) OAuthRegisterClient(ctx context.Context, params *jsoncmd.OAuthRegisterClientParams) (*oauth.ClientMetadata, error) {
-	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.ClientMetadata, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, false, func() (*oauth.ClientMetadata, error) {
 		return h.Client.OAuthRegisterClient(ctx, &params.ClientMetadata)
 	})
 }
 
 func (h *JSONAPI) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAuthSimpleDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
-	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.DeviceCodeResponse, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, false, func() (*oauth.DeviceCodeResponse, error) {
 		clientMeta, err := h.Client.OAuthRegisterClient(ctx, &oauth.ClientMetadata{
 			ApplicationType:         oauth.ApplicationTypeNative,
 			ClientName:              "gomuks web",
@@ -714,20 +714,20 @@ func (h *JSONAPI) OAuthSimpleDeviceCode(ctx context.Context, params *jsoncmd.OAu
 }
 
 func (h *JSONAPI) OAuthGetAuthorizationURL(ctx context.Context, params *jsoncmd.OAuthGetAuthorizationURLParams) (*oauth.AuthorizationCodeResponse, error) {
-	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.AuthorizationCodeResponse, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, params.StepUpAuth, func() (*oauth.AuthorizationCodeResponse, error) {
 		return h.Client.OAuthGetAuthorizationURL(ctx, params.GetAuthorizationURLParams)
 	})
 }
 
 func (h *JSONAPI) OAuthExchangeToken(ctx context.Context, params *jsoncmd.OAuthExchangeTokenParams) error {
-	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, func() (*oauth.TokenResponse, error) {
+	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, params.StepUpAuth, func() (*oauth.TokenResponse, error) {
 		params.StoreCredentials = true
 		return h.Client.OAuthExchangeToken(ctx, params.ExchangeTokenParams)
 	})
 }
 
 func (h *JSONAPI) OAuthGenerateDeviceCode(ctx context.Context, params *jsoncmd.OAuthGenerateDeviceCodeParams) (*oauth.DeviceCodeResponse, error) {
-	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, func() (*oauth.DeviceCodeResponse, error) {
+	return loginOAuthPrepare(h.HiClient, params.HomeserverURL, params.StepUpAuth, func() (*oauth.DeviceCodeResponse, error) {
 		return h.Client.OAuthGenerateDeviceCode(ctx, params.GenerateDeviceCodeParams)
 	})
 }
@@ -739,10 +739,7 @@ func (h *JSONAPI) OAuthPollDeviceCode(ctx context.Context, params *jsoncmd.OAuth
 			return fmt.Errorf("no pending auto device code login data found")
 		}
 	}
-	if err := h.ensureHomeserverURL(params.HomeserverURL); err != nil {
-		return err
-	}
-	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, func() (*oauth.TokenResponse, error) {
+	return h.loginOAuth(ctx, params.HomeserverURL, params.ClientID, params.StepUpAuth, func() (*oauth.TokenResponse, error) {
 		params.StoreCredentials = true
 		resp, err := h.Client.OAuthPollDeviceCode(ctx, params.PollDeviceCodeParams)
 		if err != nil {
