@@ -80,6 +80,12 @@ func nilBorrowedBuffer() C.GomuksBorrowedBuffer {
 }
 
 func bytesToOwnedBuffer(b []byte) C.GomuksOwnedBuffer {
+	if b == nil {
+		return C.GomuksOwnedBuffer{
+			base:   nil,
+			length: 0,
+		}
+	}
 	return C.GomuksOwnedBuffer{
 		base:   (*C.uint8_t)(C.CBytes(b)),
 		length: C.size_t(len(b)),
@@ -254,7 +260,8 @@ func GomuksSubmitCommandAsync(handle C.GomuksHandle, command *C.char, data C.Gom
 func (gmx *gomuksHandle) gomuksSubmitCommand(cmd jsoncmd.Name, reqData []byte) C.GomuksResponse {
 	var res *jsoncmd.Container[json.RawMessage]
 	switch cmd {
-	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys, jsoncmd.ReqGetURLPreview:
+	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys,
+		jsoncmd.ReqGetURLPreview, jsoncmd.ReqPauseSync, jsoncmd.ReqResumeSync:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
@@ -407,6 +414,12 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *jso
 			}
 			return exbytes.UnsafeString(export), nil
 		}))
+	case jsoncmd.ReqPauseSync:
+		gmx.Client.PauseSync()
+		return &jsoncmd.Container[json.RawMessage]{Command: jsoncmd.RespSuccess}
+	case jsoncmd.ReqResumeSync:
+		gmx.Client.ResumeSync()
+		return &jsoncmd.Container[json.RawMessage]{Command: jsoncmd.RespSuccess}
 	default:
 		panic(fmt.Errorf("invalid call to handleFFICommand(%s)", cmd))
 	}
@@ -470,7 +483,9 @@ func containerToResponse(res *jsoncmd.Container[json.RawMessage]) C.GomuksRespon
 
 //export GomuksFreeBuffer
 func GomuksFreeBuffer(buf C.GomuksOwnedBuffer) {
-	C.free(unsafe.Pointer(buf.base))
+	if buf.base != nil {
+		C.free(unsafe.Pointer(buf.base))
+	}
 }
 
 //export GomuksAllocBuffer

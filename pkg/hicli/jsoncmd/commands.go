@@ -122,6 +122,8 @@ const (
 	ReqDownloadMedia  Name = "download_media"
 	ReqGetURLPreview  Name = "get_url_preview"
 	ReqExportKeys     Name = "export_keys"
+	ReqPauseSync      Name = "pause_sync"
+	ReqResumeSync     Name = "resume_sync"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"
@@ -371,6 +373,10 @@ var (
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
 	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
+	// PauseSync pauses the sync loop. This is only available in the C FFI.
+	PauseSync = &CommandSpecWithoutData{Name: ReqPauseSync}
+	// ResumeSync resumes the sync loop after being paused with pause_sync. This is only available in the C FFI.
+	ResumeSync = &CommandSpecWithoutData{Name: ReqResumeSync}
 )
 
 // Backend -> frontend event specs
@@ -481,6 +487,8 @@ var AllNames = []Name{
 	ReqDownloadMedia,
 	ReqGetURLPreview,
 	ReqExportKeys,
+	ReqPauseSync,
+	ReqResumeSync,
 	RespError,
 	RespSuccess,
 	ReqPing,

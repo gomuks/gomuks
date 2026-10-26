@@ -74,7 +74,8 @@ type HiClient struct {
 	syncingID             int
 	syncLock              sync.Mutex
 	stopping              bool
-	stopSync              atomic.Pointer[context.CancelFunc]
+	cancelSyncCtx         atomic.Pointer[context.CancelFunc]
+	syncPaused            atomic.Bool
 	encryptLock           sync.Mutex
 	loginLock             sync.Mutex
 	loadLock              sync.Mutex
@@ -437,12 +438,12 @@ func (h *HiClient) withEventDecryptionLock(ctx context.Context, sessID id.Sessio
 }
 
 func (h *HiClient) IsSyncing() bool {
-	return h.stopSync.Load() != nil
+	return h.cancelSyncCtx.Load() != nil
 }
 
 func (h *HiClient) Sync() {
 	h.Client.StopSync()
-	if fn := h.stopSync.Load(); fn != nil {
+	if fn := h.cancelSyncCtx.Swap(nil); fn != nil {
 		(*fn)()
 	}
 	h.syncLock.Lock()
@@ -455,7 +456,13 @@ func (h *HiClient) Sync() {
 		Logger()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	h.stopSync.Store(&cancel)
+	if fn := h.cancelSyncCtx.Swap(&cancel); fn != nil {
+		(*fn)()
+	}
+	if h.syncPaused.Load() {
+		log.Debug().Msg("Not starting sync as it is paused")
+		return
+	}
 	go h.RunRequestQueue(h.Log.WithContext(ctx))
 	go h.LoadPushRules(h.Log.WithContext(ctx))
 	ctx = log.WithContext(ctx)
@@ -478,12 +485,28 @@ func (h *HiClient) Sync() {
 	}
 }
 
-func (h *HiClient) Stop() {
-	h.stopping = true
+func (h *HiClient) stopSync() {
 	h.Client.StopSync()
-	if fn := h.stopSync.Swap(nil); fn != nil {
+	if fn := h.cancelSyncCtx.Swap(nil); fn != nil {
 		(*fn)()
 	}
+}
+
+func (h *HiClient) PauseSync() {
+	h.syncPaused.Store(true)
+	h.stopSync()
+}
+
+func (h *HiClient) ResumeSync() {
+	wasPaused := h.syncPaused.Swap(false)
+	if wasPaused && h.IsLoggedIn() && h.VerificationState.IsVerified {
+		go h.Sync()
+	}
+}
+
+func (h *HiClient) Stop() {
+	h.stopping = true
+	h.stopSync()
 	h.syncLock.Lock()
 	//lint:ignore SA2001 just acquire the lock to make sure Sync is done
 	h.syncLock.Unlock()
