@@ -55,6 +55,9 @@ type GomuksAPI interface {
 	GetLocalAliases(ctx context.Context, params *GetLocalAliasesParams) (*mautrix.RespAliasList, error)
 	CreateAlias(ctx context.Context, params *CreateAliasParams) error
 	DeleteAlias(ctx context.Context, params *DeleteAliasParams) error
+	GetRoomDirectory(ctx context.Context, req *mautrix.ReqPublicRooms) (*mautrix.RespPublicRooms, error)
+	PublishRoom(ctx context.Context, params *PublishRoomParams) error
+	GetRoomVisibility(ctx context.Context, params *GetRoomVisibilityInDirectoryParams) (*RoomVisibilityResponse, error)
 	RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error)
 	Logout(ctx context.Context) error
 	Login(ctx context.Context, params *LoginParams) error

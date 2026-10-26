@@ -141,6 +141,12 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.CreateAlias.RunCtx(ctx, req.Data, h.API.CreateAlias)
 	case jsoncmd.ReqDeleteAlias:
 		return jsoncmd.DeleteAlias.RunCtx(ctx, req.Data, h.API.DeleteAlias)
+	case jsoncmd.ReqGetRoomDirectory:
+		return jsoncmd.GetRoomDirectory.RunCtx(ctx, req.Data, h.API.GetRoomDirectory)
+	case jsoncmd.ReqPublishRoom:
+		return jsoncmd.PublishRoom.RunCtx(ctx, req.Data, h.API.PublishRoom)
+	case jsoncmd.ReqGetRoomVisibility:
+		return jsoncmd.GetRoomVisibility.RunCtx(ctx, req.Data, h.API.GetRoomVisibility)
 	case jsoncmd.ReqRequestOpenIDToken:
 		return jsoncmd.RequestOpenIDToken.RunCtx(ctx, req.Data, h.API.RequestOpenIDToken)
 	case jsoncmd.ReqLogout:
@@ -565,6 +571,19 @@ func (h *JSONAPI) CreateAlias(ctx context.Context, params *jsoncmd.CreateAliasPa
 	}
 	_, err := h.Client.CreateAlias(ctx, params.Alias, params.RoomID)
 	return err
+}
+
+func (h *JSONAPI) GetRoomDirectory(ctx context.Context, req *mautrix.ReqPublicRooms) (*mautrix.RespPublicRooms, error) {
+	return h.Client.PublicRooms(ctx, req)
+}
+
+func (h *JSONAPI) PublishRoom(ctx context.Context, params *jsoncmd.PublishRoomParams) error {
+	return h.Client.PublishRoomToDirectory(ctx, params.RoomID, params.Visibility)
+}
+
+func (h *JSONAPI) GetRoomVisibility(ctx context.Context, params *jsoncmd.GetRoomVisibilityInDirectoryParams) (*jsoncmd.RoomVisibilityResponse, error) {
+	vis, err := h.Client.GetRoomDirectoryVisibility(ctx, params.RoomID)
+	return &jsoncmd.RoomVisibilityResponse{Visibility: vis}, err
 }
 
 func (h *JSONAPI) DeleteAlias(ctx context.Context, params *jsoncmd.DeleteAliasParams) error {

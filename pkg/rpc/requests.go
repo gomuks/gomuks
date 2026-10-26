@@ -207,6 +207,18 @@ func (gr *GomuksRPC) DeleteAlias(ctx context.Context, params *jsoncmd.DeleteAlia
 	return executeRequestNoResponse(gr, ctx, jsoncmd.DeleteAlias, params)
 }
 
+func (gr *GomuksRPC) GetRoomDirectory(ctx context.Context, req *mautrix.ReqPublicRooms) (*mautrix.RespPublicRooms, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetRoomDirectory, req)
+}
+
+func (gr *GomuksRPC) PublishRoom(ctx context.Context, params *jsoncmd.PublishRoomParams) error {
+	return executeRequestNoResponse(gr, ctx, jsoncmd.PublishRoom, params)
+}
+
+func (gr *GomuksRPC) GetRoomVisibility(ctx context.Context, params *jsoncmd.GetRoomVisibilityInDirectoryParams) (*jsoncmd.RoomVisibilityResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetRoomVisibility, params)
+}
+
 func (gr *GomuksRPC) RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error) {
 	return executeRequest(gr, ctx, jsoncmd.RequestOpenIDToken, nil)
 }

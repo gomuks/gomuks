@@ -221,6 +221,19 @@ type DeleteAliasParams struct {
 	Alias id.RoomAlias `json:"alias"`
 }
 
+type PublishRoomParams struct {
+	RoomID     id.RoomID                       `json:"room_id"`
+	Visibility mautrix.RoomDirectoryVisibility `json:"visibility"`
+}
+
+type GetRoomVisibilityInDirectoryParams struct {
+	RoomID id.RoomID `json:"room_id"`
+}
+
+type RoomVisibilityResponse struct {
+	Visibility mautrix.RoomDirectoryVisibility `json:"visibility"`
+}
+
 type LoginParams struct {
 	HomeserverURL string `json:"homeserver_url"`
 	Username      string `json:"username"`
