@@ -117,13 +117,14 @@ const (
 	ReqRTCLivekitGetToken             Name = "rtc_livekit_get_token"
 	ReqRTCLivekitDelegateDelayedLeave Name = "rtc_livekit_delegate_delayed_leave"
 
-	ReqGetAccountInfo Name = "get_account_info"
-	ReqUploadMedia    Name = "upload_media"
-	ReqDownloadMedia  Name = "download_media"
-	ReqGetURLPreview  Name = "get_url_preview"
-	ReqExportKeys     Name = "export_keys"
-	ReqPauseSync      Name = "pause_sync"
-	ReqResumeSync     Name = "resume_sync"
+	ReqGetAccountInfo          Name = "get_account_info"
+	ReqUploadMedia             Name = "upload_media"
+	ReqDownloadMedia           Name = "download_media"
+	ReqGetURLPreview           Name = "get_url_preview"
+	ReqExportKeys              Name = "export_keys"
+	ReqPauseSync               Name = "pause_sync"
+	ReqResumeSync              Name = "resume_sync"
+	ReqResetNetworkConnections Name = "reset_network_connections"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"
@@ -377,6 +378,10 @@ var (
 	PauseSync = &CommandSpecWithoutData{Name: ReqPauseSync}
 	// ResumeSync resumes the sync loop after being paused with pause_sync. This is only available in the C FFI.
 	ResumeSync = &CommandSpecWithoutData{Name: ReqResumeSync}
+	// ResetNetworkConnections resets all network connections. This is only available in the C FFI.
+	// Clients should call this after OS-level network change events to ensure connections don't get stuck.
+	// The resettable_network flag in the config must be set to true for this to work.
+	ResetNetworkConnections = &CommandSpecWithoutData{Name: ReqResetNetworkConnections}
 )
 
 // Backend -> frontend event specs
@@ -489,6 +494,7 @@ var AllNames = []Name{
 	ReqExportKeys,
 	ReqPauseSync,
 	ReqResumeSync,
+	ReqResetNetworkConnections,
 	RespError,
 	RespSuccess,
 	ReqPing,

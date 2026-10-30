@@ -420,6 +420,9 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *hic
 	case jsoncmd.ReqResumeSync:
 		gmx.Client.ResumeSync()
 		return &hicli.JSONCommand{Command: jsoncmd.RespSuccess}
+	case jsoncmd.ReqResetNetworkConnections:
+		gmx.Client.ResetNetworkConnections()
+		return &hicli.JSONCommand{Command: jsoncmd.RespSuccess}
 	default:
 		panic(fmt.Errorf("invalid call to handleFFICommand(%s)", cmd))
 	}

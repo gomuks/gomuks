@@ -36,6 +36,7 @@ import (
 	"github.com/rs/zerolog"
 	"go.mau.fi/util/dbutil"
 	"go.mau.fi/util/exerrors"
+	"go.mau.fi/util/exsync"
 	"go.mau.fi/util/exzerolog"
 	"go.mau.fi/util/ptr"
 	"maunium.net/go/mautrix"
@@ -216,6 +217,9 @@ func (gmx *Gomuks) initClient() error {
 	gmx.Client.Client.SyncPresence = ptr.Val(gmx.Config.Matrix.SetPresence)
 	if gmx.Config.Matrix.InitialDeviceDisplayName != "" {
 		gmx.Client.InitialDeviceDisplayName = gmx.Config.Matrix.InitialDeviceDisplayName
+	}
+	if gmx.Config.Matrix.ResettableNetwork {
+		gmx.Client.Client.RequestRetryTrigger = exsync.NewEvent()
 	}
 	gmx.Client.LogoutFunc = gmx.Logout
 	httpClient := gmx.Client.Client.Client
