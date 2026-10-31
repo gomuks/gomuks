@@ -421,7 +421,7 @@ func (h *HiClient) withEventDecryptionLock(ctx context.Context, sessID id.Sessio
 	if ctx.Value(eventDecryptionLockContextKey) != nil {
 		return fn(ctx)
 	}
-	if ctx.Value(syncContextKey) != nil && sessID != "" {
+	if sessID != "" && !storeOnly && ctx.Value(syncContextKey) != nil {
 		zerolog.Ctx(ctx).Warn().
 			Stringer("megolm_session_id", sessID).
 			Bool("store_only", storeOnly).
