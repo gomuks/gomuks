@@ -62,7 +62,8 @@ type PushConfig struct {
 }
 
 type MediaConfig struct {
-	ThumbnailSize int `yaml:"thumbnail_size"`
+	ThumbnailSize int  `yaml:"thumbnail_size"`
+	SharedCache   bool `yaml:"shared_cache"`
 }
 
 type WebConfig struct {

@@ -45,9 +45,11 @@ func (gmx *Gomuks) Logout(ctx context.Context) error {
 	if gmx.LogoutCallback != nil {
 		return gmx.LogoutCallback()
 	}
-	err = os.RemoveAll(gmx.CacheDir)
-	if err != nil {
-		log.Err(err).Str("cache_dir", gmx.CacheDir).Msg("Failed to remove cache dir")
+	if !gmx.Config.Media.SharedCache {
+		err = os.RemoveAll(gmx.CacheDir)
+		if err != nil {
+			log.Err(err).Str("cache_dir", gmx.CacheDir).Msg("Failed to remove cache dir")
+		}
 	}
 	if gmx.DataDir == gmx.ConfigDir {
 		err = os.Remove(filepath.Join(gmx.DataDir, "gomuks.db"))
