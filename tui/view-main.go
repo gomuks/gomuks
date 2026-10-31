@@ -43,6 +43,7 @@ type MainView struct {
 	roomList    *RoomList
 	roomView    *mauview.Box
 	currentRoom *RoomView
+	activeSpace id.RoomID
 	//cmdProcessor *CommandProcessor
 	focused mauview.Focusable
 
@@ -177,6 +178,12 @@ func (view *MainView) OnKeyEvent(event mauview.KeyEvent) bool {
 		view.SwitchRoom(view.roomList.Previous())
 	case "search_rooms":
 		view.ShowModal(NewFuzzySearchModal(view, 42, 12))
+	case "search_spaces":
+		view.ShowModal(NewSpaceSwitcherModal(view, 42, 12))
+	case "next_space":
+		view.SwitchToNextSpace()
+	case "prev_space":
+		view.SwitchToPrevSpace()
 	case "scroll_up":
 		msgView := view.currentRoom.MessageView()
 		msgView.AddScrollOffset(msgView.TotalHeight())
@@ -272,6 +279,118 @@ func (view *MainView) SwitchRoom(roomID id.RoomID) {
 		}()
 	}
 	view.parent.Render()
+}
+
+func (view *MainView) ShowStatus(msg string) {
+	if view.currentRoom != nil {
+		view.currentRoom.SetStatusNotification(msg, 3*time.Second)
+	}
+}
+
+func (view *MainView) SwitchToSpace(spaceID id.RoomID) {
+	if spaceID == "" {
+		view.activeSpace = ""
+		view.roomList.SetActiveSpace("")
+		view.ShowStatus("Showing all rooms")
+		view.parent.Render()
+		return
+	}
+	rooms := view.matrix.GetRoomsInSpace(spaceID)
+	if len(rooms) == 0 {
+		debug.Print("Space", spaceID, "has no rooms")
+		view.ShowStatus("Space has no rooms")
+		return
+	}
+	var targetRoom id.RoomID
+	for _, roomID := range rooms {
+		if view.matrix.GetRoom(roomID) != nil {
+			targetRoom = roomID
+			break
+		}
+	}
+	if targetRoom == "" {
+		debug.Print("Space", spaceID, "has no joined rooms")
+		view.ShowStatus("Space has no joined rooms")
+		return
+	}
+
+	if view.activeSpace == spaceID && view.currentRoom != nil && view.currentRoom.Room.ID == targetRoom {
+		return
+	}
+
+	view.activeSpace = spaceID
+	view.roomList.SetActiveSpace(spaceID)
+	view.SwitchRoom(targetRoom)
+}
+
+func (view *MainView) SwitchToNextSpace() {
+	spaces := view.matrix.GetSpaceList()
+	if len(spaces) == 0 {
+		view.ShowStatus("No spaces available")
+		return
+	}
+	if len(spaces) == 1 {
+		if view.activeSpace == spaces[0].RoomID {
+			return
+		}
+		view.SwitchToSpace(spaces[0].RoomID)
+		return
+	}
+	if view.activeSpace != "" {
+		for i, space := range spaces {
+			if space.RoomID == view.activeSpace {
+				nextSpace := spaces[(i+1)%len(spaces)]
+				view.SwitchToSpace(nextSpace.RoomID)
+				return
+			}
+		}
+	}
+	currentRoom := view.currentRoom
+	if currentRoom != nil {
+		for i, space := range spaces {
+			if view.matrix.IsRoomInSpace(space.RoomID, currentRoom.Room.ID) {
+				nextSpace := spaces[(i+1)%len(spaces)]
+				view.SwitchToSpace(nextSpace.RoomID)
+				return
+			}
+		}
+	}
+	view.SwitchToSpace(spaces[0].RoomID)
+}
+
+func (view *MainView) SwitchToPrevSpace() {
+	spaces := view.matrix.GetSpaceList()
+	if len(spaces) == 0 {
+		view.ShowStatus("No spaces available")
+		return
+	}
+	if len(spaces) == 1 {
+		if view.activeSpace == spaces[0].RoomID {
+			return
+		}
+		view.SwitchToSpace(spaces[0].RoomID)
+		return
+	}
+	if view.activeSpace != "" {
+		for i, space := range spaces {
+			if space.RoomID == view.activeSpace {
+				prevSpace := spaces[(i-1+len(spaces))%len(spaces)]
+				view.SwitchToSpace(prevSpace.RoomID)
+				return
+			}
+		}
+	}
+	currentRoom := view.currentRoom
+	if currentRoom != nil {
+		for i, space := range spaces {
+			if view.matrix.IsRoomInSpace(space.RoomID, currentRoom.Room.ID) {
+				prevSpace := spaces[(i-1+len(spaces))%len(spaces)]
+				view.SwitchToSpace(prevSpace.RoomID)
+				return
+			}
+		}
+	}
+	view.SwitchToSpace(spaces[len(spaces)-1].RoomID)
 }
 
 func (view *MainView) NotifyMessage(room *store.RoomStore, notif jsoncmd.SyncNotification) {
