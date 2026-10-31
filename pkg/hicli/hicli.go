@@ -421,6 +421,12 @@ func (h *HiClient) withEventDecryptionLock(ctx context.Context, sessID id.Sessio
 	if ctx.Value(eventDecryptionLockContextKey) != nil {
 		return fn(ctx)
 	}
+	if ctx.Value(syncContextKey) != nil && sessID != "" {
+		zerolog.Ctx(ctx).Warn().
+			Stringer("megolm_session_id", sessID).
+			Bool("store_only", storeOnly).
+			Msg("Acquiring event decryption lock during sync")
+	}
 	start := time.Now()
 	h.eventDecryptionLock.Lock()
 	defer h.eventDecryptionLock.Unlock()

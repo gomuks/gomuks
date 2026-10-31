@@ -56,9 +56,9 @@ func (h *hiSyncer) ProcessResponse(ctx context.Context, resp *mautrix.RespSync, 
 		}
 		var err error
 		if hasEncrypted {
-			err = doProcessTxn(ctx)
-		} else {
 			err = c.withEventDecryptionLock(ctx, "", false, doProcessTxn)
+		} else {
+			err = doProcessTxn(ctx)
 		}
 		if i < 24 && isDatabaseBusyError(err) {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("Database is busy, retrying")
