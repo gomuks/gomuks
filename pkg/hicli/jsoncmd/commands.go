@@ -85,6 +85,9 @@ const (
 	ReqGetLocalAliases          Name = "get_local_aliases"
 	ReqCreateAlias              Name = "create_alias"
 	ReqDeleteAlias              Name = "delete_alias"
+	ReqGetRoomDirectory         Name = "get_room_directory"
+	ReqPublishRoom              Name = "publish_room"
+	ReqGetRoomVisibility        Name = "get_room_visibility"
 	ReqRequestOpenIDToken       Name = "request_openid_token"
 	ReqLogout                   Name = "logout"
 	ReqLogin                    Name = "login"
@@ -114,11 +117,14 @@ const (
 	ReqRTCLivekitGetToken             Name = "rtc_livekit_get_token"
 	ReqRTCLivekitDelegateDelayedLeave Name = "rtc_livekit_delegate_delayed_leave"
 
-	ReqGetAccountInfo Name = "get_account_info"
-	ReqUploadMedia    Name = "upload_media"
-	ReqDownloadMedia  Name = "download_media"
-	ReqGetURLPreview  Name = "get_url_preview"
-	ReqExportKeys     Name = "export_keys"
+	ReqGetAccountInfo          Name = "get_account_info"
+	ReqUploadMedia             Name = "upload_media"
+	ReqDownloadMedia           Name = "download_media"
+	ReqGetURLPreview           Name = "get_url_preview"
+	ReqExportKeys              Name = "export_keys"
+	ReqPauseSync               Name = "pause_sync"
+	ReqResumeSync              Name = "resume_sync"
+	ReqResetNetworkConnections Name = "reset_network_connections"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"
@@ -264,6 +270,12 @@ var (
 	CreateAlias = &CommandSpecWithoutResponse[*CreateAliasParams]{Name: ReqCreateAlias}
 	// DeleteAlias removes an alias from a room.
 	DeleteAlias = &CommandSpecWithoutResponse[*DeleteAliasParams]{Name: ReqDeleteAlias}
+	// GetRoomDirectory fetches a public room directory from the homeserver.
+	GetRoomDirectory = &CommandSpec[*mautrix.ReqPublicRooms, *mautrix.RespPublicRooms]{Name: ReqGetRoomDirectory}
+	// PublishRoom publishes or unpublishes a room to the local server's room directory.
+	PublishRoom = &CommandSpecWithoutResponse[*PublishRoomParams]{Name: ReqPublishRoom}
+	// GetRoomVisibility checks whether a room is published in the local server's room directory.
+	GetRoomVisibility = &CommandSpec[*GetRoomVisibilityInDirectoryParams, *RoomVisibilityResponse]{Name: ReqGetRoomVisibility}
 	// RequestOpenIDToken returns an OpenID token from the homeserver. OpenID tokens are used to
 	// authenticate with various external services. Widgets also need this method.
 	//
@@ -362,6 +374,14 @@ var (
 	// ExportKeys exports megolm room keys and returns the exported file as a string.
 	// This is only available in the C FFI. HTTP clients must use the /keys/export API.
 	ExportKeys = &CommandSpec[*ExportKeysParams, string]{Name: ReqExportKeys}
+	// PauseSync pauses the sync loop. This is only available in the C FFI.
+	PauseSync = &CommandSpecWithoutData{Name: ReqPauseSync}
+	// ResumeSync resumes the sync loop after being paused with pause_sync. This is only available in the C FFI.
+	ResumeSync = &CommandSpecWithoutData{Name: ReqResumeSync}
+	// ResetNetworkConnections resets all network connections. This is only available in the C FFI.
+	// Clients should call this after OS-level network change events to ensure connections don't get stuck.
+	// The resettable_network flag in the config must be set to true for this to work.
+	ResetNetworkConnections = &CommandSpecWithoutData{Name: ReqResetNetworkConnections}
 )
 
 // Backend -> frontend event specs
@@ -440,6 +460,12 @@ var AllNames = []Name{
 	ReqEnsureGroupSessionShared,
 	ReqSendToDevice,
 	ReqResolveAlias,
+	ReqGetLocalAliases,
+	ReqCreateAlias,
+	ReqDeleteAlias,
+	ReqGetRoomDirectory,
+	ReqPublishRoom,
+	ReqGetRoomVisibility,
 	ReqRequestOpenIDToken,
 	ReqLogout,
 	ReqLogin,
@@ -466,6 +492,9 @@ var AllNames = []Name{
 	ReqDownloadMedia,
 	ReqGetURLPreview,
 	ReqExportKeys,
+	ReqPauseSync,
+	ReqResumeSync,
+	ReqResetNetworkConnections,
 	RespError,
 	RespSuccess,
 	ReqPing,

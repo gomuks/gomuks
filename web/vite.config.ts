@@ -8,7 +8,7 @@ const splitDeps = ["katex", "leaflet", "monaco-editor", "matrix-widget-api", "@d
 export default defineConfig({
 	base: "./",
 	build: {
-		target: ["esnext", "firefox140", "chrome140", "safari18"],
+		target: ["esnext", "firefox153", "chrome155", "safari27"],
 		chunkSizeWarningLimit: 4000,
 		rollupOptions: {
 			output: {

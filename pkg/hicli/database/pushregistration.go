@@ -63,7 +63,8 @@ type PushRegistration struct {
 	Type PushType `json:"type"`
 	// The type-specific data.
 	//
-	// For FCM, this is the FCM token as a string.
+	// For FCM, this is the FCM token as a string, or a JSON object
+	// containing the token and optionally app_id and gateway.
 	// For web push, this is the subscription info as a JSON object
 	// (`endpoint` string and `keys` object with `p256dh` and `auth` strings).
 	Data json.RawMessage `json:"data"`

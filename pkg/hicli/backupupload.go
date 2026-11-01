@@ -44,7 +44,7 @@ func (h *HiClient) uploadKeysToBackup(ctx context.Context) {
 		}
 		err = h.CryptoStore.DB.DoTxn(ctx, nil, func(ctx context.Context) error {
 			for _, sess := range chunk {
-				err := h.CryptoStore.SetGroupSessionKeyBackupVersion(ctx, sess.ID(), version)
+				err := h.CryptoStore.SetGroupSessionKeyBackupVersion(ctx, sess.RoomID, sess.ID(), version)
 				if err != nil {
 					return err
 				}

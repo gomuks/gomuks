@@ -54,35 +54,60 @@ func (h *HiClient) ensureHomeserverURL(homeserverURL string) error {
 	return nil
 }
 
-func loginOAuthPrepare[T any](h *HiClient, homeserverURL string, cb func() (*T, error)) (*T, error) {
+func loginOAuthPrepare[T any](
+	h *HiClient,
+	homeserverURL string,
+	stepUpAuth bool,
+	cb func() (*T, error),
+) (*T, error) {
+	if stepUpAuth && homeserverURL != "" {
+		return nil, fmt.Errorf("can't specify new homeserver URL when using step-up auth")
+	}
 	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
 		return nil, err
 	}
 	h.loginLock.Lock()
 	defer h.loginLock.Unlock()
-	if h.IsLoggedIn() {
+	if stepUpAuth && !h.IsLoggedIn() {
+		return nil, fmt.Errorf("not logged in")
+	} else if !stepUpAuth && h.IsLoggedIn() {
 		return nil, fmt.Errorf("already logged in")
 	}
 	return cb()
 }
 
-func (h *HiClient) loginOAuth(ctx context.Context, homeserverURL, clientID string, cb func() (*oauth.TokenResponse, error)) error {
+func (h *HiClient) loginOAuth(
+	ctx context.Context,
+	homeserverURL,
+	clientID string,
+	stepUpAuth bool,
+	cb func() (*oauth.TokenResponse, error),
+) error {
+	if stepUpAuth && homeserverURL != "" {
+		return fmt.Errorf("can't specify new homeserver URL when using step-up auth")
+	}
 	h.loginLock.Lock()
 	defer h.loginLock.Unlock()
-	if h.IsLoggedIn() {
+	if stepUpAuth && !h.IsLoggedIn() {
+		return fmt.Errorf("not logged in")
+	} else if !stepUpAuth && h.IsLoggedIn() {
 		return fmt.Errorf("already logged in")
 	}
 	if err := h.ensureHomeserverURL(homeserverURL); err != nil {
 		return err
 	}
-	err := h.CheckServerVersions(ctx)
-	if err != nil {
-		return err
+	if !stepUpAuth {
+		err := h.CheckServerVersions(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	start := time.Now()
 	resp, err := cb()
 	if err != nil {
 		return err
+	} else if stepUpAuth {
+		return nil
 	}
 	exp := start.Add(resp.ExpiresIn.Duration)
 	whoamiResp, err := h.Client.Whoami(ctx)

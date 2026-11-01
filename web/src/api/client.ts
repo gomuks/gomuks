@@ -587,7 +587,6 @@ export default class Client {
 	}
 
 	async subscribeToEmojiPack(pack: RoomStateGUID, subscribe: boolean = true) {
-		const hasNewAccountData = this.store.accountData.has("m.image_pack.rooms")
 		const emoteRooms = (
 			this.store.accountData.get("m.image_pack.rooms")
 			?? this.store.accountData.get("im.ponies.emote_rooms")
@@ -612,7 +611,7 @@ export default class Client {
 		}
 		console.log("Changing subscription state for emoji pack", pack, "to", subscribe)
 		await Promise.all([
-			hasNewAccountData ? this.rpc.setAccountData("m.image_pack.rooms", emoteRooms) : Promise.resolve(),
+			this.rpc.setAccountData("m.image_pack.rooms", emoteRooms),
 			this.rpc.setAccountData("im.ponies.emote_rooms", emoteRooms),
 		])
 	}

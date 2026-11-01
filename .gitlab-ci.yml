@@ -14,7 +14,7 @@ variables:
   MAU_VERSION_PACKAGE: go.mau.fi/gomuks/version
 
 wasm:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.27-alpine
   stage: frontend
   cache:
     paths:
@@ -37,7 +37,7 @@ wasm:
     expire_in: 1 hour
 
 frontend:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:26-alpine
   stage: frontend
   cache:
     paths:
@@ -55,7 +55,7 @@ frontend:
   - wasm
 
 deploy/wasmuks:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.27-alpine
   stage: frontend
   tags:
   - webdeploy
@@ -249,7 +249,7 @@ docker/manifest:
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-amd64 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-arm64
 
 .build-desktop: &build-desktop
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:24-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:26-alpine
   stage: build desktop
   cache:
     paths:
@@ -313,7 +313,7 @@ desktop/macos/arm64:
   - macos/arm64
 
 deploy/desktop:
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.26-alpine
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/golang:1.27-alpine
   stage: build desktop
   tags:
   - webdeploy

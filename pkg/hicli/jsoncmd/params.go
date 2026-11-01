@@ -221,6 +221,19 @@ type DeleteAliasParams struct {
 	Alias id.RoomAlias `json:"alias"`
 }
 
+type PublishRoomParams struct {
+	RoomID     id.RoomID                       `json:"room_id"`
+	Visibility mautrix.RoomDirectoryVisibility `json:"visibility"`
+}
+
+type GetRoomVisibilityInDirectoryParams struct {
+	RoomID id.RoomID `json:"room_id"`
+}
+
+type RoomVisibilityResponse struct {
+	Visibility mautrix.RoomDirectoryVisibility `json:"visibility"`
+}
+
 type LoginParams struct {
 	HomeserverURL string `json:"homeserver_url"`
 	Username      string `json:"username"`
@@ -460,20 +473,24 @@ type OAuthRegisterClientParams struct {
 
 type OAuthGetAuthorizationURLParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.GetAuthorizationURLParams
 }
 
 type OAuthGenerateDeviceCodeParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.GenerateDeviceCodeParams
 }
 
 type OAuthExchangeTokenParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.ExchangeTokenParams
 }
 
 type OAuthPollDeviceCodeParams struct {
 	HomeserverURL string `json:"homeserver_url"`
+	StepUpAuth    bool   `json:"step_up_auth"`
 	oauth.PollDeviceCodeParams
 }

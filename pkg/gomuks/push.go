@@ -29,6 +29,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
@@ -214,8 +217,13 @@ func (gmx *Gomuks) SendPushNotification(ctx context.Context, pushRegs []*databas
 					Msg("FCM push registration doesn't have encryption key")
 				continue
 			}
-			var token string
-			err = json.Unmarshal(reg.Data, &token)
+			var token WrappedFCMToken
+			if len(reg.Data) > 0 && reg.Data[0] == '"' {
+				token.Gateway = strings.TrimPrefix(gmx.Config.Push.FCMGateway, "https://")
+				err = json.Unmarshal(reg.Data, &token.Token)
+			} else {
+				err = json.Unmarshal(reg.Data, &token)
+			}
 			if err != nil {
 				log.Err(err).Str("device_id", reg.DeviceID).Msg("Failed to unmarshal FCM token")
 				continue
@@ -264,36 +272,49 @@ type PushRequest struct {
 	Owner        string `json:"owner"`
 	Payload      []byte `json:"payload"`
 	HighPriority bool   `json:"high_priority"`
+	AppID        string `json:"app_id,omitempty"`
 }
 
-func (gmx *Gomuks) SendFCMPush(ctx context.Context, token string, payload []byte, highPriority bool) (shouldDelete bool) {
+func (gmx *Gomuks) SendFCMPush(ctx context.Context, token WrappedFCMToken, payload []byte, highPriority bool) (shouldDelete bool) {
 	wrappedPayload, _ := json.Marshal(&PushRequest{
-		Token:        token,
+		Token:        token.Token,
 		Payload:      payload,
 		HighPriority: highPriority,
+		AppID:        token.AppID,
 		// User ID is sent for debugging purposes and logged in the push gateway, but not sent to Google
 		Owner: gmx.Client.Account.UserID.String(),
 	})
-	url := fmt.Sprintf("%s/_gomuks/push/fcm", gmx.Config.Push.FCMGateway)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(wrappedPayload))
+	if token.Gateway != strings.TrimPrefix(gmx.Config.Push.FCMGateway, "https://") &&
+		!slices.Contains(gmx.Config.Push.FCMGatewayWhitelist, token.Gateway) {
+		zerolog.Ctx(ctx).Warn().
+			Str("gateway", token.Gateway).
+			Msg("Push gateway is not whitelisted")
+		return
+	}
+	u := &url.URL{
+		Scheme: "https",
+		Host:   token.Gateway,
+		Path:   "/_gomuks/push/fcm",
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(wrappedPayload))
 	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Msg("Failed to create push request")
 		return
 	}
 	resp, err := pushClient.Do(req)
 	if err != nil {
-		zerolog.Ctx(ctx).Err(err).Str("push_token", token).Msg("Failed to send push request")
+		zerolog.Ctx(ctx).Err(err).Str("push_token", token.Token).Msg("Failed to send push request")
 	} else if resp.StatusCode != http.StatusOK {
 		zerolog.Ctx(ctx).Error().
 			Int("status", resp.StatusCode).
-			Str("push_token", token).
+			Str("push_token", token.Token).
 			Msg("Non-200 status while sending push request")
 		shouldDelete = resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone
 	} else {
 		pushID, _ := io.ReadAll(io.LimitReader(resp.Body, 256))
 		zerolog.Ctx(ctx).Debug().
 			Int("status", resp.StatusCode).
-			Str("push_token", token).
+			Str("push_token", token.Token).
 			Bytes("push_id", pushID).
 			Msg("Sent push request")
 	}
@@ -301,6 +322,12 @@ func (gmx *Gomuks) SendFCMPush(ctx context.Context, token string, payload []byte
 		_ = resp.Body.Close()
 	}
 	return
+}
+
+type WrappedFCMToken struct {
+	Token   string `json:"token"`
+	Gateway string `json:"gateway,omitempty"`
+	AppID   string `json:"app_id,omitempty"`
 }
 
 func (gmx *Gomuks) SendWebPush(ctx context.Context, sub *webpush.Subscription, payload []byte, important bool) (shouldDelete bool) {

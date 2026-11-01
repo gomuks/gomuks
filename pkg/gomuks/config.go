@@ -47,20 +47,23 @@ type MatrixConfig struct {
 	DisableHTTP2 bool            `yaml:"disable_http2"`
 	SetPresence  *event.Presence `yaml:"set_presence"`
 
-	InitSyncTimeout time.Duration `yaml:"init_sync_timeout"`
-	RequestTimeout  time.Duration `yaml:"request_timeout"`
+	InitSyncTimeout   time.Duration `yaml:"init_sync_timeout"`
+	RequestTimeout    time.Duration `yaml:"request_timeout"`
+	ResettableNetwork bool          `yaml:"resettable_network"`
 
 	InitialDeviceDisplayName string `yaml:"initial_device_display_name"`
 }
 
 type PushConfig struct {
-	FCMGateway      string `yaml:"fcm_gateway"`
-	VAPIDPrivateKey string `yaml:"vapid_private_key"`
-	VAPIDPublicKey  string `yaml:"vapid_public_key"`
+	FCMGateway          string   `yaml:"fcm_gateway"`
+	FCMGatewayWhitelist []string `yaml:"fcm_gateway_whitelist"`
+	VAPIDPrivateKey     string   `yaml:"vapid_private_key"`
+	VAPIDPublicKey      string   `yaml:"vapid_public_key"`
 }
 
 type MediaConfig struct {
-	ThumbnailSize int `yaml:"thumbnail_size"`
+	ThumbnailSize int  `yaml:"thumbnail_size"`
+	SharedCache   bool `yaml:"shared_cache"`
 }
 
 type WebConfig struct {
@@ -178,7 +181,14 @@ func (gmx *Gomuks) LoadConfig() error {
 		changed = true
 	}
 	if gmx.Config.Push.FCMGateway == "" {
-		gmx.Config.Push.FCMGateway = "https://push.gomuks.app"
+		gmx.Config.Push.FCMGateway = "push.gomuks.app"
+		changed = true
+	} else if strings.HasPrefix(gmx.Config.Push.FCMGateway, "https://") {
+		gmx.Config.Push.FCMGateway = strings.TrimPrefix(gmx.Config.Push.FCMGateway, "https://")
+		changed = true
+	}
+	if gmx.Config.Push.FCMGatewayWhitelist == nil {
+		gmx.Config.Push.FCMGatewayWhitelist = []string{"push.gomuks.app"}
 		changed = true
 	}
 	if gmx.Config.Push.VAPIDPrivateKey == "" {
