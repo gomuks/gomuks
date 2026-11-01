@@ -79,6 +79,7 @@ func (gs *GomuksStore) shouldHideRoom(entry *database.Room) bool {
 		return true
 	case "":
 	case "support.feline.policy.lists.msc.v1":
+	case "m.policy":
 	case "org.matrix.msc3417.call":
 	}
 	if entry.Tombstone.GetReplacementRoom() != "" {

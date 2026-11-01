@@ -287,6 +287,7 @@ export class StateStore {
 			return false
 		case "":
 		case "support.feline.policy.lists.msc.v1":
+		case "m.policy":
 		case "org.matrix.msc3417.call":
 		case "fi.mau.msc2545.image_pack":
 			return true
