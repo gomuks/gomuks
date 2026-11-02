@@ -503,3 +503,8 @@ func (gmx *Gomuks) ExecCommand(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(compressedData)
 	}
 }
+
+func isJSFetch(r *http.Request) bool {
+	secFetchDest := r.Header.Get("Sec-Fetch-Dest")
+	return secFetchDest == "" || secFetchDest == "empty"
+}

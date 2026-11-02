@@ -31,6 +31,10 @@ import (
 )
 
 func (gmx *Gomuks) GetURLPreviewHTTP(w http.ResponseWriter, r *http.Request) {
+	if !isJSFetch(r) {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
 	url := r.URL.Query().Get("url")
 	encrypt, _ := strconv.ParseBool(r.URL.Query().Get("encrypt"))
 	resp, err := gmx.GetURLPreview(r.Context(), url, encrypt)

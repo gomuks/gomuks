@@ -31,6 +31,10 @@ import (
 )
 
 func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
+	if !isJSFetch(r) {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
 	log := zerolog.Ctx(r.Context())
 	sw := newSSEWriter(w, r)
 	if sw == nil {
