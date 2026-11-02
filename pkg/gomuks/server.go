@@ -68,6 +68,8 @@ func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 	api.HandleFunc("GET /keys/restorebackup", gmx.RestoreKeyBackup)
 	api.HandleFunc("GET /keys/restorebackup/{room_id}", gmx.RestoreKeyBackup)
 	api.HandleFunc("GET /codeblock/{style}", gmx.GetCodeblockCSS)
+	api.HandleFunc("GET /theme/{id}", gmx.GetThemeProxy)
+	api.HandleFunc("GET /theme/{id}/commit/{commit}", gmx.GetThemeProxy)
 	api.HandleFunc("GET /url_preview", gmx.GetURLPreviewHTTP)
 	return exhttp.ApplyMiddleware(
 		api,
