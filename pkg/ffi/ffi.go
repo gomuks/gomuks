@@ -52,6 +52,7 @@ import (
 
 	"go.mau.fi/gomuks/pkg/gomuks"
 	"go.mau.fi/gomuks/pkg/hicli"
+	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 	"go.mau.fi/gomuks/version"
@@ -261,7 +262,7 @@ func (gmx *gomuksHandle) gomuksSubmitCommand(cmd jsoncmd.Name, reqData []byte) C
 	var res *hicli.JSONCommand
 	switch cmd {
 	case jsoncmd.ReqGetAccountInfo, jsoncmd.ReqUploadMedia, jsoncmd.ReqDownloadMedia, jsoncmd.ReqExportKeys,
-		jsoncmd.ReqGetURLPreview, jsoncmd.ReqPauseSync, jsoncmd.ReqResumeSync:
+		jsoncmd.ReqGetURLPreview, jsoncmd.ReqPauseSync, jsoncmd.ReqResumeSync, jsoncmd.ReqGetCommandDefinitions:
 		res = gmx.handleFFICommand(cmd, reqData)
 	default:
 		res = gmx.Client.SubmitJSONCommand(gmx.ctx, &hicli.JSONCommand{
@@ -423,6 +424,8 @@ func (gmx *gomuksHandle) handleFFICommand(cmd jsoncmd.Name, reqData []byte) *hic
 	case jsoncmd.ReqResetNetworkConnections:
 		gmx.Client.ResetNetworkConnections()
 		return &hicli.JSONCommand{Command: jsoncmd.RespSuccess}
+	case jsoncmd.ReqGetCommandDefinitions:
+		return wrapFFIResponse(cmdspec.CommandDefinitions, nil)
 	default:
 		panic(fmt.Errorf("invalid call to handleFFICommand(%s)", cmd))
 	}
