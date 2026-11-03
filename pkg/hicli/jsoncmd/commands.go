@@ -9,6 +9,7 @@ package jsoncmd
 import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 
@@ -124,6 +125,8 @@ const (
 	ReqExportKeys     Name = "export_keys"
 	ReqPauseSync      Name = "pause_sync"
 	ReqResumeSync     Name = "resume_sync"
+
+	ReqGetCommandDefinitions Name = "get_command_definitions"
 
 	RespError   Name = "error"
 	RespSuccess Name = "response"
@@ -377,6 +380,8 @@ var (
 	PauseSync = &CommandSpecWithoutData{Name: ReqPauseSync}
 	// ResumeSync resumes the sync loop after being paused with pause_sync. This is only available in the C FFI.
 	ResumeSync = &CommandSpecWithoutData{Name: ReqResumeSync}
+	// GetCommandDefinitions returns the MSC4391 definitions of gomuks' internal commands. This is only available in the C FFI.
+	GetCommandDefinitions = &CommandSpecWithoutRequest[[]*cmdschema.EventContent]{Name: ReqGetCommandDefinitions}
 )
 
 // Backend -> frontend event specs
@@ -489,6 +494,7 @@ var AllNames = []Name{
 	ReqExportKeys,
 	ReqPauseSync,
 	ReqResumeSync,
+	ReqGetCommandDefinitions,
 	RespError,
 	RespSuccess,
 	ReqPing,
