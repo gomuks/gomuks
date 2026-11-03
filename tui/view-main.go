@@ -34,6 +34,8 @@ import (
 	"go.mau.fi/gomuks/tui/config"
 	"go.mau.fi/gomuks/tui/debug"
 	"go.mau.fi/gomuks/tui/lib/notification"
+	"go.mau.fi/gomuks/tui/lib/termimg"
+	"go.mau.fi/gomuks/tui/messages"
 	"go.mau.fi/gomuks/tui/widget"
 )
 
@@ -49,6 +51,8 @@ type MainView struct {
 	modal mauview.Component
 
 	lastFocusTime time.Time
+
+	needsScreenSync bool
 
 	matrix *client.GomuksClient
 	config *config.Config
@@ -73,6 +77,20 @@ func (ui *GomuksTUI) NewMainView() mauview.Component {
 		AddProportionalComponent(mainView.roomView, 1)
 	mainView.BumpFocus(nil)
 
+	messages.ActiveRoomChecker = func(roomID id.RoomID) bool {
+		cur := mainView.currentRoom
+		return cur != nil && cur.Room != nil && cur.Room.ID == roomID
+	}
+	messages.RequestRedraw = func(roomID id.RoomID) {
+		cur := mainView.currentRoom
+		if cur != nil && cur.Room != nil && cur.Room.ID == roomID {
+			cur.MessageView().InvalidateTimeline()
+			if mainView.parent != nil && mainView.parent.app != nil {
+				mainView.parent.Render()
+			}
+		}
+	}
+
 	ui.MainView = mainView
 
 	return mainView
@@ -92,9 +110,20 @@ func (view *MainView) ShowModal(modal mauview.Component) {
 func (view *MainView) HideModal() {
 	view.modal = nil
 	view.focused = view.roomView
+	view.needsScreenSync = true
+	if view.parent != nil && view.parent.app != nil {
+		view.parent.Render()
+	}
 }
 
 func (view *MainView) Draw(screen mauview.Screen) {
+	if view.needsScreenSync {
+		view.needsScreenSync = false
+		if rootScreen, _, _ := termimg.GetRootScreenAndOffset(screen); rootScreen != nil {
+			rootScreen.Sync()
+		}
+	}
+
 	if view.config.Preferences.HideRoomList {
 		view.roomView.Draw(screen)
 	} else {
@@ -255,6 +284,7 @@ func (view *MainView) SwitchRoom(roomID id.RoomID) {
 	view.roomView.SetInnerComponent(currentRoom)
 	view.roomView.Focus()
 	view.MarkRead(currentRoom)
+	view.needsScreenSync = true
 	if len(ptr.Val(roomData.TimelineCache.Current())) < 50 {
 		go view.LoadHistory(roomID)
 	}
