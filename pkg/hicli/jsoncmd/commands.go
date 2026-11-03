@@ -9,6 +9,7 @@ package jsoncmd
 import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 
@@ -114,6 +115,7 @@ const (
 	ReqGetMediaConfig           Name = "get_media_config"
 	ReqCalculateRoomID          Name = "calculate_room_id"
 	ReqRerequestSession         Name = "rerequest_session"
+	ReqGetCommandDefinitions    Name = "get_command_definitions"
 
 	ReqRTCLivekitGetToken             Name = "rtc_livekit_get_token"
 	ReqRTCLivekitDelegateDelayedLeave Name = "rtc_livekit_delegate_delayed_leave"
@@ -357,6 +359,8 @@ var (
 	CalculateRoomID = &CommandSpec[*CalculateRoomIDParams, id.RoomID]{Name: ReqCalculateRoomID}
 	// RerequestSession re-requests a given Megolm session from the key backup and from other devices.
 	RerequestSession = &CommandSpecWithoutResponse[*RerequestSessionParams]{Name: ReqRerequestSession}
+	// GetCommandDefinitions returns the MSC4391 definitions of gomuks' internal commands.
+	GetCommandDefinitions = &CommandSpecWithoutRequest[[]*cmdschema.EventContent]{Name: ReqGetCommandDefinitions}
 )
 
 // FFI-specific command specs
@@ -491,6 +495,7 @@ var AllNames = []Name{
 	ReqGetMediaConfig,
 	ReqCalculateRoomID,
 	ReqRerequestSession,
+	ReqGetCommandDefinitions,
 	ReqGetAccountInfo,
 	ReqUploadMedia,
 	ReqDownloadMedia,
