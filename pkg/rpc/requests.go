@@ -219,6 +219,10 @@ func (gr *GomuksRPC) GetRoomVisibility(ctx context.Context, params *jsoncmd.GetR
 	return executeRequest(gr, ctx, jsoncmd.GetRoomVisibility, params)
 }
 
+func (gr *GomuksRPC) UpgradeRoom(ctx context.Context, params *jsoncmd.UpgradeRoomParams) (*mautrix.RespUpgradeRoom, error) {
+	return executeRequest(gr, ctx, jsoncmd.UpgradeRoom, params)
+}
+
 func (gr *GomuksRPC) RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error) {
 	return executeRequest(gr, ctx, jsoncmd.RequestOpenIDToken, nil)
 }

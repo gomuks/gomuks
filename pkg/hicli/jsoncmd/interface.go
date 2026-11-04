@@ -58,6 +58,7 @@ type GomuksAPI interface {
 	GetRoomDirectory(ctx context.Context, req *mautrix.ReqPublicRooms) (*mautrix.RespPublicRooms, error)
 	PublishRoom(ctx context.Context, params *PublishRoomParams) error
 	GetRoomVisibility(ctx context.Context, params *GetRoomVisibilityInDirectoryParams) (*RoomVisibilityResponse, error)
+	UpgradeRoom(ctx context.Context, params *UpgradeRoomParams) (*mautrix.RespUpgradeRoom, error)
 	RequestOpenIDToken(ctx context.Context) (*mautrix.RespOpenIDToken, error)
 	Logout(ctx context.Context) error
 	Login(ctx context.Context, params *LoginParams) error
