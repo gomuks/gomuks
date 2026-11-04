@@ -65,4 +65,4 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 
-replace maunium.net/go/mautrix => github.com/henry-hiles/go v0.0.0-20261104012248-d37f8e855d15
+replace maunium.net/go/mautrix => github.com/henry-hiles/go v0.0.0-20261104205448-b6dad8a83cc2
