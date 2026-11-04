@@ -88,6 +88,7 @@ const (
 	ReqGetRoomDirectory         Name = "get_room_directory"
 	ReqPublishRoom              Name = "publish_room"
 	ReqGetRoomVisibility        Name = "get_room_visibility"
+	ReqUpgradeRoom              Name = "upgrade_room"
 	ReqRequestOpenIDToken       Name = "request_openid_token"
 	ReqLogout                   Name = "logout"
 	ReqLogin                    Name = "login"
@@ -276,6 +277,8 @@ var (
 	PublishRoom = &CommandSpecWithoutResponse[*PublishRoomParams]{Name: ReqPublishRoom}
 	// GetRoomVisibility checks whether a room is published in the local server's room directory.
 	GetRoomVisibility = &CommandSpec[*GetRoomVisibilityInDirectoryParams, *RoomVisibilityResponse]{Name: ReqGetRoomVisibility}
+	// UpgradeRoom upgrades a room to a new room version, returning the ID of the replacement room.
+	UpgradeRoom = &CommandSpec[*UpgradeRoomParams, *mautrix.RespUpgradeRoom]{Name: ReqUpgradeRoom}
 	// RequestOpenIDToken returns an OpenID token from the homeserver. OpenID tokens are used to
 	// authenticate with various external services. Widgets also need this method.
 	//
@@ -466,6 +469,7 @@ var AllNames = []Name{
 	ReqGetRoomDirectory,
 	ReqPublishRoom,
 	ReqGetRoomVisibility,
+	ReqUpgradeRoom,
 	ReqRequestOpenIDToken,
 	ReqLogout,
 	ReqLogin,
