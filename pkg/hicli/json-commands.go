@@ -99,6 +99,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetEventContext.RunCtx(ctx, req.Data, h.API.GetEventContext)
 	case jsoncmd.ReqPaginateManual:
 		return jsoncmd.PaginateManual.RunCtx(ctx, req.Data, h.API.PaginateManual)
+	case jsoncmd.ReqGetThreads:
+		return jsoncmd.GetThreads.RunCtx(ctx, req.Data, h.API.GetThreads)
 	case jsoncmd.ReqSearchLocal:
 		return jsoncmd.SearchLocal.RunCtx(ctx, req.Data, h.API.SearchLocal)
 	case jsoncmd.ReqSearchServer:
@@ -429,6 +431,10 @@ func (h *JSONAPI) Paginate(ctx context.Context, params *jsoncmd.PaginateParams) 
 
 func (h *JSONAPI) PaginateManual(ctx context.Context, params *jsoncmd.PaginateManualParams) (*jsoncmd.ManualPaginationResponse, error) {
 	return h.HiClient.PaginateManual(mautrix.WithMaxRetries(ctx, 0), params.RoomID, params.ThreadRoot, params.Since, params.Direction, params.Limit)
+}
+
+func (h *JSONAPI) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return h.HiClient.GetThreads(mautrix.WithMaxRetries(ctx, 0), params)
 }
 
 func (h *JSONAPI) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {

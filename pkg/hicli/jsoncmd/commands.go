@@ -62,6 +62,7 @@ const (
 	ReqGetEventByRowID          Name = "get_event_by_rowid"
 	ReqGetEventContext          Name = "get_event_context"
 	ReqPaginateManual           Name = "paginate_manual"
+	ReqGetThreads               Name = "get_threads"
 	ReqSearchLocal              Name = "search_local"
 	ReqSearchServer             Name = "search_server"
 	ReqGetMentions              Name = "get_mentions"
@@ -211,6 +212,8 @@ var (
 	// This is used to paginate after jumping to a specific event using `get_event_context` and
 	// for normal pagination in the thread view.
 	PaginateManual = &CommandSpec[*PaginateManualParams, *ManualPaginationResponse]{Name: ReqPaginateManual}
+	// GetThreads returns a page of the thread roots in a room from the homeserver.
+	GetThreads = &CommandSpec[*GetThreadsParams, *ManualPaginationResponse]{Name: ReqGetThreads}
 	// SearchLocal searches for messages in the local database.
 	SearchLocal = &CommandSpec[*SearchParams, *ManualPaginationResponse]{Name: ReqSearchLocal}
 	// SearchServer searches for messages on the homeserver.
@@ -439,6 +442,7 @@ var AllNames = []Name{
 	ReqGetEventByRowID,
 	ReqGetEventContext,
 	ReqPaginateManual,
+	ReqGetThreads,
 	ReqSearchLocal,
 	ReqSearchServer,
 	ReqGetMentions,

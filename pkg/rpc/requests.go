@@ -139,6 +139,10 @@ func (gr *GomuksRPC) PaginateManual(ctx context.Context, params *jsoncmd.Paginat
 	return executeRequest(gr, ctx, jsoncmd.PaginateManual, params)
 }
 
+func (gr *GomuksRPC) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetThreads, params)
+}
+
 func (gr *GomuksRPC) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
 	return executeRequest(gr, ctx, jsoncmd.SearchLocal, params)
 }

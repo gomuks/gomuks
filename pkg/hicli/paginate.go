@@ -627,30 +627,72 @@ func (h *HiClient) PaginateManual(
 		chunk = resp.Chunk
 		wrappedResp.NextBatch = resp.NextBatch
 	}
-	wrappedResp.Events = make([]*database.Event, len(chunk))
-	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
 	var err error
+	wrappedResp.Events, wrappedResp.RelatedEvents, err = h.processManualChunk(ctx, roomID, chunk)
+	if err != nil {
+		return nil, err
+	}
+	return &wrappedResp, nil
+}
+
+// processManualChunk processes events fetched from the server outside of sync, returning them along with their
+// related events.
+func (h *HiClient) processManualChunk(
+	ctx context.Context,
+	roomID id.RoomID,
+	chunk []*event.Event,
+) (events, relatedEvents []*database.Event, err error) {
+	events = make([]*database.Event, len(chunk))
+	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
 	for i, evt := range chunk {
-		if wrappedResp.Events[i], err = h.processEvent(ctx, evt, nil, decryptionQueue, true); err != nil {
-			return nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
+		if events[i], err = h.processEvent(ctx, evt, nil, decryptionQueue, true); err != nil {
+			return nil, nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
 		}
 	}
 	for _, entry := range decryptionQueue {
 		err = h.DB.SessionRequest.Put(ctx, entry)
 		if err != nil {
-			return nil, fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
+			return nil, nil, fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
 		}
 	}
 	if len(decryptionQueue) > 0 {
 		h.WakeupRequestQueue()
 	}
-	wrappedResp.RelatedEvents, err = h.collectRelatedEvents(ctx, wrappedResp.Events)
+	relatedEvents, err = h.collectRelatedEvents(ctx, events)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	err = h.DB.Event.FillReactionCounts(ctx, roomID, wrappedResp.Events)
+	err = h.DB.Event.FillReactionCounts(ctx, roomID, events)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fill reaction counts: %w", err)
+		return nil, nil, fmt.Errorf("failed to fill reaction counts: %w", err)
+	}
+	return events, relatedEvents, nil
+}
+
+func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
+	resp, err := h.Client.GetThreads(ctx, params.RoomID, &mautrix.ReqGetThreads{
+		Include: params.Include,
+		From:    params.Since,
+		Limit:   params.Limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get threads from server: %w", err)
+	}
+	wrappedResp := jsoncmd.ManualPaginationResponse{
+		Events:    make([]*database.Event, 0, len(resp.Chunk)),
+		NextBatch: resp.NextBatch,
+	}
+	// Each thread is processed separately, so one invalid event doesn't fail the others
+	for _, root := range resp.Chunk {
+		events, related, err := h.processManualChunk(ctx, params.RoomID, []*event.Event{root})
+		if err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).
+				Stringer("thread_root_id", root.ID).
+				Msg("Failed to process thread root")
+			continue
+		}
+		wrappedResp.Events = append(wrappedResp.Events, events...)
+		wrappedResp.RelatedEvents = append(wrappedResp.RelatedEvents, related...)
 	}
 	return &wrappedResp, nil
 }
