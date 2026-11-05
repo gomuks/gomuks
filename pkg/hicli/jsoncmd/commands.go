@@ -215,8 +215,8 @@ var (
 	// This is used to paginate after jumping to a specific event using `get_event_context` and
 	// for normal pagination in the thread view.
 	PaginateManual = &CommandSpec[*PaginateManualParams, *ManualPaginationResponse]{Name: ReqPaginateManual}
-	// GetThreads returns a page of the thread roots in a room from the homeserver, with a summary of each thread.
-	GetThreads = &CommandSpec[*GetThreadsParams, *GetThreadsResponse]{Name: ReqGetThreads}
+	// GetThreads returns a page of the thread roots in a room from the homeserver.
+	GetThreads = &CommandSpec[*GetThreadsParams, *ManualPaginationResponse]{Name: ReqGetThreads}
 	// SearchLocal searches for messages in the local database.
 	SearchLocal = &CommandSpec[*SearchParams, *ManualPaginationResponse]{Name: ReqSearchLocal}
 	// SearchServer searches for messages on the homeserver.

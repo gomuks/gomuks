@@ -692,7 +692,7 @@ func (h *HiClient) processManualChunk(
 	return events, relatedEvents, nil
 }
 
-func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.GetThreadsResponse, error) {
+func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
 	resp, err := h.Client.GetThreads(ctx, params.RoomID, &mautrix.ReqGetThreads{
 		Include: params.Include,
 		From:    params.Since,
@@ -701,44 +701,21 @@ func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsPar
 	if err != nil {
 		return nil, fmt.Errorf("failed to get threads from server: %w", err)
 	}
-	wrappedResp := jsoncmd.GetThreadsResponse{Summaries: make(map[id.EventID]*jsoncmd.ThreadSummary, len(resp.Chunk))}
-	wrappedResp.Events = make([]*database.Event, 0, len(resp.Chunk))
-	wrappedResp.NextBatch = resp.NextBatch
+	wrappedResp := jsoncmd.ManualPaginationResponse{
+		Events:    make([]*database.Event, 0, len(resp.Chunk)),
+		NextBatch: resp.NextBatch,
+	}
 	// Each thread is processed separately, so one invalid event doesn't fail the others
 	for _, root := range resp.Chunk {
-		thread := root.Unsigned.Relations.GetThread()
 		events, related, err := h.processManualChunk(ctx, params.RoomID, []*event.Event{root})
 		if err != nil {
-			// The summary is still included, so the thread isn't lost
 			zerolog.Ctx(ctx).Warn().Err(err).
 				Stringer("thread_root_id", root.ID).
 				Msg("Failed to process thread root")
-		} else {
-			wrappedResp.Events = append(wrappedResp.Events, events...)
-			wrappedResp.RelatedEvents = append(wrappedResp.RelatedEvents, related...)
-		}
-		if thread == nil {
 			continue
 		}
-		summary := &jsoncmd.ThreadSummary{
-			Count:                   thread.Count,
-			CurrentUserParticipated: thread.CurrentUserParticipated,
-		}
-		if latest := thread.LatestEvent; latest != nil {
-			if latest.RoomID == "" {
-				latest.RoomID = params.RoomID
-			}
-			events, related, err = h.processManualChunk(ctx, params.RoomID, []*event.Event{latest})
-			if err != nil {
-				zerolog.Ctx(ctx).Warn().Err(err).
-					Stringer("thread_root_id", root.ID).
-					Msg("Failed to process latest event in thread")
-			} else {
-				summary.LatestEventID = latest.ID
-				wrappedResp.RelatedEvents = append(append(wrappedResp.RelatedEvents, events...), related...)
-			}
-		}
-		wrappedResp.Summaries[root.ID] = summary
+		wrappedResp.Events = append(wrappedResp.Events, events...)
+		wrappedResp.RelatedEvents = append(wrappedResp.RelatedEvents, related...)
 	}
 	return &wrappedResp, nil
 }
