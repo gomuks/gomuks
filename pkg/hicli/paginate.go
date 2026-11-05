@@ -678,12 +678,22 @@ func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsPar
 	if err != nil {
 		return nil, fmt.Errorf("failed to get threads from server: %w", err)
 	}
-	// Processing removes the bundled aggregations, so the thread summaries are collected first
 	wrappedResp := jsoncmd.GetThreadsResponse{Summaries: make(map[id.EventID]*jsoncmd.ThreadSummary, len(resp.Chunk))}
+	wrappedResp.Events = make([]*database.Event, 0, len(resp.Chunk))
 	wrappedResp.NextBatch = resp.NextBatch
-	var latestEvents []*event.Event
+	// Each thread is processed separately, so one invalid event doesn't fail the others
 	for _, root := range resp.Chunk {
 		thread := root.Unsigned.Relations.GetThread()
+		events, related, err := h.processManualChunk(ctx, params.RoomID, []*event.Event{root})
+		if err != nil {
+			// The summary is still included, so the thread isn't lost
+			zerolog.Ctx(ctx).Warn().Err(err).
+				Stringer("thread_root_id", root.ID).
+				Msg("Failed to process thread root")
+		} else {
+			wrappedResp.Events = append(wrappedResp.Events, events...)
+			wrappedResp.RelatedEvents = append(wrappedResp.RelatedEvents, related...)
+		}
 		if thread == nil {
 			continue
 		}
@@ -695,20 +705,18 @@ func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsPar
 			if latest.RoomID == "" {
 				latest.RoomID = params.RoomID
 			}
-			summary.LatestEventID = latest.ID
-			latestEvents = append(latestEvents, latest)
+			events, related, err = h.processManualChunk(ctx, params.RoomID, []*event.Event{latest})
+			if err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).
+					Stringer("thread_root_id", root.ID).
+					Msg("Failed to process latest event in thread")
+			} else {
+				summary.LatestEventID = latest.ID
+				wrappedResp.RelatedEvents = append(append(wrappedResp.RelatedEvents, events...), related...)
+			}
 		}
 		wrappedResp.Summaries[root.ID] = summary
 	}
-	wrappedResp.Events, wrappedResp.RelatedEvents, err = h.processManualChunk(ctx, params.RoomID, resp.Chunk)
-	if err != nil {
-		return nil, err
-	}
-	latest, latestRelated, err := h.processManualChunk(ctx, params.RoomID, latestEvents)
-	if err != nil {
-		return nil, err
-	}
-	wrappedResp.RelatedEvents = append(append(wrappedResp.RelatedEvents, latest...), latestRelated...)
 	return &wrappedResp, nil
 }
 
