@@ -433,7 +433,7 @@ func (h *JSONAPI) PaginateManual(ctx context.Context, params *jsoncmd.PaginateMa
 	return h.HiClient.PaginateManual(mautrix.WithMaxRetries(ctx, 0), params.RoomID, params.ThreadRoot, params.Since, params.Direction, params.Limit)
 }
 
-func (h *JSONAPI) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.GetThreadsResponse, error) {
+func (h *JSONAPI) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
 	return h.HiClient.GetThreads(mautrix.WithMaxRetries(ctx, 0), params)
 }
 

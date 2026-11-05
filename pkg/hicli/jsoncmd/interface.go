@@ -38,7 +38,7 @@ type GomuksAPI interface {
 	GetReceipts(ctx context.Context, params *GetReceiptsParams) (map[id.EventID][]*database.Receipt, error)
 	Paginate(ctx context.Context, params *PaginateParams) (*PaginationResponse, error)
 	PaginateManual(ctx context.Context, params *PaginateManualParams) (*ManualPaginationResponse, error)
-	GetThreads(ctx context.Context, params *GetThreadsParams) (*GetThreadsResponse, error)
+	GetThreads(ctx context.Context, params *GetThreadsParams) (*ManualPaginationResponse, error)
 	SearchLocal(ctx context.Context, params *SearchParams) (*ManualPaginationResponse, error)
 	SearchServer(ctx context.Context, params *SearchServerParams) (*ManualPaginationResponse, error)
 	GetMentions(ctx context.Context, params *GetMentionsParams) (*GetMentionsResponse, error)

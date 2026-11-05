@@ -65,19 +65,6 @@ type ManualPaginationResponse struct {
 	RelatedEvents []*database.Event `json:"related_events,omitempty"`
 }
 
-type GetThreadsResponse struct {
-	// The thread roots. The latest event in each thread is included in the related events.
-	ManualPaginationResponse
-	// Summaries of each thread, by the event ID of its root.
-	Summaries map[id.EventID]*ThreadSummary `json:"summaries"`
-}
-
-type ThreadSummary struct {
-	Count                   int        `json:"count"`
-	LatestEventID           id.EventID `json:"latest_event_id,omitempty"`
-	CurrentUserParticipated bool       `json:"current_user_participated"`
-}
-
 type GetMentionsResponse struct {
 	Events        []*database.Event `json:"events"`
 	RelatedEvents []*database.Event `json:"related_events,omitempty"`
