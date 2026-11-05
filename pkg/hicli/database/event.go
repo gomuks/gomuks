@@ -34,6 +34,7 @@ const (
 		       room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 		       unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
 		       megolm_session_id, decryption_error, send_error, reactions, own_reactions, last_edit_rowid,
+		       thread_count, thread_latest_rowid,
 		       unread_type, sticky_duration
 		FROM event
 	`
@@ -118,6 +119,18 @@ const (
 		  ))
 	`
 	updateReactionCountsQuery = `UPDATE event SET reactions = $3, own_reactions = $4 WHERE room_id = $1 AND event_id = $2`
+	updateThreadQuery         = `
+		UPDATE event
+		SET thread_count = NULLIF(MAX(COALESCE(thread_count, 0), $2), 0),
+		    thread_latest_rowid = CASE
+		        WHEN $4 > COALESCE((SELECT latest.timestamp FROM event latest WHERE latest.rowid = event.thread_latest_rowid), 0)
+		            THEN $3
+		        ELSE thread_latest_rowid
+		    END
+		WHERE rowid = $1
+		RETURNING thread_count, thread_latest_rowid
+	`
+	getThreadAggregatesQuery = `SELECT rowid, thread_count, thread_latest_rowid FROM event WHERE thread_count IS NOT NULL AND rowid IN (%s)`
 )
 
 type EventQuery struct {
@@ -336,6 +349,55 @@ func (eq *EventQuery) UpdateLastEdit(ctx context.Context, target, edit *Event) e
 	)
 }
 
+func (eq *EventQuery) UpdateThread(ctx context.Context, root *Event, count int, latest *Event) error {
+	var latestRowID, latestTimestamp any
+	if latest != nil {
+		latestRowID = latest.RowID
+		latestTimestamp = latest.Timestamp.UnixMilli()
+	}
+	var threadCount, threadLatestRowID sql.NullInt64
+	err := eq.GetDB().QueryRow(ctx, updateThreadQuery, root.RowID, count, latestRowID, latestTimestamp).
+		Scan(&threadCount, &threadLatestRowID)
+	if err != nil {
+		return err
+	}
+	root.ThreadCount = int(threadCount.Int64)
+	root.ThreadLatestRowID = EventRowID(threadLatestRowID.Int64)
+	return nil
+}
+
+type threadAggregateTuple struct {
+	rowID       EventRowID
+	count       int
+	latestRowID sql.NullInt64
+}
+
+var scanThreadAggregateTuple = dbutil.ConvertRowFn[threadAggregateTuple](func(row dbutil.Scannable) (threadAggregateTuple, error) {
+	var t threadAggregateTuple
+	err := row.Scan(&t.rowID, &t.count, &t.latestRowID)
+	return t, err
+})
+
+func (eq *EventQuery) FillThreadAggregates(ctx context.Context, events []*Event) error {
+	if len(events) == 0 {
+		return nil
+	}
+	rowIDs := make([]EventRowID, len(events))
+	eventMap := make(map[EventRowID]*Event, len(events))
+	for i, evt := range events {
+		rowIDs[i] = evt.RowID
+		eventMap[evt.RowID] = evt
+	}
+	query, params := buildMultiEventGetFunction(nil, rowIDs, getThreadAggregatesQuery)
+	return scanThreadAggregateTuple.NewRowIter(eq.GetDB().Query(ctx, query, params...)).
+		Iter(func(t threadAggregateTuple) (bool, error) {
+			evt := eventMap[t.rowID]
+			evt.ThreadCount = t.count
+			evt.ThreadLatestRowID = EventRowID(t.latestRowID.Int64)
+			return true, nil
+		})
+}
+
 type GetReactionsResult struct {
 	Events []*Event
 	Counts map[string]int
@@ -482,10 +544,12 @@ type Event struct {
 	DecryptionError string       `json:"decryption_error,omitempty"`
 	SendError       string       `json:"send_error,omitempty"`
 
-	Reactions     map[string]int          `json:"reactions,omitempty"`
-	OwnReactions  map[string][]id.EventID `json:"own_reactions,omitempty"`
-	LastEditRowID EventRowID              `json:"last_edit_rowid,omitempty"`
-	UnreadType    UnreadType              `json:"unread_type,omitempty"`
+	Reactions         map[string]int          `json:"reactions,omitempty"`
+	OwnReactions      map[string][]id.EventID `json:"own_reactions,omitempty"`
+	LastEditRowID     EventRowID              `json:"last_edit_rowid,omitempty"`
+	ThreadCount       int                     `json:"thread_count,omitempty"`
+	ThreadLatestRowID EventRowID              `json:"thread_latest_rowid,omitempty"`
+	UnreadType        UnreadType              `json:"unread_type,omitempty"`
 
 	StickyDuration jsontime.Milliseconds `json:"sticky_duration_ms,omitzero"`
 
@@ -628,7 +692,7 @@ func (e *Event) ToSyncNotification(room *Room) *SyncNotification {
 func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	var timestamp int64
 	var transactionID, redactedBy, relatesTo, relationType, megolmSessionID, decryptionError, sendError, decryptedType sql.NullString
-	var stickyDuration, lastEditRowID sql.NullInt64
+	var stickyDuration, lastEditRowID, threadCount, threadLatestRowID sql.NullInt64
 	err := row.Scan(
 		&e.RowID,
 		&e.TimelineRowID,
@@ -653,6 +717,8 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 		dbutil.JSON{Data: &e.Reactions},
 		dbutil.JSON{Data: &e.OwnReactions},
 		&lastEditRowID,
+		&threadCount,
+		&threadLatestRowID,
 		&e.UnreadType,
 		&stickyDuration,
 	)
@@ -670,6 +736,8 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 	e.SendError = sendError.String
 	e.StickyDuration = jsontime.MS(time.Duration(stickyDuration.Int64) * time.Millisecond)
 	e.LastEditRowID = EventRowID(lastEditRowID.Int64)
+	e.ThreadCount = int(threadCount.Int64)
+	e.ThreadLatestRowID = EventRowID(threadLatestRowID.Int64)
 	return e, nil
 }
 
