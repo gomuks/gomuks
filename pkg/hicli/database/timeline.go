@@ -38,6 +38,7 @@ const (
 		       event.room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 		       unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
 		       megolm_session_id, decryption_error, send_error, reactions, own_reactions, last_edit_rowid,
+		       thread_count, thread_latest_rowid,
 		       unread_type, sticky_duration
 		FROM timeline
 		JOIN event ON event.rowid = timeline.event_rowid
