@@ -127,6 +127,7 @@ export interface BaseDBEvent {
 	content: UnknownEventContent
 	unsigned: EventUnsigned
 	local_content?: LocalContent
+	unknown_top_level?: Record<string, unknown>
 
 	transaction_id?: string
 
