@@ -870,18 +870,24 @@ func (h *HiClient) processEvent(
 		}
 		return nil
 	}
-	if checkDB {
+	var oldLocalContent *database.LocalContent
+	if checkDB || evt.Unsigned.TransactionID != "" {
 		dbEvt, err := h.DB.Event.GetByID(ctx, evt.RoomID, evt.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if event %s exists: %w", evt.ID, err)
-		} else if dbEvt != nil {
+		} else if dbEvt != nil && checkDB {
 			return dbEvt, processLatestEdit(dbEvt)
+		} else if dbEvt != nil {
+			oldLocalContent = dbEvt.LocalContent
 		}
 	}
 	if err := h.fillPrevContent(ctx, evt); err != nil {
 		return nil, err
 	}
 	dbEvt := database.MautrixToEvent(evt)
+	if oldLocalContent != nil {
+		dbEvt.LocalContent = oldLocalContent
+	}
 	if h.RemoveFallbacks {
 		contentWithoutFallback := removeReplyFallback(ctx, evt)
 		if contentWithoutFallback != nil {
@@ -1052,7 +1058,7 @@ func (h *HiClient) processStateAndTimeline(
 	megolmSessionDiscarded := false
 	processNewEvent := func(evt *event.Event, isTimeline, isUnread bool) (database.EventRowID, error) {
 		evt.RoomID = room.ID
-		dbEvt, err := h.processEvent(ctx, evt, summary, decryptionQueue, evt.Unsigned.TransactionID != "")
+		dbEvt, err := h.processEvent(ctx, evt, summary, decryptionQueue, false)
 		if err != nil {
 			return -1, err
 		}
