@@ -114,6 +114,10 @@ func (gmx *Gomuks) ImportKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gmx *Gomuks) RestoreKeyBackup(w http.ResponseWriter, r *http.Request) {
+	if !isJSFetch(r) {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
 	roomID := id.RoomID(r.PathValue("room_id"))
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")

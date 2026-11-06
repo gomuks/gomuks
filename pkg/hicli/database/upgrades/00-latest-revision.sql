@@ -110,6 +110,7 @@ CREATE TABLE event (
 	decrypted_type    TEXT,
 	unsigned          TEXT    NOT NULL,
 	local_content     TEXT,
+	unknown_top_level TEXT,
 
 	transaction_id    TEXT,
 

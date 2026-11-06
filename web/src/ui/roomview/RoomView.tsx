@@ -43,6 +43,7 @@ function getViewForRoomType(roomType: RoomType | undefined): JSX.Element | null 
 	case "m.space":
 		return <SpaceView />
 	case "support.feline.policy.lists.msc.v1":
+	case "m.policy":
 		return null // TODO <PolicyListEditor />
 	case "org.matrix.msc3417.call":
 		return <ElementCall />

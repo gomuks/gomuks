@@ -34,7 +34,7 @@ const (
 		       room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 		       unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
 		       megolm_session_id, decryption_error, send_error, reactions, own_reactions, last_edit_rowid,
-		       unread_type, sticky_duration
+		       unread_type, sticky_duration, unknown_top_level
 		FROM event
 	`
 	getEventByRowID                  = getEventBaseQuery + `WHERE rowid = $1`
@@ -66,9 +66,9 @@ const (
 			room_id, event_id, sender, type, state_key, timestamp, content, decrypted, decrypted_type,
 			unsigned, local_content, transaction_id, redacted_by, relates_to, relation_type,
 			megolm_session_id, decryption_error, send_error, reactions, own_reactions, last_edit_rowid,
-			unread_type, sticky_duration
+			unread_type, sticky_duration, unknown_top_level
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
 	`
 	insertEventQuery = insertEventBaseQuery + `RETURNING rowid`
 	upsertEventQuery = insertEventBaseQuery + `
@@ -80,11 +80,13 @@ const (
 			    send_error=excluded.send_error,
 				timestamp=excluded.timestamp,
 				unsigned=COALESCE(excluded.unsigned, event.unsigned),
-				local_content=COALESCE(excluded.local_content, event.local_content)
+				local_content=COALESCE(excluded.local_content, event.local_content),
+				unknown_top_level=COALESCE(excluded.unknown_top_level, event.unknown_top_level)
 		ON CONFLICT (transaction_id) DO UPDATE
 			SET event_id=excluded.event_id,
 				timestamp=excluded.timestamp,
-				unsigned=excluded.unsigned
+				unsigned=excluded.unsigned,
+				unknown_top_level=COALESCE(excluded.unknown_top_level, event.unknown_top_level)
 		RETURNING rowid
 	`
 	updateEventSendErrorQuery        = `UPDATE event SET send_error = $2 WHERE rowid = $1`
@@ -248,17 +250,18 @@ func (eq *EventQuery) Insert(ctx context.Context, evt *Event) (rowID EventRowID,
 }
 
 var stateEventMassInserter = dbutil.NewMassInsertBuilder[*Event, [1]any](
-	strings.ReplaceAll(upsertEventQuery, "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)", "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"),
-	"($1, $%d, $%d, $%d, $%d, $%d, $%d, NULL, NULL, $%d, NULL, $%d, $%d, NULL, NULL, NULL, NULL, NULL, '{}', NULL, 0, 0, NULL)",
+	strings.ReplaceAll(upsertEventQuery, "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)", "($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"),
+	"($1, $%d, $%d, $%d, $%d, $%d, $%d, NULL, NULL, $%d, NULL, $%d, $%d, NULL, NULL, NULL, NULL, NULL, '{}', NULL, 0, 0, NULL, $%d)",
 )
 
 var massInsertConverter = dbutil.ConvertRowFn[EventRowID](dbutil.ScanSingleColumn[EventRowID])
 
-func (e *Event) GetMassInsertValues() [9]any {
-	return [9]any{
+func (e *Event) GetMassInsertValues() [10]any {
+	return [10]any{
 		e.ID, e.Sender, e.Type, e.StateKey, e.Timestamp.UnixMilli(),
 		unsafeJSONString(e.Content), unsafeJSONString(e.Unsigned),
 		dbutil.StrPtr(e.TransactionID), dbutil.StrPtr(e.RedactedBy),
+		unsafeJSONString(e.UnknownTopLevel),
 	}
 }
 
@@ -466,11 +469,12 @@ type Event struct {
 	StateKey  *string            `json:"state_key,omitempty"`
 	Timestamp jsontime.UnixMilli `json:"timestamp"`
 
-	Content       json.RawMessage `json:"content"`
-	Decrypted     json.RawMessage `json:"decrypted,omitempty"`
-	DecryptedType string          `json:"decrypted_type,omitempty"`
-	Unsigned      json.RawMessage `json:"unsigned,omitempty"`
-	LocalContent  *LocalContent   `json:"local_content,omitempty"`
+	Content         json.RawMessage `json:"content"`
+	Decrypted       json.RawMessage `json:"decrypted,omitempty"`
+	DecryptedType   string          `json:"decrypted_type,omitempty"`
+	Unsigned        json.RawMessage `json:"unsigned,omitempty"`
+	LocalContent    *LocalContent   `json:"local_content,omitempty"`
+	UnknownTopLevel json.RawMessage `json:"unknown_top_level,omitempty"`
 
 	TransactionID string `json:"transaction_id,omitempty"`
 
@@ -514,6 +518,7 @@ func MautrixToEvent(evt *event.Event) *Event {
 	}
 	dbEvt.RelatesTo, dbEvt.RelationType = getRelatesToFromEvent(evt)
 	dbEvt.Unsigned, _ = json.Marshal(&evt.Unsigned)
+	dbEvt.UnknownTopLevel = evt.Unknown
 	// We support MSC4293 redact on ban in the frontend, so don't save member events in redacted_because
 	if evt.Unsigned.RedactedBecause != nil && evt.Unsigned.RedactedBecause.Type != event.StateMember {
 		dbEvt.RedactedBy = evt.Unsigned.RedactedBecause.ID
@@ -581,6 +586,7 @@ func (e *Event) AsRawMautrix() *event.Event {
 		Timestamp: e.Timestamp.UnixMilli(),
 		Content:   event.Content{VeryRaw: e.GetContent()},
 		Mautrix:   event.MautrixInfo{WasEncrypted: e.Decrypted != nil},
+		Unknown:   e.UnknownTopLevel,
 	}
 	if e.StickyDuration.Duration > 0 {
 		evt.Sticky = &event.Sticky{Duration: e.StickyDuration}
@@ -655,6 +661,7 @@ func (e *Event) Scan(row dbutil.Scannable) (*Event, error) {
 		&lastEditRowID,
 		&e.UnreadType,
 		&stickyDuration,
+		(*[]byte)(&e.UnknownTopLevel),
 	)
 	if err != nil {
 		return nil, err
@@ -747,6 +754,7 @@ func (e *Event) sqlVariables() []any {
 		dbutil.NumPtr(e.LastEditRowID),
 		e.UnreadType,
 		dbutil.NumPtr(e.StickyDuration.Milliseconds()),
+		unsafeJSONString(e.UnknownTopLevel),
 	}
 }
 

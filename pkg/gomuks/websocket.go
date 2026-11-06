@@ -61,6 +61,10 @@ func (gmx *Gomuks) parseSocketParams(q url.Values) (resumeFrom, lastServerTS, re
 }
 
 func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
+	if !isJSFetch(r) {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
 	var conn *websocket.Conn
 	log := zerolog.Ctx(r.Context())
 	recoverPanic := func(context string, callback func()) {
