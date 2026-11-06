@@ -1,4 +1,4 @@
--- v0 -> v31 (compatible with v10+): Latest revision
+-- v0 -> v32 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -108,6 +108,7 @@ CREATE TABLE event (
 	decrypted_type    TEXT,
 	unsigned          TEXT    NOT NULL,
 	local_content     TEXT,
+	unknown_top_level TEXT,
 
 	transaction_id    TEXT,
 
