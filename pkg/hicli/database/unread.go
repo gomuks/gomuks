@@ -9,42 +9,69 @@ package database
 import (
 	"context"
 
+	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 )
 
 const (
 	// TODO find out if this needs to be wrapped in another query that limits the number of events it evaluates
 	//      (or maybe the timeline store just shouldn't be allowed to grow that big?)
+	// An event is read up to the latest receipt in its thread (the main timeline for events outside threads)
+	// or in no thread. A thread without such a receipt is unread, unless the room has no receipt at all.
+	// Keep in sync with upgrades/32-thread-unreads.sql.
 	calculateUnreadsQuery = `
-		SELECT
-			COALESCE(SUM(CASE WHEN unread_type & 0100 THEN 1 ELSE 0 END), 0) AS highlights,
-			COALESCE(SUM(CASE WHEN unread_type & 0010 THEN 1 ELSE 0 END), 0) AS notifications,
-			COALESCE(SUM(CASE WHEN unread_type & 0001 THEN 1 ELSE 0 END), 0) AS messages
-		FROM timeline
-		JOIN event ON event.rowid = timeline.event_rowid
-		WHERE timeline.room_id = $1 AND timeline.rowid > (
-			SELECT MAX(t.rowid)
+		WITH read_up_to AS (
+			SELECT r.thread_id, MAX(t.rowid) AS rowid
 			FROM receipt r
 			JOIN event e ON e.event_id = r.event_id
 			JOIN timeline t ON t.event_rowid = e.rowid
 			WHERE r.room_id = $1
 				AND r.user_id = $2
 				AND t.room_id = $1
--- 			SELECT MAX(rowid)
--- 			FROM timeline
--- 			WHERE room_id = $1 AND event_rowid IN (
--- 				SELECT event.rowid
--- 				FROM receipt
--- 				JOIN event ON receipt.event_id=event.event_id
--- 				WHERE receipt.room_id = $1 AND receipt.user_id = $2
--- 			)
-		) AND unread_type > 0 AND redacted_by IS NULL
+			GROUP BY r.thread_id
+		)
+		SELECT
+			thread_id,
+			SUM(CASE WHEN unread_type & 0100 THEN 1 ELSE 0 END) AS highlights,
+			SUM(CASE WHEN unread_type & 0010 THEN 1 ELSE 0 END) AS notifications,
+			SUM(CASE WHEN unread_type & 0001 THEN 1 ELSE 0 END) AS messages
+		FROM (
+			SELECT
+				timeline.rowid,
+				unread_type,
+				CASE WHEN event.relation_type = 'm.thread' THEN event.relates_to ELSE 'main' END AS thread_id
+			FROM timeline
+			JOIN event ON event.rowid = timeline.event_rowid
+			WHERE timeline.room_id = $1 AND unread_type > 0 AND redacted_by IS NULL
+		) unread
+		WHERE unread.rowid > COALESCE(
+			(SELECT MAX(rowid) FROM read_up_to WHERE read_up_to.thread_id IN ('', unread.thread_id)),
+			(SELECT 0 FROM read_up_to LIMIT 1)
+		)
+		GROUP BY thread_id
 	`
 )
 
-func (rq *RoomQuery) CalculateUnreads(ctx context.Context, roomID id.RoomID, userID id.UserID) (uc UnreadCounts, err error) {
-	err = rq.GetDB().QueryRow(ctx, calculateUnreadsQuery, roomID, userID).
-		Scan(&uc.UnreadHighlights, &uc.UnreadNotifications, &uc.UnreadMessages)
+// CalculateUnreads returns the unread counts of a room, in total and per thread ("main" for the main timeline).
+func (rq *RoomQuery) CalculateUnreads(ctx context.Context, roomID id.RoomID, userID id.UserID) (total UnreadCounts, threads map[event.ThreadID]UnreadCounts, err error) {
+	rows, err := rq.GetDB().Query(ctx, calculateUnreadsQuery, roomID, userID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var threadID event.ThreadID
+		var uc UnreadCounts
+		if err = rows.Scan(&threadID, &uc.UnreadHighlights, &uc.UnreadNotifications, &uc.UnreadMessages); err != nil {
+			return
+		}
+		if threads == nil {
+			threads = make(map[event.ThreadID]UnreadCounts)
+		}
+		threads[threadID] = uc
+		total.Add(uc)
+	}
+	err = rows.Err()
 	return
 }
 

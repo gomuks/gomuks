@@ -72,7 +72,14 @@ export interface DBRoom {
 	unread_highlights: number
 	unread_notifications: number
 	unread_messages: number
+	thread_unreads?: Record<EventID | "main", UnreadCounts>
 	marked_unread: boolean
+}
+
+export interface UnreadCounts {
+	unread_highlights: number
+	unread_notifications: number
+	unread_messages: number
 }
 
 export interface DBSpaceEdge {

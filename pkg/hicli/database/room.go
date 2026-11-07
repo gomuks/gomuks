@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ const (
 		SELECT room_id, creation_content, tombstone_content, name, name_quality,
 		       avatar, explicit_avatar, dm_user_id, topic, canonical_alias,
 		       lazy_load_summary, encryption_event, has_member_list, preview_event_rowid, sorting_timestamp,
-		       unread_highlights, unread_notifications, unread_messages, marked_unread, prev_batch
+		       unread_highlights, unread_notifications, unread_messages, thread_unreads, marked_unread, prev_batch
 		FROM room
 	`
 	getRoomsBySortingTimestampQuery = getRoomBaseQuery + `WHERE sorting_timestamp < $1 AND sorting_timestamp > 0 AND room_type<>'m.space' ORDER BY sorting_timestamp DESC LIMIT $2`
@@ -60,8 +61,9 @@ const (
 			unread_highlights = COALESCE($16, room.unread_highlights),
 			unread_notifications = COALESCE($17, room.unread_notifications),
 			unread_messages = COALESCE($18, room.unread_messages),
-			marked_unread = COALESCE($19, room.marked_unread),
-			prev_batch = COALESCE($20, room.prev_batch)
+			thread_unreads = $19,
+			marked_unread = COALESCE($20, room.marked_unread),
+			prev_batch = COALESCE($21, room.prev_batch)
 		WHERE room_id = $1
 	`
 	bumpRoomModTimestampQuery = `
@@ -212,7 +214,9 @@ type Room struct {
 	PreviewEventRowID EventRowID         `json:"preview_event_rowid"`
 	SortingTimestamp  jsontime.UnixMilli `json:"sorting_timestamp"`
 	UnreadCounts
-	MarkedUnread *bool `json:"marked_unread,omitempty"`
+	// ThreadUnreads splits UnreadCounts per thread root, "main" for the main timeline.
+	ThreadUnreads map[event.ThreadID]UnreadCounts `json:"thread_unreads,omitempty"`
+	MarkedUnread  *bool                           `json:"marked_unread,omitempty"`
 
 	PrevBatch string `json:"-"`
 }
@@ -316,6 +320,10 @@ func (r *Room) CheckChangesAndCopyInto(other *Room) (hasChanges, hasSyncableChan
 		other.UnreadMessages = r.UnreadMessages
 		hasChanges = true
 	}
+	if !maps.Equal(r.ThreadUnreads, other.ThreadUnreads) {
+		other.ThreadUnreads = r.ThreadUnreads
+		hasChanges = true
+	}
 	if r.MarkedUnread != nil && ptr.Val(r.MarkedUnread) != ptr.Val(other.MarkedUnread) {
 		other.MarkedUnread = r.MarkedUnread
 		hasChanges = true
@@ -350,6 +358,7 @@ func (r *Room) Scan(row dbutil.Scannable) (*Room, error) {
 		&r.UnreadHighlights,
 		&r.UnreadNotifications,
 		&r.UnreadMessages,
+		dbutil.JSON{Data: &r.ThreadUnreads},
 		&r.MarkedUnread,
 		&prevBatch,
 	)
@@ -363,6 +372,10 @@ func (r *Room) Scan(row dbutil.Scannable) (*Room, error) {
 }
 
 func (r *Room) sqlVariables() []any {
+	var threadUnreads any
+	if len(r.ThreadUnreads) > 0 {
+		threadUnreads = dbutil.JSON{Data: r.ThreadUnreads}
+	}
 	return []any{
 		r.ID,
 		dbutil.JSONPtr(r.CreationContent),
@@ -382,6 +395,7 @@ func (r *Room) sqlVariables() []any {
 		r.UnreadHighlights,
 		r.UnreadNotifications,
 		r.UnreadMessages,
+		threadUnreads,
 		r.MarkedUnread,
 		dbutil.StrPtr(r.PrevBatch),
 	}

@@ -39,6 +39,7 @@ CREATE TABLE room (
 	unread_highlights    INTEGER NOT NULL DEFAULT 0,
 	unread_notifications INTEGER NOT NULL DEFAULT 0,
 	unread_messages      INTEGER NOT NULL DEFAULT 0,
+	thread_unreads       TEXT,
 	marked_unread        INTEGER NOT NULL DEFAULT false,
 
 	prev_batch           TEXT,

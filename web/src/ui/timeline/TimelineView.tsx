@@ -69,14 +69,20 @@ const TimelineView = () => {
 	}, [client.userID, roomCtx, timeline])
 	useEffect(() => {
 		const newestEvent = timeline[timeline.length - 1]
+		const meta = room.meta.current
+		// Own events only mark their own thread as read, so sending one marks the rest of the room read here,
+		// wherever the timeline is scrolled.
+		const ownWithUnreads = newestEvent?.sender === client.userID
+			&& (meta.unread_messages > 0 || meta.unread_notifications > 0 || meta.unread_highlights > 0)
 		if (
-			roomCtx.scrolledToBottom
-			&& focused
+			focused
 			&& newestEvent
 			&& newestEvent.timeline_rowid > 0
-			&& (room.meta.current.marked_unread
-				|| (room.readUpToRow < newestEvent.timeline_rowid
-					&& newestEvent.sender !== client.userID))
+			&& ((roomCtx.scrolledToBottom
+				&& (meta.marked_unread
+					|| (room.readUpToRow < newestEvent.timeline_rowid
+						&& newestEvent.sender !== client.userID)))
+				|| (ownWithUnreads && !meta.marked_unread && room.readUpToRow < newestEvent.timeline_rowid))
 		) {
 			room.readUpToRow = newestEvent.timeline_rowid
 			room.meta.current.marked_unread = false
