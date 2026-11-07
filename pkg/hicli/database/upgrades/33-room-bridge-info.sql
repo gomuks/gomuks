@@ -1,4 +1,4 @@
--- v32 (compatible with v10+): Add bridge info to rooms
+-- v33 (compatible with v10+): Add bridge info to rooms
 ALTER TABLE room ADD COLUMN bridge_info TEXT;
 
 UPDATE room
