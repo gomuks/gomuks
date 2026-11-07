@@ -28,7 +28,7 @@ const (
 		SELECT room_id, creation_content, tombstone_content, name, name_quality,
 		       avatar, explicit_avatar, dm_user_id, topic, canonical_alias,
 		       lazy_load_summary, encryption_event, has_member_list, preview_event_rowid, sorting_timestamp,
-		       unread_highlights, unread_notifications, unread_messages, marked_unread, prev_batch
+		       unread_highlights, unread_notifications, unread_messages, marked_unread, prev_batch, bridge_info
 		FROM room
 	`
 	getRoomsBySortingTimestampQuery = getRoomBaseQuery + `WHERE sorting_timestamp < $1 AND sorting_timestamp > 0 AND room_type<>'m.space' ORDER BY sorting_timestamp DESC LIMIT $2`
@@ -61,7 +61,8 @@ const (
 			unread_notifications = COALESCE($17, room.unread_notifications),
 			unread_messages = COALESCE($18, room.unread_messages),
 			marked_unread = COALESCE($19, room.marked_unread),
-			prev_batch = COALESCE($20, room.prev_batch)
+			prev_batch = COALESCE($20, room.prev_batch),
+			bridge_info = COALESCE($21, room.bridge_info)
 		WHERE room_id = $1
 	`
 	bumpRoomModTimestampQuery = `
@@ -182,6 +183,26 @@ func (rq *RoomQuery) RecalculatePreview(ctx context.Context, roomID id.RoomID) (
 
 type NameQuality int
 
+type BridgeInfoSection struct {
+	ID          string              `json:"id,omitempty"`
+	DisplayName string              `json:"displayname,omitempty"`
+	AvatarURL   id.ContentURIString `json:"avatar_url,omitempty"`
+	ExternalURL string              `json:"external_url,omitempty"`
+}
+
+type BridgeInfo struct {
+	Protocol      BridgeInfoSection  `json:"protocol"`
+	Network       *BridgeInfoSection `json:"network,omitempty"`
+	SourceEventTS int64              `json:"-"`
+}
+
+func (bi *BridgeInfo) Equals(other *BridgeInfo) bool {
+	if bi == nil || other == nil {
+		return bi == nil && other == nil
+	}
+	return bi.Protocol == other.Protocol && ptr.Val(bi.Network) == ptr.Val(other.Network)
+}
+
 const (
 	NameQualityNil NameQuality = iota
 	NameQualityParticipants
@@ -208,6 +229,8 @@ type Room struct {
 
 	EncryptionEvent *event.EncryptionEventContent `json:"encryption_event,omitempty"`
 	HasMemberList   bool                          `json:"has_member_list"`
+
+	BridgeInfo *BridgeInfo `json:"bridge_info,omitempty"`
 
 	PreviewEventRowID EventRowID         `json:"preview_event_rowid"`
 	SortingTimestamp  jsontime.UnixMilli `json:"sorting_timestamp"`
@@ -250,6 +273,7 @@ func (r *Room) VisibleMetaIsEqual(other *Room) bool {
 		ptr.Val(r.DMUserID) == ptr.Val(other.DMUserID) &&
 		r.LazyLoadSummary.Equal(other.LazyLoadSummary) &&
 		ptr.Val(r.EncryptionEvent).Algorithm == ptr.Val(other.EncryptionEvent).Algorithm &&
+		r.BridgeInfo.Equals(other.BridgeInfo) &&
 		r.HasMemberList == other.HasMemberList
 }
 
@@ -286,6 +310,10 @@ func (r *Room) CheckChangesAndCopyInto(other *Room) (hasChanges, hasSyncableChan
 	}
 	if r.LazyLoadSummary != nil {
 		other.LazyLoadSummary = r.LazyLoadSummary
+		hasChanges = true
+	}
+	if r.BridgeInfo != nil && !r.BridgeInfo.Equals(other.BridgeInfo) {
+		other.BridgeInfo = r.BridgeInfo
 		hasChanges = true
 	}
 	if r.EncryptionEvent != nil && other.EncryptionEvent == nil {
@@ -352,6 +380,7 @@ func (r *Room) Scan(row dbutil.Scannable) (*Room, error) {
 		&r.UnreadMessages,
 		&r.MarkedUnread,
 		&prevBatch,
+		dbutil.JSON{Data: &r.BridgeInfo},
 	)
 	if err != nil {
 		return nil, err
@@ -384,6 +413,7 @@ func (r *Room) sqlVariables() []any {
 		r.UnreadMessages,
 		r.MarkedUnread,
 		dbutil.StrPtr(r.PrevBatch),
+		dbutil.JSONPtr(r.BridgeInfo),
 	}
 }
 
