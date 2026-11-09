@@ -508,3 +508,8 @@ func isJSFetch(r *http.Request) bool {
 	secFetchDest := r.Header.Get("Sec-Fetch-Dest")
 	return secFetchDest == "" || secFetchDest == "empty"
 }
+
+func isJSWebsocket(r *http.Request) bool {
+	secFetchDest := r.Header.Get("Sec-Fetch-Dest")
+	return secFetchDest == "" || secFetchDest == "empty" || secFetchDest == "websocket"
+}

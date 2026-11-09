@@ -61,7 +61,7 @@ func (gmx *Gomuks) parseSocketParams(q url.Values) (resumeFrom, lastServerTS, re
 }
 
 func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
-	if !isJSFetch(r) {
+	if !isJSWebsocket(r) {
 		w.WriteHeader(http.StatusTeapot)
 		return
 	}
