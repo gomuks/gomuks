@@ -23,13 +23,13 @@ jobs:
         run: ./export-go-data.sh
 
       - name: Run tsc
-        run: tsc --noEmit
+        run: ./node_modules/.bin/tsc --noEmit
 
       - name: Run ESLint
         run: npm run lint
 
       - name: Run tsc for desktop
-        run: cd ../desktop && tsc --noEmit
+        run: cd ../desktop && ./node_modules/.bin/tsc --noEmit
 
       - name: Run ESLint for desktop
         run: cd ../desktop && npm run lint
