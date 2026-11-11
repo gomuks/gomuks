@@ -654,8 +654,56 @@ func (h *HiClient) PaginateManual(
 			return nil, fmt.Errorf("failed to process event #%d: %w", i+1, err)
 		}
 	}
+	wrappedResp.RelatedEvents, err = h.finishManualChunk(ctx, roomID, wrappedResp.Events, decryptionQueue)
+	if err != nil {
+		return nil, err
+	}
+	return &wrappedResp, nil
+}
+
+func (h *HiClient) GetThreads(ctx context.Context, params *jsoncmd.GetThreadsParams) (*jsoncmd.ManualPaginationResponse, error) {
+	resp, err := h.Client.GetThreads(ctx, params.RoomID, &mautrix.ReqGetThreads{
+		Include: params.Include,
+		From:    params.Since,
+		Limit:   params.Limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get threads from server: %w", err)
+	}
+	wrappedResp := jsoncmd.ManualPaginationResponse{
+		Events:    make([]*database.Event, 0, len(resp.Chunk)),
+		NextBatch: resp.NextBatch,
+	}
+	decryptionQueue := make(map[id.SessionID]*database.SessionRequest)
+	// Roots are processed separately, so one invalid event doesn't fail the others.
+	// Processing stores the thread summary in the root's thread aggregates.
+	for _, root := range resp.Chunk {
+		dbEvt, err := h.processEvent(ctx, root, nil, decryptionQueue, true)
+		if err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).
+				Stringer("thread_root_id", root.ID).
+				Msg("Failed to process thread root")
+			continue
+		}
+		wrappedResp.Events = append(wrappedResp.Events, dbEvt)
+	}
+	wrappedResp.RelatedEvents, err = h.finishManualChunk(ctx, params.RoomID, wrappedResp.Events, decryptionQueue)
+	if err != nil {
+		return nil, err
+	}
+	return &wrappedResp, nil
+}
+
+// finishManualChunk saves session requests for events fetched from the server outside of sync,
+// then fills in their aggregates and returns their related events.
+func (h *HiClient) finishManualChunk(
+	ctx context.Context,
+	roomID id.RoomID,
+	events []*database.Event,
+	decryptionQueue map[id.SessionID]*database.SessionRequest,
+) ([]*database.Event, error) {
 	for _, entry := range decryptionQueue {
-		err = h.DB.SessionRequest.Put(ctx, entry)
+		err := h.DB.SessionRequest.Put(ctx, entry)
 		if err != nil {
 			return nil, fmt.Errorf("failed to save session request for %s: %w", entry.SessionID, err)
 		}
@@ -663,19 +711,19 @@ func (h *HiClient) PaginateManual(
 	if len(decryptionQueue) > 0 {
 		h.WakeupRequestQueue()
 	}
-	err = h.DB.Event.FillThreadAggregates(ctx, wrappedResp.Events)
+	err := h.DB.Event.FillThreadAggregates(ctx, events)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fill thread aggregates: %w", err)
 	}
-	wrappedResp.RelatedEvents, err = h.collectRelatedEvents(ctx, wrappedResp.Events)
+	relatedEvents, err := h.collectRelatedEvents(ctx, events)
 	if err != nil {
 		return nil, err
 	}
-	err = h.DB.Event.FillReactionCounts(ctx, roomID, wrappedResp.Events)
+	err = h.DB.Event.FillReactionCounts(ctx, roomID, events)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fill reaction counts: %w", err)
 	}
-	return &wrappedResp, nil
+	return relatedEvents, nil
 }
 
 func (h *HiClient) SearchLocal(ctx context.Context, params *jsoncmd.SearchParams) (*jsoncmd.ManualPaginationResponse, error) {
