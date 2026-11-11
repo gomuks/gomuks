@@ -1,4 +1,3 @@
--- v33 (compatible with v10+): Add thread aggregates
 ALTER TABLE event ADD COLUMN thread_count INTEGER;
 ALTER TABLE event ADD COLUMN thread_latest_rowid INTEGER;
 

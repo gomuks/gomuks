@@ -19,4 +19,5 @@ var Table = dbutil.BuildUpgradeTable().
 	WithFS(upgrades).
 	With(upgradeV17).
 	With(upgradeV27).
+	With(upgradeV33).
 	Finish()
