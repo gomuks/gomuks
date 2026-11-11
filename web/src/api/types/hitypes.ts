@@ -50,6 +50,18 @@ export enum RoomNameQuality {
 	Explicit,
 }
 
+export interface BridgeInfoSection {
+	id?: string
+	displayname?: string
+	avatar_url?: ContentURI
+	external_url?: string
+}
+
+export interface BridgeInfo {
+	protocol: BridgeInfoSection
+	network?: BridgeInfoSection
+}
+
 export interface DBRoom {
 	room_id: RoomID
 	creation_content?: CreateEventContent
@@ -66,6 +78,8 @@ export interface DBRoom {
 
 	encryption_event?: EncryptionEventContent
 	has_member_list: boolean
+
+	bridge_info?: BridgeInfo
 
 	preview_event_rowid: EventRowID
 	sorting_timestamp: number

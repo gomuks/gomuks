@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
-import { getRoomAvatarThumbnailURL } from "@/api/media.ts"
+import { getBridgeIconURL, getRoomAvatarThumbnailURL } from "@/api/media.ts"
 import { RoomListEntry, useRoomMember } from "@/api/statestore"
 import type { MemDBEvent, MemberEventContent } from "@/api/types"
 import useContentVisibility from "@/util/contentvisibility.ts"
@@ -31,6 +31,7 @@ export interface RoomListEntryProps {
 	isActive: boolean
 	hidden: boolean
 	hideAvatar?: boolean
+	showBridgeIcon?: boolean
 }
 
 function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): [string, JSX.Element | null] {
@@ -56,16 +57,31 @@ function getPreviewText(evt?: MemDBEvent, senderMemberEvt?: MemDBEvent | null): 
 	return ["", null]
 }
 
-function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previewSender?: MemDBEvent | null) {
+function renderEntry(
+	room: RoomListEntry,
+	hideAvatar: boolean | undefined,
+	showBridgeIcon: boolean | undefined,
+	previewSender?: MemDBEvent | null,
+) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.preview_event, previewSender)
+	const bridgeIconURL = !hideAvatar && showBridgeIcon ? getBridgeIconURL(room.bridge_info) : undefined
 
 	return <>
-		<img
-			loading="lazy"
-			className="avatar room-avatar"
-			src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
-			alt=""
-		/>
+		<div className="room-avatar-wrapper">
+			<img
+				loading="lazy"
+				className="avatar room-avatar"
+				src={getRoomAvatarThumbnailURL(room, undefined, hideAvatar)}
+				alt=""
+			/>
+			{bridgeIconURL && <img
+				loading="lazy"
+				className="bridge-icon"
+				src={bridgeIconURL}
+				title={room.bridge_info?.network?.displayname || room.bridge_info?.protocol?.displayname}
+				alt=""
+			/>}
+		</div>
 		<div className="room-name">{room.name}</div>
 		{room.preview_event ? <div className="room-entry-timestamp">
 			{formatPreviewTime(newSafeDate(room.preview_event?.timestamp))}
@@ -75,7 +91,7 @@ function renderEntry(room: RoomListEntry, hideAvatar: boolean | undefined, previ
 	</>
 }
 
-const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
+const Entry = ({ room, isActive, hidden, hideAvatar, showBridgeIcon }: RoomListEntryProps) => {
 	const [isVisible, divRef] = useContentVisibility<HTMLDivElement>()
 	const openModal = use(ModalContext)
 	const mainScreen = use(MainScreenContext)
@@ -139,7 +155,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
 	>
-		{isVisible ? renderEntry(room, hideAvatar, previewSender) : null}
+		{isVisible ? renderEntry(room, hideAvatar, showBridgeIcon, previewSender) : null}
 	</div>
 }
 

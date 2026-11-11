@@ -84,6 +84,12 @@ export const preferences = {
 		allowedContexts: anyGlobalContext,
 		defaultValue: false,
 	}),
+	show_bridge_icons: new Preference<boolean>({
+		displayName: "Show bridge network icons",
+		description: "Whether to overlay the bridge network icon (e.g. Signal, WhatsApp) on the avatars of bridged rooms.",
+		allowedContexts: anyGlobalContext,
+		defaultValue: true,
+	}),
 	code_block_line_wrap: new Preference<boolean>({
 		displayName: "Code block line wrap",
 		description: "Whether to wrap long lines in code blocks instead of scrolling horizontally.",

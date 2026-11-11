@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { parseMXC } from "@/util/validation.ts"
 import { fakeGomuksMember } from "./statestore"
-import { ContentURI, RoomID, UserID, UserProfile } from "./types"
+import { BridgeInfo, ContentURI, RoomID, UserID, UserProfile } from "./types"
 
 export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | undefined => {
 	const [server, mediaID] = parseMXC(mxc)
@@ -145,4 +145,14 @@ export const getRoomAvatarThumbnailURL = (
 	forceFallback = false,
 ): string | undefined => {
 	return getRoomAvatarURL(room, avatarOverride, true, forceFallback)
+}
+
+export const getBridgeIconURL = (bridgeInfo?: BridgeInfo): string | undefined => {
+	const avatarURL = bridgeInfo?.network?.avatar_url || bridgeInfo?.protocol?.avatar_url
+	const [server, mediaID] = parseMXC(avatarURL)
+	if (!mediaID) {
+		return undefined
+	}
+	const url = `_gomuks/media/${server}/${mediaID}?encrypted=false`
+	return disableThumbnails ? url : `${url}&thumbnail=avatar`
 }
