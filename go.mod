@@ -41,7 +41,7 @@ require (
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.32.1-0.20261026201327-6f9dd978a971
+	maunium.net/go/mautrix v0.32.1-0.20261111012930-42a816520b2b
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -64,5 +64,3 @@ require (
 	golang.org/x/term v0.47.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
-
-replace maunium.net/go/mautrix => github.com/henry-hiles/go v0.0.0-20261104205441-b4477809c8af
