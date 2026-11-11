@@ -852,7 +852,31 @@ func (h *HiClient) processEvent(
 	checkDB bool,
 ) (*database.Event, error) {
 	latestEdit := evt.Unsigned.Relations.GetLatestEdit()
+	thread := evt.Unsigned.Relations.GetThread()
 	evt.Unsigned.Relations = nil // we don't want to save this to the database
+	processThread := func(dbEvt *database.Event) {
+		if thread == nil {
+			return
+		}
+		var dbLatest *database.Event
+		if latest := thread.LatestEvent; latest != nil && (latest.RoomID == "" || latest.RoomID == evt.RoomID) {
+			latest.RoomID = evt.RoomID
+			var err error
+			dbLatest, err = h.processEvent(ctx, latest, llSummary, decryptionQueue, true)
+			if err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).
+					Stringer("event_id", evt.ID).
+					Msg("Failed to process latest event in thread")
+				dbLatest = nil
+			}
+		}
+		err := h.DB.Event.UpdateThread(ctx, dbEvt, thread.Count, dbLatest)
+		if err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).
+				Stringer("event_id", evt.ID).
+				Msg("Failed to update thread aggregation")
+		}
+	}
 	processLatestEdit := func(dbEvt *database.Event) error {
 		if latestEdit != nil && (latestEdit.RoomID == "" || latestEdit.RoomID == evt.RoomID) {
 			latestEdit.RoomID = evt.RoomID
@@ -876,6 +900,7 @@ func (h *HiClient) processEvent(
 		if err != nil {
 			return nil, fmt.Errorf("failed to check if event %s exists: %w", evt.ID, err)
 		} else if dbEvt != nil && checkDB {
+			processThread(dbEvt)
 			return dbEvt, processLatestEdit(dbEvt)
 		} else if dbEvt != nil {
 			oldLocalContent = dbEvt.LocalContent
@@ -924,6 +949,7 @@ func (h *HiClient) processEvent(
 	if err != nil {
 		return dbEvt, err
 	}
+	processThread(dbEvt)
 	if decryptedMautrixEvt != nil {
 		h.cacheMedia(ctx, decryptedMautrixEvt, dbEvt.RowID)
 	} else {
@@ -1032,6 +1058,17 @@ func (h *HiClient) processStateAndTimeline(
 		}
 		return dbEvt, nil
 	}
+	// The thread's latest event is added too, as it may not be one the frontend has, like after a redaction
+	addThreadRoot := func(rootID id.EventID) error {
+		root, err := addOldEvent(0, rootID)
+		if err != nil || root == nil || root.ThreadLatestRowID == 0 {
+			return err
+		} else if _, alreadyAdded := addedEvents[root.ThreadLatestRowID]; alreadyAdded {
+			return nil
+		}
+		_, err = addOldEvent(root.ThreadLatestRowID, "")
+		return err
+	}
 	processRedaction := func(evt *event.Event) error {
 		dbEvt, err := addOldEvent(0, evt.Redacts)
 		if err != nil {
@@ -1047,6 +1084,11 @@ func (h *HiClient) processStateAndTimeline(
 			_, err = addOldEvent(0, dbEvt.RelatesTo)
 			if err != nil {
 				return fmt.Errorf("failed to get relation target of redaction target: %w", err)
+			}
+		} else if dbEvt.RelationType == event.RelThread {
+			err = addThreadRoot(dbEvt.RelatesTo)
+			if err != nil {
+				return fmt.Errorf("failed to get thread root of redaction target: %w", err)
 			}
 		}
 		if updatedRoom.PreviewEventRowID == dbEvt.RowID || (updatedRoom.PreviewEventRowID == 0 && room.PreviewEventRowID == dbEvt.RowID) {
@@ -1113,6 +1155,12 @@ func (h *HiClient) processStateAndTimeline(
 			_, err = addOldEvent(0, replyTo)
 			if err != nil {
 				return -1, fmt.Errorf("failed to get reply target of event: %w", err)
+			}
+		}
+		if dbEvt.RelationType == event.RelThread {
+			err = addThreadRoot(dbEvt.RelatesTo)
+			if err != nil {
+				return -1, fmt.Errorf("failed to get thread root of event: %w", err)
 			}
 		}
 		return dbEvt.RowID, nil

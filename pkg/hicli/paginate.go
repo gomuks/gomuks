@@ -331,6 +331,10 @@ func (h *HiClient) Paginate(ctx context.Context, roomID id.RoomID, maxTimelineID
 			return nil, err
 		}
 	}
+	err = h.DB.Event.FillThreadAggregates(ctx, resp.Events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fill thread aggregates: %w", err)
+	}
 	resp.RelatedEvents, err = h.collectRelatedEvents(ctx, resp.Events)
 	if err != nil {
 		return nil, err
@@ -358,6 +362,17 @@ func (h *HiClient) collectRelatedEvents(ctx context.Context, events []*database.
 			dbEvt, err := h.DB.Event.GetByID(ctx, evt.RoomID, replyTo)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get reply-to event: %w", err)
+			} else if dbEvt != nil {
+				h.ReprocessExistingEvent(ctx, dbEvt)
+				relatedEvents = append(relatedEvents, dbEvt)
+				addedEventIDs.Add(dbEvt.ID)
+				addedEventRowIDs.Add(dbEvt.RowID)
+			}
+		}
+		if evt.ThreadLatestRowID != 0 && !addedEventRowIDs.Has(evt.ThreadLatestRowID) {
+			dbEvt, err := h.DB.Event.GetByRowID(ctx, evt.ThreadLatestRowID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get latest event in thread: %w", err)
 			} else if dbEvt != nil {
 				h.ReprocessExistingEvent(ctx, dbEvt)
 				relatedEvents = append(relatedEvents, dbEvt)
@@ -582,6 +597,10 @@ func (h *HiClient) GetEventContext(ctx context.Context, roomID id.RoomID, eventI
 	allEvents[0] = wrappedResp.Event
 	allEvents = append(allEvents, wrappedResp.Before...)
 	allEvents = append(allEvents, wrappedResp.After...)
+	err = h.DB.Event.FillThreadAggregates(ctx, allEvents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fill thread aggregates: %w", err)
+	}
 	wrappedResp.RelatedEvents, err = h.collectRelatedEvents(ctx, allEvents)
 	if err != nil {
 		return nil, err
@@ -643,6 +662,10 @@ func (h *HiClient) PaginateManual(
 	}
 	if len(decryptionQueue) > 0 {
 		h.WakeupRequestQueue()
+	}
+	err = h.DB.Event.FillThreadAggregates(ctx, wrappedResp.Events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fill thread aggregates: %w", err)
 	}
 	wrappedResp.RelatedEvents, err = h.collectRelatedEvents(ctx, wrappedResp.Events)
 	if err != nil {

@@ -1,4 +1,4 @@
--- v0 -> v32 (compatible with v10+): Latest revision
+-- v0 -> v33 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -123,6 +123,8 @@ CREATE TABLE event (
 	reactions         TEXT,
 	own_reactions     TEXT,
 	last_edit_rowid   INTEGER,
+	thread_count      INTEGER,
+	thread_latest_rowid INTEGER,
 	unread_type       INTEGER NOT NULL DEFAULT 0,
 	sticky_duration   INTEGER,
 
@@ -306,6 +308,102 @@ BEGIN
 	  AND room_id = NEW.room_id
 	  AND NEW.sender IN (SELECT user_id FROM account)
 	  AND own_reactions IS NOT NULL;
+END;
+
+CREATE VIEW thread_reply AS
+	SELECT rowid, room_id, relates_to, timestamp
+	FROM event
+	WHERE relation_type = 'm.thread'
+	  AND redacted_by IS NULL
+	  AND event_id LIKE '$%';
+
+CREATE TRIGGER event_insert_fill_thread
+	AFTER INSERT
+	ON event
+	WHEN NEW.relation_type IS NULL
+		AND EXISTS (SELECT 1 FROM thread_reply WHERE room_id = NEW.room_id AND relates_to = NEW.event_id)
+BEGIN
+	UPDATE event
+	SET thread_count = (
+		SELECT COUNT(*) FROM thread_reply reply WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id
+	), thread_latest_rowid = (
+		SELECT reply.rowid
+		FROM thread_reply reply
+		WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id
+		ORDER BY reply.timestamp DESC
+		LIMIT 1
+	)
+	WHERE rowid = NEW.rowid;
+END;
+
+CREATE TRIGGER event_insert_update_thread
+	AFTER INSERT
+	ON event
+	WHEN NEW.relation_type = 'm.thread'
+		AND NEW.redacted_by IS NULL
+		AND NEW.event_id LIKE '$%'
+BEGIN
+	UPDATE event
+	SET thread_count = MAX(
+		COALESCE(thread_count, 0) + (
+			NEW.timestamp > COALESCE((SELECT latest.timestamp FROM event latest WHERE latest.rowid = event.thread_latest_rowid), 0)
+		),
+		(SELECT COUNT(*) FROM thread_reply reply WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id)
+	), thread_latest_rowid = CASE
+		WHEN NEW.timestamp > COALESCE((SELECT latest.timestamp FROM event latest WHERE latest.rowid = event.thread_latest_rowid), 0)
+			THEN NEW.rowid
+		ELSE thread_latest_rowid
+	END
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id;
+END;
+
+CREATE TRIGGER event_send_complete_update_thread
+	AFTER UPDATE
+	ON event
+	WHEN NEW.relation_type = 'm.thread'
+		AND NEW.redacted_by IS NULL
+		AND OLD.event_id LIKE '~%'
+		AND NEW.event_id LIKE '$%'
+BEGIN
+	UPDATE event
+	SET thread_count = MAX(
+		COALESCE(thread_count, 0) + (
+			NEW.timestamp > COALESCE((SELECT latest.timestamp FROM event latest WHERE latest.rowid = event.thread_latest_rowid), 0)
+		),
+		(SELECT COUNT(*) FROM thread_reply reply WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id)
+	), thread_latest_rowid = CASE
+		WHEN NEW.timestamp > COALESCE((SELECT latest.timestamp FROM event latest WHERE latest.rowid = event.thread_latest_rowid), 0)
+			THEN NEW.rowid
+		ELSE thread_latest_rowid
+	END
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id;
+END;
+
+CREATE TRIGGER event_redact_update_thread
+	AFTER UPDATE
+	ON event
+	WHEN NEW.relation_type = 'm.thread'
+		AND OLD.redacted_by IS NULL
+		AND NEW.redacted_by IS NOT NULL
+BEGIN
+	UPDATE event
+	SET thread_count = NULLIF(MAX(
+		COALESCE(thread_count, 0) - 1,
+		(SELECT COUNT(*) FROM thread_reply reply WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id)
+	), 0), thread_latest_rowid = CASE
+		WHEN thread_latest_rowid = NEW.rowid THEN (
+			SELECT reply.rowid
+			FROM thread_reply reply
+			WHERE reply.room_id = event.room_id AND reply.relates_to = event.event_id
+			ORDER BY reply.timestamp DESC
+			LIMIT 1
+		)
+		ELSE thread_latest_rowid
+	END
+	WHERE event_id = NEW.relates_to
+	  AND room_id = NEW.room_id;
 END;
 
 CREATE VIRTUAL TABLE event_search USING fts5 (
