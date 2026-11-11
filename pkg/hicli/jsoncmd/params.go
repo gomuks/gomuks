@@ -234,6 +234,11 @@ type RoomVisibilityResponse struct {
 	Visibility mautrix.RoomDirectoryVisibility `json:"visibility"`
 }
 
+type UpgradeRoomParams struct {
+	*mautrix.ReqUpgradeRoom
+	RoomID id.RoomID `json:"room_id"`
+}
+
 type LoginParams struct {
 	HomeserverURL string `json:"homeserver_url"`
 	Username      string `json:"username"`
