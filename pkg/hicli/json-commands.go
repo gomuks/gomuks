@@ -21,11 +21,13 @@ import (
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
 
+	"go.mau.fi/gomuks/pkg/hicli/cmdspec"
 	"go.mau.fi/gomuks/pkg/hicli/database"
 	"go.mau.fi/gomuks/pkg/hicli/jsoncmd"
 )
@@ -203,6 +205,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.CalculateRoomID.RunCtx(ctx, req.Data, h.API.CalculateRoomID)
 	case jsoncmd.ReqRerequestSession:
 		return jsoncmd.RerequestSession.RunCtx(ctx, req.Data, h.API.RerequestSession)
+	case jsoncmd.ReqGetCommandDefinitions:
+		return jsoncmd.GetCommandDefinitions.RunCtx(ctx, req.Data, h.API.GetCommandDefinitions)
 	default:
 		return nil, fmt.Errorf("unknown command %q", req.Command)
 	}
@@ -809,6 +813,10 @@ func (h *JSONAPI) GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig,
 
 func (h *JSONAPI) CalculateRoomID(ctx context.Context, params *jsoncmd.CalculateRoomIDParams) (id.RoomID, error) {
 	return h.HiClient.CalculateRoomID(params.Timestamp, params.CreationContent)
+}
+
+func (h *JSONAPI) GetCommandDefinitions(ctx context.Context) ([]*cmdschema.EventContent, error) {
+	return cmdspec.CommandDefinitions, nil
 }
 
 func (h *JSONAPI) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 
@@ -82,4 +83,5 @@ type GomuksAPI interface {
 	RTCLivekitDelegateDelayedLeave(ctx context.Context, req *mautrix.ReqRTCLivekitDelegateDelayedLeave) (*mautrix.RespRTCLivekitDelegateDelayedLeave, error)
 	GetMediaConfig(ctx context.Context) (*mautrix.RespMediaConfig, error)
 	CalculateRoomID(ctx context.Context, params *CalculateRoomIDParams) (id.RoomID, error)
+	GetCommandDefinitions(ctx context.Context) ([]*cmdschema.EventContent, error)
 }

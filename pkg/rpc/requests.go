@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/event/cmdschema"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 
@@ -317,4 +318,8 @@ func (gr *GomuksRPC) CalculateRoomID(ctx context.Context, params *jsoncmd.Calcul
 
 func (gr *GomuksRPC) RerequestSession(ctx context.Context, params *jsoncmd.RerequestSessionParams) error {
 	return executeRequestNoResponse(gr, ctx, jsoncmd.RerequestSession, params)
+}
+
+func (gr *GomuksRPC) GetCommandDefinitions(ctx context.Context) ([]*cmdschema.EventContent, error) {
+	return executeRequest(gr, ctx, jsoncmd.GetCommandDefinitions, nil)
 }
