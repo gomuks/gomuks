@@ -192,7 +192,8 @@ func parseKeybindings(input map[string]string) (output map[Keybind]string) {
 	for shortcut, action := range input {
 		mod, key, ch, err := cbind.Decode(shortcut)
 		if err != nil {
-			panic(fmt.Errorf("failed to parse keybinding %s -> %s: %w", shortcut, action, err))
+			debug.Printf("Skipping invalid keybinding %s -> %s: %v", shortcut, action, err)
+			continue
 		}
 		// TODO find out if other keys are parsed incorrectly like this
 		if key == tcell.KeyEscape {

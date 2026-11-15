@@ -14,6 +14,12 @@ main:
     'Alt+Enter': add_newline
     'Alt+a': next_active_room
     'Alt+l': show_bare
+    'Ctrl+s': search_spaces
+    'Alt+s': search_spaces
+    'Ctrl+]': next_space
+    'Ctrl+[': prev_space
+    'Alt+]': next_space
+    'Alt+[': prev_space
     'Ctrl+c': force_quit
 
 modal:
@@ -40,4 +46,8 @@ room:
     'Ctrl+n': scroll_down
     'PageUp': scroll_up
     'PageDown': scroll_down
+    'Ctrl+r': reply
+    'Alt+r': react
+    'Alt+Delete': redact
+    'Alt+c': copy
     'Enter': send
