@@ -1,3 +1,52 @@
+# v26.11
+
+### Backend
+* Added RFC 10036 `Incremental` header for SSE connections so compatible reverse
+  proxies like Caddy disable buffering.
+* Added per-message profile info to push data.
+* Added support for FCM push gateways specified by the frontend.
+  * Currently, the push gateways need to be whitelisted in the config.
+* Added support for OAuth step-up auth with existing OAuth login methods.
+* Added methods for viewing and updating room directory.
+* Added config option to not delete media cache on logout.
+  * This is recommended if you share the media cache between multiple instances.
+* Added method to get the MSC4391 definitions of internal gomuks commands
+  (thanks to [@Henry-Hiles] in [#773]).
+* Added method for upgrading rooms (thanks to [@Henry-Hiles] in [#774]).
+* Added caching theme proxy.
+  * To use it, simply replace `https://css.gomuks.app` with `_gomuks` in your
+    CSS imports.
+  * The cache will keep previously loaded themes working even if it can't reach
+    css.gomuks.app.
+  * If you link to a specific commit, the backend will cache it permanently and
+    will never refetch. Non-specific commits are refetched at most once an hour.
+* Changed `get_mentions` to never return a null array.
+* Changed default build scripts to build with goolm.
+* Changed event processing to preserve unknown top-level fields. They'll be
+  placed under a custom `unknown_top_level` field.
+* Fixed event decryption lock not being acquired for sync properly, which lead
+  to some database queries timing out and failing due to deadlocks.
+
+### Web
+* Bumped minimum browser versions to Firefox 153, Chrome 155 and Safari 27.
+* Added support for stable policy list rooms.
+
+### C FFI
+* Added push message info to push notification handling instead of only
+  returning raw event and room info.
+  * Clients should prefer using only the pre-processed push data.
+* Added method to reset network connections.
+  * Clients should listen to OS-level network change events and call this to
+    reconnect faster.
+* Added method to pause sync without stopping the client entirely.
+* Added `GomuksAllocBuffer` for platforms where malloc isn't easily available
+  (thanks to [@Henry-Hiles] in [#771]).
+
+[@Henry-Hiles]: https://github.com/Henry-Hiles
+[#771]: https://github.com/gomuks/gomuks/pull/771
+[#773]: https://github.com/gomuks/gomuks/pull/773
+[#774]: https://github.com/gomuks/gomuks/pull/774
+
 # v26.10
 
 ### Backend
