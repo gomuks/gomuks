@@ -28,6 +28,7 @@ const (
 			    timestamp = excluded.timestamp
 	`
 	getReadReceiptsQuery = `SELECT room_id, user_id, receipt_type, thread_id, event_id, timestamp FROM receipt WHERE room_id = $1 AND receipt_type='m.read' AND event_id IN ($2)`
+	getUserReceiptsQuery = `SELECT room_id, user_id, receipt_type, thread_id, event_id, timestamp FROM receipt WHERE room_id = $1 AND user_id = $2`
 )
 
 var receiptMassInserter = dbutil.NewMassInsertBuilder[*Receipt, [1]any](upsertReceiptQuery, "($1, $%d, $%d, $%d, $%d, $%d)")
@@ -72,6 +73,10 @@ func (rq *ReceiptQuery) GetManyRead(ctx context.Context, roomID id.RoomID, event
 		return true, nil
 	})
 	return output, err
+}
+
+func (rq *ReceiptQuery) GetAllForUser(ctx context.Context, roomID id.RoomID, userID id.UserID) ([]*Receipt, error) {
+	return rq.QueryMany(ctx, getUserReceiptsQuery, roomID, userID)
 }
 
 type Receipt struct {

@@ -308,15 +308,18 @@ func (h *HiClient) MarkRead(ctx context.Context, roomID id.RoomID, eventID id.Ev
 	} else if room == nil {
 		return fmt.Errorf("unknown room")
 	}
-	if threadID != "" {
-		return h.Client.SendReceipt(ctx, roomID, eventID, receiptType, map[string]string{
-			"thread_id": threadID,
-		})
-	}
 	content := &mautrix.ReqSetReadMarkers{
 		FullyRead: eventID,
 	}
-	if receiptType == event.ReceiptTypeRead {
+	if threadID != "" {
+		err = h.Client.SendReceipt(ctx, roomID, eventID, receiptType, &mautrix.ReqSendReceipt{ThreadID: threadID})
+		if err != nil {
+			return fmt.Errorf("failed to mark event as read: %w", err)
+		} else if threadID != string(event.ReadReceiptThreadMain) {
+			return nil
+		}
+		// The fully read marker and marked unread flag belong to the main timeline
+	} else if receiptType == event.ReceiptTypeRead {
 		content.Read = eventID
 	} else if receiptType == event.ReceiptTypeReadPrivate {
 		content.ReadPrivate = eventID
