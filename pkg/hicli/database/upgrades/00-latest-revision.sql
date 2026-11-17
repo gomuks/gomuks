@@ -1,4 +1,4 @@
--- v0 -> v32 (compatible with v10+): Latest revision
+-- v0 -> v33 (compatible with v10+): Latest revision
 CREATE TABLE account (
 	user_id        TEXT    NOT NULL PRIMARY KEY,
 	device_id      TEXT    NOT NULL,
@@ -297,11 +297,11 @@ BEGIN
 	SET own_reactions = json_set(
 		own_reactions,
 		'$.' || json_quote(NEW.content ->> '$."m.relates_to".key'),
-		(
+		json((
 			SELECT json_group_array(value)
 			FROM json_each(own_reactions, '$.' || json_quote(NEW.content ->> '$."m.relates_to".key'))
 			WHERE value <> NEW.event_id
-		))
+		)))
 	WHERE event_id = NEW.relates_to
 	  AND room_id = NEW.room_id
 	  AND NEW.sender IN (SELECT user_id FROM account)
