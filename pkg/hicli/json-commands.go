@@ -302,8 +302,6 @@ func (h *JSONAPI) SetTyping(ctx context.Context, params *jsoncmd.SetTypingParams
 	return h.HiClient.SetTyping(ctx, params.RoomID, time.Duration(params.Timeout)*time.Millisecond)
 }
 
-var accountDataProfileAnnotations = event.NewEventType("dev.zirco.msc4441.profile_annotations")
-
 func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfileParams) (*jsoncmd.GetProfileResponse, error) {
 	resp, err := h.Client.GetProfile(mautrix.WithMaxRetries(ctx, 0), params.UserID)
 	if err != nil {
@@ -326,21 +324,28 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 		Bio:     bio,
 	}
 
-	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataProfileAnnotations)
-	if err != nil {
-		return nil, err
-	}
-	if accountDataJSON == nil {
-		return response, nil
+	var annotations *event.ProfileAnnotationsEventContent
+	annotationsPtr := h.HiClient.profileAnnotations.Load()
+	if annotationsPtr != nil {
+		annotations = *annotationsPtr
+	} else {
+		accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataProfileAnnotations)
+		if err != nil {
+			return nil, err
+		}
+		if accountDataJSON == nil {
+			return response, nil
+		}
+		var gotAnnotations *event.ProfileAnnotationsEventContent
+		if err := json.Unmarshal(accountDataJSON.Content, &gotAnnotations); err != nil {
+			return nil, err
+		}
+
+		h.HiClient.profileAnnotations.Store(&gotAnnotations)
+		annotations = gotAnnotations
 	}
 
-	allAnnotations := make(map[string]event.ExtensibleTextContainer)
-	err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
-	if err != nil {
-		return nil, err
-	}
-
-	userAnnotation, ok := allAnnotations[string(params.UserID)]
+	userAnnotation, ok := (*annotations)[params.UserID]
 	if !ok {
 		return response, nil
 	}
@@ -399,9 +404,8 @@ func (h *JSONAPI) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResp
 	return h.HiClient.GetOwnDevices(ctx)
 }
 
-
 func (h *JSONAPI) SetProfileAnnotation(ctx context.Context, params *jsoncmd.SetProfileAnnotationParams) error {
-	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataProfileAnnotations)
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataProfileAnnotations)
 	if err != nil {
 		return err
 	}
@@ -418,7 +422,7 @@ func (h *JSONAPI) SetProfileAnnotation(ctx context.Context, params *jsoncmd.SetP
 
 	allAnnotations[string(params.UserID)] = *extensible
 
-	err = h.Client.SetAccountData(ctx, "dev.zirco.msc4441.profile_annotations", allAnnotations)
+	err = h.Client.SetAccountData(ctx, event.AccountDataProfileAnnotations.Type, allAnnotations)
 	if err != nil {
 		return err
 	}
