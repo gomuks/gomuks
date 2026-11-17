@@ -72,6 +72,8 @@ github.com/stretchr/testify v1.12.0 h1:K6Mr6jO9JICuend/5xzTM03ydSV3vdNRYAdPSukj8
 github.com/stretchr/testify v1.12.0/go.mod h1:bOYBZb5qJ00vPzWfIqBUZPaxK8jWiXc6d3ErP4Ca9Gw=
 github.com/strukturag/libheif v1.23.7 h1:CoAAXOMotJQtHZ5DAQhHhdWfMxg7ffoDBH70rBf84s8=
 github.com/strukturag/libheif v1.23.7/go.mod h1:E/PNRlmVtrtj9j2AvBZlrO4dsBDu6KfwDZn7X1Ce8Ks=
+github.com/thetayloredman/mautrix-go v0.0.0-20261117035559-77d2a49af6d9 h1:to+v6uho4kutuIrxGX+5JWIhlFDkqWzZ52wbCBsSwjg=
+github.com/thetayloredman/mautrix-go v0.0.0-20261117035559-77d2a49af6d9/go.mod h1:JVnq9oVnx8uaeTjIqECp6Ytk5z6vdAexexusXKZ6ysc=
 github.com/tidwall/gjson v1.14.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/gjson v1.20.0 h1:+agJ3rEzKcCXKDKo0ml26UROcpcAlnZyjq+TjbY5Fto=
 github.com/tidwall/gjson v1.20.0/go.mod h1:V37/opeE/JbLUOfH0QTXiNez2l0RUjYUhpT4szFQAfc=
@@ -188,7 +190,5 @@ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 maunium.net/go/mauflag v1.0.0 h1:YiaRc0tEI3toYtJMRIfjP+jklH45uDHtT80nUamyD4M=
 maunium.net/go/mauflag v1.0.0/go.mod h1:nLivPOpTpHnpzEh8jEdSL9UqO9+/KBJFmNRlwKfkPeA=
-maunium.net/go/mautrix v0.33.1-0.20261117193934-bd74d7e5b1f0 h1:wwkExT6zcr5ta6j6g0E2M0rr1t2pMcdvO/U+8NnU2mU=
-maunium.net/go/mautrix v0.33.1-0.20261117193934-bd74d7e5b1f0/go.mod h1:JVnq9oVnx8uaeTjIqECp6Ytk5z6vdAexexusXKZ6ysc=
 mvdan.cc/xurls/v2 v2.6.0 h1:3NTZpeTxYVWNSokW3MKeyVkz/j7uYXYiMtXRUfmjbgI=
 mvdan.cc/xurls/v2 v2.6.0/go.mod h1:bCvEZ1XvdA6wDnxY7jPPjEmigDtvtvPXAD/Exa9IMSk=
