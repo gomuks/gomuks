@@ -1,3 +1,13 @@
+# v26.11.1
+
+### Backend
+* Fixed removing own reactions failing.
+* Updated mautrix-go to build with goolm by default, even if the build tag
+  isn't specified.
+
+### Desktop
+* Updated to Electron 45
+
 # v26.11
 
 ### Backend
