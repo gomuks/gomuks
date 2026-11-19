@@ -69,14 +69,17 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 	const mediaURL = preview["beeper:image:encryption"]
 		? getEncryptedMediaURL(preview["beeper:image:encryption"].url)
 		: getMediaURL(preview["og:image"])
-	const aspectRatio = (preview["og:image:width"] ?? 1) / (preview["og:image:height"] ?? 1)
+	const width = preview["og:image:width"] ?? 1
+	const height = preview["og:image:height"] ?? 1
+	const aspectRatio = width / height
 	let containerSize: ImageContainerSize | undefined
 	let inline = false
-	if (aspectRatio < 1.2) {
+	if ((aspectRatio < 1.2 && aspectRatio > 0.8) && (height <= 512 || width <= 512)) {
 		containerSize = { width: 80, height: 80 }
 		inline = true
 	}
 	const style = calculateMediaSize(preview["og:image:width"], preview["og:image:height"], containerSize)
+	const narrowMedia = Number.parseFloat(`${style.container.width}`) < 224
 
 	const previewingURL = preview["og:url"] ?? preview.matched_url ?? url
 	const title = preview["og:title"] ?? preview["og:url"] ?? previewingURL
@@ -107,7 +110,7 @@ const URLPreview = ({ url, preview, startLoadingPreview, clearPreview, room }: {
 		/> : null}
 	</div>
 	return <div
-		className={inline ? "url-preview inline" : "url-preview"}
+		className={inline ? "url-preview inline" : `url-preview${narrowMedia ? " narrow-media" : ""}`}
 		style={inline ? {} : { width: style.container.width }}
 	>
 		<div className="title">
