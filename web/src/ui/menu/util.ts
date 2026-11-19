@@ -25,13 +25,13 @@ export const getPending = (evt: MemDBEvent): [pending: boolean, pendingTitle: st
 	return [isPending, pendingTitle]
 }
 
-export const getPowerLevels = (room: RoomStateStore, client: Client): [
+export const getPowerLevels = (room: RoomStateStore, client?: Client): [
 	pls: PowerLevelEventContent, ownPL: number, createEvent: MemDBEvent
 ] => {
 	const createEvent = room.getStateEvent("m.room.create", "")
 	const plEvent = room.getStateEvent("m.room.power_levels", "")
 	const pls = (plEvent?.content ?? {}) as PowerLevelEventContent
-	const ownPL = getUserLevel(pls, createEvent, client.userID)
+	const ownPL = client ? getUserLevel(pls, createEvent, client?.userID) : 0
 	return [pls, ownPL, createEvent!]
 }
 

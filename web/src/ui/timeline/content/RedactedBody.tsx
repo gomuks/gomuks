@@ -13,28 +13,53 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { JSX, useState } from "react"
 import { MemberEventContent } from "@/api/types"
-import { getDisplayname } from "@/util/validation.ts"
+import { getUserLevel } from "@/util/powerlevel.ts"
+import { ensureString, getDisplayname } from "@/util/validation.ts"
+import { getPowerLevels } from "../../menu/util.ts"
 import EventContentProps from "./props.ts"
 import DeleteIcon from "../../../icons/delete.svg?react"
 
+const BlurredText = ({ text }: { text: string }) => {
+	const [show, setShow] = useState(false)
+	return <span
+		style={{ filter: show ? "unset" : undefined }}
+		className="blurred-text"
+		onClick={() => setShow(!show)}
+	>{text}</span>
+}
+
 const RedactedBody = ({ event, sender, room }: EventContentProps) => {
-	let suffix = ""
+	let sentBy = ""
+	let forReason: JSX.Element | string | undefined
 	if (event.redacted_by) {
 		// TODO store redaction sender in database instead of fetching the entire redaction event
 		const redactedByEvent = room.eventsByID.get(event.redacted_by)
 		if (redactedByEvent && redactedByEvent.sender !== event.sender) {
 			const redacterProfile = room.getStateEvent("m.room.member", redactedByEvent.sender)
-			suffix = `by ${getDisplayname(redactedByEvent.sender, redacterProfile?.content)}`
+			sentBy = `by ${getDisplayname(redactedByEvent.sender, redacterProfile?.content)}`
+		}
+		let reason = ensureString(redactedByEvent?.content?.reason)
+		if (reason) {
+			if (reason.length > 120) {
+				reason = reason.slice(0, 100) + "[…]"
+			}
+			const [pls, , createEvent] = getPowerLevels(room)
+			if (getUserLevel(pls, createEvent, redactedByEvent!.sender) > (pls.redact ?? 50)) {
+				forReason = `for ${reason}`
+			} else {
+				forReason = <>for&nbsp;<BlurredText text={reason} /></>
+			}
 		}
 	} else {
 		const senderContent = sender?.content as MemberEventContent | undefined
 		if (senderContent?.["org.matrix.msc4293.redact_events"]) {
-			suffix = "via ban event"
+			sentBy = "via ban event"
 		}
 	}
 	return <div className="redacted-body">
-		<DeleteIcon/> Message deleted {suffix}
+		<DeleteIcon/> <div>Message deleted {sentBy} {forReason}</div>
 	</div>
 }
 

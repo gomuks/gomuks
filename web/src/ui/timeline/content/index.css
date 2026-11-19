@@ -20,6 +20,12 @@ div.redacted-body, div.decryption-pending-body {
 
 	> svg {
 		height: 20px;
+		flex-shrink: 0;
+	}
+
+	.blurred-text {
+		transition: filter .5s;
+		filter: blur(4px);
 	}
 }
 
