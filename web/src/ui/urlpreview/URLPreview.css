@@ -89,6 +89,8 @@ div.url-preview {
 	}
 
 	&.narrow-media {
+		min-width: min(100%, 14.5rem);
+
 		> div.media-container {
 			margin-left: 0.5rem;
 			margin-bottom: 0.5rem;
