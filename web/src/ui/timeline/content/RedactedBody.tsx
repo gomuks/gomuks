@@ -27,7 +27,10 @@ const BlurredText = ({ text }: { text: string }) => {
 	return <span
 		style={{ filter: show ? "unset" : undefined }}
 		className="blurred-text"
-		onClick={() => setShow(!show)}
+		onClick={evt => {
+			setShow(!show)
+			evt.stopPropagation()
+		}}
 	>{text}</span>
 }
 
