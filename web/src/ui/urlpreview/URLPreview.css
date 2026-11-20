@@ -83,6 +83,21 @@ div.url-preview {
 		background-color: var(--background-color);
 	}
 
+	&:not(.inline) {
+		/* Make sure thin images don't make the entire box too thin to be useful */
+		min-width: min(100%, 14rem);
+	}
+
+	&.narrow-media {
+		min-width: min(100%, 14.5rem);
+
+		> div.media-container {
+			margin-left: 0.5rem;
+			margin-bottom: 0.5rem;
+			border-radius: 0.5rem;
+		}
+	}
+
 	&.inline {
 		grid-template:
 			"media        title       actions"     auto
