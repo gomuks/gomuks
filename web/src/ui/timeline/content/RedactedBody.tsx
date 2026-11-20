@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, useState } from "react"
+import { useRoomEvent } from "@/api/statestore"
 import { MemberEventContent } from "@/api/types"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import { ensureString, getDisplayname } from "@/util/validation.ts"
@@ -33,15 +34,14 @@ const BlurredText = ({ text }: { text: string }) => {
 const RedactedBody = ({ event, sender, room }: EventContentProps) => {
 	let sentBy = ""
 	let forReason: JSX.Element | string | undefined
-	if (event.redacted_by) {
-		// TODO store redaction sender in database instead of fetching the entire redaction event
-		const redactedByEvent = room.eventsByID.get(event.redacted_by)
-		if (redactedByEvent && redactedByEvent.sender !== event.sender) {
+	const redactedByEvent = useRoomEvent(room, event.redacted_by ?? null)
+	if (redactedByEvent) {
+		if (redactedByEvent.sender !== event.sender) {
 			const redacterProfile = room.getStateEvent("m.room.member", redactedByEvent.sender)
 			sentBy = `by ${getDisplayname(redactedByEvent.sender, redacterProfile?.content)}`
 		}
 		let reason = ensureString(redactedByEvent?.content?.reason)
-		if (reason) {
+		if (reason && !redactedByEvent.redacted_by) {
 			if (reason.length > 120) {
 				reason = reason.slice(0, 100) + "[…]"
 			}
