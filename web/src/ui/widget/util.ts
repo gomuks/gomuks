@@ -26,6 +26,18 @@ export function notNull<T>(value: T | null | undefined): value is T {
 }
 
 export function memDBEventToIRoomEvent(evt: MemDBEvent): IRoomEvent {
+	let content = evt.content
+	if (evt.redacted_by) {
+		if (evt.type === "m.room.create" || evt.type === "m.room.power_levels") {
+			// keep everything
+		} else if (evt.type === "m.room.member") {
+			content = { membership: content.membership }
+		} else if (evt.type === "m.room.redaction") {
+			content = { redacts: content.redacts }
+		} else {
+			content = {}
+		}
+	}
 	return {
 		type: evt.type,
 		sender: evt.sender,
@@ -33,9 +45,9 @@ export function memDBEventToIRoomEvent(evt: MemDBEvent): IRoomEvent {
 		room_id: evt.room_id,
 		state_key: evt.state_key,
 		origin_server_ts: evt.timestamp,
-		content: evt.content,
+		content,
 		unsigned: evt.unsigned as Record<string, unknown>,
-		msc4354_sticky: evt.sticky_duration_ms ? {
+		msc4354_sticky: evt.sticky_duration_ms && !evt.redacted_by ? {
 			duration_ms: evt.sticky_duration_ms,
 		} : undefined,
 	}
