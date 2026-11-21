@@ -22,7 +22,6 @@ import (
 	"maunium.net/go/mautrix/crypto/ssss"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/event/cmdschema"
-	"maunium.net/go/mautrix/format"
 	"maunium.net/go/mautrix/id"
 	"maunium.net/go/mautrix/oauth"
 	"maunium.net/go/mautrix/pushrules"
@@ -79,6 +78,8 @@ func (h *HiClient) handleJSONCommand(ctx context.Context, req *JSONCommand) (any
 		return jsoncmd.GetProfile.RunCtx(ctx, req.Data, h.API.GetProfile)
 	case jsoncmd.ReqSetProfileField:
 		return jsoncmd.SetProfileField.RunCtx(ctx, req.Data, h.API.SetProfileField)
+	case jsoncmd.ReqSetProfileAnnotation:
+		return jsoncmd.SetProfileAnnotation.RunCtx(ctx, req.Data, h.API.SetProfileAnnotation)
 	case jsoncmd.ReqGetMutualRooms:
 		return jsoncmd.GetMutualRooms.RunCtx(ctx, req.Data, h.API.GetMutualRooms)
 	case jsoncmd.ReqTrackUserDevices:
@@ -311,35 +312,51 @@ func (h *JSONAPI) GetProfile(ctx context.Context, params *jsoncmd.GetProfilePara
 		var text event.ExtensibleTextContainer
 		d, _ := json.Marshal(bioData)
 		_ = json.Unmarshal(d, &text)
-		var bioHTML, bioEditSource string
-		for _, repr := range text.Text {
-			switch repr.MimeType {
-			case "text/html":
-				if bioHTML == "" {
-					bioHTML, _, _ = sanitizeAndLinkifyHTML(repr.Body, false)
-				}
-			case "text/plain", "":
-				if bioHTML == "" {
-					bioHTML = strings.ReplaceAll(linkifyPlaintext(repr.Body), "\n", "<br/>")
-				}
-			case gomuksInputMime:
-				if params.UserID == h.Account.UserID {
-					bioEditSource = repr.Body
-				}
-			}
-		}
-		if bioEditSource == "" && bioHTML != "" && params.UserID == h.Account.UserID {
-			bioEditSource, _ = format.HTMLToMarkdownFull(htmlToMarkdownForInput, bioHTML)
-		}
+		bioHTML, bioEditSource := h.SanitizeExtensibleText(params.UserID, text)
 		bio = &jsoncmd.ProfileBio{
 			HTML:       bioHTML,
 			EditSource: bioEditSource,
 		}
 	}
-	return &jsoncmd.GetProfileResponse{
+
+	response := &jsoncmd.GetProfileResponse{
 		Profile: resp,
 		Bio:     bio,
-	}, nil
+	}
+
+	var annotations *event.ProfileAnnotationsEventContent
+	annotationsPtr := h.HiClient.profileAnnotations.Load()
+	if annotationsPtr != nil {
+		annotations = *annotationsPtr
+	} else {
+		accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataProfileAnnotations)
+		if err != nil {
+			return nil, err
+		}
+		if accountDataJSON == nil {
+			return response, nil
+		}
+		var gotAnnotations *event.ProfileAnnotationsEventContent
+		if err := json.Unmarshal(accountDataJSON.Content, &gotAnnotations); err != nil {
+			return nil, err
+		}
+
+		h.HiClient.profileAnnotations.Store(&gotAnnotations)
+		annotations = gotAnnotations
+	}
+
+	userAnnotation, ok := (*annotations)[params.UserID]
+	if !ok {
+		return response, nil
+	}
+
+	html, editSource := h.SanitizeExtensibleText(params.UserID, userAnnotation)
+
+	response.Note = &jsoncmd.ProfileNote{
+		HTML:       html,
+		EditSource: editSource,
+	}
+	return response, nil
 }
 
 func (h *JSONAPI) SetProfileField(ctx context.Context, params *jsoncmd.SetProfileFieldParams) error {
@@ -385,6 +402,32 @@ func (h *JSONAPI) GetProfileEncryptionInfo(ctx context.Context, params *jsoncmd.
 
 func (h *JSONAPI) GetOwnDevices(ctx context.Context) (*jsoncmd.GetOwnDevicesResponse, error) {
 	return h.HiClient.GetOwnDevices(ctx)
+}
+
+func (h *JSONAPI) SetProfileAnnotation(ctx context.Context, params *jsoncmd.SetProfileAnnotationParams) error {
+	accountDataJSON, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, event.AccountDataProfileAnnotations)
+	if err != nil {
+		return err
+	}
+
+	allAnnotations := make(map[string]event.ExtensibleTextContainer)
+	if accountDataJSON != nil {
+		err = json.Unmarshal(accountDataJSON.Content, &allAnnotations)
+		if err != nil {
+			return err
+		}
+	}
+
+	extensible := inputTextToExtensible(params.Note)
+
+	allAnnotations[string(params.UserID)] = *extensible
+
+	err = h.Client.SetAccountData(ctx, event.AccountDataProfileAnnotations.Type, allAnnotations)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *JSONAPI) GetEvent(ctx context.Context, params *jsoncmd.GetEventParams) (*database.Event, error) {

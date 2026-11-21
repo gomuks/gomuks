@@ -98,7 +98,13 @@ type ProfileBio struct {
 	EditSource string `json:"edit_source,omitempty"`
 }
 
+type ProfileNote struct {
+	HTML       string `json:"html"`
+	EditSource string `json:"edit_source,omitempty"`
+}
+
 type GetProfileResponse struct {
 	Profile *mautrix.RespUserProfile `json:"profile"`
 	Bio     *ProfileBio              `json:"bio,omitempty"`
+	Note    *ProfileNote             `json:"note,omitempty"`
 }

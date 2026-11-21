@@ -103,6 +103,8 @@ type HiClient struct {
 	globalPerMessageProfiles atomic.Pointer[*event.PerMessageProfilesEventContent]
 	roomPerMessageProfiles   *exsync.Map[id.RoomID, *event.PerMessageProfilesEventContent]
 
+	profileAnnotations atomic.Pointer[*event.ProfileAnnotationsEventContent]
+
 	pendingOAuthAutoDeviceCode atomic.Pointer[jsoncmd.OAuthPollDeviceCodeParams]
 
 	lastOwnProfileFetch time.Time

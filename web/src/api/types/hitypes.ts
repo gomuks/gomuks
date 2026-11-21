@@ -218,6 +218,7 @@ export interface SanitizedBio {
 export interface GetProfileResponse {
 	profile: UserProfile
 	bio?: SanitizedBio
+	note?: SanitizedBio
 }
 
 export interface ManualPaginationResponse {
