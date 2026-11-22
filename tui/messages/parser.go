@@ -203,7 +203,7 @@ func ParseMessage(matrix *client.GomuksClient, prefs *config.UserPreferences, ro
 		return NewHTMLMessage(room, evt, content, htmlEntity)
 	case event.MsgImage, event.MsgVideo, event.MsgAudio, event.MsgFile:
 		msg := NewFileMessage(room, matrix, evt, content)
-		if !prefs.DisableDownloads {
+		if prefs != nil && !prefs.DisableDownloads && !prefs.DisableImages {
 			renderer := msg.Renderer.(*FileMessage)
 			renderer.DownloadPreview()
 		}
