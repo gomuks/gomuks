@@ -135,6 +135,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	}
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
+	const showBridgeIcons = usePreference(client.store, null, "show_bridge_icons")
 	const roomListFilter = client.store.roomListFilterFunc
 	return <div className="room-list-wrapper">
 		<div className="room-search-wrapper">
@@ -210,6 +211,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 					hidden={roomListFilter ? !roomListFilter(room) : false}
 					room={room}
 					hideAvatar={room.is_invite && !showInviteAvatars}
+					showBridgeIcon={showBridgeIcons}
 				/>,
 			)}
 		</div>

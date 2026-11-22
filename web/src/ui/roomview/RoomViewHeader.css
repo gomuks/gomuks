@@ -38,6 +38,25 @@ div.room-header {
 		width: 2.5rem;
 	}
 
+	> div.room-avatar-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+
+		> img.bridge-icon {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			width: 1rem;
+			height: 1rem;
+			border-radius: 50%;
+			object-fit: cover;
+			pointer-events: none;
+			background-color: var(--background-color);
+			box-shadow: 0 0 0 2px var(--background-color);
+		}
+	}
+
 	> div.right-buttons {
 		display: flex;
 		align-items: center;

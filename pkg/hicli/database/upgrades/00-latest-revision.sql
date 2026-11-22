@@ -43,6 +43,8 @@ CREATE TABLE room (
 
 	prev_batch           TEXT,
 
+	bridge_info          TEXT,
+
 	CONSTRAINT room_preview_event_fkey FOREIGN KEY (preview_event_rowid) REFERENCES event (rowid) ON DELETE SET NULL
 ) STRICT;
 CREATE INDEX room_type_idx ON room (room_type);
