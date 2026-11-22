@@ -293,6 +293,15 @@ type PaginateManualParams struct {
 	Limit     int               `json:"limit"`
 }
 
+type GetThreadsParams struct {
+	RoomID id.RoomID `json:"room_id"`
+	// Whether to get all threads, or only ones the user has participated in. Defaults to all.
+	Include mautrix.ThreadInclude `json:"include,omitempty"`
+	// `next_batch` token from a previous request. Omit to start from the most recent threads.
+	Since string `json:"since,omitempty"`
+	Limit int    `json:"limit,omitempty"`
+}
+
 type SearchParams struct {
 	// The search term to search for. This is passed directly to an SQLite fts5 MATCH query.
 	SearchTerm string `json:"search_term"`
