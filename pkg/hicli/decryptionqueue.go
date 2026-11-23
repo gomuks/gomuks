@@ -58,7 +58,7 @@ func (h *HiClient) handleReceivedMegolmSession(ctx context.Context, roomID id.Ro
 	} else if len(events) == 0 {
 		log.Trace().Msg("No events to retry decryption for")
 	} else {
-		go h.bgHandleReceivedMegolmSession(ctx, roomID, firstKnownIndex, events)
+		go h.bgHandleReceivedMegolmSession(context.WithValue(ctx, syncContextKey, nil), roomID, firstKnownIndex, events)
 	}
 }
 
