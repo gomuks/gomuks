@@ -27,6 +27,7 @@ import React, {
 import { useRoomEvent, useRoomState } from "@/api/statestore"
 import {
 	BotArgumentValue,
+	ContentWarningType,
 	EventID,
 	MediaEncodingOptions,
 	MediaMessageEventContent,
@@ -348,6 +349,10 @@ const MessageComposer = () => {
 					...mediaItem,
 					itemtype: mediaItem.msgtype,
 				})),
+			}
+			if (state.media.length === 1 && state.media[0].filename?.startsWith("SPOILER_")) {
+				extra["page.codeberg.everypizza.msc4193.spoiler"] = true
+				extra["town.robin.msc3725.content_warning"] = { type: ContentWarningType.Spoiler }
 			}
 		} else if (state.location) {
 			base_content = {
