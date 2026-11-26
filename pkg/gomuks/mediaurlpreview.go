@@ -50,7 +50,8 @@ func (gmx *Gomuks) GetURLPreview(ctx context.Context, url string, encrypt bool) 
 	if url == "" {
 		return nil, mautrix.MInvalidParam.WithMessage("URL must be provided to preview")
 	}
-	linkPreview, err := gmx.Client.Client.GetURLPreview(mautrix.WithMaxRetries(ctx, 0), url)
+	serverPersistsImage := !encrypt && gmx.Client.Client.SpecVersions.Supports(mautrix.FeatureUnstablePersistURLPreviews)
+	linkPreview, err := gmx.Client.Client.GetURLPreview(mautrix.WithMaxRetries(ctx, 0), url, serverPersistsImage)
 	if err != nil {
 		log.Err(err).Msg("Failed to get URL preview")
 		return nil, err
@@ -61,7 +62,7 @@ func (gmx *Gomuks) GetURLPreview(ctx context.Context, url string, encrypt bool) 
 		MatchedURL:  url,
 	}
 
-	if preview.ImageURL != "" {
+	if preview.ImageURL != "" && !serverPersistsImage {
 		var content *event.MessageEventContent
 
 		if encrypt {
