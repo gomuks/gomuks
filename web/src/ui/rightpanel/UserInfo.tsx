@@ -26,9 +26,15 @@ import UserExtendedProfile from "./UserExtendedProfile.tsx"
 import DeviceList from "./UserInfoDeviceList.tsx"
 import MutualRooms from "./UserInfoMutualRooms.tsx"
 import UserModeration from "./UserModeration.tsx"
+import UserProfileNotes from "./UserProfileNotes.tsx"
 
 interface UserInfoProps {
 	userID: UserID
+}
+
+const emptyNote = {
+	html: "",
+	edit_source: "",
 }
 
 const UserInfo = ({ userID }: UserInfoProps) => {
@@ -95,6 +101,13 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			userID={userID}
 			loading={loadingGlobalProfile}
 			errors={errors}
+		/>}
+		{!fakeUser && <UserProfileNotes
+			note={globalProfile?.note ?? emptyNote}
+			loadingGlobalProfile={loadingGlobalProfile}
+			refreshProfile={refreshProfile}
+			userID={userID}
+			client={client}
 		/>}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>

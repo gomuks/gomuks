@@ -64,3 +64,5 @@ require (
 	golang.org/x/term v0.48.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
+
+replace maunium.net/go/mautrix => github.com/thetayloredman/mautrix-go v0.0.0-20261117035559-77d2a49af6d9

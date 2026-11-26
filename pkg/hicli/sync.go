@@ -293,6 +293,10 @@ func (h *HiClient) processSyncResponse(ctx context.Context, resp *mautrix.RespSy
 			_ = evt.Content.ParseRaw(evt.Type)
 			content, _ := evt.Content.Parsed.(*event.PerMessageProfilesEventContent)
 			h.globalPerMessageProfiles.Store(&content)
+		case event.AccountDataProfileAnnotations:
+			_ = evt.Content.ParseRaw(evt.Type)
+			content, _ := evt.Content.Parsed.(*event.ProfileAnnotationsEventContent)
+			h.profileAnnotations.Store(&content)
 		}
 	}
 	if syncCtx != nil {
